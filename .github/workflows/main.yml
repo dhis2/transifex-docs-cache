@@ -1,0 +1,47 @@
+name: Transifex Workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  transifex:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@master
+            
+    - name: Download the CLI
+      run: curl -o- https://raw.githubusercontent.com/transifex/cli/master/install.sh | bash -s -- latest
+      working-directory: ${{ github.workspace }}
+      shell: bash
+
+    - name: Initialize Transifex
+      run: |
+        tx init
+      shell: bash
+      working-directory: ${{ github.workspace }}
+
+    - name: Add Transifex remotes
+      run: |
+        tx add remote --file-filter 'projects/<project_slug>/<lang>/<resource_slug>' --minimum-perc 100 https://app.transifex.com/hisp-uio/docs-full-site/dashboard/
+        tx add remote --file-filter 'projects/<project_slug>/<lang>/<resource_slug>' --minimum-perc 100 https://app.transifex.com/hisp-uio/dhis2-single-page-docs/dashboard/
+      shell: bash
+      working-directory: ${{ github.workspace }}
+
+    - name: Pull Transifex resources
+      run: |
+        tx pull --all
+      shell: bash
+      working-directory: ${{ github.workspace }}
+
+    
+    - name: Commit & Push changes
+      uses: actions-js/push@master
+      with:
+        directory: website/data/
+        branch: master
+        github_token: ${{ secrets.DHIS2_BOT_GITHUB_TOKEN }}
+
