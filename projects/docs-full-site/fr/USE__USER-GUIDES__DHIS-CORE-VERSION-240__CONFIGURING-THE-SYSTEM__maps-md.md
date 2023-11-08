@@ -1,0 +1,332 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.40/src/user/configure-the-gis-app.md"
+revision_date: '2022-10-23'
+tags:
+- DHIS Version 2.40
+- Utilisation
+---
+
+# Configuration des cartes de DHIS2 { #gis_creating }
+
+## Contexte { #gis_creating_context }
+
+Pour configurer les Cartes, il suffit de stocker dans la base de données les coordonnées 
+des unités d'organisation que vous souhaitez faire apparaître sur la carte. Les coordonnées 
+sont souvent distribuées en formats propriétaires et devront être converties dans un format 
+compréhensible par DHIS2. Le shapefile ESRI est le format de donnée vectorielle 
+géospatiale le plus courant pour les applications de bureau. Vous pouvez trouver les 
+shapefiles pour votre pays [ici](http://www.diva-gis.org/gdata) ou dans de nombreux 
+autres référentiels de données géospatiales sur le web. Un travail préalable doit être 
+effectué pour pouvoir utiliser ces coordonnées dans les cartes de DHIS2, à savoir 
+transformer les données dans un format approprié et s'assurer que le nom contenu 
+dans les données géospatiales correspond exactement aux noms des unités de 
+l'organisation auxquelles elles doivent correspondre.
+
+Seules les unités d'organisation avec des types de géométrie POINT peuvent être éditées par l'application de 
+maintenance à ce moment. Pour modifier les géométries POLYGON, veuillez utiliser la fonction 
+**Importation de géométrie d'unité d'organisation** dans l'application Import/Export.
+
+Pour modifier les coordonnées du POINT d'une unité d'organisation, ouvrez l'application de maintenance 
+et naviguez jusqu'à la section Unité d'organisation. Cliquez sur l'unité d'organisation que 
+vous souhaitez visualiser ou modifier, vous pouvez rechercher ou filtrer la liste dans 
+la partie gauche de l'écran. Une fois qu'une unité d'organisation est sélectionnée, 
+vous pouvez modifier les valeurs de **Latitude** et de **Longitude** pour mettre à jour les coordonnées des 
+POINTS. Si l'unité organisationnelle a une géométrie de type  POLYGON, les coordonnées 
+ne peuvent pas être modifiées.
+
+Si vous allez ajouter ou mettre à jour les coordonnées d'un grand nombre d'unités, ou 
+si vous devez mettre à jour des géométries de polygone, vous devez utiliser l'importation automatique 
+de la **géométrie des unités d'organisation** expliquée dans la section suivante.
+
+> **Important**
+>
+> Le seul système de référence de coordonnées (SRC) pris en charge par DHIS2 est EPSG:4326, 
+> également connu sous le nom de longitude/latitude géographique. Les coordonnées doivent être 
+> stockées avec la longitude (position est/ouest) en procédant à la latitude 
+> (position nord/sud). Si vos données vectorielles sont dans un SRC différent de 
+> EPSG 4326, vous devrez d'abord reprojeter les données avant de les importer 
+> le DHIS2.
+
+## Importation de coordonnées en format GeoJSON { #geojson_creating_setup }
+
+Étape 1 - Conversion des données géospatiales en format GeoJSON
+
+Sautez cette étape si vos données sont déjà en format GeoJSON utilisant la 
+longitude/latitude géographique.
+
+L'outil recommandé pour les conversions de format géographique est appelé 
+"ogr2ogr". Il devrait être disponible pour la plupart des distributions 
+Linux `sudo apt-get install gdal-bin`. Pour Windows, allez sur 
+<http://fwtools.maptools.org/>et téléchargez "FWTools", installez-le et ouvrez 
+l'interpréteur de commandes FWTools. Pendant la conversion du format, nous voulons 
+également nous assurer que la sortie dispose de la projection correcte des coordonnées 
+(appelée EPSG:4326 avec la longitude et la latitude géographiques). Pour une référence 
+plus détaillée des coordonnées géographiques, veuillez consulter ce 
+[site](http://www.epsg-registry.org/). Si vous avez déjà reprojeté 
+les données géographiques dans le système de latitude/longitude géographique 
+(EPSG:4326), il n'est pas nécessaire de définir explicitement le système de coordonnées 
+de sortie, en supposant que `ogr2ogr` peut déterminer le système de référence spatiale 
+d'entrée. Notez que la plupart des shapefiles utilisent le système EPSG:4326. Vous pouvez 
+déterminer le système de référence spatiale en exécutant la commande suivante.
+
+    ogrinfo -al -so filename.shp
+
+Cette commande suppose que vos données géospatiales sont au format ESRI Shapefile 
+(.shp), mais [plusieurs autres formats sont pris en charge] (https://gdal.org/drivers/vector/).
+
+En supposant que la projection telle que signalée par `ogrinfo` est de EPSG:27700 , 
+nous pouvons la transformer en EPSG:4326 en exécutant la commande 
+suivante.
+
+    ogr2ogr -s_srs EPSG:27700 -t_srs EPSG:4326 -f GeoJSON filename.geojson filename.shp
+
+Si les données géographiques sont déjà en EPSG:4326, vous pouvez simplement 
+transformer le shapefile en GeoJSON en exécutant la commande suivante.
+
+    ogr2ogr -f GeoJSON filename.geojson filename.shp
+
+Vous trouverez le fichier GeoJSON créé dans le même dossier que le fichier shapefile.
+
+Étape 2 - Simplifier/généraliser vos données géographiques
+
+Les limites des fichiers de données géographiques sont généralement très précises, trop 
+grandes pour les besoins d'un SIG basé sur le web. Cela n'affecte généralement pas 
+les performances lors de l'utilisation de fichiers SIG sur un système local, mais il est 
+généralement nécessaire d'optimiser les données géographiques pour le système 
+SIG basé sur le web du DHIS2. Toutes les données géographiques doivent être 
+téléchargées du serveur et rendues dans un navigateur. De ce fait, si les données sont trop 
+complexes, la performance du SIG de DHIS2 sera négativement affectée. Ce 
+processus d'optimisation peut être décrit comme suit :
+
+Pour les polygones, nous pouvons rendre les lignes de délimitation moins détaillées en 
+supprimant certains points de la ligne. Cette généralisation entraîne 
+une dégradation du polygone. Cependant, après 
+quelques expériences, il est possible de trouver un niveau optimal de généralisation, 
+où la précision du polygone est visuellement acceptable et où les 
+performances sont optimales. Faites une sauvegarde de vos fichiers 
+avant de commencer. Une méthode possible consiste à utiliser 
+[MapShaper] (http://www.mapshaper.org/), un outil en ligne qui permet de 
+généraliser les données géographiques. Pour utiliser MapShaper, il suffit de charger 
+vos fichiers sur le site. Ensuite, cliquez sur _Simplifier_ dans le menu supérieur et 
+sélectionnez une méthode de simplification. Un curseur s'affiche en haut de l'écran, 
+qui commence à 100 %. Il est généralement acceptable de le faire glisser jusqu'à environ 30 %. 
+Lorsque vous êtes satisfait du résultat, cliquez sur "Exporter" dans le coin supérieur droit. 
+Sélectionnez le format de fichier "GeoJSON" et cliquez sur le bouton Exporter pour 
+télécharger le fichier. Passez à l'étape suivante avec votre nouveau fichier 
+GeoJSON simplifié.
+
+Étape 3 - Préparation du fichier GeoJSON
+
+Malheureusement, le fichier GeoJSON n'est pas encore prêt pour l'importation. Ouvrez-le 
+dans un éditeur de texte puissant comme Geany (Linux) ou Notepad++ (Windows). GeoJSON 
+est un format basé sur JSON. Dans le fichier GeoJSON, une unité d'organisation est 
+représentée par un élément. Chaque entité doit avoir une géométrie, des propriétés 
+(attributs) et peut avoir un identifiant.
+
+Pour pouvoir importer des données géospatiales à partir d'un fichier GeoJSON, le DHIS2 
+doit faire correspondre chacune d'entre elles à une unité d'organisation de sa base de données. En d'autres termes, 
+chaque élément GeoJSON doit contenir une référence pour son unité d'organisation 
+correspondante. La référence elle-même doit être l'un des trois identifiants possibles de 
+DHIS2 : **uid**, **code** ou **nom**.
+
+Par défaut, nous tenterons de faire correspondre l'identifiant de l'unité d'organisation à celui 
+de l'élément GeoJSON. Vous pouvez ajouter ou modifier le champ id pour qu'il corresponde 
+à l'uid de l'unité d'organisation. Vous pouvez également faire correspondre une propriété 
+aux propriétés de l'élément GeoJSON. La propriété peut être associée à l'organisation 
+**uid**, **code** ou **nom**.
+
+Veuillez noter que l'identifiant utilisé doit **uniquement** identifier une 
+unité d'organisation (par exemple, s'il y a deux unités d'organisation dans la 
+base de données avec le même nom ou le même code, elles ne peuvent pas être 
+correctement associées à l'une ou à l'autre). Comme _uid_ est le seul identifiant à garantie 
+unique, c'est le choix le plus robuste. Toutefois, il est généralement plus facile de faire 
+correspondre le nom (étant donné que le nom fait déjà partie de vos données).
+
+Examinez brièvement les identifiants et comparez-les aux valeurs 
+correspondantes dans la base de données. S'ils semblent correspondre assez bien, 
+il est donc opportun de réaliser une prévisualisation dans le module "import-export".
+
+Allez dans l'application **Import/Export** et cliquez sur **Import géométrique d'unité d'organisation**. 
+Sélectionnez le fichier GeoJSON et la façon dont vous voulez faire correspondre les caractéristiques GeoJSON aux 
+unités d'organisation. Cliquez sur **Démarrer la simulation** et consultez le bilan. 
+Recherchez les unités d'organisation nouvelles/mises à jour. Notre intention est d'ajouter des coordonnées 
+aux unités d'organisation déjà existantes dans la base de données, nous voulons donc autant 
+de mises à jour que possible et 0 nouvelle. Les unités répertoriées comme nouvelles seront créées en tant 
+qu'unités racines et perturberont l'arborescence des unités d'organisation dans le DHIS2. Si l'une 
+d'entre elles est répertoriée comme nouvelle, cliquez sur le numéro et les unités d'organisation en question apparaîtront 
+dans la liste ci-dessous. S'il y a de légères fautes d'orthographe par rapport aux 
+noms des unités d'organisation dans la base de données, corrigez-les et recommencez l'essai à blanc. 
+Sinon, cliquez sur le bouton "annuler tout" en dessous de la liste, puis sur le 
+bouton **démarrer l'importation**.
+
+Si le processus d'importation se termine avec succès, vous devriez maintenant pouvoir 
+utiliser les données géographiques dans le SIG de DHIS2. Si ce n'est pas le cas, consultez 
+le journal pour obtenir des conseils et rechercher des erreurs courantes telles que :
+
+\- Nom en double dans le fichier GeoJSON. La colonne du nom dans la base de données est 
+unique et n'accepte pas deux unités d'organisation portant le même nom.
+
+\- La colonne "nom abrégé" du tableau des unités d'organisation de votre base de données 
+a une définition trop petite du varchar. Augmentez-la à 100.
+
+\- Polices spéciales pour les noms dans le fichier GeoJSON.
+
+\- Erreur de formatage de la saisie GeoJSON, utiliser [GeoJSONLint](https://geojsonlint.com/) 
+pour tester le contenu.
+
+## Importation de données en format GML { #gis_creating_setup }
+
+Étape 1 - Simplifier/généraliser vos données géographiques
+
+Les limites des fichiers de données géographiques sont généralement très précises, trop 
+grandes pour les besoins d'un SIG basé sur le web. Cela n'affecte généralement pas 
+les performances lors de l'utilisation de fichiers SIG sur un système local, mais il est 
+généralement nécessaire d'optimiser les données géographiques pour le système 
+SIG basé sur le web du DHIS2. Toutes les données géographiques doivent être 
+téléchargées du serveur et rendues dans un navigateur. De ce fait, si les données sont trop 
+complexes, la performance du SIG de DHIS2 sera négativement affectée. Ce 
+processus d'optimisation peut être décrit comme suit :
+
+Pour les polygones, nous pouvons rendre les lignes de délimitation moins détaillées en 
+supprimant certains points de la ligne. Cette généralisation entraîne 
+une dégradation du polygone. Cependant, après 
+quelques expériences, il est possible de trouver un niveau optimal de généralisation, 
+où la précision du polygone est visuellement acceptable et où les 
+performances sont optimales. Faites une sauvegarde de vos shapefiles 
+avant de commencer. Une méthode possible consiste à utiliser 
+[MapShaper] (http://www.mapshaper.org/), un outil en ligne qui peut 
+être utilisé pour généraliser les données géographiques. Pour utiliser MapShaper, il suffit de charger vos fichiers sur le site. Ensuite, cliquez sur Simplifier dans le menu supérieur et sélectionnez une méthode de simplification. Un curseur s'affiche en haut de l'écran, qui commence à 100 %. Il est généralement acceptable de le faire glisser jusqu'à environ 30 %. Lorsque vous êtes satisfait du résultat, cliquez sur "Exporter" dans le coin supérieur droit. Sélectionnez le format de fichier GeoJSON et cliquez sur le bouton Exporter pour télécharger le fichier sur votre ordinateur.
+
+Étape 2 - Conversion au format GML
+
+L'outil recommandé pour les conversions de format géographique est appelé 
+"ogr2ogr". Il devrait être disponible pour la plupart des distributions Linux `sudo apt-get install gdal-bin`. 
+Pour Windows, allez sur <http://fwtools.maptools.org/>et téléchargez 
+"FWTools", installez-le et ouvrez l'interpréteur de commandes FWTools. Pendant la 
+conversion du format, nous voulons également nous assurer que la sortie dispose de la projection correcte 
+des coordonnées (appelée EPSG:4326 avec la longitude et la 
+latitude géographiques). Pour une référence plus détaillée des coordonnées géographiques, 
+veuillez consulter ce [site](http://www.epsg-registry.org/). Si vous avez 
+déjà reprojeté les données géographiques dans le système de latitude/longitude 
+géographique (EPSG:4326), il n'est pas nécessaire de définir explicitement 
+le système de coordonnées de sortie, en supposant que `ogr2ogr` peut 
+déterminer le système de référence spatiale d'entrée. Notez que la plupart des shapefiles 
+utilisent le système EPSG:4326. Vous pouvez déterminer le système de référence spatiale 
+en exécutant la commande suivante.
+
+    ogrinfo -al -so filename.json
+
+En supposant que la projection telle que signalée par `ogrinfo` est de EPSG:27700 , 
+nous pouvons la transformer en EPSG:4326 en exécutant la commande 
+suivante.
+
+    ogr2ogr -s_srs EPSG:27700 -t_srs EPSG:4326 -f GML filename.gml filename.json
+
+Si les données géographiques sont déjà en EPSG:4326, vous pouvez simplement 
+transformer le shapefile en GML en exécutant la commande suivante.
+
+    ogr2ogr -f GML filename.gml filename.json
+
+Vous trouverez le fichier GML créé dans le même dossier que le fichier Shapefile.
+
+Étape 3 - Préparer le fichier GML
+
+Malheureusement, le fichier GML n'est pas encore prêt pour l'importation. Ouvrez-le 
+dans un éditeur de texte robuste comme Geany (Linux) ou Notepad++ (Windows). GML est 
+un format basé sur XML, ce qui signifie que vous reconnaîtrez la hiérarchie de balises XML 
+habituelle. Dans le fichier GML, une unité d'organisation est représentée par un 
+\<gml:featureMember\>. Dans des éléments de la fonctionnalité, nous trouvons généralement beaucoup 
+d'attributs, mais nous allons simplement importer leurs coordonnées.
+
+Pour importer des données géospatiales à partir des éléments membres de l'entrée GML, 
+le DHIS2 doit faire correspondre chacun d'eux à une unité d'organisation de sa 
+base de données. En d'autres termes, l'élément membre doit contenir une 
+référence à l'unité d'organisation correspondante. La référence elle-même 
+doit être l'un des trois identificateurs possibles de DHIS2 : **uid**, **code** ou 
+**nom**. L'identificateur choisi doit être fourni comme une propriété pour 
+chaque élément membre principal. L'importateur recherchera une propriété dont 
+le nom local est soit _Uid_, _Code_ ou _Name_, par exemple "ogr:Nom" ou 
+"anyPrefix:Code".
+
+Si les membres de votre fonctionnalité contiennent déjà une propriété de l'identifiant que vous 
+souhaitez utiliser (comme le nom d'une zone), vous pouvez utiliser la fonction de recherche et de remplacement 
+dans un éditeur de texte pour renommer ces éléments en un nom que DHIS2 reconnaîtra 
+(voir le tableau ci-dessous). Il s'agit généralement d'un processus qui s'applique 
+lorsque le nom est utilisé comme identifiant (le shapefile source ou même le GML 
+contiendra généralement le nom de chaque zone qu'il définit).
+
+Tableau : Identifiants d'unité d'organisation pris en charge pour l'importation GML
+
+| Priorité en matière de correspondance | Identificateur | Orthographes Valables  | Unique garanti |
+| ----------------- | ---------- | ---------------- | ----------------- |
+| 1                 | Uid        | uid, Uid, UID    | Oui               |
+| 2                 | Code       | code, Code, CODE | Non                |
+| 3                 | Nom       | nom, Nom, NOM | Non                |
+
+Dans le cas de renommage des propriétés, on trouve généralement une balise nommée 
+quelque chose comme "ogr:DISTRICT*NOM", "ogr:NOM_1" et on la renomme en 
+"ogr:NOM". En revanche, si l'on utilise les identificateurs \_code* ou _uid_, 
+il peut alors être nécessaire de rechercher les valeurs correctes dans la base de données DHIS2 et de parcourir 
+le fichier GML, en ajoutant les propriétés de chaque membre correspondant 
+de la caractéristique. Dans tous les cas, il est important de 
+réaliser que l'identificateur utilisé doit **uniquement** identifier une 
+unité d'organisation (par exemple, s'il y a deux unités d'organisation dans la 
+base de données qui portent le même nom ou code, elles ne peuvent pas être mises en correspondance correctement 
+sur l'une ou l'autre). Étant donné que _uid_ est le seul identifiant unique garanti, il s'agit 
+du choix le plus robuste. Cependant, étant donné que la correspondance avec le nom est généralement plus facile 
+(puisque le nom fait déjà partie de vos données), une approche viable pour 
+résoudre les conflits d'unicité peut consister à faire correspondre toutes les 
+unités d'organisation qui ne sont pas nommées de manière unique avec un identificateur différent (uid, de préférence) et le 
+reste avec leur nom.
+
+Comme on peut le voir dans le tableau ci-dessus, il existe une priorité de correspondance, 
+ce qui signifie que si deux ou plusieurs identifiants sont fournis pour le même membre, 
+la correspondance sera effectuée sur l'identifiant de plus haute priorité. Notez également 
+les propriétés valides qui peuvent être utilisées dans votre GML. Le préfixe de l'espace de 
+noms n'est pas important car seul le nom local est utilisé.
+
+Les erreurs de syntaxe ou de dénomination des éléments constituent un écueil 
+courant lors de la préparation des fichiers GML. Par conséquent, veuillez vous assurer que toutes les propriétés 
+du fichier GML sont lancées et terminées avec les balises correspondantes. 
+Assurez-vous également que les propriétés respectent l'une des orthographes valides 
+données du nom de la propriété. Les propriétés d'identification sont censées 
+ressembler, par exemple, à \<ogr:Name\>Moyamba District\</ogr:Name\>, 
+\<somePrefix:uid\>x7uuia898nJ\</somePrefix:uid\> or 
+\<CODE\>OU*12345\</CODE\>. Une autre erreur courante consiste à ne pas s'assurer que 
+l'identifiant correspond exactement, en particulier lorsque l'on utilise la propriété \_nom*. 
+Toutes les correspondances sont effectuées sur des valeurs exactes, ce qui signifie que "Moyamba" dans un 
+fichier GML source ne serait pas mis en correspondance avec "Moyamba District" dans la 
+base de données.
+
+Examinez brièvement les identifiants et comparez-les aux valeurs 
+correspondantes dans la base de données. S'ils semblent correspondre assez bien, 
+il est donc opportun de réaliser une prévisualisation dans le module "import-export".
+
+Allez dans l'application **Import/Export**, cliquez sur **Import géométrique de l'unité d'organisation** et sélectionnez le format **GML**. 
+Sélectionnez le fichier GML et cliquez sur **Démarrer la simulation**. Recherchez les 
+unités d'organisation nouvelles/mises à jour. Notre 
+intention est d'ajouter des coordonnées aux unités d'organisation 
+déjà existantes dans la base de données, nous voulons donc autant de mises à jour que possible et 0 nouvelle. Les 
+unités répertoriées comme nouvelles seront créées en tant qu'unités racines et perturbent l'arborescence des unités 
+d'organisation dans DHIS2. Si l'une d'entre elles est répertoriée comme nouvelle, cliquez sur le numéro et les 
+unités d'organisation en question apparaîtront dans la liste ci-dessous. S'il y a 
+de légères fautes d'orthographe par rapport aux noms des unités d'organisation dans 
+la base de données, corrigez-les et refaites l'aperçu. Sinon, cliquez sur le bouton 
+" Supprimer tout " en dessous de la liste, puis sur le bouton " Importer tout " 
+au-dessus de la liste.
+
+Si le processus d'importation se termine avec succès, vous devriez maintenant pouvoir 
+utiliser les données géographiques dans le SIG de DHIS2. Si ce n'est pas le cas, consultez 
+le journal pour obtenir des conseils et rechercher des erreurs courantes telles que :
+
+\- Nom en double dans le fichier GML. La colonne du nom dans la base de données est 
+unique et n'accepte pas deux unités d'organisation portant le même nom.
+
+\- La colonne "nom abrégé" du tableau des unités d'organisation de votre base de données 
+a une définition trop petite du varchar. Augmentez-la à 100.
+
+\- Caractères spéciaux des noms dans le fichier GML. Veillez à les convertir en 
+équivalents XML ou en séquences d'échappement appropriés.
+
+\- Entrée GML mal formatée, balises non concordantes
+

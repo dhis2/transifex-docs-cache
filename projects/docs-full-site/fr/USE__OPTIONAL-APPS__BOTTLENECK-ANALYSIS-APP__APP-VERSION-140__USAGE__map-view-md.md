@@ -1,0 +1,72 @@
+---
+edit_url: "https://github.com/hisptz/unicef-apps-docs/blob/master/src/commonmark/en/content/bna_v.1.4.0/map-view.md"
+revision_date: '2022-12-20'
+tags:
+- Version 1.4.0 de l'application
+- Utilisation
+---
+
+Affichage cartographique
+
+L'application BNA permet de visualiser les résultats analytiques sur une carte. Cela permet de visualiser les performances des différents indicateurs en fonction des couches cartographiques configurées dans l'application. Pour accéder à l'option de visualisation cartographique, l'utilisateur peut sélectionner l'onglet "Visualisation Cartographique".
+
+![Cliquez sur l'icône Recherche d'applications ou Applications pour accéder à l'option de recherche d'applications.](resources/images/zq.png)
+
+L'option affichage cartographique comporte la section suivante :
+
+1. Zone d'affichage de la carte : Il s'agit de la zone d'affichage général où la carte est affichée. Elle permet d'effectuer des zooms avant et arrière pour ajuster l'affichage de la carte.
+
+![Cliquez sur l'icône Recherche d'applications ou Applications pour accéder à l'option de recherche d'applications.](resources/images/zr.png)
+
+2. Sélecteur de couches : Il s'agit d'une fonction de configuration qui permet à l'utilisateur de sélectionner les couches (composants) qui doivent faire partie du résultat de la carte. Les utilisateurs peuvent choisir d'afficher les limites, les installations, la population ou des indicateurs spécifiques configurés pour la carte BNA analysée.
+
+![Cliquez sur l'icône Recherche d'applications ou Applications pour accéder à l'option de recherche d'applications.](resources/images/zs.png)
+
+![Cliquez sur l'icône Recherche d'applications ou Applications pour accéder à l'option de recherche d'applications.](resources/images/zt.png)
+
+3) Touche de la carte : Elle fournit des détails sur les symboles, les codes de couleur et les intervalles des résultats affichés. Pour les indicateurs, la carte s'affiche en fonction du nombre d'indicateurs sélectionnés.
+
+![Cliquez sur l'icône Recherche d'applications ou Applications pour accéder à l'option de recherche d'applications](resources/images/zu.png)
+
+![Cliquez sur l'icône Recherche d'applications ou Applications pour accéder à l'option de recherche d'applications](resources/images/zv.png)
+
+![Cliquez sur l'icône Recherche d'applications ou Applications pour accéder à l'option de recherche d'applications](resources/images/zw.png)
+
+![Cliquez sur l'icône Recherche d'applications ou Applications pour accéder à l'option de recherche d'applications](resources/images/zx.png)
+
+Analyse des causes profondes
+
+Après analyse du graphique d'analyse des goulets d'étranglement et du graphique d'analyse des sous-niveaux et après avoir identifié les principaux goulets d'étranglement, l'utilisateur au niveau du district doit passer au widget d'analyse des causes profondes. Dans le widget d'analyse des causes profondes, il pourra documenter les causes profondes et les solutions des déterminants et des indicateurs de l'intervention active en fonction des filtres de période et d'unité d'organisation appliqués.
+
+À première vue, le widget est vide et l'utilisateur peut créer une nouvelle ligne vide en cliquant simplement sur le bouton "Ajouter nouveau".Un formulaire contextuel s'affiche où l'utilisateur doit sélectionner le goulot d'étranglement et l'indicateur dans une liste déroulante et utiliser un texte libre pour documenter la cause première possible et la solution possible.Une fois que c'est fait, il y a un bouton d'enregistrement en bas à droite du formulaire contextuel pour sauvegarder les détails.
+
+![Cliquez sur l'icône Recherche d'applications ou Applications pour accéder à l'option de recherche d'applications](resources/images/zy.png)
+
+![Cliquez sur l'icône Recherche d'applications ou Applications pour accéder à l'option de recherche d'applications](resources/images/zz.png)
+
+![Cliquez sur l'icône Recherche d'applications ou Applications pour accéder à l'option de recherche d'applications](resources/images/zza.png)
+
+Remarque : le champ "goulot d'étranglement" permet à l'utilisateur de sélectionner le déterminant de la cause fondamentale et, une fois le déterminant sélectionné, les indicateurs associés à ce déterminant dans le tableau BNA s'affichent pour être sélectionnés.
+
+![Cliquez sur l'icône Recherche d'applications ou Applications pour accéder à l'option de recherche d'applications](resources/images/zzb.png)
+
+![Cliquez sur l'icône Recherche d'applications ou Applications pour accéder à l'option de recherche d'applications](resources/images/zzc.png)
+
+![Cliquez sur l'icône Recherche d'applications ou Applications pour accéder à l'option de recherche d'applications](resources/images/zzd.png)
+
+La qualité de l'analyse des liens de causalité est un facteur déterminant de la qualité des programmes qui en résultent et de l'impact sur la performance du système sanitaire. Il est donc essentiel d'avoir autour de la table des personnes disposant des connaissances et de l'expertise nécessaires en la matière.
+
+Une fois qu'un goulot d'étranglement est identifié, les causes profondes doivent faire l'objet d'une évaluation approfondie
+
+Il est important de savoir quoi rechercher lorsqu'on veut faciliter une analyse des causes profondes.
+
+1. Causes courantes des goulets d'étranglement dans le système sanitaire (spécifiques pour chaque déterminant)
+
+2. Principaux facteurs environnementaux ( Normes Sociales, Législation/Politique, Budget/Dépenses, Gestion/Coordination)
+
+3. Crises/risques éventuels (le cas échéant)
+
+Une fois identifiées, les solutions/actions proposées doivent être documentées aux fins de suivi et de mise en œuvre.
+
+Pour modifier les données, l'utilisateur peut simplement double-cliquer sur une ligne pour la rendre active ou cliquer avec le bouton droit de la souris sur une ligne pour obtenir un menu contextuel. Actuellement, le menu contextuel comporte deux opérations Editer
+

@@ -1,0 +1,40 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-capture-app/edit/master/docs/src/commonmark/en/content/mdm/A-c-headwind.md" 
+---
+# 附件C-MDM PoC：逆风  { #annex-c-mdm-poc-headwind } 
+
+本附件介绍了经过测试的MDM的结果：[https://h-mdm.com/](https://h-mdm.com/）
+
+
+## 安装和使用 { #installation-usage } 
+
+该解决方案提供了要安装的脚本，因此安装非常容易。
+
+也可以要求提供有关云版本的演示。
+
+免费版本在某些实现中就足够了，但是对于扩展功能（包括Kiosk模式），可能需要专业版或扩展版。有关更多详细信息，请参见[https://h-mdm.com/enterprise/](https://h-mdm.com/enterprise/）。
+
+这是一个JAVA / Tomcat应用程序，使其与DHIS2的兼容性非常理想
+
+安慰：
+
+
+![Headwindg MDM 控制台](../content/mdm/resources/images/image10.png)
+
+电话：
+
+![在 Android 中运行的 Headwindg MDM](../content/mdm/resources/images/image14.png){ width=25% }
+
+
+## 问题 { #issues } 
+
+找不到大问题。支持真的很及时。
+
+免费版本不包括Kiosk模式。
+
+
+## 结论  { #conclusion } 
+
+有趣的开源解决方案（不过仅服务器版本而不是客户端版本）
+
+

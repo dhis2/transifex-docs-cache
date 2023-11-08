@@ -1,0 +1,218 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/user/what-is-dhis2.md"
+revision_date: '2022-09-13'
+tags:
+- Utilisation
+---
+
+# Qu'est-ce que le DHIS2 ? { #what_is_dhis2 } 
+
+Après avoir lu ce chapitre, vous serez en mesure de comprendre:
+
+  - Qu'est-ce que le DHIS2 et à quoi sert-il lorsqu'il s'agit de
+    systèmes d'information sanitaire (HIS) ?
+
+  - Quelles sont les principaux aspects technologiques pris en compte
+    lors du déploiement du DHIS2, et quelles sont les options pour étendre le DHIS2
+    avec de nouveaux modules ?
+
+  - Quelle est la différence entre les données basées sur les patients et les données agrégées ?
+
+  - Quels sont les avantages et les défis liés à l'utilisation de logiciels libres et open source (FOSS)
+    pour le HIS
+
+## Historique du DHIS2 { #mod1_1 } 
+
+Le DHIS2 est un outil de collecte, de validation, d'analyse et de présentation de données statistiques agrégées et basées sur les patients, adapté (mais non limité) aux activités de gestion intégrée des informations de santé. Il s'agit d'un outil générique plutôt que d'une application de base de données préconfigurée, avec un modèle de métadonnées ouvert et une interface utilisateur flexible qui permet à l'utilisateur de concevoir le contenu d'un système d'information spécifique sans avoir besoin de programmation. DHIS2 est un progiciel modulaire basé sur le web, construit avec des cadres Java libres et open source.
+
+DHIS2 est un logiciel open source publié sous la licence BSD et est gratuit. Il fonctionne sur toute plate-forme sur laquelle un Java Runtime Environment (JRE 7 ou supérieur) est installé.
+
+Le DHIS2 est développé par le Health Information Systems Programme (HISP) en tant que processus ouvert et mondialement distribué avec des développeurs actuellement en Inde, au Vietnam, en Tanzanie, en Irlande et en Norvège. Le développement est coordonné par l'Université d'Oslo avec le soutien du NORAD et d'autres donateurs.
+
+Le logiciel DHIS2 est utilisé dans plus de 40 pays d'Afrique, d'Asie et d'Amérique latine. Parmi les pays qui ont adopté le DHIS2 comme logiciel HIS national, citons le Kenya, la Tanzanie, l'Ouganda, le Rwanda, le Ghana, le Liberia et le Bangladesh. De plus en plus de pays et d'organisations lancent de nouveaux déploiements.
+
+La documentation fournie ci-jointe tentera de donner un aperçu complet de la demande. Étant donné la nature abstraite de l'application, ce manuel ne servira pas de guide complet étape par étape sur l'utilisation de l'application dans les différents contextes, mais fournira plutôt des illustrations et des exemples sur la manière dont le DHIS2 peut être implémenté dans diverses situations au moyen d'exemples généraux.
+
+Avant d'implémenter le DHIS2 dans un nouveau contexte, nous vous recommandons vivement de lire le guide d'implémentation du DHIS2 (un manuel différent de celui-ci), également disponible sur le site web principal du DHIS2 (http://dhis2.org/documentation/).
+
+## Principales caractéristiques et objectif du DHIS2 { #key-features-and-purpose-of-dhis2 } 
+
+Les principales caractéristiques et l'objectif du DHIS2 peuvent être résumés comme suit :
+
+  - Fournir une solution complète de gestion de données basée sur des principes de stockage de données
+    et une structure modulaire qui peut être facilement 
+    personnalisée pour répondre aux différentes exigences d'un système de gestion de l'information
+    qui prend en charge l’analyse dans les différents niveaux
+    de la hiérarchie organisationnelle
+
+  - Personnalisation et adaptation locale via l’interface utilisateur.
+    Aucune programmation n'est requise pour commencer à utiliser DHIS2 dans un nouveau contexte (pays,
+    région, district, etc.).
+
+  - Fournir des outils de saisie de données sous la forme de listes ou tableaux standards,
+    ou qui peuvent être personnalisés pour reproduire des formulaires papier.
+
+  - Fournir différents types d'outils pour la validation des données et l'amélioration
+    de la qualité des données.
+
+  - Fournir des rapports faciles à utiliser en un clic avec des graphiques et des tableaux pour
+    les indicateurs sélectionnés ou les rapports de synthèse utilisant la conception des outils de collecte de données
+    Permettre l'intégration avec des outils de conception de rapports externes répandus 
+    (par exemple JasperReports) afin d'ajouter des rapports plus personnalisés 
+    ou avancés.
+
+  - Analyse de données flexible et dynamique dans les modules d'analyse
+    (c'est-à-dire SIG, tableaux croisés dynamiques, visualiseur de données, rapports d'événements, etc.).
+
+  - Un tableau de bord propre à l'utilisateur pour un accès rapide
+    aux outils de suivi et évaluation pertinents, y compris les graphiques d'indicateurs et des les liens
+    vers les rapports favoris, les cartes et autres ressources importantes du système.
+
+  - Interfaces utilisateur faciles à utiliser pour la gestion des métadonnées, par ex. pour
+    ajouter/modifier des ensembles de données ou des établissements de santé. Aucune programmation n'est requise
+    pour configurer le système dans un nouveau contexte.
+
+  - Fonctionnalité permettant de concevoir et de modifier des formules d'indicateurs calculés.
+
+  - Module utilisateur de gestion des mots de passe, de la sécurité et des contrôles d'accès 
+    bien précis (rôles des utilisateurs).
+
+  - Des messages peuvent être envoyés aux utilisateurs du système pour obtenir des commentaires et des notifications.
+    Des messages peuvent également être envoyés par e-mail et SMS.
+
+  - Les utilisateurs peuvent partager et discuter de leurs données dans des graphiques et des rapports à l'aide des 
+    Interprétations, ce qui permet d'avoir une communauté d'utilisateurs active 
+    et axée sur l'information.
+
+  - Des fonctionnalités d’export-import de données et métadonnées, qui prennent en charge
+    la synchronisation les installations hors ligne de même que l'interopérabilité 
+    avec d'autres applications.
+
+  - L'utilisation de l'API Web du DHIS2 permet l'intégration avec des logiciels externes et l'extension de la plateforme principale par l'utilisation d'applications personnalisées.
+     
+     
+
+  - D'autres modules peuvent être développés et intégrés en fonction des besoins des utilisateurs, soit dans l'interface utilisateur du portail DHIS2, soit dans une application externe plus souple qui interagit par l'intermédiaire de l'API Web de DHIS2.
+     
+     
+     
+
+En résumé, le DHIS2 fournit une solution HIS complète pour les besoins de rapport et d'analyse des utilisateurs d'informations sanitaires à tous les niveaux.
+
+## Utilisation du DHIS2 dans le HIS : collecte, traitement, interprétation et analyse des données. { #use-of-dhis2-in-his-data-collection-processing-interpretation-and-analysis } 
+
+Le contexte plus large du SIS peut être décrit de manière exhaustive grâce au cycle d'information présenté dans la figure 1.1 ci-dessous. Le cycle de l'information représente de manière imagée les différents composantes, étapes et processus par lesquels les données sont collectées, contrôlées quant à leur qualité, traitées, analysées et utilisées.
+
+
+![Cycle de l'information sanitaire](resources/images/dhis2UserManual/dhis2_information_cycle.png)
+
+Le DHIS2 prend en charge les différentes facettes du cycle de l'information, notamment :
+
+  - Collecte de données.
+
+  - Contrôles de qualité.
+
+  - Accès aux données à plusieurs niveaux.
+
+  - Rapports.
+
+  - Réalisation de graphiques et de cartes ainsi que d'autres formes d'analyse.
+
+  - Possibilité de comparer des informations obtenues à des périodes différentes (par exemple, les mois précédents) et
+    dans des espaces différents (par exemple, entre les établissements et les districts).
+
+  - Voir les tendances (affichage des données en séries chronologiques pour voir leurs niveaux min et max).
+     
+
+Dans un premier temps, le DHIS2 sert d'outil de collecte, d'enregistrement et de compilation de données, et toutes les données (qu'elles soient sous forme de chiffres ou de texte) peuvent y être saisies. La saisie des données peut se faire dans des listes d'éléments de données ou dans des formulaires personnalisés définis par l'utilisateur, qui peuvent être développés pour imiter les formulaires papier afin de faciliter le processus de saisie des données.
+
+Dans une prochaine étape, le DHIS2 peut être utilisé pour améliorer la qualité des données. Tout d'abord, au point d'entrée des données, il est possible de vérifier si les données se situent dans les limites acceptables des valeurs minimales et maximales pour un élément de données particulier. Cette vérification peut, par exemple, aider à identifier les erreurs de frappe au moment de la saisie des données. En outre, l'utilisateur peut définir diverses règles de validation, et le DHIS2 peut faire passer les données par les règles de validation pour identifier les violations. Ces types de contrôles permettent de s'assurer que les données saisies dans le système sont de bonne qualité dès le départ, et peuvent être améliorées par les personnes qui les connaissent le mieux.
+
+Lorsque les données sont saisies et vérifiées, le DHIS2 peut aider à faire différents types de rapports. Le premier type est celui des rapports de routine qui peuvent être prédéfinis, de sorte que tous les rapports qui doivent être générés en routine peuvent l'être en un clic. En outre, le DHIS2 peut aider à générer des rapports analytiques en comparant, par exemple, des indicateurs entre les installations ou dans le temps. Les graphiques, les cartes, les rapports et les profils de santé font partie des résultats que le DHIS2 peut produire, et ceux-ci doivent être produits, analysés et utilisés de manière routinière par les responsables de la santé.
+
+## Contexte technique { #technical-background } 
+
+### DHIS2 en tant que plateforme { #dhis2-as-a-platform } 
+
+Le DHIS2 peut être perçu comme une plate-forme à plusieurs niveaux. Tout d'abord, la base de données de l'application est conçue de manière à être flexible. Les structures de données telles que les éléments de données, les unités d'organisation, les formulaires et les rôles des utilisateurs peuvent être définis en toute liberté par l'interface utilisateur de l'application. Cela permet d'adapter le système à une multitude de contextes locaux et de cas d'utilisation. Nous avons vu que le DHIS2 prend en charge la plupart des principales exigences en matière de saisie et d'analyse de données de routine qui sont rencontrées lors des implémentations à l'échelle nationale. Il permet également à DHIS2 de servir de système de gestion pour des domaines tels que la logistique, les laboratoires et les finances.
+
+Deuxièmement, grâce à sa conception modulaire, le système DHIS2 peut être étendu avec des modules logiciels supplémentaires ou par des applications personnalisées. Ces modules/applications logicielles peuvent cohabiter avec les modules de base du système DHIS2 et peuvent être intégrés dans le portail et le système de menu du système DHIS2. Cette fonction est puissante car elle permet d'étendre le système avec des fonctionnalités supplémentaires si nécessaire, généralement pour des besoins spécifiques à un pays, tel qu'indiqué précédemment.
+
+L'inconvénient de l'extensibilité du module logiciel est qu'elle impose plusieurs contraintes au processus de développement. Les développeurs qui créent les fonctionnalités supplémentaires sont limités à la technologie DHIS2 en termes de langage de programmation et de cadres logiciels, en plus des contraintes imposées à la conception des modules par la solution de portail DHIS2. En outre, ces modules doivent être inclus dans le logiciel DHIS2 lorsque le logiciel est construit et déployé sur le serveur web, et non de manière dynamique pendant l'exécution.
+
+Afin de surmonter ces limitations et de parvenir à un couplage plus souple entre la couche de service DHIS2 et les artefacts logiciels supplémentaires, une API basée sur REST a été développée pour le DHIS2. Cette API Web est conforme aux règles du style architectural REST. Cela implique que :
+
+  - L'API Web fournit une interface navigable et lisible par machine pour 
+    le modèle de données complet du DHIS2. Par exemple, on peut accéder à la liste complète d'éléments de données,
+    puis naviguer à l'aide de l'URL fourni vers
+    un élément de données particulier qui vous intéresse, puis naviguer à l'aide de
+    l'URL fourni vers la liste des formulaires dont fait partie cet élément de données
+     
+
+  - L'accès aux (méta)données se fait via une interface uniforme (URL) en utilisant un
+    HTTP bien connu. Il n'y a pas de formats ou de protocoles de transport fantaisistes,
+    mais simplement le protocole HTTP, testé et compris,
+    et qui est le principal élément constitutif du Web aujourd'hui. Cela 
+    signifie que les développeurs tiers peuvent mettre au point des logiciels utilisant le
+    modèle de données et les données DHIS2 sans connaître la technologie propre au DHIS2
+    ou se conformer aux contraintes de conception de DHIS2.
+
+  - Toutes les données, y compris les métadonnées, les rapports, les cartes et les graphiques, appelés 
+    ressources dans la terminologie du REST, peuvent être récupérées dans la plupart des
+    formats habituels de représentation du web d'aujourd'hui, tels que XML,
+    JSON, PDF et PNG. Ces formats sont largement pris en charge par
+    les applications et les langages de programmation et offrent aux développeurs tiers
+    un vaste champ d'options de mise en œuvre.
+
+### Comprendre l'indépendance de la plate-forme { #understanding-platform-independence } 
+
+Tous les ordinateurs ont un système d'exploitation (OS) pour le gérer et les programmes qui l'exécutent. Le système d'exploitation sert de couche intermédiaire entre l'application logicielle, telle que DHIS2, et le matériel, tel que l'unité centrale et la mémoire vive. DHIS2 fonctionne sur la machine virtuelle Java, et peut donc fonctionner sur n'importe quel système d'exploitation qui supporte Java. L'indépendance de la plateforme implique que l'application logicielle peut fonctionner sur n'importe quel système d'exploitation - Windows, Linux, Macintosh, etc. DHIS2 est indépendant de la plateforme et peut donc être utilisé dans de différents contextes en fonction des exigences exactes du système d'exploitation à utiliser.
+
+En outre, et c'est peut-être le plus important, étant donné que DHIS2 est une application basée sur un navigateur, la seule véritable exigence pour interagir avec le système est un navigateur web. DHIS2 est compatible avec la plupart des navigateurs web, bien qu'actuellement, Google Chrome, Mozilla Firefox ou Opera soient recommandés.
+
+### Hébergement du serveur DHIS2{ #dhis2-server-hosting } 
+
+L'hébergement de DHIS2 à l'échelle nationale est une tâche considérable qui nécessite planification, approvisionnement, contrôle et gestion de ressources matérielles et/ou sur le cloud potentiellement complexes. Pour connaître les avantages et inconvénients des différentes approches, consultez la section [Hébergement du serveur](#server-hosting) du guide sur l'implémentation du DHIS2
+
+## Différence entre les données agrégées et les données des patients dans un HIS { #difference-between-aggregated-and-patient-data-in-a-his } 
+
+*Les données des patients* sont des données relatives à un même patient, telles que son diagnostic, son nom, son âge, ses antécédents médicaux, etc. Ces données sont généralement basées sur une seule interaction patient-agent de santé. Par exemple, lorsqu'un patient se rend dans une clinique de soins de santé, diverses informations peuvent être enregistrés, tels que la température du patient, son poids et divers tests sanguins. Si ce patient est diagnostiqué comme souffrant d'une "anémie par carence en vitamine B 12, non spécifiée", correspondant au code D51.9 de la CIM-10, cette interaction particulière peut éventuellement être enregistrée comme un cas d'"anémie" dans un système basé sur des données agrégées. Les données sur les patients sont importantes lorsqu'on veut suivre les progrès d'un patient dans le temps. Par exemple, si nous voulons suivre la façon dont un patient adhère et répond au processus de traitement de la tuberculose (qui se déroule généralement sur 6-9 mois), nous avons besoin de données sur le patient.
+
+*Les données agrégées* sont la consolidation des données sur plusieurs patients, et ne peuvent donc pas être rattachées à un patient spécifique. Il s'agit simplement de comptages, comme l'incidence du paludisme, de la tuberculose ou d'autres maladies. En général, les données de routine dont dispose un établissement de santé sont ce type de statistiques agrégées. Elles sont utilisées pour l'établissement de rapports et d'indicateurs de routine et, surtout, pour la planification stratégique au sein du système de santé. Les données agrégées ne peuvent pas fournir le type d'informations détaillées que les données au niveau du patient peuvent fournir, mais elles sont cruciales pour la planification et l'orientation des performances des systèmes de santé.
+
+Entre les deux, vous disposez de données basées sur des cas ou de données anonymes sur les "patients". De nombreux détails peuvent être collectés sur un événement de santé spécifique sans nécessairement devoir identifier le patient concerné. Les visites de patients internes ou externes, un nouveau cas de choléra, un décès maternel, etc. sont des cas courants pour lesquels on aimerait recueillir beaucoup plus de détails qu'un simple ajout au nombre total de cas ou de visites. Ces données sont souvent collectées dans des formulaires de type liste sommaires ou dans des formulaires d'audit plus détaillés. Elles diffèrent des données agrégées en ce sens qu'elles contiennent plusieurs détails sur un événement spécifique, alors que les données agrégées comptent le nombre d'événements d'un certain type, par exemple le nombre de visites externes de patients avec diagnostic principal "Paludisme", ou le nombre de décès maternels où la personne décédée n'a pas assisté aux soins prénatals, ou le nombre d'épidémies de choléra chez les enfants de moins de 5 ans. Dans le DHIS2, ces données sont collectées via des programmes de type "événement unique" sans inscription.
+
+Les données des patients sont hautement confidentielles et doivent donc être protégées afin que personne en dehors des médecins ne puisse les obtenir. Lorsqu'elles sont sur papier, elles doivent être conservées dans un endroit sûr. Sur les ordinateurs, les données des patients nécessitent des systèmes sécurisés avec des mots de passe, des accès restreints et des journaux d'audit.
+
+Les préoccupations en matière de sécurité des données agrégées ne sont pas aussi cruciales que pour les données sur les patients, car il est généralement impossible d'identifier une personne particulière dans une statistique agrégée. Toutefois, les données peuvent toujours être mal utilisées et mal interprétées par d'autres personnes, et ne devraient pas être diffusées sans que des politiques de diffusion de données adéquates soient mises en place.
+
+## Logiciels libres et open source (FOSS) : avantages et défis { #free-and-open-source-software-foss-benefits-and-challenges } 
+
+Le logiciel contient les instructions qui indiquent à l'ordinateur comment fonctionner. La forme de ces instructions, écrite et lisible par l'homme, est appelée code source. Avant que l'ordinateur puisse exécuter les instructions, le code source doit être traduit dans un format lisible par la machine (binaire), appelé code objet. Tous les logiciels distribués comprennent le code objet, mais le FOSS rend également disponible le code source.
+
+Les détenteurs de logiciels propriétaires accordent une licence sur leur code objet protégé par le droit d'auteur à un utilisateur, ce qui lui permet d'exécuter le programme. Les programmes FOSS, en revanche, accordent une licence à la fois sur le code objet et sur le code source, ce qui permet à l'utilisateur d'exécuter, de modifier et éventuellement de redistribuer les programmes. Avec l'accès au code source, les utilisateurs ont la liberté d'exécuter le programme à n'importe quelle fin, de le redistribuer, de le tester, de l'adapter, d'en tirer des enseignements, de le personnaliser en fonction de leurs besoins et de publier les améliorations pour le bien de la communauté. C'est pourquoi certains FOSS sont également connus sous le nom de "logiciels libres", où le terme "libre" fait référence, avant tout, aux libertés susmentionnées plutôt qu'à l'aspect commercial du terme.
+
+Dans le secteur de la santé publique, les FOSS peuvent potentiellement présenter toute une série d'avantages, notamment :
+
+  - Des coûts réduits car cela n’implique pas de payer des frais de licence prohibitifs.
+     
+
+  - Étant donné que les besoins d'informations sanitaires changent et évoluent constamment,
+    l'utilisateur doit pouvoir opérer des modifications en fonction de ces besoins.
+    Cette liberté est
+    souvent limité dans les systèmes propriétaires.
+
+  - Accès au code source pour permettre l’intégration et l’interopérabilité.
+    Dans le secteur de la santé,  l'interopérabilité entre les différentes applications logiciels 
+    devient de plus en plus importante, ce qui signifie la possibilité 
+    pour deux ou plusieurs systèmes de se communiquer des métadonnées et des données. Ce travail est 
+    beaucoup plus facile, et dépend parfois de la disponibilité du code source 
+    pour les développeurs qui réalisent l'intégration.
+    Cette disponibilité n'est souvent pas possible avec les logiciels propriétaires.
+    Et quand c’est le cas, le coût est élevé sans oublier les obligations contractuelles.
+     
+
+  - Les applications FOSS comme DHIS2 sont généralement prises en charge par un
+    réseau mondial de développeurs, et bénéficient donc d'un accès à des connaissances de pointe 
+    en matière de recherche et de développement.
+

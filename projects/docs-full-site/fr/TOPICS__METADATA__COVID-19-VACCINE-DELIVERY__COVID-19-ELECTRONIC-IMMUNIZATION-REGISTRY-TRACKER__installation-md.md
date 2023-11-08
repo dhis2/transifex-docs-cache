@@ -1,0 +1,436 @@
+---
+edit_url: "https://github.com/dhis2-metadata/CVIR-Electronic_Immunization_Registry_Covid19_Vaccines/blob/master/docs/CVIR-installation.md"
+revision_date: "2022-01-19"
+---
+
+# Registre électronique de vaccination COVID-19 - Guide d’installation de Tracker { #cvc-eir-trk-installation }
+
+Ce document inclut le guide d’installation du nouveau package Tracker du Registre électronique de vaccination COVAC et un module supplémentaire d’agrégation pour la génération de rapports quotidiens basés sur les données du Tracker.
+
+Langue par défaut du système : anglais
+
+Traductions disponibles : français, espagnol, portugais
+
+## Aperçu { #overview }
+
+Les fichiers .json de métadonnées du package contiennent un composant « package » qui fournit des détails techniques sur la version et le contenu du package. Les fichiers disponibles dans la version actuelle du package sont énumérés ci-dessous.
+
+### DHIS2.35 { #dhis235 }
+
+=== « Package complet »
+
+    ```json
+    « package » : {
+        "DHIS2Build": "35d663a",
+        "DHIS2Version": "2.35.11",
+        "code": "CVIR00",
+        "description": "COVID19 Electronic Immunization Registry",
+        "lastUpdated": "20220118T163027",
+        "locale": "en",
+        "name": "COVAC_EIR_TKR_1.2.0_DHIS2.35.11-en",
+        "type": "TKR",
+        "version": "1.2.0"
+    }
+    ```
+
+=== « Package d’agrégation »
+
+    ```json
+    « package » : {
+        "DHIS2Build": "35d663a",
+        "DHIS2Version": "2.35.11",
+        "code": "CVIRAG",
+        "description": "",
+        "lastUpdated": "20220119T094326",
+        "locale": "en",
+        "name": "CVIR_EIR_AGG_1.2.0_DHIS2.35.11-en",
+        "type": "AGG",
+        "version": "1.2.0"
+    }
+    ```
+
+=== "Indicateurs de programme (transfert de traceur à agrégé)"
+
+    ```json
+    « package » : {
+        "DHIS2Build": "35d663a",
+        "DHIS2Version": "2.35.11",
+        "code": "CVIRPI",
+        "description": "COVID19 Electronic Immunization Registry",
+        "lastUpdated": "20220118T163027",
+        "locale": "en",
+        "name": "COVAC_EIR_TKR_1.2.0_DHIS2.35.11-en",
+        "type": "TKR",
+        "version": "1.2.0"
+    }
+    ```
+
+### DHIS2.36 { #dhis236 }
+
+=== « Package complet »
+
+    ```json
+    « package » : {
+        "DHIS2Build": "5d136cb",
+        "DHIS2Version": "2.36.6",
+        "code": "CVIR00",
+        "description": "COVID19 Electronic Immunization Registry",
+        "lastUpdated": "20220119T084447",
+        "locale": "en",
+        "name": "COVAC_EIR_TKR_1.2.0_DHIS2.36.6-en",
+        "type": "TKR",
+        "version": "1.2.0"
+    }
+    ```
+
+=== « Package d’agrégation »
+
+    ```json
+    « package »: {
+        "DHIS2Build": "5d136cb",
+        "DHIS2Version": "2.36.6",
+        "code": "CVIRAG",
+        "description": "",
+        "lastUpdated": "20220119T084447",
+        "locale": "en",
+        "name": "CVIR_EIR_AGG_1.2.0_DHIS2.36.6-en",
+        "type": "AGG",
+        "version": "1.2.0"
+    }
+    ```
+
+=== « Indicateurs du programme (transfert du tracker vers le système global) »
+
+    ```json
+    « package » : {
+        "DHIS2Build": "5d136cb",
+        "DHIS2Version": "2.36.6",
+        "code": "CVIRPI",
+        "description": "COVID19 Electronic Immunization Registry",
+        "lastUpdated": "20220119T084447",
+        "locale": "en",
+        "name": "COVAC_EIR_TKR_1.2.0_DHIS2.36.6-en",
+        "type": "TKR",
+        "version": "1.2.0"
+    }
+    ```
+
+## Installation { #installation }
+
+L'installation du module se fait en plusieurs étapes :
+
+1. [Préparation du fichier de métadonnées avec les métadonnées DHIS2](#preparing-the-metadata-file).
+2. [Importation de métadonnées dans DHIS2](#importing-metadata).
+3. [Configuration des métadonnées importées](#configuration).
+4. [Adaptation du programme après importation](#adaptation-du-programme)
+
+Nous vous recommandons de lire tout d’abord chaque section du guide d’installation avant de commencer le processus d’installation et de configuration dans le système DHIS2. Identifiez les sections applicables en fonction du type d’importation :
+
+1. importation dans une instance DHIS2 vide
+2. importation dans une instance DHIS2 avec des métadonnées existantes.
+
+Les étapes décrites dans ce document doivent être testées dans une instance DHIS2 de test/transit avant d’être appliquées à un environnement de production.
+
+## Conditions requises { #requirements }
+
+Pour installer le module, vous devez avoir un compte administrateur dans le système DHIS2.
+
+Il est important de s’assurer que le serveur et l’application DHIS2 sont bien sécurisés et de configurer les droits d’accès aux données collectées. Les détails sur la sécurisation d’un système DHIS2 sortent du cadre de ce document. Veuillez consulter le site [Documentation sur le DHIS2](https://docs.dhis2.org/).
+
+## Fichiers de métadonnées { #metadata-files }
+
+Bien que ce ne soit pas toujours nécessaire, il peut souvent être avantageux d'apporter certaines modifications au fichier de métadonnées avant son importation dans DHIS2.
+
+Le package Tracker du Registre électronique de vaccination COVID-19 comprend trois fichiers de métadonnées. Le contenu et la finalité de chaque fichier sont décrits ci-dessous :
+
+| Identifiant du package | Contenu | Objectif |
+| --- | --- | --- |
+| CVC_EIR-TRK-Electronic_Immunization_Registry_Covid19_Vaccines | Mise à jour du package Tracker, <br>ensemble de données agrégées pour le transfert automatisé du Tracker vers le système global, <br> tableau de bord basé sur les valeurs des indicateurs agrégés | Nouvelle mise en œuvre |
+| CVC_EIR-AGG-Electronic_Immunization_Registry_Covid19_Vaccines | Ensemble de données agrégées pour le transfert automatisé du Tracker vers le système global, <br>tableau de bord basé sur les valeurs des indicateurs agrégés | Mise à jour de la mise en œuvre d’un Tracker existant, <br> mise en place du transfert du Tracker vers le système global, <br>utilisation du tableau de bord quotidien du système global |
+| CVC_EIR-PI-Electronic_Immunization_Registry_Covid19_Vaccines | 13 indicateurs de programme mis à jour à partir du package original. <br> Les IP sont mappés avec les éléments de données agrégés et les combinaisons d’options de catégorie dans l’ensemble de données agrégées quotidiennes | Mise à jour d’une mise en œuvre existante |
+
+> **Remarque**
+>
+> Le package n’est pas un outil prêt à l’emploi pour le transfert de données du Tracker vers le système global. La structure du package de métadonnées et le mappage suggéré des métadonnées permettent à l’entité chargée de la mise en œuvre de mettre en place le transfert de données sur la base des outils et des conseils existants. Pour en savoir plus, rendez-vous sur le site [Document sur le transfert des données du Tracker vers le système global](https://docs.dhis2.org/en/implement/maintenance-and-use/tracker-and-aggregate-data-integration.html#how-to-saving-aggregated-tracker-data-as-aggregate-data-values).
+
+## Préparation du fichier de métadonnées { #preparing-the-metadata-file }
+
+### Guide de mappage pour le transfert de données { #mapping-guide-for-data-transfer }
+
+Les 13 indicateurs de programme pouvant être utilisés pour le transfert de données du Tracker vers le système global sont mappés avec les éléments de données correspondants et les combinaisons d’options de catégorie de l’ensemble de données agrégées.
+
+> **Exemple**
+>
+> L’indicateur du programme **Nombre de personnes ayant reçu une première dose (Femme de mois de 59 ans)** `RJ6pdxga9Od` est mappé avec la combinaison d’options de catégorie **Femme de moins de 59 ans** `FsZSFGKirY0` de l’élément de données **COVAC - Personnes ayant reçu une première dose** `RjT7dmzunF4`
+
+Le mappage est basé sur les codes des objets de métadonnées.
+
+L’attribut personnalisé **Élément de données pour l’exportation de données agrégées** `vudyDP7jUy5` contient le code de référence des éléments de données agrégées, tel que **CVC_EIR_AGG_PPL_1ST_DOSE**.
+
+Le champ **Combinaison d’options de catégorie pour l’exportation de données agrégées** contient les codes de référence des combinaisons d’options de catégorie, tel que **CVC_EIR_0059Y_F**.
+
+Le transfert suggéré des valeurs du Tracker vers le système global est basé sur les requêtes GET et POST API suivantes :
+
+1. Requête source : `../api/analytics/dataValueSet.json?dimension=dx:` "{program indicator uid/s}" `&dimension=pe:` "{relative period/s}" `&dimension=ou:` {organisation unit level} `&outputIdScheme=ATTRIBUTE:` {"custom attribute:`vudyDP7jUy5`"}
+2. Requête cible : `..api/dataValueSets?dataElementIdScheme=CODE&categoryOptionComboIdScheme=CODE&importStrategy=CREATE_AND_UPDATE&mergeMode=REPLACE&dryRun=false`
+
+### Indicateurs de programme { #program-indicators }
+
+Les indicateurs du programme requis pour l’agrégation des valeurs de données sont inclus dans le groupe d’indicateurs du programme **COVAC - Tracker vers le système global** `NXBR4r6MwAO`.
+
+| Indicateur du programme | UID | Code | Élément de données pour l’exportation de données agrégées | Combinaison d’options de catégorie pour l’exportation de données agrégées |
+| --- | --- | --- | --- | --- |
+| Nombre de personnes recevant une première dose (femmes 0-59 ans) | `RJ6pdxga9Od` | CVC_EIR_PPL_1ST_DOSE_0059Y_F | CVC_EIR_AGG_PPL_1ST_DOSE | 0059Y_F |
+| Nombre de personnes recevant une première dose (femmes 60 ans et +) | `x4L0LuEBHhW` | CVC_EIR_PPL_1ST_DOSE_60PLUSY_F | CVC_EIR_AGG_PPL_1ST_DOSE | 60PLUSY_F |
+| Nombre de personnes recevant une première dose (hommes 0-59 ans) | `hqm8znlAzkT` | CVC_EIR_PPL_1ST_DOSE_0059Y_M | CVC_EIR_AGG_PPL_1ST_DOSE | 0059Y_M |
+| Nombre de personnes recevant une première dose (hommes 60 ans et +) | `aIIHyDy8AMW` | CVC_EIR_PPL_1ST_DOSE_60PLUSY_M | CVC_EIR_AGG_PPL_1ST_DOSE | 60PLUSY_M |
+| Nombre de personnes recevant une deuxième ou une troisième dose, ou une dose de rappel (Femmes 0-59 ans) | `xY4T9hHXNji` | CVC_EIR_PPL_2ND_DOSE_0059Y_F | CVC_EIR_AGG_PPL_2ND_DOSE | 0059Y_F |
+| Nombre de personnes recevant une deuxième dose, une troisième dose ou une dose de rappel (Femmes 60 ans et +) | `h9G7i6mQKef` | CVC_EIR_PPL_2ND_DOSE_60PLUSY_F | CVC_EIR_AGG_PPL_2ND_DOSE | 60PLUSY_F |
+| Nombre de personnes recevant une deuxième ou une troisième dose, ou une dose de rappel (Hommes 0-59 ans) | `MGjwUUNsE60` | CVC_EIR_PPL_2ND_DOSE_0059Y_M | CVC_EIR_AGG_PPL_2ND_DOSE | 0059Y_M |
+| Nombre de personnes recevant une deuxième ou une troisième dose, ou une dose de rappel (Hommes 60 ans et +) | `qh0kIjHZbP8` | CVC_EIR_PPL_2ND_DOSE_60PLUSY_M | CVC_EIR_AGG_PPL_2ND_DOSE | 60PLUSY_M |
+| Nombre de personnes ayant reçu la dernière dose recommandée pour le produit vaccinal concerné (femmes 0-59 ans) | `Zp39TSOR8eW` | CVC_EIR_PPL_LAST_DOSE_0059Y_F | CVC_EIR_AGG_PPL_LAST_DOSE | 0059Y_F |
+| Nombre de personnes qui ont reçu la dernière dose recommandée pour le produit vaccinal concerné (femmes 60 ans et +) | `XFUvVgqPukT` | CVC_EIR_PPL_LAST_DOSE_60PLUSY_F | CVC_EIR_AGG_PPL_LAST_DOSE | 60PLUSY_F |
+| Nombre de personnes qui ont reçu la dernière dose recommandée pour le produit vaccinal concerné (Hommes 0-59 ans) | `FZNIlzPRMmL` | CVC_EIR_PPL_LAST_DOSE_0059Y_M | CVC_EIR_AGG_PPL_LAST_DOSE | 0059Y_M |
+| Nombre de personnes qui ont reçu la dernière dose recommandée pour le produit vaccinal concerné (Hommes 60 ans et +) | `zovL7DKBRuK` | CVC_EIR_PPL_LAST_DOSE_60PLUSY_M | CVC_EIR_AGG_PPL_LAST_DOSE | 60PLUSY_M |
+| Affection sous-jacente - Personnes souffrant de | `Zn0UuSRYyJw` | CVC_EIR_PPL_UNDER_CONDITIONS | CVC_EIR_AGG_PPL_UNDER_CONDITIONS | DEFAULT |
+
+Ces indicateurs du programme font partie du package initial, mais nécessitent une mise à jour en raison du nouveau mappage.
+
+> **Remarque**
+>
+> Si les indicateurs du programme initiaux de votre système ont été modifiés dans le cadre du processus d’adaptation locale, sachez que tous les modifications seront écrasés lorsque vous importerez le nouvel ensemble des indicateurs du programme . Si l’un des indicateurs modifiés de votre programme a le même UID que ceux indiqués dans le tableau ci-dessus, veuillez dupliquer les indicateurs modifiés du programme avant de les importer.
+
+### Dimension de données par défaut { #default-data-dimension }
+
+Dans les premières versions du système DHIS2, les UID des dimensions de données par défaut étaient générés automatiquement. Ainsi, bien que toutes les instances du système DHIS2 possèdent une option de catégorie par défaut, une catégorie d’élément de données, une combinaison de catégories et une combinaison d’options de catégorie, les UID de ces valeurs par défaut peuvent être différents. Les versions ultérieures du système DHIS2 utilisent des UID codés en dur pour la taille par défaut, lesquels sont utilisés dans les packages de configuration.
+
+Pour éviter tout conflit lors de l’importation des métadonnées, nous vous recommandons de rechercher et de remplacer toutes les occurrences de ces objets par défaut dans l’ensemble du fichier .json, en remplaçant les UID du fichier .json par ceux de l’instance dans laquelle le fichier sera importé. Le tableau 1 présente les UID à remplacer, ainsi que les points de terminaison d’API permettant d’identifier les UID existants.
+
+| Objet | UID | Point de terminaison de l'API |
+| --- | --- | --- |
+| Catégorie | `GLevLNI9wkl` | `../api/categories.json?filter=name:eq:default` |
+| Option de catégorie | `xYerKDKCefk` | `../api/categoryOptions.json?filter=name:eq:default` |
+| Combinaison de catégories | `bjDvmb4bfuf` | `../api/categoryCombos.json?filter=name:eq:default` |
+| Combinaison d’options de catégorie | `HllvX50cXC0` | `../api/categoryOptionCombos.json?filter=name:eq:default` |
+
+Identifiez les UID des tailles par défaut de votre instance à l’aide des requêtes API affichées et remplacez les UID dans le fichier .json par ceux de l’instance.
+
+> **REMARQUE**
+>
+> Notez que cette opération de recherche et de remplacement doit être effectuée via un éditeur de texte brut, et non un traitement de texte comme Microsoft Word.
+
+### Types d'indicateurs { #indicator-types }
+
+Le type d’indicateur est également un type d’objet susceptible de créer un conflit lors de l’importation, car certains noms sont utilisés dans différentes bases de données DHIS2 (par ex. « Pourcentage »). Comme les types d’indicateurs sont définis par leur facteur (y compris 1 pour les indicateurs « numérateur seulement »), ils ne laissent aucune ambiguïté et peuvent être remplacés en recherchant et remplaçant des UID. Cette méthode permet d’éviter les éventuels conflits d’importation et empêche le responsable de la mise en œuvre de créer des doublons de types d’indicateurs. Le tableau ci-dessous contient les UID pouvant être remplacés, ainsi que les points de terminaison d’API permettant d’identifier les UID existants :
+
+| Objet | UID | Point de terminaison de l'API |
+| --- | --- | --- |
+| Numérateur seulement (nombre) | `CqNPn5KzksS` | `../api/indicatorTypes.json?filter=number:eq:true&filter=factor:eq:1` |
+
+### TrackedEntityType (Type d'entité suivie) { #tracked-entity-type }
+
+Comme pour les types d’indicateurs, il se peut que des types d’entités suivies existent déjà dans votre base de données DHIS2. Pour éviter de créer des doublons, les références au type d’entité suivie doivent être modifiées pour refléter les éléments de votre système. Le tableau ci-dessous contient les UID pouvant être remplacés, ainsi que les points de terminaison d’API permettant d’identifier les UID existants :
+
+| Objet | UID | Point de terminaison de l'API |
+| --- | --- | --- |
+| Personne | `MCPQUTHX1Ze` | `../api/trackedEntityTypes.json?filter=name:eq:Person` |
+
+### Visualisations utilisant l'UID de l'unité d'organisation racine{ #visualizations-using-root-organisation-unit-uid }
+
+Les visualisations, les rapports d'événements, les tableaux de rapports et les cartes affectés à un niveau d'unité d'organisation spécifique ou à un groupe d'unités d'organisation ont une référence à l'unité d'organisation racine (niveau 1). Ces objets, s'ils sont présents dans le fichier de métadonnées, contiennent un caractère générique ``<OU_ROOT_UID>. Utilisez la fonction de recherche de l'éditeur de fichiers .json pour identifier ce caractère générique et le remplacer par l'UID de l'unité d'organisation de niveau 1 dans l'instance cible.
+
+### Codes d’option { #option-codes }
+
+Selon les conventions d’affectation de noms du système DHIS2, les codes de métadonnées utilisent des lettres majuscules, des traits de soulignement, mais aucun espace. Il peut y avoir certaines exceptions qui sont incluses dans la documentation du package correspondant. Tous les codes inclus dans les objets de métadonnées de la version actuelle du package ont été modifiés pour correspondre aux conventions d’affectation de noms. Il se peut que les codes utilisés dans les versions antérieures du package utilisent des minuscules. Si les valeurs des données dans les mises en œuvre existantes contiennent des codes en minuscules, vous devez mettre à jour ces valeurs directement dans la base de données.
+
+Le tableau ci-dessous contient tous les ensembles d’options dont les codes ont été mis en majuscules dans le package de métadonnées. Avant d’importer des métadonnées dans l’instance, vérifiez si les ensembles d’options du système existant correspondent à ceux du package .json et utilisent les mêmes codes d’options en majuscules.
+
+| Nom de l’ensemble d’options               | UID de l’ensemble d’options |
+| ----------------------------- | -------------- |
+| COVAC - MAPI en cas de grossesse        | `ilxtWultuYP`  |
+| COVAC - Occupation            | `CNNH0YKxRh9`  |
+| COVAC - Trimestre             | `kgDmgTYZICP`  |
+|  COVAC - Marque du vaccin           | `UJTnyCB3cyk`  |
+| COVAC - Fabricants de vaccins | `DtOGtoLbaB5`  |
+| COVAC - Noms des vaccins         | `VQo3HkUlMHc`  |
+| Sexe                           | `WDUwjiW2rGH`  |
+| Oui/Non/Inconnu                | `L6eMZDJkCwX`  |
+
+Le tableau ci-dessous contient les éléments de métadonnées auxquels on a attribué un ensemble d’options :
+
+| Objet de métadonnées | Nom | UID |
+| --- | --- | --- |
+| Élément de données | COVAC - Grossesse | `BfNZcj99yz4` |
+| Élément de données | COVAC - Période de gestation | `CBAs12YL4g7` |
+| Élément de données | COVAC - Précédemment infecté par la COVID | `LOU9t0aR0z7` |
+| Élément de données | COVAC - Affection sous-jacente | `bCtWZGjSWM8` |
+| Élément de données | COVAC - Marque du vaccin | `rWYryQb3ohn` |
+| Élément de données | COVAC - Fabricant du vaccin | `rpkH9ZPGJcX` |
+| Élément de données | COVAC - Nom du vaccin | `bbnyNYD1wgS` |
+| Attribut d’entité suivie | COVID - Occupation | `LY2bDXpNvS7` |
+| Attribut d’entité suivie | Sexe | `oindugucx72` |
+
+> **Important**
+>
+> Pendant l’importation, les codes d’option existants seront remplacés par les nouveaux codes en majuscules. Afin de mettre à jour les valeurs des données existantes dans la base de données, vous devez mettre à jour les valeurs stockées dans la base de données en utilisant les commandes de la base de données. Assurez-vous de mapper les anciens codes d’option et les nouveaux avant de remplacer les valeurs. Utilisez d’abord l’instance de transit, avant d’effectuer des modifications sur le serveur de production.
+
+Pour les valeurs des éléments de données, utilisez :
+
+    ```SQL
+    UPDATE programstageinstance
+    SET eventdatavalues = jsonb_set(eventdatavalues, ’{"<affected data element uid>","value"}’, ’"<new value>"’)
+    WHERE eventdatavalues @> ’{"<affected data element uid>":{"value": "<old value>"}}’::jsonb
+    AND programstageid=<database_programsatgeid>;
+    ```
+
+Pour les valeurs d’attributs des entités suivies, utilisez :
+
+    ```SQL
+    UPDATE trackedentityattributevalue
+    SET value = <new value>
+    WHERE trackedentityattributeid=<affected trackedentityattribute database_id> AND value=<old value>;
+    ```
+
+> **Exemple**
+>
+> Pour remplacer le code d’option ’yes’ par ’YES’ pour les valeurs de données existantes (élément de données COVAC - Précédemment infecté par la COVID `LOU9t0aR0z7`) dans le programstage avec l’id=1510410385 (exemple d’id), la commande sera configurée comme suit : 
+>
+>     ```SQL
+>     UPDATE programstageinstance
+>     SET eventdatavalues = jsonb_set(eventdatavalues, ’{"LOU9t0aR0z7","value"}’, ’"YES"’)
+>     WHERE eventdatavalues @> ’{"LOU9t0aR0z7":{"value": "yes"}}’::jsonb
+>     AND programstageid=1510410385;
+>     ```
+
+Les codes d’option sont également utilisés dans les expressions de règles de programme, les indicateurs de programme, etc. Si vous mettez à jour les options de code dans votre système, assurez-vous de mettre à jour les codes dans tous les objets de métadonnées concernés.
+
+### Ordre de tri pour les options { #sort-order-for-options }
+
+Vérifiez si l’ordre de tri `sortOrder` des options de votre système correspond à celui inclus dans le package de métadonnées. Cela ne s’applique que si le fichier .json et l’instance cible contiennent des options et des ensembles d’options avec le même UID.
+
+Après l’importation, assurez-vous que l’ordre de tri des options d’un ensemble d’options commence par 1. Les valeurs de l’ordre de tri ne doivent avoir aucun écart (par exemple 1, 2, 3, 5, 6).
+
+L’ordre de tri peut être modifié dans l’application Maintenance.
+
+1. Accédez à l’ensemble d’options applicable
+2. Ouvrez la section « Options »
+3. Utilisez « TRIER PAR NOM », « TRIER PAR CODE/VALEUR » ou « TRIER MANUELLEMENT » comme alternative.
+
+## Importation de métadonnées { #importing-metadata }
+
+Utilisez l’application DHIS2 [Import/Export](#import_export) pour importer des packages de métadonnées. Nous vous recommandons d’utiliser la fonction « test » pour identifier les problèmes avant de tenter d’effectuer une importation réelle des métadonnées. Si le « test » signale des problèmes ou des conflits, consultez la section [conflits lors de l’importation](#handling-import-conflicts) ci-dessous. Si aucune erreur n’est signalée lors de l’importation « test »/« validée », essayez d’importer les métadonnées. Si l’importation s’est déroulée sans erreur, vous pouvez passer à la [configuration](#configuration) du module. Dans certains cas, les conflits ou les problèmes d’importation n’apparaissent pas pendant le test, mais durant l’importation réelle. Dans ce cas, le résumé de l’importation indiquera les erreurs à résoudre.
+
+### Gestion des conflits d'importation { #handling-import-conflicts }
+
+> **REMARQUE**
+>
+> Si vous importez le package dans une nouvelle instance du système DHIS2, il n’y aura aucun conflit lors de l’importation, car ia base de données cible ne contient aucune métadonnée. Après avoir importé les métadonnées, passez à la section « [Configuration](#configuration) ».
+
+Différents types de conflit peuvent survenir, mais le plus courant est le fait que le nom, le nom abrégé et/ou le code des objets de métadonnées du package de configuration existent déjà dans la base de données cible. Il existe plusieurs solutions alternatives à ces problèmes, chacun avec ses avantages et ses inconvénients. La solution la plus appropriée dépend, par exemple, du type d’objet à l’origine du conflit.
+
+#### Option 1 { #alternative-1 }
+
+Renommez l’objet existant dans votre base de données DHIS2 qui est en conflit. L’avantage de cette approche est qu’il n’est pas nécessaire de modifier le fichier .json, les modifications étant effectués par l’interface utilisateur du système DHIS2. Cette méthode semble présenter moins de risques d’erreur. De plus, comme le package de configuration est laissé tel quel, cela peut être un avantage, par exemple en cas de mise à jour du package. Les objets du package initial sont également souvent référencés dans les supports de formation et la documentation.
+
+#### Option 2 { #alternative-2 }
+
+Renommez l'objet pour lequel il y a un conflit dans le fichier .json. L'avantage de cette approche est que les métadonnées DHIS2 existantes sont laissées telles quelles. Cela peut être un facteur lorsqu'il y a du matériel de formation ou de la documentation, comme les procédure normale d'exploitation des dictionnaires de données liés à l'objet en question, et cela n'implique aucun risque de confusion pour les utilisateurs lors de la modification des métadonnées qui leur sont familières.
+
+Notez que pour les deux options 1 et 2, la modification peut être aussi simple que l'ajout d'un petit pré/post-fixe au nom, pour minimiser le risque de confusion.
+
+#### Option 3 { #alternative-3 }
+
+Une troisième approche, plus complexe, consiste à modifier le fichier .json pour réutiliser les métadonnées existantes. Par exemple, dans les cas où un ensemble d'options existe déjà pour un certain concept (par exemple "sexe"), cet ensemble d'options pourrait être supprimé du fichier .json et toutes les références à son UID remplacées par l'ensemble d'options correspondant existant déjà dans la base de données. Le grand avantage de cette méthode (qui n'est pas limitée aux seuls cas où il y a un conflit d'importation directe) est d'éviter de créer des métadonnées dupliquées dans la base de données. Il y a des aspects essentiels à prendre en compte lors de ce type de modification :
+
+-   il nécessite une connaissance approfondie de la structure détaillée des métadonnées du DHIS2
+-   Cette approche ne fonctionne pas pour tous les types d'objets. En particulier, certains types d'objets ont des dépendances compliquées à résoudre de cette manière, par exemple en ce qui concerne les désagrégations.
+-   il sera compliqué de procéder aux futures mises à jour du package de configuration..
+
+## Configuration { #configuration }
+
+Une fois que toutes les métadonnées sont importées avec succès, des étapes doivent être mises en oeuvre avant que le module ne soit fonctionnel.
+
+### Partage { #sharing }
+
+Tout d’abord, vous devrez utiliser la fonctionnalité _Partage_ du DHIS2 pour configurer les utilisateurs (groupes d’utilisateurs) qui doivent avoir accès aux métadonnées et aux données associées au programme ainsi que ceux qui peuvent enregistrer/saisir des données dans le programme. Par défaut, le partage a été configuré pour les personnes suivantes :
+
+-   Type d'entité suivie
+-   Programme
+-   Étapes du programme
+-   Tableaux de bord
+-   Visualisations, cartes, rapports d’événement et tableaux de rapports
+-   Ensembles de données
+-   Options de catégorie
+
+Veuillez consulter le site [Documentation du DHIS2](#sharing) pour plus d’informations sur le partage.
+
+Quatre groupes d’utilisateurs principaux sont inclus dans le package :
+
+-   COVAC - Analyse des données de vaccination contre la COVID-19
+-   COVAC - Administration des données de vaccination contre la COVID-19
+-   COVAC - Saisie des données sur la vaccination contre la COVID-19
+-   COVAC - Administration des métadonnées sur la vaccination contre la COVID-19
+
+Par défaut, les autorisations suivantes sont attribuées aux groupes d’utilisateurs suivants :
+
+| Objet | Groupe d'utilisateurs |  |  |  |
+| --- | --- | --- | --- | --- |
+|  | _COVAC - Analyse des données de vaccination contre la COVID-19_. | _COVAC - Administration des données sur la vaccination contre la COVID-19_. | _COVAC - Saisie des données sur la vaccination contre la COVID-19_. | _COVAC - Administration des métadonnées sur la vaccination contre la COVID-19_ |
+| _*Type d’entité suivie*_. | Métadonnées : peuvent être visualisées <br>Données : peuvent être visualisées | Métadonnées : peuvent être visualisées <br>Données : peuvent être visualisées | Métadonnées : peuvent être visualisées <br>Données : peuvent être capturées et visualisées | Métadonnées : peuvent être modifiées et visualisées <br>Données : peuvent être visualisées  |
+| _*Programme*_ | Métadonnées : peuvent être visualisées <br>Données : peuvent être visualisées | Métadonnées : peuvent être visualisées <br>Données : peuvent être visualisées | Métadonnées : peuvent être visualisées <br>Données : peuvent être capturées et visualisées  | Métadonnées : peuvent être modifiées et visualisées <br>Données : peuvent être visualisées |
+| _*Étapes du programme*_ | Métadonnées : peuvent être visualisées <br>Données : peuvent être visualisées | Métadonnées : peuvent être visualisées <br>Données : peuvent être visualisées | Métadonnées : peuvent être visualisées <br>Données : peuvent être capturées et visualisées  | Métadonnées : peuvent être modifiées et visualisées <br>Données : peuvent être visualisées  |
+| _*Tableaux de bord*_. | Métadonnées : affichage autorisé | Métadonnées : affichage autorisé | Aucun accès | Métadonnées : modification et affichage autorisés |
+| _*Ensembles de données*_ | Métadonnées : peuvent être visualisées <br>Données : peuvent être visualisées  | Métadonnées : peuvent être visualisées <br>Données : peuvent être capturées et visualisées | Aucun accès | Métadonnées : modification et affichage autorisés <br>Données : accès non autorisé |
+
+Les utilisateurs sont attribués au groupe d’utilisateurs approprié en fonction de leur rôle dans le système. Le partage des autres objets du package peut être ajusté en fonction de la configuration. Consultez le site [Documentation sur le partage de DHIS2](#sharing) pour plus d’informations.
+
+### Rôles des utilisateurs { #user-roles }
+
+Les utilisateurs auront besoin de rôles d'utilisateur pour pouvoir utiliser les différentes applications du DHIS2. Les rôles minimums suivants sont recommandés :
+
+1. Analyse des données Tracker : Il peut visualiser des analyses d'événements et accéder à des tableaux de bord, des rapports d'événements, un visualiseur d'événements, un visualiseur de données, des tableaux croisés dynamiques, des rapports et des cartes.
+2. Saisie de données du Tracker : possibilité d'ajouter des valeurs de données, de mettre à jour les entités suivies, de rechercher des entités suivies dans les unités d'organisation et d'accéder à l'application Saisie Tracker
+
+Consultez le site [Documentation de DHIS2](https://docs.dhis2.org/) pour plus d’informations sur la configuration des rôles des utilisateurs.
+
+### Unités d’organisation { #organisation-units }
+
+Le programme et les ensembles de données doivent être attribués à des unités d’organisation dans la hiérarchie existante afin d’être accessibles via les applications tracker capture ou capture.
+
+### Métadonnées dupliquées { #duplicated-metadata }
+
+> **REMARQUE**
+>
+> Cette section ne s’applique que si vous importez dans une base de données DHIS2 qui comporte déjà des métadonnées. Si vous travaillez avec une nouvelle instance du système DHIS2, veuillez ignorer cette section et aller à [Adaptation du programme du Tracker](#adapting-the-program). Si vous utilisez des applications tierces qui dépendent des métadonnées actuelles, notez que cette mise à jour pourrait les rompre.
+
+Même lorsque les métadonnées sont importées avec succès sans aucun conflit d'importation, il peut y avoir des doublons dans les métadonnées - éléments de données, attributs d'entités suivies ou ensembles d'options qui existent déjà. Comme indiqué dans la section ci-dessus sur la résolution des conflits, il est important de garder à l'esprit que les décisions relatives à la modification des métadonnées dans le DHIS2 doivent également tenir compte d'autres documents et ressources associés de différentes manières aux métadonnées existantes et aux métadonnées importées par le biais du package de configuration. La résolution des doublons ne consiste donc pas seulement à "nettoyer la base de données", mais aussi à s'assurer que cela est fait sans, par exemple, briser le potentiel d'intégration avec d'autres systèmes, la possibilité d'utiliser du matériel de formation, la rupture des SOP, etc. Cela dépend beaucoup du contexte.
+
+Une chose importante à garder à l'esprit est que DHIS2 dispose d'outils qui peuvent masquer certaines des complexités des doublons potentiels dans les métadonnées. Par exemple, lorsque des ensembles d'options en double existent, ils peuvent être masqués pour des groupes d'utilisateurs grâce à [sharing](#sharing).
+
+## Adaptation du programme { #adapting-the-program }
+
+Une fois le programme importé, vous pouvez apporter certaines modifications au programme. Voici quelques exemples d’adaptations locales _pouvant_ être faites :
+
+-   Ajout de variables supplémentaires au formulaire.
+-   Adaptation des noms des éléments de données/options en fonction des usages au niveau national.
+-   Ajout des traductions aux variables et/ou au formulaire de saisie des données.
+-   Modification des indicateurs du programme en fonction des définitions de cas locales
+
+Toutefois, il est fortement recommandé de faire preuve d'une grande prudence si vous décidez de modifier ou de supprimer l'un des formulaires/métadonnées inclus. Il y a donc un risque que des modifications brisent des fonctionnalités, par exemple les règles du programme et les indicateurs du programme.
+
+## Suppression des métadonnées { #removing-metadata }
+
+Afin de garder votre instance en ordre et d’éviter les erreurs, il est recommandé de supprimer les métadonnées inutiles de votre instance.
+
+Le tableau de bord initial **COVAC - Registre des vaccins  contre la COVID-19** `YYtAbckt77l` a été supprimé du nouveau package et remplacé par le nouveau tableau de bord : **COVAC - Suivi quotidien** `iBWlFCvvtkH`
+
+Afin de supprimer l’ancien tableau de bord de votre système, vous devez :
+
+1. noter les noms/UID de tous les objets inclus dans le tableau de bord ;
+2. supprimer tous les éléments du tableau de bord et enregistrer ;
+3. supprimer le tableau de bord ; et
+4. supprimer tous les rapports d’événements, visualisations, cartes  et tableaux de rapports inclus dans le tableau de bord initial.
+
+> **REMARQUE**
+>
+>  Il est possible de supprimer le tableau de bord, ses éléments et toutes les visualisations, cartes et rapports pertinents de la base de données à l’aide des commandes SQL.

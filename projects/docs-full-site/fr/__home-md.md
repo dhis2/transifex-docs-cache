@@ -1,0 +1,80 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/home.md"
+revision_date: '2023-08-04'
+template: home.html
+---
+
+# Documentation sur le DHIS2 { #home-dhis2-documentation } 
+
+La documentation DHIS2 est organisée en quatre grandes catégories. Pour commencer, choisissez la catégorie qui correspond le mieux à votre travail.
+
+### Recherche par le public{ #home-browse-by-audience }
+
+!!!!!
+
+!!! Utilisation
+
+    Vous voulez en savoir plus sur le contexte et l'objectif de DHIS2 ? Ou vous avez besoin d'instructions sur son utilisation ? Ces guides expliquent comment effectuer des tâches telles que la saisie de données, la configuration de métadonnées, l'importation et l'exportation de données, l'agrégation, l'établissement de rapports et d'autres sujets liés à l'utilisation du logiciel..
+
+    [Consulter la documentation de l'utilisateur](use/use.html)
+
+
+!!! Implémentation
+
+    Mise en place d'une instance DHIS2 dans un nouveau pays ? Ou mettre en œuvre un nouveau programme de santé ? Ces guides couvrent tout ce que vous devez savoir avant de commencer à utiliser DHIS2 pour gérer vos données.
+
+    [Explorer la documentation du développeur](implement/implement.html)
+
+!!! Développement
+
+    Les manuels du développeur fournissent une description détaillée de l'API et des fonctionnalités de base du DHIS2, ainsi que du kit de développement logiciel (SDK) Android de DHIS2. Ils constituent des ressources essentielles pour les développeurs qui renforcent la plate-forme DHIS2.
+
+    [Explorer la documentation du développeur](develop/develop.html)
+
+!!! Gestion
+
+    Êtes-vous un administrateur système qui gère une instance DHIS2 ? Le guide d'administration du système vise à fournir une assistance pour l'installation et la maintenance de la plate-forme DHIS2.
+
+    [Explorer la documentation du gestionnaire](manage/manage.html)
+
+!!!!
+
+### Recherche par sujet { #home-browse-by-topic }
+
+!!!!!
+
+!!! Kits de métadonnées ( Outil de l'OMS pour la collecte de données de santé)
+
+    Le kit de données sanitaires de l'OMS se compose de métadonnées et d'outils DHIS2 destinés à faciliter l'adoption des normes de données sanitaires de l'OMS dans les systèmes nationaux d'information sur la gestion de la santé de routine. Cette section contient de la documentation sur les packs disponibles.
+
+    [Explore Metadata Packages](topics/metadata/dhis2-who-digital-health-data-toolkit/about-the-who-digital-health-data-toolkit.html)
+
+!!! Tutoriels
+
+    Vous trouverez ici quelques conseils et astuces pour vous aider à devenir un utilisateur chevronné de DHIS2.
+
+    [Explorer les tutoriels](thèmes/tutoriels/tutoriels.html)
+
+!!! Documents de formation
+
+    Vous trouverez ici des conseils généraux sur la planification et la conduite d'une formation sur le DHIS2, ainsi que du matériel de cours complet à partir duquel vous pouvez sélectionner des cours de l'Académie DHIS2 que vous pouvez adapter à votre contexte local.
+
+    [Explorer les documents de formation](topics/training-docs/training-docs.html)
+
+!!! Témoignages des utilisateurs
+
+    Lisez quelques témoignages des utilisateurs et des responsables de la mise en œuvre sur le terrain et découvrez comment ils utilisent DHIS2 pour résoudre une variété de problèmes.
+
+    [Explorer les témoignages des utilisateurs](topics/user-stories/user-stories.html)
+
+!!! Manuels complets
+
+    Vous trouverez ici des liens vers notre documentation sous la forme de documents HTML et PDF à une page pour un partage plus facile. Vous trouverez également de la documentation pour les versions précédentes de DHIS2.
+
+    [Consulter les manuels complets](topics/complete-manuals/user-manuals.html)
+
+!!!!
+
+
+*La documentation du DHIS2 est le fruit d'un effort collectif de l'équipe de développement et des utilisateurs. Même si les guides se veulent complets, certaines fonctionnalités ont été omises ou n'ont pas encore été documentées.*
+

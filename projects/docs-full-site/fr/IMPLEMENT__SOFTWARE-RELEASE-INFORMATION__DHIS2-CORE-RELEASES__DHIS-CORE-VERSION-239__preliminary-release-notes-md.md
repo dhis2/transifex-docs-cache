@@ -1,0 +1,118 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-releases/blob/master/releases/2.39/ReleaseNote-2.39.md"
+revision_date: "2022-10-25"
+---
+
+# Note de mise à jour de la version 2.39 du DHIS { #dhis-version-239-release-note }
+
+## FONCTIONNALITÉS D'ANALYSE { #analytics-features }
+
+**Des jeux de légendes pour les listes de lignes :** Dans l'application de listes de lignes, vous ne pouvez pas appliquer de légende à un élément de données. Les légendes peuvent être prédéfinies ou générées automatiquement. Cela vous permet de rendre vos données plus facilement interprétables en appliquant un code couleur pour indiquer la performance, le statut ou la gravité.
+
+[Capture d'écran](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/legend_coloring_in_line_lists.png) | [Jira](https://dhis2.atlassian.net/browse/DHIS2-75)
+
+**Date prévue dans les listes de lignes :** La date programmée est disponible en tant que dimension temporelle dans l'application de liste de lignes. Vous pouvez désormais présenter ou filtrer les données par date prévue.
+
+[Capture d'écran](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/scheduled_date_in_line_lists.png) | [Jira](https://dhis2.atlassian.net/browse/DHIS2-12309)
+
+**Importation des données de population de Google Earth Engine :** Dans l'app d'import-export, vous pouvez désormais importer des ensembles de données depuis Google Earth Engine. DHIS2 permet déjà de visualiser les couches Earth Engine dans l'application Cartes. Le nouvel importateur va plus loin en permettant le calcul dynamique des ensembles de données de population sur la base des géométries des unités d'organisation, et l'importation ultérieure des données de population sous forme de données brutes dans DHIS2. Cela permettra aux implémentations d'utiliser les données de population de Earth Engine dans les visualisations du DHIS2 et de les combiner avec d'autres ensembles de données dans le cadre d'expressions d'indicateurs.
+
+[Capture d'écran](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/gee_importer.png) | [Jira](https://dhis2.atlassian.net/browse/DHIS2-11966)
+
+## FONCTIONNALITÉS DU TRACKER ET ÉVÉNEMENT { #tracker-and-event-features }
+
+**Application de capture publiée régulièrement :** L'application Capture a été publiée peu après la sortie de la version 2.38 sur l'App Hub, et est maintenant publiée en continu dans les versions 2.38 et 2.39. Si vous utilisez l'une de ces versions, vous pourrez passer en permanence à la dernière version de l'application Capture et bénéficier des fonctionnalités et correctifs suivants. Les fonctionnalités suivantes du tracker sont toutes disponibles dans les versions 2.38 et 2.39 via l'App Hub (le hub des applications).
+
+[Capture d'écran](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/capture_app_hub.png)
+
+**Enregistrement d'une TEI dans plusieurs programmes :** Une instance d'entité suivie (TEI) peut désormais être inscrite dans plusieurs programmes dans l'application Capture.
+
+[Capture d'écran](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/tei_multiple_programs.png) | [Docs](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-238/tracking-individual-level-data/capture.html#re-enroll-an-existing-tracked-entity-instance) | [Jira](https://dhis2.atlassian.net/browse/DHIS2-12141)
+
+**Ouvrir la saisie des données après l'inscription :** Lors de l'inscription d'une TEI dans un programme dont l'une des étapes est marquée comme devant être ouverte après l'inscription, l'utilisateur est directement dirigé vers le formulaire permettant d'ajouter cette étape du programme à l'inscription. Cela permet de réduire le nombre de clics et d'accélérer le processus de saisie des données.
+
+[Docs](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-238/tracking-individual-level-data/capture.html#enrollment-with-open-data-entry-form) | [Jira](https://dhis2.atlassian.net/browse/DHIS2-12611)
+
+**Affichage des listes de la page d'accueil :** L'affichage des listes de la page d'accueil peut désormais être désactivé dans l'application Capture. Après avoir sélectionné le programme et l'unité d'organisation, l'utilisateur peut être redirigé directement vers l'écran de recherche au lieu d'afficher la liste des instances d'entités suivies inscrites dans l'unité d'organisation. Cela améliorera l'expérience de l'utilisateur lorsque celui-ci doit avant tout rechercher et trouver des instances d'entités suivies. Le fait d'éviter le chargement inutile des listes de la page d'accueil présente également des avantages en termes de performances.
+
+[Docs](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-238/tracking-individual-level-data/capture.html#list-tracked-entity-instances-enrolled-in-program) | [Jira](https://dhis2.atlassian.net/browse/DHIS2-12140)
+
+**Listes de travail dans l'écran de recherche :** Dans l'application Capture, l'écran de recherche affiche désormais les listes de travail pour le programme sélectionné. Ceci est utile lorsque l'utilisateur souhaite rechercher une instance d'entité suivie ou, dans certains cas, utiliser une liste de travail ciblée. Cela fonctionne bien en combinaison avec la désactivation de la liste de la page d'accueil et l'orientation de l'utilisateur vers la page de recherche, mais aussi pour permettre un accès en un seul clic aux listes de travail.
+
+[Capture d'écran](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/show_working_list_search.png) | [Docs](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-238/tracking-individual-level-data/capture.html#custom-tei-working-list-for-programs-with-display-front-page-list-set-to-false) | [Jira](https://dhis2.atlassian.net/browse/DHIS2-12140)
+
+**Voir l'unité d'organisation précédemment sélectionnée :** Dans l'application Capture, un utilisateur qui vient de désélectionner une unité d'organisation dans le sélecteur de contexte verra l'unité d'organisation précédemment sélectionnée mise en évidence. Cette fonction est utile lorsque vous travaillez systématiquement avec de nombreuses unités d'organisation.
+
+[Capture d'écran](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/capture_retain_previous_orgunit.png) | [Jira](https://dhis2.atlassian.net/browse/DHIS2-13472)
+
+**Préserver les filtres lors de la navigation :** Lors du filtrage et du tri d'une liste de travail dans l'application Capture, les sélections de filtres sont désormais conservées lors des changements de contexte. Ceci est utile lorsqu'un utilisateur a besoin d'appliquer un filtre à différentes unités d'organisation car l'unité d'organisation peut être changée sans perdre les paramètres actuels du filtre et de la liste. Cela fonctionne aussi bien avec les listes de travail enregistrées qu'avec les filtres non enregistrés.
+
+[Jira](https://dhis2.atlassian.net/browse/DHIS2-13285)
+
+**Amélioration de la recherche dans tous les programmes:** Lors de la recherche d'une instance d'entité suivie dans un programme spécifique, la recherche peut ne pas donner de résultat dans le contexte du programme. Dans ce cas, l'utilisateur peut étendre la recherche pour rechercher une instance d'entité suivie dans tous les programmes. La recherche élargie s'effectue sans que l'utilisateur ne modifie le contexte, et les éventuels résultats de la recherche élargie sont affichés sous les résultats du programme original. Cela permet à l'utilisateur de réviser facilement les critères de recherche et de continuer à travailler dans le contexte dans lequel il a commencé, en élargissant éventuellement la recherche à nouveau si aucun résultat n'est trouvé dans le programme.
+
+[Capture d'écran](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/capture_search_all_programs.png) | [Docs](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-238/tracking-individual-level-data/capture.html#search-for-tracked-entity-instances) | [Jira](https://dhis2.atlassian.net/browse/DHIS2-12678)
+
+## FONCTIONNALITÉS DE LA PLATE-FORME { #platform-features }
+
+**Nouvelle application de saisie de données :** Une nouvelle application de saisie de données agrégées est désormais disponible. La nouvelle application est développée sur la nouvelle pile technologique moderne et apporte un certain nombre d'améliorations en termes de convivialité. La sélection de l'ensemble de données, de l'unité d'organisation et de la période est toujours visible, ce qui permet de voir facilement les sélections actuelles. L'arbre des unités d'organisation permet de voir facilement quelles unités d'organisation sont ouvertes à la saisie de données pour l'ensemble de données actuellement sélectionné. Les détails d'une valeur de données, y compris les informations sur les métadonnées, les commentaires, les limites min et max, l'historique des valeurs de données et le journal d'audit sont disponibles dans une barre latérale et peuvent rester visibles pendant la saisie des données. Les règles de validation des données s'ouvrent et peuvent être facilement déclenchées également dans une barre latérale. Les données saisies hors ligne seront automatiquement synchronisées avec le serveur. La nouvelle application de saisie de données prend en charge les formulaires HTML personnalisés, mais pas le support Javascript/CSS, qui pourra être ajouté ultérieurement. Le module actuel de saisie de données sera progressivement abandonné et supprimé dans la version 2.41.
+
+[Capture d'écran 1](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/data-entry-section-form.png) | [Scr 2](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/data-entry-org-unit-tree-filter.png) | [Scr 3](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/data-entry-side-panel.png) | [Scr 4](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/data-entry-validation.png) | [Demo](https://play.dhis2.org/dev/dhis-web-aggregate-data-entry/index.html#/) | [Docs](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/collecting-data/data-entry-beta.html)
+
+**Gestion des groupes d'utilisateurs :** La gestion des groupes d'utilisateurs dans l'application utilisateur prend désormais en charge l'ajout et la suppression d'utilisateurs pour les bases de données qui comportent un grand nombre d'utilisateurs. Les utilisateurs peuvent être ajoutés et supprimés individuellement et les modifications deviennent effectives lorsque le groupe d'utilisateurs est enregistré.
+
+[Capture d'écran](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/user-group-management.png) | [Demo](https://play.dhis2.org/dev/dhis-web-user/index.html#/user-groups/new) | [Docs](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/users-roles-and-groups.html#mgt_usergroup)
+
+**Géométries multiples d'unités d'organisation :** DHIS 2 peut désormais stocker et visualiser des géométries multiples pour les unités d'organisation. Ceci est pris en charge par un nouvel attribut de métadonnées, à savoir le type de valeur GeoJSON. Les données GeoJSON peuvent être importées via l'importateur de métadonnées et stockées en utilisant le nouveau type de valeur. Cela permet par exemple d'afficher à la fois la localisation (sous forme de point) et le bassin géographique (sous forme de polygone) pour les unités d'organisation.
+
+[Capture d'écran](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/geojson-value-type-metadata-attribute.png) | [Demo](https://play.dhis2.org/dev/dhis-web-maintenance/index.html#/edit/otherSection/attribute/add)
+
+**Importation de géométrie GeoJSON :** Un nouveau service d'importation prenant en charge le format standard _GeoJSON_ pour les données géospatiales est désormais disponible. L'importateur permet d'importer la géométrie GeoJSON et de l'associer aux unités d'organisation, en utilisant le champ géométrique primaire de l'unité d'organisation ou des attributs de métadonnées personnalisés de type valeur GeoJSON. Le format GeoJSON est pris en charge par la plupart des outils et services géospatiaux et permet l'intégration avec des systèmes externes. Le nouvel importateur facilite considérablement l'importation de géométries et la création de cartes comparativement à l'ancien format GML.
+
+[Capture d'écran](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/geojson-geometry-import.png) | [Démo](https://play.dhis2.org/dev/dhis-web-import-export/index.html#/import/geometry) | [Docs](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/maintaining-the-system/importexport-app.html#geometry_import) | [geojson.org](https://geojson.org/)
+
+**Échange de données agrégées :** Un nouveau service d'échange de données agrégées permet d'échanger des données d'une instance DHIS 2 à une autre, ainsi qu'au sein d'une même instance DHIS 2. Le service agrégera les données dans l'instance source en utilisant le moteur d'analyse, et importera les données sous forme de valeurs de données agrégées dans l'instance cible. Les échanges de données peuvent être déclenchés à partir de l'API, de l'application web d'échange de données ou exécutés en tant que tâche planifiée. Ceci est utile pour transférer des données d'une instance SIGS vers une instance du portail de données DHIS 2, pour importer des chiffres agrégés dans une instance SIGS du DHIS 2 sur la base d'enregistrements individuels dans une instance tracker DHIS 2, et pour pré-calculer des chiffres agrégés sur la base d'enregistrements de suivi individuels en utilisant des indicateurs de programme. Une nouvelle application web nommée _Data exchange (Echange de données)_ sera bientôt disponible sur l'App Hub (le hub des applications).
+
+[Capture d'écran 1](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/aggregate-data-exchange-report.png) | [Scr 2](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/aggregate-data-exchange-submission.png) | [Scr 3](https://s3.eu-west-1.amazonaws.com/content.dhis2.org/releases/screenshots/39/aggregate-data-exchange-submission.png) | [API docs](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/data-exchange.html) | [Jira](https://dhis2.atlassian.net/browse/DHIS2-13105) | App Web bientôt disponible
+
+**Redis pour la gestion des clusters :** Lorsque vous exécutez DHIS 2 dans un cluster (en utilisant plusieurs serveurs/nœuds pour une seule instance), Redis peut désormais être utilisé pour l'invalidation dynamique des caches entre les instances. Il s'agit d'une amélioration par rapport à l'approche basée sur Debezium introduite dans la version 2.38, car elle est plus fiable et fonctionne sur d'autres moteurs de base de données que PostgreSQL standard, comme AWS RDS. La nouvelle solution de gestion des clusters permet d'ajouter et de supprimer des nœuds de manière dynamique sans aucune mise à jour des fichiers de configuration DHIS 2 des nœuds existants. La nouvelle solution nécessite la disponibilité de Redis, bien que Redis soit déjà requis pour les configurations de cluster.
+
+[Docs](https://docs.dhis2.org/en/manage/performing-system-administration/dhis-core-version-master/installation.html#install_web_server_cluster_configuration)
+
+**Intégration RapidPro :** L'intégration DHIS 2 - RapidPro est généralement disponible. Elle permet la synchronisation des contacts RapidPro avec les utilisateurs de DHIS 2, le transfert des rapports de données agrégées de RapidPro vers DHIS 2 et l'envoi de rappels aux contacts RapidPro lorsque les rapports agrégés sont en retard. Pour en savoir plus, consultez le dépôt [GitHub](https://github.com/dhis2/integration-dhis-rapidpro) et contactez l'équipe d'intégration de DHIS 2 pour obtenir de l'aide si vous souhaitez configurer l'intégration pour votre pays ou votre organisation.
+
+[GitHub](https://github.com/dhis2/integration-dhis-rapidpro)
+
+### FONCTIONNALITÉS DE L'API DE LA PLATE-FORME { #platform-api-features }
+
+**Notation abrégée des champs pour les attributs :** Une nouvelle notation abrégée est prise en charge pour les attributs et les valeurs dans les points d'extrémité des métadonnées, et les valeurs d'attribut peuvent désormais être référencées de manière pratique à l'aide de l'identifiant d'attribut de métadonnées : `filter={attribute-id}:eq:{value}`. Il en va de même pour le filtrage des objets, où l'identificateur d'attribut peut être utilisé dans les filtres : `filter={attribute-id}:eq:{value}`.
+
+[Docs 1](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/metadata-gist.html#gist_attributeFields) | [Docs 2](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/metadata.html#webapi_metadata_object_filter) | [Jira 1](https://dhis2.atlassian.net/browse/DHIS2-13158) | [Jira 2](https://dhis2.atlassian.net/browse/DHIS2-11867)
+
+**Points d'extrémité de la saisie de données :** Une collection de chemins optimisés vers l'API pour la nouvelle application de saisie de données est rendue disponible. Ces points de terminaison sont également utiles pour les applications web de saisie de données personnalisées. Il s'agit notamment de la récupération des métadonnées pour les ensembles de données accessibles, de la récupération des formulaires de saisie de données personnalisés, de la récupération des valeurs de données pour un formulaire, de la récupération du contexte pour un formulaire, de la sauvegarde des limites min-max et du remplissage d'un formulaire.
+
+[Docs](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/data-entry.html)
+
+**Améliorations de l'API :** Plusieurs améliorations progressives de l'API sont désormais proposées.
+
+-   L'importation de valeurs de données CSV prend en charge un paramètre d'ensemble de données, ce qui permet de compléter l'ensemble de données. [Docs](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/data.html#webapi_data_values_import_parameters) | [Jira](https://dhis2.atlassian.net/browse/DHIS2-8083)
+-   Dans l'API du magasin de données utilisateur, un administrateur peut modifier les valeurs du magasin de données pour d'autres utilisateurs grâce au paramètre de requête `username`. [Docs](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/data-store.html#admin-access-to-another-users-datastore) | [Jira](https://dhis2.atlassian.net/browse/DHIS2-7851)
+-   L'importateur de valeurs de données ne crée un enregistrement d'audit que si la valeur de données a été effectivement modifiée (les valeurs identiques sont ignorées). [Jira](https://dhis2.atlassian.net/browse/DHIS2-6163)
+-   Les points de terminaison de l'audit des entités suivies prennent en charge les paramètres de requête de l'unité d'organisation, de la date de début et de fin et de l'étape du programme. [Docs](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/audit.html#webapi_tracked_entity_data_value_audits) | [Jira](https://dhis2.atlassian.net/browse/DHIS2-13421)
+-   Toutes les données géométriques des unités d'organisation peuvent être supprimées par un simple appel API, ce qui est utile pour l'intégration. [Docs](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/metadata.html#geojson-import) | [Jira](https://dhis2.atlassian.net/browse/DHIS2-13313)
+-   Les valeurs des attributs de métadonnées sont désormais convenablement validées sur la base du type de valeur de l'élément de données associé. [Jira](https://dhis2.atlassian.net/browse/DHIS2-5537)
+-   La suppression des éléments de données est nettement plus rapide. [Jira](https://dhis2.atlassian.net/browse/DHIS2-5761)
+
+## INFORMATIONS SUR LA VERSION { #release-info }
+
+| Informations sur la version | Lien |
+| --- | --- |
+| Télécharger la version et la base de données exemple | https://www.dhis2.org/downloads |
+| Documentation | [https://docs.dhis2.org](https://docs.dhis2.org/) |
+| Notes de mise à jour | [Notes de mise à jour sur GitHub](https://github.com/dhis2/dhis2-releases/blob/master/releases/2.39/README.md) |
+| Liste complète des fonctionnalités et des bogues | [Note de mise à jour](https://github.com/dhis2/dhis2-releases/blob/master/releases/2.39/ReleaseNote-2.39.0.md) |
+| Code source sur GitHub | https://github.com/dhis2 |
+| Instance de démonstration | https://play.dhis2.org/2.39/ |
+| Image Docker | `docker pull dhis2/core:2.39.0` |
+| Images Docker du Hub | https://hub.docker.com/r/dhis2/core |
+| Forum de la communauté | https://community.dhis2.org/ |

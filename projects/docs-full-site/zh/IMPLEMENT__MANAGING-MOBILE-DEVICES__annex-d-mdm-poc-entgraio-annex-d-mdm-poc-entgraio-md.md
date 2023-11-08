@@ -1,0 +1,36 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-capture-app/edit/master/docs/src/commonmark/en/content/mdm/A-d-entgra.md" 
+---
+# 附件D-MDM PoC：Entgra.io  { #annex-d-mdm-poc-entgraio } 
+
+本附件介绍了经过测试的MDM的结果：[https://entgra.io/emm](https://entgra.io/emm）
+
+## 安装和使用 { #installation-usage } 
+
+他们为远程部署提供docker软件包以进行测试（甚至生产）。对于此测试，使用了SaaS平台。
+
+这是一个JAVA / Tomcat应用程序，使其与DHIS2的兼容性非常理想
+
+它涵盖了已定义功能的整个范围，但是由于选项数量众多，策略定义可能会有些不知所措。
+
+该解决方案允许远程控制设备，因此管理者可以远程查看设备的屏幕。这对于培训和故障排除可能特别有用。
+
+安慰
+
+![Entgra MDM 控制台](../content/mdm/resources/images/image11.png)
+
+
+电话
+
+![在 Android 上运行的 Entgra MDM](../content/mdm/resources/images/image2.png){ width=25% }
+
+## 问题 { #issues } 
+
+设备位置不起作用（这似乎是暂时的问题）
+
+
+## 结论 { #conclusion } 
+
+工作得很好，支持也很及时。如果使用前提条件选项，那么它是开放源Java应用程序这一事实可能会使管理更加容易。
+
+

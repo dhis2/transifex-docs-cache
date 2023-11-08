@@ -1,0 +1,228 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.39/src/user/about-sharing-of-objects.md"
+revision_date: '2021-10-07'
+tags:
+- DHIS version 2.39
+- Utilisation
+---
+
+# À propos du partage d'objets { #sharing } 
+
+Ce chapitre traite de la fonction de partage des entités dans le DHIS2.
+
+## Partage d'objets { #sharing-of-objects } 
+
+De nombreux objets dans le DHIS2, comme les rapports, les graphiques, les cartes et les indicateurs, peuvent
+être partagés. Le système DHIS2 permet le partage de métadonnées ou de données. Le partage 
+des métadonnées consiste à rendre un objet, comme un rapport, disponible pour lecture ou 
+modification à un groupe d'utilisateurs ou à tout le monde. Le partage des données  consiste 
+à mettre à la disposition des autres les données réelles saisies et contrôler qui 
+peut saisir ce type de données. Par exemple, pour les rapports, le dialogue de partage 
+peut être ouvert en cliquant sur le bouton "Paramètres de partage" à côté de chaque 
+rapport dans la liste. Les responsables de la mise en œuvre peuvent utiliser cette fonction 
+pour permettre l'accès à certains objets à certains groupes d'utilisateurs seulement. Les 
+utilisateurs peuvent utiliser cette fonction pour décider avec qui ils souhaitent partager des 
+objets (des tableaux croisés dynamiques, des graphiques, des tableaux de bord, etc.).
+
+Si le partage est pris en charge pour une catégorie particulière d'objets, un dialogue appelé 
+"Paramètres de partage" sera disponible, généralement en cliquant sur le 
+nom de l'objet ou dans les outils d'analyse, par le biais d'une icône (Partager 
+avec d'autres personnes). Une fois que vous aurez accédé aux paramètres de partage pour 
+l'objet que vous souhaitez partager, une boîte de dialogue similaire à celle ci-dessous 
+s'affiche.
+
+![](resources/images/maintenance/mtn_sharing_dialog.png)
+
+Vous pouvez partager votre rapport avec tout le monde ou avec un certain nombre de 
+groupes d'utilisateurs. Vous pouvez activer un "accès externe" pour permettre le partage 
+de cette ressource avec tout le monde, y compris les utilisateurs qui ne peuvent pas se connecter au DHIS2. Cette 
+activation est utile pour partager des ressources publiques avec des systèmes externes. Notez que si 
+les objets sont partagés en externe, ils deviennent alors visibles par toute personne ayant 
+accès à l'URL qui fournit la ressource sans aucune référence de 
+connexion. Notez également que l'"accès externe" ***n'autorise pas*** l'accès aux 
+utilisateurs connectés - pour leur donner accès, vous devez également activer 
+l'"accès public".
+
+À côté de "Accès public", vous pouvez choisir votre option d'accès public sous 
+"MÉTADONNÉES " : "Pas d'accès", "Peut uniquement consulter" ou "Peut modifier et consulter", et 
+sous "DONNÉES" : "Aucun accès", "Peut visualiser les données", "Peut saisir les données". L'accès 
+public fait référence aux utilisateurs qui sont connectés au système. L'édition implique 
+également la suppression du rapport.
+
+Pour partager avec un groupe, il suffit de commencer à entrer le nom du groupe et le 
+champ de saisie "Recherche de groupes d'utilisateurs" et de sélectionner le groupe 
+souhaité. Cliquez sur l'icône "+" à côté du champ de saisie pour partager avec ce groupe. 
+Pour chaque groupe, vous pouvez définir une option d'accès, similaire à l'accès public.
+
+Le partage avec un groupe d'utilisateurs implique que tous les utilisateurs de ce groupe 
+auront accès à l'objet partagé. Pour créer un groupe d'utilisateurs, vous pouvez vous rendre 
+dans le module "Tableau de bord" et cliquer sur "Groupes". Cela vous mènera à la liste 
+des groupes où vous pourrez cliquer sur "Ajouter nouveau" dans le coin supérieur droit. 
+Tout le monde peut créer des groupes d'utilisateurs à partir du module "Tableau de bord".
+
+## Partage des métadonnées et contrôle d'accès { #metadata-sharing-and-access-control } 
+
+Les objets supportant le partage des métadonnées sont l'indicateur, le groupe d'indicateurs, 
+l'ensemble de groupes d'indicateurs, le dictionnaire de données, l'ensemble de données, le 
+programme, le rapport standard, la ressource, le tableau de rapport, le graphique, la carte et 
+le groupe d'utilisateurs. Parmi ces objets, le tableau de rapport, le graphique, la carte et le 
+groupe d'utilisateurs sont ouverts à tous et peuvent être créés en privé. Privé signifie que 
+les objets ne sont disponibles que pour vous-même ou potentiellement pour un certain 
+nombre de groupes d'utilisateurs si vous choisissez de partager l'objet. Ces objets sont 
+appelés objets "ouverts" et peuvent être créés par tous les utilisateurs. Les autres objets, 
+appelés objets "non ouverts", nécessitent que votre compte 
+d'utilisateur soit habilité à les créer.
+
+Un utilisateur peut avoir l'autorisation de créer des objets accessibles au public 
+ou des objets accessibles à titre privé. Afin de créer un objet accessible au public 
+(consultable ou modifiable par n'importe qui), votre compte d'utilisateur doit être 
+habilité à le faire. Par exemple, pour créer une carte accessible au public, votre 
+utilisateur doit avoir l'autorisation "Créer une carte publique". L'autorisation de 
+créer des objets privés s'applique uniquement aux objets non ouverts. Par 
+exemple, pour permettre à un utilisateur de créer des indicateurs qui ne seront 
+accessibles qu'à cet utilisateur et non à tous, l'utilisateur peut se 
+voir attribuer l'autorisation "Créer un indicateur privé".
+
+Partager un objet non ouvert avec une autre personne et permettre à cette dernière 
+de le modifier nécessite que le compte utilisateur de cette personne ait l'autorisation 
+de mettre à jour ce type d'objets. Par exemple, si vous souhaitez laisser une autre 
+personne modifier votre indicateur, le compte utilisateur de cette personne 
+doit disposer de l'autorisation "Indicateur de mise à jour". Cela ne s'applique pas aux objets 
+ouverts.
+
+Lorsque vous créez un nouvel objet, il devient automatiquement visible par tous 
+si votre compte d'utilisateur est habilité à créer des objets publics. Par exemple, si 
+vous créez un rapport standard et que vous disposez de l'autorisation "Créer un 
+rapport standard public", le rapport deviendra visible pour tout le monde. Si 
+vous ne disposez pas de cette autorisation, le rapport ne sera visible que par 
+vous. Une fois que vous avez créé un objet, vous pouvez, à partir 
+de la boîte de dialogue "Paramètres de partage", définir le niveau de 
+contrôle d'accès souhaité.
+
+Si vous avez besoin d'un compte d'utilisateur pouvant visualiser absolument tous 
+les objets, vous pouvez créer un rôle d'utilisateur avec l'autorité "TOUT" et attribuer 
+un utilisateur à ce rôle. Si vous devez passer d'une vue "complète" des objets à 
+une vue "personnelle" des objets, il est recommandé de créer deux comptes 
+d'utilisateur, l'un avec l'autorité "TOUT" et l'autre sans.
+
+## Application du partage des métadonnées { #metadata-sharing-applied } 
+
+La fonctionnalité de partage des métadonnées est utile dans plusieurs cas de figure. L'un 
+des cas d'utilisation est la mise en place d'une instance DHIS2 pour une organisation 
+mondiale opérant dans plusieurs pays. En général, l'organisation dispose d'un 
+ensemble de données, d'indicateurs et de rapports mondiaux qui doivent 
+s'appliquer à tous es pays, tandis que chaque pays aura besoin d'ensembles 
+de données, d'indicateurs et de rapports spécifiques. Dans ce scénario, l'approche 
+suivante pourrait fonctionner :
+
+  - Créez un groupe d'utilisateurs pour le personnel mondial.
+
+  - Créez un groupe d'utilisateurs pour le personnel dans chaque pays.
+
+  - Créez des ensembles de données et des rapports globaux, rendez les visibles pour tous 
+    et modifiables uniquement pour le groupe d'utilisateurs mondial.
+
+  - Créer des ensembles de données et des rapports spécifiques à un pays, les rendre visibles 
+    et modifiables uniquement pour le groupe d'utilisateurs du pays et le groupe d'utilisateurs 
+    mondial.
+
+Ce faisant, les indicateurs et les rapports mondiaux pourraient être consultés et analysés 
+par tout le monde, mais gérés uniquement par le groupe d'utilisateurs mondiaux. Les 
+ensembles de données, les indicateurs et les rapports spécifiques à chaque pays 
+pourraient être consultés et mis à jour par le personnel du pays et du monde entier, sans 
+être visibles ou avoir un impact sur le système pour les autres pays de l'organisation.
+
+Une approche similaire pourrait fonctionner pour un scénario impliquant un donateur, de 
+multiples organismes de financement et des partenaires de mise en œuvre dans un pays, 
+où des groupes d'utilisateurs pourraient être mis en place pour chacune de ces entités. 
+Ainsi, chaque partenaire de mise en œuvre pourrait créer et partager ses rapports au sein 
+de son organisation sans affecter ou permettre l'accès aux autres. Les rapports pourraient 
+également être partagés avec les superviseurs et les organismes de financement à la fin 
+des périodes de référence.
+
+Un autre cas d'utilisation est celui impliquant un ministère de la santé d'un pays ayant 
+plusieurs programmes en matière de santé. En général, il est nécessaire de disposer de 
+rapports et de tableaux généraux pour le ministère tout en permettant aux programmes de 
+santé d'élaborer des rapports et des tableaux spécifiques à usage interne. Cela peut être 
+réalisé en créant des groupes d'utilisateurs pour chaque programme de santé. Par la suite, 
+lors de l'élaboration des rapports et des tableaux, ceux-ci peuvent être rendus visibles et 
+modifiables uniquement pour le groupe d'utilisateurs du programme. De cette façon, les 
+rapports ne seront pas visibles pour les autres programmes et utilisateurs. L'avantage ici 
+c'est que les rapports sont conservés en interne dans le programme et parce que la liste 
+visible des rapports des autres utilisateurs est plus courte et plus pertinente.
+
+## Partage de données et contrôle d'accès { #data-sharing-and-access-control } 
+
+Les objets suivants supportent le partage des données : l'ensemble de données, le type 
+d'entité suivie, le programme et l'étape du programme. L'objectif du partage des données 
+est de contrôler quels utilisateurs peuvent saisir des données et quels utilisateurs peuvent 
+voir les données saisies.
+
+### Partage de données pour les programmes basés sur des événements { #data-sharing-for-event-based-programs } 
+
+Cette option s'applique aux types d'objets du type d'entité suivie, du programme et de l'étape du 
+programme. Lorsqu'un utilisateur travaille avec des programmes d'événements individuels dans l'application 
+Saisie d'événements, il devra disposer du niveau de partage "DONNÉES : Peut consulter les 
+données" pour voir le programme et ses données. Sans ce niveau de partage, le programme 
+et ses données ne seront pas visibles pour l'utilisateur. Lorsque l'utilisateur travaille avec des programmes Tracker 
+dans la Saisie d'événements, il devra également disoposer du niveau de partage "DONNÉES : Peut consulter les données" pour 
+voir le programme et le type d'entité suivie. Dans le cas d'un programme Tracker, 
+l'utilisateur devra également disposer de "DONNÉES : Peux consulter les données" à chaque étape du programme 
+individuellement pour pouvoir voir les données dans le programme. Pour saisir 
+les données, l'utilisateur a besoin du niveau de partage "DONNÉES : Peut saisir des données".
+
+> **N.B.**
+>
+> Pour consulter et saisir les données pour un programme, l'utilisateur saisissant les données doit également 
+> faire un rapport pour le compte d'une unité d'organisation à laquelle le programme a été 
+> affecté.
+
+
+
+Tableau : Partage des données pour les programmes de suivi
+
+| Type d'objet | Peut visualiser les données | Peut saisir des données | Commentaire |
+|---|---|---|---|
+| **Type d'entité suivie** | *Recherche d'entités suivies avec ce type d'entité suivie. <br>* Voir les valeurs des attributs du type d'entité suivie pour ce type d'entité suivie. | * Modifier les attributs visibles des entités suivies pour les instances d'entités suivies de ce type. <br>* Enregistrer/créer de nouvelles instances d'entités suivies de ce type. <br>* Supprimer les instances d'entités suivies de ce type. <br>* Désactiver/réactiver les instances d'entités suivies de ce type. ||
+| **Programme** | * Rechercher des entités suivies dans ce programme. <br>* Voir les attributs des entités suivies spécifiques à ce programme. <br>* Voir les détails de l'inscription pour le programme. <br>* Voir les notes relatives à l'inscription. | * S'inscrire au programme. <br>* Modifier les détails de l'inscription au programme. <br>* Terminer/réouvrir les inscriptions au programme. <br>* Ajouter des commentaires relatifs au programme. <br>* Modifier les liens relatifs au programme. <br>* Envoyer un message à l'instance d'entité suivie. <br>* Supprimer des inscriptions au programme. | Les deux options "Peut visualiser les données" et "Peut saisir les données" requièrent également que l'utilisateur ait l'option "Peut visualiser les données" pour le type d'entité suivi. |
+| **Étape du programme** | * Voir l'étape du programme et ses événements et données dans le cadre d'une inscription. <br>* Voir les commentaires relatifs à l'étape du programme. | * Ajouter/planifier/référer un nouvel événement au cours de la phase de programmation. <br>* Terminer / réouvrir les événements dans la phase du programme. <br>* Modifier les valeurs des données des entités suivies dans les événements de la phase du programme. <br>* Ajouter des commentaires pour les événements de la phase du programme. <br>* Supprimer des événements au cours de la phase du programme. | Les deux options "Peut visualiser les données" et "Peut saisir les données" requièrent également que l'utilisateur aie accès à "Peut visualiser les données" pour le programme et le type d'entité suivi. |
+
+
+
+Tableau : Partage des données pour les programmes à événement unique
+
+| Type d'objet | Peut visualiser les données | Peut saisir des données | Commentaire |
+|---|---|---|---|
+| **Programme** | * Voir la liste des événements au sein du programme. <br>* Voir les valeurs des données d'entités suivies pour les événements du programme. | * Ajouter de nouveaux événements dans le programme. <br>* Modifier les données des événements dans le programme. <br>* Supprimer des événements dans le programme. ||
+
+### Partage des données pour les ensembles de données { #data-sharing-for-data-sets } 
+
+S'applique aux types d'objets de l'ensemble de données et à l'option de catégorie . Lorsque 
+l'utilisateur travaille dans l'application Saisie de données, il doit disposer de "DONNEES : peut saisir des 
+données" pour voir et saisir les données dans l'ensemble de données. Pour enregistrer des données pour un 
+champ de saisie dans un Ensemble de données, les utilisateurs doivent disposer de :
+
+1.  Autorisation : F\_DATAVALUE\_ADD (Peut ajouter des valeurs de données )
+
+2.  L'ensemble de données est partagé avec "Données : Peut saisir des données".
+
+3.  L'élément de données est partagé avec les "Métadonnées" : Peut consulter".
+
+4.  Toutes les Options de catégorie utilisées par l'Ensemble de données sélectionné sont partagées avec 
+    "Données : Peut saisir des données".
+
+> **N.B.**
+>
+> Pour consulter et saisir les données pour un ensemble de données, l'utilisateur saisissant les données doit également faire 
+> un rapport pour le compte d'une unité d'organisation à laquelle l'ensemble de données a été 
+> affecté.
+
+
+
+Tableau : Partage des données pour les ensembles de données
+
+| Type d'objet | Peut visualiser les données | Peut saisir des données | Commentaire |
+|---|---|---|---|
+| **Donnés** | * Visualiser les données de l'ensemble de données dans les Analyses | * Peut visualiser l'ensemble de données dans l'application de saisie des données<br> * Peut enregistrer des données pour l'ensemble de données à l'aide de l'API | Pour enregistrer la valeur des données dans l'application Saisie de données, les utilisateurs doivent également disposer de l'option "Peut saisir des données" pour les options de catégorie dans l'ensemble de données sélectionné. |
+| **Option de catégorie** | * Peut visualiser les valeurs de données appartenant à une catégorie d'option partagée dans les analyses | * Peut enregistrer la valeur des données pour les champs de saisie dans l'application de saisie de données qui appartient à une catégorie partagée d'options. | Pour que CategoryOptionCombo et AttributeOptionCombo soient inscriptibles, toutes les CategoryOptions qui leur appartiennent doivent être partagées avec " Peut saisir des données ". |
+

@@ -1,0 +1,228 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.39/src/user/using-the-event-capture-app.md"
+revision_date: '2021-06-14'
+tags:
+- DHIS version 2.39
+- Utilisation
+---
+
+# Utilisation de l'application Saisie d'événements { #event_capture_app } 
+
+## À propos de l'application Saisie d'événements { #about_event_capture_app } 
+
+![](resources/images/event_capture/event_list.png)
+
+Dans l'application **Saisie d'événements**, vous pouvez enregistrer des événements qui se 
+sont produits à un moment et un endroit précis. Un événement peut se produire à n'importe 
+quel moment. Cela contraste avec les données de routine, qui peuvent être saisies à 
+intervalles réguliers prédéfinis. Les événements sont parfois appelés cas ou 
+enregistrements. Dans DHIS2, les événements sont liés à un programme. L'application **Saisie d'événements** 
+vous permet de sélectionner l'unité d'organisation et le programme et de spécifier une date 
+à laquelle un événement s'est produit, avant de saisir les informations relatives à l'événement.
+
+L'application **Saisie d'événements** fonctionne en ligne et hors ligne. Si la connectivité 
+Internet diminue, vous pouvez continuer à saisir des événements. Les événements seront 
+stockés localement dans votre navigateur web (client). Lorsque la connectivité sera 
+rétablie, le système vous demandera de télécharger les données stockées localement. Le 
+système envoie ensuite les données au serveur où elles sont stockées.
+
+> **N.B.**
+>
+> Si vous fermez le navigateur web en mode hors ligne, il est impossible 
+> de rouvrir une nouvelle fenêtre de navigateur web et de continuer la session de travail. 
+> Toutefois, les données seront toujours enregistrées localement et pourront être téléchargées sur 
+> le serveur la prochaine fois que la machine sera en ligne et que vous vous serez connecté 
+> au serveur.
+
+  - Vous ne verrez que les programmes associés à l'unité d'organisation que vous avez 
+    sélectionnée et les programmes auxquels vous avez accès avec votre rôle d'utilisateur.
+
+  - Les messages d'erreur/avertissement de type "skip-logic" et de validation sont pris en charge 
+    lors de l'enregistrement.
+
+  - Lorsque vous fermez une unité d'organisation, vous ne pouvez ni enregistrer ni modifier 
+    es événements pour cette unité d'organisation dans l'application **Saisie d'événements**. Vous
+    pouvez toujours consulter et filtrer la liste des événements et afficher les détails d'un
+    événement.
+
+  - L'évaluation à la volée des expressions d'indicateurs est prise en charge. Si un
+    programme a des indicateurs définis pour lui et que toutes les valeurs
+    liées à l'expression de l'indicateur sont remplies, le système calculera
+    l'indicateur et affichera le résultat.
+
+    ![](resources/images/event_capture/event_editing.png)
+
+  - **Tri:** Cette opération peut être effectuée par un clic sur l'icône de tri de chaque
+    en-tête de colonne. Une icône de tri rouge indique la colonne de tri en
+    cours. Cependant, la fonctionnalité de tri ne fonctionne que dans la page
+    affichée. Actuellement, il n'est pas possible d'effectuer un tri à partir
+    du serveur.
+
+  - **Filtrage : **Cette opération s'effectue par un clic sur la petite icône de recherche située
+    à droite de l'en-tête de chaque colonne. En cliquant sur ces icônes, vous obtenez un champ de saisie
+    dans lequel vous pouvez saisir un critère de filtrage. Le système commence à appliquer le
+    filtre dès que l'utilisateur commence à faire sa saisie. Pendant le filtrage, il est 
+    possible de définir des dates de début et de fin pour les éléments de données
+    et des limites inférieures et supérieures pour les types de chiffres. Le filtrage du côté serveur
+    n'est pas pris en charge pour le moment.
+
+## Enregistrer un événement { #event_capture_register_event } 
+
+1.  Ouvrez l'application **Saisie d'évènements**.
+
+2.  Sélectionnez une unité d'organisation.
+
+3.  Sélectionnez un programme.
+
+    Vous ne verrez que les programmes associés à l'unité d'organisation sélectionnée 
+    et les programmes auxquels vous avez accès grâce à votre statut d'utilisateur.
+
+4.  Cliquez sur **Enregistrer l'événement**.
+
+5.  Choisissez une date. 
+
+6.  Fournissez les informations requises.
+
+    Si l'étape du programme est configurée pour saisir les coordonnées GPS,
+    vous pouvez saisir les coordonnées de deux manières :
+
+      - Entrez les valeurs directement dans les champs correspondants.
+
+      - Choisir un lieu sur une carte. L'option carte affiche également
+        les polygones et les points définis pour les unités d'organisation.
+
+7.  Cliquez sur **Sauvegarder et ajouter un nouveau** ou **Sauvegarder et revenir en arrière**.
+
+> N.B : Certains éléments de données d'un événement peuvent être obligatoires (marqués d'une étoile rouge à côté de l'étiquette de l'élément de données). 
+> Cela signifie que tous les champs d'éléments de données obligatoires doivent être remplis avant que l'utilisateur n'ait l'autorisation d'enregistrer l'événement. 
+> Il y aura une exception à cette règle si l'utilisateur dispose de l'autorisation appelée __ "Ignorer la validation des champs obligatoires dans Saisie Tracker et Saisie d'événements".__ 
+> Si l'utilisateur dispose déjà de cette autorisation, il n'a donc pas besoin de remplir les éléments de données obligatoires avant la sauvegarde et 
+> l'étoile rouge ne sera pas affichée à côté de l'étiquette de l'élément de données. Notez que les super-utilisateurs qui ont l'autorisation __"TOUT "__ disposent automatiquement 
+> cette autorisation.
+
+## Modifier un événement { #event_capture_edit_event } 
+
+1.  Ouvrez l'application **Saisie d'évènements**.
+
+2.  Sélectionnez une unité d'organisation.
+
+3.  Sélectionnez un programme.
+
+    Tous les événements inscrits au programme sélectionné apparaissent dans une liste.
+
+4.  Cliquez sur l'événement que vous souhaitez modifier et sélectionnez **Modifier**.
+
+5.  Modifiez les détails de l'événement et cliquez sur **Mettre à jour**.
+
+## Modifier les événements dans la grille { #event_capture_edit_event_grid } 
+
+La fonction **Modifier dans la grille** permet de modifier un événement sélectionné dans 
+le tableau mais uniquement les colonnes (éléments de données) visibles dans la grille. Si 
+vous avez besoin de plus de colonnes, utilisez la fonction **Afficher/masquer les colonnes** pour spécifier quelles 
+colonnes doivent être affichées dans la liste.
+
+1.  Ouvrez l'application **Saisie d'évènements**.
+
+2.  Sélectionnez une unité d'organisation.
+
+3.  Sélectionnez un programme.
+
+    Tous les événements inscrits au programme sélectionné apparaissent dans une liste.
+
+4.  Cliquez sur l'événement que vous souhaitez modifier et sélectionnez **Modifier dans la grille**.
+
+5.  Modifiez les détails de l'événement.
+
+6.  Cliquez sur un autre événement pour fermer le mode d'édition.
+
+## Partager des événements en mode édition { #event_capture_share_event_edit_mode } 
+
+Vous pouvez partager un événement en mode édition via son adresse web.
+
+1.  Ouvrez l'application **Saisie d'évènements**.
+
+2.  Ouvrez l'événement que vous souhaitez partager en mode édition.
+
+3.  Copiez l'URL.
+
+    Assurez-vous que l'URL contient les paramètres "Evénement" et "UO" (unité 
+    d'organisation).
+
+4.  Collez l'URL dans la méthode de partage de votre choix, 
+    par exemple un e-mail ou un message dans DHIS2.
+
+    Si vous n'êtes pas connecté à DHIS2 lorsque vous cliquez sur le lien, il vous sera 
+    demandé de le faire, c'est-à-die de vous connecter. Vous serez ensuite dirigé vers le tableau de bord.
+
+## Voir l'historique de l'audit d'un événement { #event_capture_view_event_audit_history } 
+
+1.  Ouvrez l'application **Saisie d'évènements**.
+
+2.  Sélectionnez une unité d'organisation.
+
+3.  Sélectionnez un programme.
+
+    Tous les événements inscrits au programme sélectionné apparaissent dans une liste.
+
+4.  Cliquez sur un événement et sélectionnez **Historique d'audits**.
+
+## Supprimer un événement { #event_capture_delete_event } 
+
+1.  Ouvrez l'application **Saisie d'évènements**.
+
+2.  Sélectionnez une unité d'organisation.
+
+3.  Sélectionnez un programme.
+
+    Tous les événements inscrits au programme sélectionné apparaissent dans une liste.
+
+4.  Cliquez sur un événement et sélectionnez **Supprimer**.
+
+5.  Cliquez sur **Supprimer** pour confirmer la suppression.
+
+## Modifier la mise en page d'une liste d'événements { #event_capture_modify_event_list_layout } 
+
+Vous pouvez sélectionner les colonnes à afficher ou à masquer dans une liste d'événements. Cela peut 
+être utile par exemple lorsque vous avez une longue liste d'éléments de données 
+affectés à une étape du programme. Une fois que vous avez modifié la mise en page, elle est enregistrée 
+dans votre profil d'utilisateur. Vous pouvez avoir différentes mises en page pour différents 
+programmes.
+
+1.  Ouvrez l'application **Saisie d'évènements**.
+
+2.  Sélectionnez une unité d'organisation.
+
+3.  Sélectionnez un programme.
+
+    Tous les événements inscrits au programme sélectionné apparaissent dans une liste.
+
+4.  Cliquez sur l'icône **Afficher/masquer les colonnes**.
+
+5.  Sélectionnez les colonnes que vous souhaitez afficher et cliquez sur **Fermer**.
+
+## Imprimer une liste d'événements { #event_capture_print_event_list } 
+
+1.  Ouvrez l'application **Saisie d'évènements**.
+
+2.  Sélectionnez une unité d'organisation.
+
+3.  Sélectionnez un programme.
+
+    Tous les événements inscrits au programme sélectionné apparaissent dans une liste.
+
+4.  Cliquez sur **Imprimer la liste**.
+
+## Télécharger une liste d'événements { #event_capture_download_event_list } 
+
+1.  Ouvrez l'application **Saisie d'évènements**.
+
+2.  Sélectionnez une unité d'organisation.
+
+3.  Sélectionnez un programme.
+
+    Tous les événements inscrits au programme sélectionné apparaissent dans une liste.
+
+4.  Cliquez sur l'icône **Télécharger** et sélectionnez un format.
+
+    Vous pouvez télécharger une liste d'événements aux formats XML, JSON ou CSV.
+

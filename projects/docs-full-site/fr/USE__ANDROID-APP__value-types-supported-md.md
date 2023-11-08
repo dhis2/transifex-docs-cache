@@ -1,0 +1,49 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-docs/blob/main/content/capture-app/value-types-supported.md"
+revision_date: '2023-05-31'
+tags:
+- Utilisation
+---
+
+# Types de valeur pris en charge { #capture_app_value_types }
+
+Vous trouverez ci-dessous une liste complète de tous les types de valeurs disponibles dans DHIS 2, ainsi que des remarques sur leur mise en œuvre ou non dans l'application de saisie Android.
+
+Tout problème lié à l'utilisation d'une fonctionnalité particulière avec Android est signalé par un point d'exclamation\!.
+
+|Légende|Description|
+| :-: | :------ |
+| ![](/en/resources/images/admin/icon-complete.png) | Type de valeur mis en œuvre |
+| ![](/en/resources/images/admin/icon-incomplete.png) | Type de valeur non appliqué, mais ignoré en toute sécurité (s'il n'est pas obligatoire) |
+| ![](/en/resources/images/admin/icon-wip.png) | Travail en cours. Fonctionnalité pas encore totalement développée ou dont le fonctionnement inattendu a déjà été signalé. |
+
+
+| Type de valeur | Description du type de valeur | Programme avec inscription | Programme avec inscription | Programme sans inscription | Ensemble de données| Notes relatives à la mise en œuvre |
+| :--| :----|:-:|:-:|:-:|:-:|:--|
+| | | **Attributs** | **Éléments de données** | **Éléments de données** | **Éléments de données** | |
+| Heure | Heure uniquement | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) |![](/en/resources/images/admin/icon-complete.png) | |
+| Date & heure | Date et heure | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png)| |
+| Date | Date uniquement | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | |
+| Âge | Permet de saisir soit un âge en années/mois/jours, soit une date de naissance (les deux sont stockés sous forme de date de naissance). | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) |![](/en/resources/images/admin/icon-complete.png) | |
+| Numéro de téléphone | Numéro de téléphone valide | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) |![](/en/resources/images/admin/icon-complete.png) | |
+| Adresses électronique | Une adresse électronique sous un format valide | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) |![](/en/resources/images/admin/icon-complete.png) | |
+| oui/non | Booléen oui/non (ou pas de réponse) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png)| |
+| Oui uniquement | réponse de oui ou non | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png)| |
+| Nombre | tout nombre valid y compris les décimaux | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png)| |
+| Entier | Tout entier (nombres entiers, sans décimales) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png)| |
+| Entier positif | Uniquement des entiers positifs (pas de zéro ni de valeurs négatives) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png)| |
+| Entier positif ou zéro | Uniquement zéro ou des entiers positifs (pas de valeurs négatives) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png)| |
+| Entier négatif | Uniquement des entiers négatifs (pas de zéro ni de valeurs positives) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) |![](/en/resources/images/admin/icon-complete.png) | |
+| Pourcentage | Toute valeur décimale comprise entre 0 et 100 | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png)| |
+| Intervalle unité | Toute valeur décimale comprise entre 0 et 1 | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) |![](/en/resources/images/admin/icon-complete.png) | |
+| Texte | Texte (longueur du texte pouvant atteindre 50 000 caractères) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) |![](/en/resources/images/admin/icon-complete.png) | |
+| Texte long | Texte (aucune contrainte quant à la longueur) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) |![](/en/resources/images/admin/icon-complete.png) | |
+| Lettre | Une seule lettre | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png)| |
+| Fichier | Permet de télécharger des fichiers dans différents formats (nécessite la configuration d'un espace de stockage approprié) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-incomplete.png) | |
+| Unité d’organisation | Permet la sélection d'une unité d'organisation DHIS2 comme valeur choisie | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) |  ![](/en/resources/images/admin/icon-incomplete.png)| |
+| Chargé de suivi | Permet de sélectionner une instance existante, "instance d'entité suivie" (par exemple une personne) comme valeur. | ![](/en/resources/images/admin/icon-incomplete.png) | ![](/en/resources/images/admin/icon-incomplete.png) | ![](/en/resources/images/admin/icon-incomplete.png) | ![](/en/resources/images/admin/icon-incomplete.png) | |
+| Nom d'utilisateur | Permet la sélection d'un nom d'utilisateur valide de DHIS2 comme valeur | ![](/en/resources/images/admin/icon-wip.png) | ![](/en/resources/images/admin/icon-wip.png) | ![](/en/resources/images/admin/icon-wip.png) |  ![](/en/resources/images/admin/icon-incomplete.png) | |
+| Coordonnée | Permet la saisie manuelle des coordonnées géographiques (ne permet pas la saisie automatique des coordonnées) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png)| |
+| URL | Permet la saisie manuelle d'un URL. | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) |![](/en/resources/images/admin/icon-complete.png) | |
+| Image | Permet le chargement des images. | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-complete.png) | ![](/en/resources/images/admin/icon-incomplete.png) | |
+

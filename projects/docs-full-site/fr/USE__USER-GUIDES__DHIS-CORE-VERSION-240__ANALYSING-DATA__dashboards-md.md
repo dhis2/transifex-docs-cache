@@ -1,0 +1,323 @@
+---
+edit_url: "https://github.com/dhis2/dashboard-app/blob/master/docs/dashboards.md"
+revision_date: '2023-06-09'
+tags:
+- DHIS Version 2.40
+- Utilisation
+---
+
+# Gérer les tableaux de bord { #dashboard }
+
+## À propos de l'application Tableaux de bord { #about-the-dashboards-app } 
+
+L'application Tableaux de bord permet de présenter une vue d'ensemble de vos données, notamment en affichant des objets analytiques tels que les cartes, les graphiques, les rapports et les tableaux, mais aussi des informations textuelles, des liens vers des ressources et des widgets d'application.
+
+Les caractéristiques de l'application Tableaux de bord sont :
+
+-   Afficher et imprimer les tableaux de bord
+-   Créer et éditer les tableaux de bord
+-   Partager les tableaux de bord avec les utilisateurs et groupe d'utilisateurs
+-   Appliquer des filtres temporaires lors de la visualisation des tableaux de bord
+-   Affichage adapté aux appareils mobiles et aux écrans de petite taille
+-   Accéder aux tableaux de bord hors ligne
+
+## Présentation de l'application Tableaux de bord { #dashboards_setup }
+
+Les tableaux de bord ont un titre, une description et un nombre indéfini d'éléments. Au-dessus du tableau de bord se trouve la barre des tableaux de bord, qui affiche tous les tableaux de bord disponibles, un champ de recherche de tableau de bord et un bouton **+** pour créer un nouveau tableau de bord.
+
+L'application Tableaux de bord comporte deux modes : _visualiser_ et _éditer/créer_. Lorsque vous vous connectez initialement au DHIS2, votre tableau de bord le plus récent s'affiche en mode visualisation, si vous êtes sur le même ordinateur que précédemment. Si vous utilisez un autre ordinateur ou un autre navigateur,  le premier tableau de bord étoilé  s'affiche. S'il n'y a pas de tableau de bord étoilé, le premier tableau de bord (par ordre alphabétique) s'affiche. Les tableaux de bord étoilés s'affichent toujours en premier dans la liste des tableaux de bord.
+
+Vous trouverez ci-dessous un exemple de tableau de bord intitulé "Soin prénatal", qui a été renseigné à l'aide de graphiques et de cartes :
+
+![](resources/images/dashboard-view-mode.png)
+
+### Personnalisation { #personalization } 
+
+L'application Tableaux de bord peut être personnalisée de la façon suivante :
+
+-   [Définir la hauteur de la barre des tableaux de bord](#tableaux de bord_personnaliser_barre)
+-   [Les tableaux de bord étoilés pour un accès rapide à vos tableaux de bord favoris](#tableaux de bord-étoiles-tableaux de bord)
+-   [Afficher ou masquer la description du tableau de bord](#tableau de bord-afficher-description)
+
+### Affichage adapté aux écrans de petite taille  { #responsive-view-on-small-screens } 
+
+Lors de la visualisation de tableaux de bord sur de petits écrans (par exemple, en orientation portrait sur un téléphone portable), le tableau de bord s'adaptera à l'écran et affichera tous les éléments dans une seule colonne. Certaines options, notamment l'édition, le filtrage et le partage, ne seront pas disponibles.
+
+![](resources/images/dashboard-small-screen.png)
+
+### Rechercher un tableau de bord { #searching-for-a-dashboard } 
+
+Vous pouvez rechercher un tableau de bord spécifique en utilisant le champ de recherche situé en haut à gauche de la barre des tableaux de bord et intitulé "Rechercher un tableau de bord". La recherche ne tient pas compte des majuscules et, au fur et à mesure que vous saisissez votre texte, la liste des tableaux de bord se réduit à ceux qui correspondent à votre recherche.
+
+![](resources/images/dashboard-search-for-dashboard.png)
+
+### Personnalisation de la hauteur de la barre des tableaux de bord { #dashboards_personalize_bar }
+
+Vous pouvez définir une taille spécifique de la barre de contrôle des tableaux de bord en 
+cliquant dessus et en faisant glisser le bord inférieur. Lorsque vous relachez la souris, la nouvelle taille sera définie. En cliquant sur la flèche vers le bas au niveau de la barre des tableaux de bord, la barre de contrôle s'étendra à sa hauteur maximale  (10 "rangées"). En cliquant sur la flèche vers le haut, la taille sera réinitialisée à celle que vous avez personnalisée.
+
+## Créer et modifier un tableau de bord { #creating-and-editing-a-dashboard } 
+
+Pour créer un nouveau tableau de bord, cliquez sur le bouton **+** dans le coin gauche de la barre des tableaux de bord pour passer en mode création/édition
+
+![](resources/images/dashboard-new-button.png)
+
+Pour modifier un tableau de bord existant, cliquez sur le bouton **Modifier** à côté du titre du tableau de bord (vous devez avoir accès à la fonction de modification pour voir ce bouton) :
+
+![](resources/images/dashboard-title-bar.png)
+
+En mode création/édition, vous pouvez ajouter ou modifier le titre du tableau de bord, la description et les éléments du tableau de bord. Si vous ne donnez pas de titre, le tableau de bord sera automatiquement intitulé "Tableau de bord sans titre".
+
+![](resources/images/dashboard-create-mode.png)
+
+### Ajouter des éléments au tableau de bord { #adding-items-to-the-dashboard } 
+
+Ajoutez des éléments au tableau de bord en recherchant des éléments à l'aide du menu **Recherche d'éléments à ajouter à ce tableau de bord**. Les types d'éléments possibles sont :
+
+-   Visualisation (graphiques et tableaux)
+-   Cartes
+-   Rapports d'évènements
+-   Graphiques d'évènements
+-   Rapports
+-   Ressources
+-   Applications
+-   Messages
+-   Zones de texte
+-   Éléments d'espacement
+
+![](resources/images/dashboard-item-selector.png)
+
+La liste des éléments de la barre de menu déroulante affiche d'abord 10 visualisations (graphiques et tableaux) et 5 éléments de chacune des autres catégories, en fonction du texte de recherche que vous avez saisi. Les messages (e-mail), les zones de texte et les éléments d'espacement figurent également dans la liste. Pour afficher plus d'éléments, cliquez sur **Afficher plus**, et la liste pour ce type d'élément sera étendue à 25 éléments. Si vous ne trouvez toujours pas l'élément souhaité, essayez de taper un texte de recherche plus spécifique.
+
+#### Mise en page du tableau de bord et insertion de nouveaux éléments  { #dashboard-layout-and-placement-of-new-items } 
+
+Lorsque vous ajoutez des éléments au tableau de bord, vous pouvez choisir une mise en page générale en cliquant sur le bouton **Modifier la mise en page**. Vous pouvez modifier cette mise en page à tout moment.
+
+-   Avec la mise en page _Freeflow_, les éléments ajoutés peuvent être déplacés à l'aide de la souris en cliquant sur l'élément et en le faisant glisser jusqu'à la position souhaitée. Les éléments peuvent également être redimensionnés à l'aide de la souris en cliquant sur la poignée de déplacement située dans le coin inférieur droit de l'élément et en le faisant glisser pour lui donner la taille souhaitée.
+-   Avec la mise en page _Colonnes fixes_, vous pouvez choisir le nombre de colonnes que vous souhaitez voir apparaître sur le tableau de bord, et le tableau de bord sera automatiquement mis en page pour vous. Les éléments ne peuvent pas être déplacés ou redimensionnés dans la mise en page _Colonnes fixes_.
+
+![](resources/images/dashboard-layout-modal.png)
+
+Vous pouvez également décider si les éléments nouvellement ajoutés sont automatiquement placés au début ou à la fin du tableau de bord en choisissant l'option souhaitée. Cette option peut être modifiée à tout moment.
+
+![](resources/images/dashboard-place-items.png)
+
+#### Eléments d'espacement { #spacer-items } 
+
+Lorsque vous ajoutez des éléments au tableau de bord en utilisant la mise en page _Freeflow_, ils " remontent " vers le haut jusqu'à ce qu'ils se heurtent à un autre élément. Afin de forcer un espace vertical vide entre les éléments (comme une ligne vide), vous pouvez ajouter des éléments d'espacement au tableau de bord. Ils ne sont visibles qu'en mode édition/création. En mode affichage, ils ne sont pas affichés, mais occupent l'espace défini.
+
+**Elément d'espacement en mode édition/création** :
+
+![](resources/images/dashboard-spacer-edit-mode.png)
+
+Elément d'espacement en **mode visualisation** :
+
+![](resources/images/dashboard-spacer-view-mode.png)
+
+#### Supprimer des éléments { #removing-items } 
+
+Supprimez des éléments en cliquant sur la corbeille rouge située en haut à droite de l'élément. Sachez que lorsque vous supprimez un élément dans la mise en page _Freeflow_, les éléments qui se trouvent sous l'élément supprimé "remontent" jusqu'à ce qu'ils se heurtent à un élément situé au-dessus.
+
+### Tâches dans le mode création/modification { #actions-in-createedit-mode } 
+
+En mode création/édition, vous verrez les boutons suivants dans la barre de tâches en haut de la page : **Enregistrer les modifications**, **Imprimer l'aperçu**, **Paramètres de filtrage**, **Traduire**, **Supprimer** et **Quitter sans enregistrer**. Les boutons **Traduire** et **Supprimer** ne s'affichent que si vous modifiez un tableau de bord existant.
+
+![](resources/images/dashboard-edit-mode-actions.png)
+
+### Sauvegarder le tableau de bord { #saving-the-dashboard } 
+
+Lors de la création ou de la modification d'un tableau de bord, les changements sont enregistrés lorsque vous cliquez sur le bouton **Enregistrer les changements**. Si vous ne souhaitez pas enregistrer vos modifications, cliquez sur le bouton **Quitter sans enregistrer**. Vous reviendrez alors en mode visualisation dans le tableau de bord que vous étiez en train de consulter. 
+
+### Aperçu avant impression { #print-preview } 
+
+Cliquez sur le bouton **Aperçu avant impression** pour voir à quoi ressemblera le tableau de bord lorsqu'il sera imprimé avec l'option [Mise en page du tableau de bord]( #tableau de bord-impression-mise en page).
+
+![](resources/images/dashboard-edit-print-preview.png)
+
+Cliquez sur **Quitter l'aperçu avant impression** pour revenir à l'édition du tableau de bord.
+
+Notons que certains éléments peuvent être déplacés vers la page suivante afin d'éviter d'être répartis sur deux pages. Les éléments peuvent également être raccourcis pour tenir sur une seule page. Les éléments raccourcis affichent une icône d'information dans le coin supérieur droit de l'élément dans l'aperçu. L'icône d'information n'est pas visible dans l'impression réelle.
+
+### Restriction des filtres du tableau de bord { #restricting-dashboard-filters }
+
+Par défaut, les utilisateurs pourront filtrer les éléments du tableau de bord en fonction de n'importe quelle dimension définie dans l'instance DHIS2. Les paramètres de filtrage du tableau de bord peuvent être modifiés dans un tableau de bord en cliquant sur **Paramètres de filtrage**.
+
+Pour restreindre les filtres disponibles, vous pouvez cliquer sur **Autoriser uniquement le filtrage selon les dimensions sélectionnées** et sélectionner les filtres que vous souhaitez autoriser sur le tableau de bord. La période et l'unité d'organisation sont sélectionnées par défaut, mais peuvent être supprimées si vous le souhaitez. Lorsque le tableau de bord est affiché, les utilisateurs ne peuvent choisir que parmi les filtres sélectionnés.
+
+![](resources/images/dashboard-filter-settings.png)
+
+Pour enregistrer les mises à jour des paramètres du filtre, vous devez d'abord cliquer sur **Confirmer** pour fermer la boîte de dialogue Paramètres du filtre, puis cliquer sur **Enregistrer les modifications** pour enregistrer les modifications du tableau de bord.
+
+![](resources/images/dashboard-save-changes.png)
+
+### Traduire le titre et la description du tableau de bord { #translating-dashboard-title-and-description } 
+
+Si vous modifiez un tableau de bord existant, un bouton **Traduire** apparaît. Cliquez sur ce bouton pour ouvrir la boîte de dialogue Traduction, qui fournit une liste des langues vers lesquelles il est possible de traduire, et qui affiche le titre original du tableau de bord sous le champ de saisie du nom. Choisissez d'abord la langue dans laquelle vous souhaitez traduire, puis remplissez le nom du tableau de bord et la description de la traduction.
+
+![](resources/images/dashboard-translation-dialog.png)
+
+### Supprimer un tableau de bord { #deleting-a-dashboard } 
+
+Si vous êtes autorisé à supprimer le tableau de bord, un bouton **Supprimer** s'affiche. Lorsque vous cliquez sur le bouton **Supprimer**, une boîte de dialogue de confirmation s'affiche en premier pour confirmer que vous souhaitez supprimer le tableau de bord.
+
+![](resources/images/dashboard-confirm-delete.png)
+
+## Afficher un tableau de bord { #viewing-a-dashboard } 
+
+En mode affichage, vous pouvez afficher la description, créer un tableau de bord, appliquer des filtres, imprimer le tableau de bord, le rendre disponible hors ligne et le partager avec d'autres utilisateurs et groupes d'utilisateurs.
+
+![](resources/images/dashboard-more-menu.png)
+
+### Afficher la description { #dashboard-show-description }
+
+Pour basculer vers la description, ouvrez le menu **...Plus** et choisissez **Afficher la description** (ou **Masquer la description**). Ce paramètre sera mémorisé pour tous les tableaux de bord que vous ouvrirez. Ce paramètre est uniquement valable pour vous, pas pour les autres utilisateurs.
+
+### Les tableaux de bord étoilés { #dashboard-star-dashboard }
+
+Vos tableaux de bord étoilés sont affichés en premier dans la liste des tableaux de bord pour un accès rapide. Pour ajouter une étoile à un tableau de bord, cliquez sur le bouton étoile à droite du titre. Vous pouvez également faire basculer l'étoile à partir du menu **...Plus**. Lorsque l'étoile est "remplie", cela signifie que le tableau de bord est étoilé. L'attribution d'une étoile à un tableau de bord ne concerne que vous, et non les autres utilisateurs.
+
+### Filtrer un tableau de bord { #filtering-a-dashboard } 
+
+L'utilisation de filtres dans un tableau de bord modifie les données affichées dans les éléments du tableau de bord contenant des visualisations. Les filtres sont utilisés pour chaque élément du tableau de bord de la même manière : chaque filtre ajouté remplace la valeur originale de cette dimension dans le graphique, le tableau ou la carte d'origine. Il est possible de filtrer les unités d'organisation et les périodes, ainsi que les dimensions dynamiques, en fonction de l'instance DHIS2. Vous pouvez utiliser plusieurs filtres dans le tableau de bord.
+
+Pour ajouter un filtre, cliquez sur le bouton **Ajouter un filtre** et choisissez une dimension :
+
+![Ajouter un filtre](resources/images/dashboard-filters.png)
+
+Une boîte de dialogue s'ouvre et permet de sélectionner le filtre.
+
+![Sélectionner le filtre de l'unité d'organisation](resources/images/dashboard-orgunit-filter-dialog.png)
+
+Cliquez sur **Confirmer** dans la boîte de dialogue pour appliquer le filtre au 
+tableau de bord actuel.
+
+Les filtres ne sont pas stockés, ils sont donc réinitialisés lorsque l'on passe à un autre tableau de bord. Des badges de filtre de couleur noire apparaissent au-dessus des éléments du tableau de bord pour indiquer quels filtres ont été appliqués aux visualisations du tableau de bord.
+
+![Les filtres actuels sont affichés sous forme de badges au-dessus du tableau de bord](resources/images/dashboard-filter-badges.png)
+
+Vous pouvez modifier un filtre en cliquant sur le badge du filtre pour ouvrir la boîte de dialogue de sélection du filtre. Un filtre peut être supprimé en cliquant sur le bouton **Supprimer** du badge. À chaque ajout, modification ou suppression d'un filtre, les éléments du tableau de bord se rechargent pour afficher les données mises à jour. Les badges de filtre sont toujours visibles en haut de la page lorsque l'on fait défiler le contenu du tableau de bord.
+
+Par défaut, les utilisateurs peuvent filtrer les éléments du tableau de bord en fonction de n'importe quelle dimension définie dans l'instance DHIS2. Pour limiter les filtres disponibles, voir [Restreindre les filtres du tableau de bord](#restrindre-tableau de bord-filtres).
+
+### Rendre les tableaux de bord disponibles hors ligne { #making-dashboards-available-offline } 
+
+Afin de mettre un tableau de bord à disposition hors ligne, choisissez l'option **Mettre le tableau de bord à disposition hors ligne** dans le menu **...Plus**. Le tableau de bord sera alors rechargé et les requêtes adressées au serveur seront enregistrées et sauvegardées dans la mémoire du navigateur. Notez que les tableaux de bord hors ligne ne sont disponibles que sur l'ordinateur et le navigateur où vous les avez mis hors ligne. Si vous avez appliqué un filtre lorsque vous avez demandé que le tableau de bord soit disponible hors ligne, une boîte de dialogue s'affichera pour confirmer la suppression des filtres.
+
+![](resources/images/dashboard-clear-filters-to-sync.png)
+
+Les tableaux de bord qui ont été sauvegardés hors ligne ont un indicateur sur la puce du tableau de bord dans la barre des tableaux de bord, ainsi qu'une étiquette indiquant l'heure à laquelle ils ont été sauvegardés.
+
+![](resources/images/dashboard-offline-dashboard.png)
+
+Si le tableau de bord a été modifié depuis que vous l'avez rendu disponible hors ligne, que ce soit par vous ou par quelqu'un d'autre, vous devez choisir **Synchroniser les données hors ligne maintenant** dans le menu **...Plus** pour enregistrer la dernière version du tableau de bord.
+
+![](resources/images/dashboard-sync-offline.png)
+
+Vous pouvez supprimer un tableau de bord du stockage hors ligne en sélectionnant **Supprimer du stockage hors ligne** dans le menu **...Plus**.
+
+![](resources/images/dashboard-remove-offline.png)
+
+#### Autres informations sur l'application Tableaux de bord lorsque vous êtes hors ligne : { #other-notes-about-dashboards-app-when-you-are-offline } 
+
+Si vous vous déconnectez manuellement de l'instance DHIS2, tous les tableaux de bord placés dans le cache seront effacés et ne seront plus disponibles hors ligne.
+
+Si vous êtes hors ligne, tous les boutons ou actions qui nécessitent une connexion pour aboutir sont désactivés. Ils seront réactivés dès que la connexion sera rétablie.
+
+### Impression du tableau de bord { #printing-a-dashboard } 
+
+Le menu **... Plus** permet d'imprimer le tableau de bord en cours d'utilisation. Il existe deux styles d'impression du tableau de bord : _Mise en page du tableau de bord_ et _Un élément par page_. Pour les deux styles, une page de titre est ajoutée qui affiche le titre du tableau de bord, la description (si le paramètre _Afficher la description_ est activé) et tous les filtres de tableau de bord utilisés.
+
+![](resources/images/dashboard-print-menu.png)
+
+Pour de meilleurs résultats lors de l'impression :
+
+-   utilisez Chrome ou Edge
+-   attendez que tous les éléments du tableau de bord soient chargés avant d'imprimer
+-   utiliser le format A4 paysage avec les marges par défaut et les graphiques en arrière-plan activés
+
+#### Imprimer la mise en page du tableau de bord { #dashboard-print-layout }
+
+L'impression de la _Mise en page du tableau de bord_ se rapproche de la mise en page du tableau de bord telle que affichée dans le navigateur. Notez que certains ajustements doivent être apportés à la mise en page afin d'éviter que des éléments ne soient répartis sur plusieurs pages : les éléments qui seraient coupés par un saut de page sont déplacés sur la page suivante, et les éléments qui sont plus longs qu'une page sont raccourcis pour tenir sur une seule page.
+
+Une fois en mode impression, cliquez sur le bouton **Imprimer** en haut à droite pour activer la fonctionnalité d'impression du navigateur.
+
+![](resources/images/dashboard-print-layout.png)
+
+#### Imprimer un élément par page { #print-one-item-per-page } 
+
+Ce type d'impression permet d'imprimer chaque élément du tableau de bord sur une page distincte, ce qui optimise l'utilisation du format papier.
+
+Cliquez sur le bouton **Imprimer** dans le coin supérieur droit pour lancer la fonction d'impression du navigateur.
+
+![](resources/images/dashboard-print-oipp.png)
+
+## Éléments du tableau de bord contenant des graphiques, des tableaux croisés dynamiques ou des cartes{ #dashboard-items-with-charts-pivot-tables-or-maps } 
+
+Les éléments du tableau de bord comportant des graphiques, des tableaux croisés dynamiques ou des cartes peuvent avoir un bouton de menu dans le coin supérieur droit de l'élément avec des options d'affichage supplémentaires, en fonction des paramètres du système qui ont été configurés pour l'instance DHIS2. Si tous les paramètres système concernés ont été désactivés par l'instance DHIS2, il n'y aura pas de bouton de menu de l'élément. Voici les options de menu possibles pour les éléments :
+
+### Basculer entre les visualisations { #switching-between-visualizations } 
+
+Il est possible de basculer l'affichage de la visualisation pour les éléments contenant des graphiques, des tableaux croisés dynamiques et des cartes. Cliquez sur le bouton de menu de l'élément et choisissez l'affichage souhaitée ( par exemple, **Afficher comme un tableau**, **Afficher comme une carte**, **Afficher comme un graphique**) :
+
+![](resources/images/dashboard-item-menu.png)
+
+### Afficher l'élément en plein écran { #view-item-in-fullscreen } 
+
+Pour afficher le graphique, le tableau ou la carte en plein écran, cliquez sur l'option **Afficher en plein écran**. Pour quitter le plein écran, vous pouvez soit appuyer sur la touche **esc**, soit cliquer sur le bouton de sortie situé dans le coin supérieur droit de l'affichage en plein écran.
+
+### Ouvrir dans l'application { #open-in-app } 
+
+Pour ouvrir la visualisation dans l'application correspondante (par exemple, Visualiseur de données, Cartes), cliquez sur l'option **Ouvrir dans l'application [nom de l'application]**.
+
+### Afficher les interprétations et les détails { #show-interpretations-and-details } 
+
+Vous pouvez écrire des interprétations pour les graphiques, les tableaux croisés dynamiques, les cartes, les rapports d'événements et les éléments des graphiques en cliquant sur **Afficher les interprétations et les détails** :
+
+![](resources/images/dashboard-item-menu-interpretations.png)
+
+L'élément sera développé verticalement en dessous pour montrer la description, les interprétations et les réponses. Vous pouvez aimer une interprétation, répondre à une interprétation et ajouter votre propre interprétation. Vous pouvez modifier, partager ou supprimer vos propres interprétations et réponses, et si vous avez le statut de modérateur, vous pouvez supprimer les interprétations des autres.
+
+Il est possible de formater le champ de description, et les interprétations avec **gras**, _italique_ en utilisant les marqueurs de style Markdown \* et \_ pour **gras** et _italique_ respectivement. Le champ de texte pour la rédaction de nouvelles interprétations est doté d'une barre d'outils pour l'ajout de texte enrichi. Des raccourcis clavier sont également disponibles : Ctrl/Cmd + B et Ctrl/Cmd + I. Un ensemble limité de smileys est pris en charge et peut être utilisé en tapant l'une des combinaisons de caractères suivantes : :) :-) :( :-( :+1 :-1. Les URL sont automatiquement détectées et converties en un lien cliquable.
+
+Les interprétations sont classées par ordre décroissant de date, la plus récente étant indiquée en haut. Les réponses aux interprétations sont classées par ordre croissant de date, la plus ancienne étant indiquée en haut.
+
+![](resources/images/dashboard-interpretations.png)
+
+## Partager un tableau de bord { #dashboard_sharing }
+
+Pour partager un tableau de bord avec des utilisateurs et des groupes d'utilisateurs, cliquez sur le bouton **Partager** à droite du titre du tableau de bord pour afficher la boîte de dialogue _Partage et accès_.
+
+![](resources/images/dashboard-sharing-dialog.png)
+
+Il existe trois niveaux d'autorisation de partage pour un tableau de bord :
+
+-   Pas d'accès
+
+    L'utilisateur ou le groupe d'utilisateurs ne peut ni consulter ni modifier le tableau de bord. S'il essaie d'accéder au tableau de bord avec l'adresse URL, l'application Tableaux de bord affichera le message "Requested dashboard not found" (tableau de bord demandé introuvable).
+
+-   Affichage uniquement
+
+    L'utilisateur ou le groupe d'utilisateurs peut visualiser le tableau de bord mais ne peut pas le modifier
+
+-   Affichage et édition
+
+    L'utilisateur ou le groupe d'utilisateurs peut visualiser et modifier le tableau de bord. Ce niveau de partage permet tous types de changements, notamment la modification de la mise en page, le redimensionnement et la suppression d'éléments, le renommage et la suppression du tableau de bord, etc.
+
+Tous les tableaux de bord ont le groupe _Tous les utilisateurs_ réglé sur **Pas d'accès** par défaut. Le groupe _Tous les utilisateurs_ comprend tous les utilisateurs connectés.
+
+### Ajouter des utilisateurs et des groupes d'utilisateurs  { #add-users-and-user-groups } 
+
+Pour partager un tableau de bord avec des utilisateurs et des groupes d'utilisateurs spécifiques, saisissez le nom dans le champ de saisie, choisissez le niveau d'accès souhaité et cliquez sur **Accéder**.
+
+![](resources/images/dashboard-sharing-add-user.png)
+
+Vous pouvez fournir aux utilisateurs l'url du tableau de bord, ce qui leur permet de naviguer directement dans le tableau de bord. Pour obtenir l'url du tableau de bord, il suffit d'ouvrir le tableau de bord en mode affichage et de copier l'url du navigateur. Par exemple, l'url du tableau de bord Soins prénataux dans play.dhis2.org/dev est la suivante :
+
+https://play.dhis2.org/dev/dhis-web-dashboard/#/nghVC4wtyzi
+
+### Partage en cascade des visualisations sur le tableau de bord { #cascade-sharing-of-visualizations-on-the-dashboard } 
+
+Pour s'assurer que tous les graphiques, cartes et tableaux du tableau de bord sont partagés avec les utilisateurs et groupes d'utilisateurs sélectionnés, cliquez sur le bouton **Appliquer le partage aux éléments du tableau de bord**.
+
+![](resources/images/dashboard-sharing-cascade-sharing.png)
+

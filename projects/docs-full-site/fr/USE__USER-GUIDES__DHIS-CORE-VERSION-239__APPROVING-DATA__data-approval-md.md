@@ -1,0 +1,428 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.39/src/user/data-approval.md"
+revision_date: '2021-11-04'
+tags:
+- DHIS version 2.39
+- Utilisation
+---
+
+# Aperçu de la validation des données { #data_approval_overview } 
+
+Le DHIS2 dispose d'une fonctionnalité optionnelle qui permet aux utilisateurs autorisés d'approuver 
+les données saisies. Elle permet d'examiner et d'approuver les données à des niveaux 
+sélectionnés dans la hiérarchie des unités d'organisation, de sorte que l'approbation 
+suit la structure de la hiérarchie des niveaux inférieurs aux niveaux 
+upérieurs.
+
+Les données sont approuvées pour une combinaison de (a) période, (b) unité organisationnelle 
+et (c) flux de travail. Les données peuvent être approuvées pour l'unité d'organisation pour 
+laquelle elles sont saisies, ainsi que pour les unités d'organisation de niveau supérieur 
+auxquelles les données sont agrégées. Dans le cadre des paramètres du système, vous pouvez choisir 
+le(s) niveau(x) de l'unité d'organisation auquel(s) les données sont approuvées. Les données 
+ne peuvent être approuvées à des niveaux supérieurs qu'après avoir été approuvées pour tous 
+les descendants de cette unité d'organisation à des niveaux inférieurs pour le même flux de travail 
+et la même période. Lorsque vous approuvez un flux de travail, il approuve à son tour les données 
+pour tous les ensembles de données qui lui ont été affectés.
+
+Après l'approbation d'une combinaison de période, d'unité d'organisation et de flux de 
+travail, les ensembles de données associés à ce flux de travail seront verrouillés pour 
+cette période et cette unité d'organisation, et toute autre saisie ou 
+modification de données sera interdite sauf si elle n'a pas été approuvée au préalable.
+
+Par exemple, le diagramme suivant illustre que les données ont déjà été 
+approuvées pour les unités d'organisation C et D, pour une période et 
+un flux de travail donnés. Elles peuvent maintenant être approuvées pour l'unité d'organisation B pour la même 
+période et le même flux de travail. Mais elles ne sont pas prêtes à être approuvées pour l'unité 
+d'organisation A. Pour pouvoir être approuvées pour l'unité d'organisation A, elles doivent 
+être approuvées pour B, et pour tout autre enfant de l'unité d'organisation A, pour 
+cette période et ce flux de travail.
+
+![Validation au niveau des unités
+d'organisation](resources/images/data_approval/approval_hierarchy.png){.largeur du centre = 50 %. }
+
+## Approuver et accepter { #data_approvals_approving_accepting } 
+
+Le DHIS2 prend en charge deux types de processus d'approbation différents : soit un 
+processus en une étape où les données sont approuvées à chaque niveau, soit un processus en deux étapes 
+où les données sont d'abord approuvées puis acceptées à chaque niveau. 
+Ceci est illustré dans le diagramme suivant :
+
+![Approbation et
+acceptation](resources/images/data_approval/approval_level_steps.png){.largeur du centre=69% }
+
+Dans le processus en une seule étape, les données sont approuvées à un niveau, puis 
+approuvées au niveau supérieur suivant. Tant qu'elles n'ont pas été approuvées au niveau 
+supérieur, elles peuvent ne pas l'être au premier niveau. (Par exemple, si 
+les données ont été approuvées par erreur, cela permet à l'approbateur de réparer son 
+erreur). Une fois que les données sont approuvées au niveau supérieur, elles ne peuvent 
+pas être refusées au niveau inférieur, à moins qu'elles ne soient d'abord refusées au 
+niveau supérieur.
+
+Dans le processus en deux étapes, les données sont approuvées à un niveau, puis 
+l'approbation est acceptée au même niveau. Cette acceptation est faite par un 
+utilisateur autorisé à approuver les données au niveau supérieur suivant. Une fois que 
+les données sont acceptées, elles ne peuvent être modifiées ou non approuvées, sauf si 
+elles sont d'abord *non acceptées*.
+
+Le processus en deux étapes n'est pas requis par le DHIS2. Il s'agit d'une étape facultative 
+pour un utilisateur qui examine les données au niveau supérieur suivant. Elle présente l'avantage 
+de verrouiller l'acceptation au niveau inférieur, de sorte que l'examinateur n'a pas à 
+s'inquiéter que les données puissent être modifiées par le niveau inférieur pendant qu'elles 
+sont examinées. Elle peut également être utilisée par l'utilisateur de niveau supérieur pour 
+savoir quelles données de niveau inférieur ont déjà été examinées.
+
+Le processus en deux étapes peut être activé en cochant **Acceptation requise 
+avant l'approbation** dans l'application Paramètres système dans la section générale.
+
+## Autorisations permettant d'approuver les données { #data_approvals_authorities } 
+
+Pour approuver les données, vous devez avoir un rôle contenant l'une des autorités 
+suivantes :
+
+  - **Approuver les données** - Vous pouvez approuver les données pour l'unité ou les unités d'organisation
+    à laquelle ou auxquelles vous êtes affecté(e). Notez que cette autorisation ne vous permet pas
+    d'approuver des données pour les niveaux inférieurs à l'unité ou aux unités d'organisation
+    à laquelle ou auxquelles vous êtes affecté(e). Ceci est utile pour distinguer les utilisateurs 
+    autorisés à approuver pour un niveau de ceux qui sont autorisés à 
+    approuver pour les niveaux inférieurs.
+
+  - **Approuver les données aux niveaux inférieurs** - Vous permet d'approuver les données pour
+    tous les niveaux inférieurs aux unités d'organisation qui vous sont attribuées. Cette
+    est utile si, par exemple, vous êtes un utilisateur au niveau du district et que votre 
+    tâche consiste à approuver les données de tous les établissements de ce
+    district, mais pas celles du district lui-même. Si cette autorisation vous est attribuée
+    conjointement avec l'autorisation *Approuver les données*, vous pouvez approuver les données au 
+    niveau de l'unité ou des unités d'organisation qui vous ont été attribuées,
+    ainsi qu'à tous les niveaux inférieurs.
+
+  - **Accepter des données à des niveaux inférieurs** - Vous permet d'accepter des données pour le
+    niveau juste en dessous de l'unité ou des unités d'organisation qui vous ont été attribuées. Cette 
+    autorisation peut être donnée aux mêmes utilisateurs qui approuvent les données. Elle peut également
+    être attribuée à différents utilisateurs, si vous souhaitez que certains utilisateurs
+    acceptent les données du niveau inférieur et qu'un autre groupe 
+    d'utilisateurs approuve les données du niveau supérieur.
+
+## Configurer l'approbation des données { #data_approvals_configuration } 
+
+Dans la section *Application Maintenance* sous *Niveau d'approbation des données*, vous 
+pouvez spécifier les niveaux auxquels vous souhaitez approuver les données dans le système. 
+Cliquez sur le bouton Ajouter un nouveau de cette page et sélectionnez le niveau de l'unité d'organisation 
+auquel vous souhaitez obtenir des approbations. Il sera ajouté à la liste des 
+paramètres d'approbation. Vous pouvez configurer le système de façon à approuver les données à 
+chaque niveau d'unité d'organisation, ou seulement à certains niveaux d'unité 
+d'organisation.
+
+Notez que lorsque vous ajoutez un nouveau niveau d'approbation, vous pouvez choisir un 
+ensemble de groupes d'options de catégorie. Cette fonctionnalité est abordée plus loin 
+dans ce chapitre.
+
+Dans la maintenance, sous *Flux d'approbation des données *, vous pouvez également 
+définir les flux à utiliser lors de l'approbation des données. Chaque flux peut être 
+associé à un ou plusieurs niveaux d'approbation. Deux flux peuvent 
+fonctionner à tous les mêmes niveaux d'approbation l'un par rapport à l'autre, certains de 
+ces niveaux étant identiques et d'autres différents, voire complètement différents.
+
+Si vous souhaitez que les données d'un ensemble de données soient approuvées selon un flux, 
+affectez donc ce flux à l'ensemble de données lorsque vous ajoutez ou modifiez l'ensemble 
+de données. Si vous ne voulez pas que les données d'un ensemble de données soient soumises à approbation, 
+n'affectez aucun flux à cet ensemble de données. Pour les ensembles de données que vous 
+voulez approuver en même temps que les autres, assignez-les au même 
+flux. Pour les ensembles de données que vous souhaitez approuver indépendamment les 
+uns des autres, assignez à chaque ensemble de données son propre flux.
+
+Sous *Paramètres système* -> *Analyses*, vous pouvez contrôler quelles données non approuvées (le cas échéant) apparaîtront 
+dans les analyses. Voir la section "Paramètres d'analyse" de ce guide. Notez que les utilisateurs 
+affectés à des unités d'organisation où les données sont prêtes à être approuvées peuvent toujours visualiser 
+ces données dans les analyses, tout comme les utilisateurs affectés à des unités d'organisation de niveau supérieur s'ils disposent 
+de l'autorité *Voir les données approuvées aux niveaux inférieurs* ou de l'autorité *Voir les données non approuvées*.
+
+## Visibilité des données { #data_approvals_data_visibility } 
+
+Si l'option *Masquer les données non approuvées dans les analyses* est activée, les données 
+seront masquées de la visualisation par les utilisateurs associés aux niveaux supérieurs. En 
+déterminant si un bloc de données doit être masqué pour un utilisateur spécifique, 
+le système associe un utilisateur à un niveau d'approbation spécifique et le compare au niveau 
+jusqu'auquel le bloc de données a été approuvé. Un utilisateur 
+est associé au niveau d'approbation correspondant au niveau de l'unité 
+ou des unités d'organisation auxquelles il est lié, ou si aucun niveau d'approbation n'existe à 
+ce niveau, au niveau d'approbation suivant lié à un niveau d'unité d'organisation 
+inférieur au sien. Un utilisateur sera autorisé à voir les données approuvées 
+jusqu'au niveau immédiatement inférieur au niveau d'approbation qui lui est associé. 
+La raison en est qu'un utilisateur doit être en mesure de voir 
+les données approuvées à un niveau inférieur pour pouvoir éventuellement les consulter 
+et les approuver lui-même.
+
+Notez que si l'utilisateur a l'autorisation *Voir les données non approuvées* ou 
+l'autorisation *TOUT*, il pourra alors consulter les données quel que soit le 
+statut d'approbation.
+
+*Prenons l'exemple suivant :* il y a quatre niveaux d'unité d'organisation, 
+avec des niveaux d'approbation associés aux niveaux 2 et 4. *L'utilisateur A* au 
+niveau national (1) est associé au niveau d'approbation 1 puisque le 
+niveau d'approbation existe au même niveau que le niveau de l'unité d'organisation. 
+*L'utilisateur B* est associé au niveau d'approbation 2, car il n'existe pas de 
+niveau d'approbation directement lié à son unité d'organisation et le niveau 
+d'approbation 2 est le niveau immédiatement inférieur. *L'utilisateur C* est associé 
+au niveau d'approbation 2. *L'utilisateur D* est en dessous de tous les niveaux d'approbation, ce qui 
+implique qu'il peut voir toutes les données saisies au niveau de son unité d'organisation ou 
+en dessous.
+
+![Masquer les données non
+approuvées](resources/images/data_approval/approval_data_hiding.png){.centre}
+
+A partir de cet exemple, considérons quelques scénarios :
+
+  - Les données sont saisies au niveau de l'établissement : Seul l'*utilisateur D* peut voir les données, 
+    car elles n'ont pas encore été approuvées. 
+
+  - Les données sont approuvées par l'*utilisateur D* au niveau de l'établissement : Les données deviennent visibles 
+    pour l'utilisateur C et l'utilisateur B, car elles sont désormais approuvées à leur niveau.
+
+  - Les données sont approuvées par l'*utilisateur C* au niveau de l'établissement : Les données deviennent visibles 
+    pour l'utilisateur A, car elles sont désormais approuvées au niveau immédiatement inférieur
+    au sien.
+
+## Approbation de données { #data_approvals_approving_data } 
+
+Pour approuver les données, allez à *Rapports* et choisissez *Approbation des données*. 
+Lorsque le rapport affiche des données configurées pour approbation, il indique le statut 
+d'approbation des données dans le rapport. Le statut d'approbation sera l'un des 
+suivants :
+
+  - **En attente d'approbation par les unités d'organisation de niveau inférieur** - Ces données ne sont pas
+    encore prêtes à être approuvées, car elles doivent d'abord être approuvées par
+    toutes les unités d'organisation filles de cette unité d'organisation, pour le
+    même flux de travail et la même période.
+
+  - **Prêt pour l'approbation** - Ces données peuvent maintenant être approuvées par un 
+    utilisateur autorisé.
+
+  - **Approuvé** - Ces données ont déjà été approuvées.
+
+  - **Approuvé et accepté** - Ces données ont déjà été approuvées, et 
+    également acceptées.
+
+Si les données que vous consultez sont dans un état d'approbation qui peut faire l'objet d'une 
+action, et si vous disposez d'une autorité suffisante, une ou plusieurs des actions suivantes 
+vous seront alors proposées sur le formulaire *Approbation des données* :
+
+  - **Approuver** - Approuver des données qui n'ont pas encore été approuvées, ou qui 
+    ont été approuvées précédemment et qui ne le sont plus.
+
+  - **Ne pas approuver** - Retour à un état non approuvé des données qui ont été 
+    approuvées ou acceptées.
+
+  - **Accepter** - Accepter les données approuvées.
+
+  - **Ne pas accepter** - Retour à un état non accepté (mais toujours approuvé) 
+    des données acceptées.
+
+Pour ne pas approuver les données d'une unité organisationnelle donnée, vous devez avoir 
+l'autorisation d'approuver les données de cette unité d'organisation ou d'approuver 
+les données d'une unité d'organisation de niveau supérieur à laquelle ces données sont 
+agrégées. La raison en est la suivante : Si vous examinez des données 
+pour approbation à un niveau d'unité d'organisation supérieur, vous devez vous demander 
+si les données des unités d'organisation inférieures sont raisonnables. Si toutes 
+les données de niveau inférieur sont de bonne qualité, vous pouvez alors approuver les données au 
+niveau supérieur. Si certaines données de niveau inférieur semblent suspectes, vous pouvez ne pas approuver 
+les données du niveau inférieur. Cela permet de revoir les données au niveau inférieur, de 
+les corriger si nécessaire, et de les approuver à nouveau au niveau supérieur de l'unité 
+d'organisation, selon la hiérarchie.
+
+## Approbation par l'ensemble de groupes d'options de catégorie { #data_approvals_approving_by_cogs } 
+
+Lorsque vous définissez un niveau d'approbation, vous spécifiez le niveau de l'unité 
+d'organisation auquel les données seront approuvées. Vous pouvez également spécifier, à titre facultatif, un 
+ensemble de groupes d'options de catégorie. Cette option est utile si vous utilisez des groupes 
+d'options de catégorie pour définir des dimensions supplémentaires de vos données et si vous souhaitez 
+que les approbations soient basées sur ces dimensions. Les exemples suivants 
+illustrent comment cela peut se faire dans un seul groupe d'options de catégorie 
+et en utilisant plusieurs groupes d'options de catégorie.
+
+### Approbation par un ensemble de groupes d'options de catégorie { #approving-by-one-category-option-group-set } 
+
+Supposons par exemple que vous définissiez un ensemble de groupes d'options de catégorie pour représenter 
+les ONG qui servent de partenaires en matière de soins de santé dans une ou plusieurs unités d'organisation. 
+Chaque groupe d'options de catégorie de cet ensemble représente un partenaire différent. 
+Le groupe d'options de catégorie pour le partenaire 1 peut regrouper des options 
+de catégorie (telles que les codes de compte de financement) utilisées par ce 
+partenaire comme une dimension des données. Ainsi, les données saisies par le partenaire 1 
+sont attribuées à une option de catégorie dans le groupe d'options de catégorie du partenaire 1. 
+Alors que les données saisies par le partenaire 2 sont attribuées à une option de catégorie 
+dans le groupe d'options de catégorie du partenaire 2 :
+
+<table align="center">
+<caption>Exemple de groupes d'options de catégorie</caption>
+<thead>
+<tr class="header">
+<th>Ensemble de groupes d'options de catégorie</th>
+<th>Groupe d'options de catégorie</th>
+<th>Options de catégories</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Partenaire</td>
+<td>Partenaire 1</td>
+<td>Compte 1A, Compte 1B</td>
+</tr>
+<tr class="even">
+<td>Partenaire</td>
+<td>Partenaire 2</td>
+<td>Compte 2A, Compte 2B</td>
+</tr>
+</tbody>
+</table>
+
+Chaque partenaire pourrait saisir des données pour ses comptes indépendamment de 
+l'autre, pour des flux identiques ou différents, dans des établissements identiques ou 
+différents. Ainsi, par exemple, les données peuvent être saisies et/ou agrégées aux 
+niveaux suivants pour chaque partenaire, indépendamment l'une de l'autre :
+
+![Exemple de groupes d'options de
+catégories](resources/images/data_approval/approval_partner_example.png){.centre}
+
+> **Conseil**
+>
+> Vous pouvez utiliser la fonction de partage des options de catégorie et des groupes 
+> d'options de catégorie pour vous assurer qu'un utilisateur est autorisé à entrer des données (et/ou voir des données) 
+> uniquement pour certaines options de catégorie et certains groupes. Si vous ne voulez pas que les utilisateurs 
+> voient des données agrégées au-delà des options de catégorie et/ou des groupes 
+> d'options de catégorie qui leur sont attribués, vous pouvez alors attribuer des  *Restrictions 
+> de dimensions sélectionnées pour l'analyse des données *, lors de l'ajout ou de la mise à jour 
+> d'un utilisateur.
+
+Vous pouvez éventuellement définir des niveaux d'approbation pour les données des partenaires au sein de l'un ou 
+de tous ces niveaux d'unité d'organisation. Par exemple, vous pouvez définir l'un 
+ou l'ensemble des niveaux d'approbation suivants :
+
+<table align="center">
+<caption>Exemple de niveaux d'approbation d'un ensemble de groupe d'options de catégories</caption>
+<thead>
+<tr class="header">
+<th>Niveau d'approbation</th>
+<th>Niveau de l'unité d'organisation</th>
+<th>Ensemble de groupes d'options de catégorie</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>Pays</td>
+<td>Partenaire</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>District</td>
+<td>Partenaire</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Etablissement</td>
+<td>Partenaire</td>
+</tr>
+</tbody>
+</table>
+
+## Approbation par plusieurs ensembles de groupes d'options de catégories { #approving_by_multiple_category_option_group_sets } 
+
+Vous pouvez également définir des niveaux d'approbation pour différents ensembles de groupes d'options 
+de catégorie. En reprenant notre exemple, supposons que vous ayez plusieurs agences 
+chargées de la gestion du financement des différents partenaires. Par exemple, l'agence A 
+finance les comptes 1A et 2A, tandis que l'agence B finance les comptes 1B et 2B. Vous 
+pourriez créer des groupes d'options de catégorie pour l'Agence A et l'Agence B, et les 
+intégrer tous deux dans un ensemble de groupes d'options de catégorie appelé Agence. Vous 
+aurez donc :
+
+<table align="center">
+<caption>Exemple d'ensembles de groupes d'options à catégories multiples</caption>
+<thead>
+<tr class="header">
+<th>Ensemble de groupes d'options de catégorie</th>
+<th>Groupe d'options de catégorie</th>
+<th>Options de catégorie</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Partenaire</td>
+<td>Partenaire 1</td>
+<td>Compte 1A, Compte 1B</td>
+</tr>
+<tr class="even">
+<td>Partenaire</td>
+<td>Partenaire 2</td>
+<td>Compte 2A, Compte 2B</td>
+</tr>
+<tr class="odd">
+<td>Agence</td>
+<td>Agence A</td>
+<td>Compte 1A, Compte 2A</td>
+</tr>
+<tr class="even">
+<td>Agence</td>
+<td>Agence B</td>
+<td>Compte 1B, Compte 2B</td>
+</tr>
+</tbody>
+</table>
+
+Supposons maintenant qu'au niveau national, vous vouliez que chaque partenaire approuve 
+les données qu'il a saisies. Une fois cette approbation effectuée, vous voulez 
+que chaque agence approuve ensuite les données des comptes qu'elle 
+ère. Enfin, vous voulez que toutes les agences approuvent les données au 
+niveau national. Pour ce faire, vous pouvez définir les niveaux 
+d'approbation suivants :
+
+<table align="center">
+<caption>Exemple de niveaux d'approbation d'ensemble de groupes d'options à catégories multiples</caption>
+<thead>
+<tr class="header">
+<th>Niveau d'approbation</th>
+<th>Niveau d'unité d'organisation</th>
+<th>Ensemble de groupes d'options de catégorie</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>Pays</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>Pays</td>
+<td>Agence</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Pays</td>
+<td>Partenaire</td>
+</tr>
+</tbody>
+</table>
+
+Notez que plusieurs niveaux d'approbation peuvent être définis pour le même 
+niveau d'unité d'organisation. Dans notre exemple, le partenaire 1 approuverait 
+les données nationales au niveau d'approbation 3 à partir des options de catégorie Compte 1A 
+et Compte 1B. Ensuite, l'agence A approuverait les données nationales au niveau 
+d'approbation 2 des options de catégorie Compte 1A (après approbation par 
+le partenaire 1) et Compte 2A (après approbation par le partenaire 2.) Enfin, après 
+approbation de toutes les agences, les données nationales peuvent être approuvées au 
+niveau d'approbation 1 dans toutes les options de catégorie. Notez que le niveau d'approbation 1 
+ne spécifie pas d'ensemble de groupes d'options de catégorie, ce qui signifie qu'il sert à 
+approuver les données dans toutes les options de catégorie.
+
+Cet exemple n'a qu'une valeur illustrative. Vous pouvez définir autant de 
+groupes d'options de catégorie que vous le souhaitez, et autant de niveaux d'approbation 
+que vous le souhaitez au même niveau d'unité d'organisation pour différents ensembles de groupes 
+d'options de catégorie.
+
+Si vous avez plusieurs niveaux d'approbation pour différents ensembles de groupes 
+d'options de catégorie au même niveau d'unité d'organisation, vous pouvez alors modifier l'ordre 
+d'approbation dans la section *Paramètres*, sous *Paramètres d'approbation du système*. 
+Il vous suffit de cliquer sur le niveau d'approbation que vous souhaitez déplacer, et de sélectionner *Déplacer vers le haut* 
+ou *Déplacer vers le basoption de catégorie*. Si vous avez un niveau d'approbation sans groupe d'options de 
+catégorie défini, il doit donc s'agir du niveau d'approbation le plus élevé pour ce niveau 
+d'unité d'organisation.
+

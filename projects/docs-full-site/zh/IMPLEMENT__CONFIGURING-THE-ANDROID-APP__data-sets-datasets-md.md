@@ -1,0 +1,113 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-capture-app/edit/master/docs/src/commonmark/en/content/capture-app/programs-specific-features.md" 
+---
+# 数据集  { #datasets } 
+
+ <!-- DHIS2-SECTION-ID:datasets -->
+
+## Android中的数据集 { #datasets_android } 
+
+ <!-- DHIS2-SECTION-ID:datasets_android -->
+
+### 概述屏幕 { #overview-screen } 
+
+新的概述标签包含以下详细信息：
+
+- 数据集名称
+- 最后更新
+- 开/关状态
+- 期
+- 组织单位
+- 类别选项组合
+
+！[]（../ content / capture-app / resources / images / image122.png）{width = 25％}
+
+#### 保存数据集 { #saving-a-data-set } 
+
+验证规则和数据集完成功能集成在保存按钮操作中：
+
+- 将数据集配置为仅在验证通过时完成。如果验证成功，将出现一个对话框，要求标记为完成。仅当所有必填字段均具有值时，该应用才允许完成。
+
+！[]（../ content / capture-app / resources / images / image131.png）{width = 25％}
+
+- 如果失败，则将显示错误对话框，并且数据集将不会标记为已完成。将显示验证规则的描述和说明，以帮助用户识别错误。
+
+！[]（../ content / capture-app / resources / images / image128.png）{width = 25％}
+
+- 在没有设置的数据集上，“仅当验证通过后才允许完成”。当点击保存按钮时；如果数据集具有与其关联的验证规则，则该应用将要求用户运行验证规则。
+
+！[]（../ content / capture-app / resources / images / image130.png）{width = 25％}
+
+- 如果验证不成功，将显示一个错误对话框，但是仍然有可能完成数据集。将显示验证规则的描述和说明，以帮助用户识别错误。
+
+！[]（../ content / capture-app / resources / images / image129.png）{width = 25％}
+
+- 如果数据集没有验证规则，则如果所有必填字段都具有值，则数据集将被标记为完整。
+
+### 增加行标题 { #datasets_android_increase } 
+
+ <!-- DHIS2-SECTION-ID:datasets_android_increase -->
+
+现在计算出数据集中第一列的长度，以显示数据元素名称的全文。用户还可以调整宽度，使其更好地适应屏幕尺寸。
+
+！[]（../ content / capture-app / resources / images / image113.png）{width = 25％}
+
+## 支持的功能概述 { #datasets_supported } 
+
+ <!-- DHIS2-SECTION-ID:datasets_supported -->
+
+以下是DHIS2中可用于数据集的所有功能的完整列表，并说明这些功能是否已在Android Capture应用中实现。
+
+在注释中，“管理员”是指开发和配置DHIS2系统的人员，“用户”是指使用应用程序捕获数据，更新数据并查看报告的人员。
+
+|传说|描述|
+|:--:|:------|
+|！[]（../../../ resources / images / admin / icon-complete.png）|功能已实现|
+|！[]（../../../ resources / images / admin / icon-incomplete.png）|未实现功能&nbsp;（将被忽略）|
+|！[]（../../../ resources / images / admin / icon-na.png）|不适用|
+|！[]（../../../ resources / images / admin / icon-wip.png）|工作正在进行中。该功能尚未完全实现，或者已经报告了异常行为。|
+
+
+|特征|功能说明|状态|实施注意事项|
+|-|---|:-:|---|
+|期间类型|确定数据输入所涵盖的时间段。|！[]（../../../ resources / images / admin / icon-complete.png） | |
+|有效期|设置DHIS2在该期限内锁定所有数据输入的期限（期限后的天数）（0表示完全没有锁定）。期间仍然可以打开，但是单元格将变灰。| ！[]（../../../ resources / images / admin / icon-complete.png） | |
+|开放未来的数据录入期|此设置可用于解锁当前期间或直到将来某个特定点的所有期间。|！[]（../../../ resources / images / admin / icon-complete.png） | |
+|数据输入期|允许您为期间的数据输入设置特定日期范围，并防止捕获该日期范围以外的期间的数据。|！[]（../../../ resources / images / admin / icon-complete.png） | |
+|期满后有资格及时提交的天数|设置DHIS2将数据输入视为“迟到”的截止日期（周期后的天数）。| ！[]（../../../ resources / images / admin / icon-complete.png）| |
+|[属性]类别组合|允许管理员将类别（选项集）附加到数据集，为每个选项生成一个单独的数据输入屏幕（在DHIS2中称为属性类别组合）。| ！[]（../../../ resources / images / admin / icon-complete.png）| |
+|[属性]类别组合选项限制|如果使用了“属性类别组合”（请参见上文），则此功能使管理员能够限制下拉菜单中可用的特定选项。每个选项都可以限制在特定的日期和/或组织单位范围内，如果在这些日期或组织单位之外捕获数据，则不会显示该选项。| ！[]（../../../ resources / images / admin / icon-complete.png）| [ANDROAPP-1153]（https：/jira.dhis2.org/browse/ANDROAPP-1153）仅可以使用日期进行限制。|
+|完整的通知收件人|当数据集标记为“完成”时，向选定的用户组发送DHIS2消息。|！[]（../../../ resources / images / admin / icon-incomplete.png）| |
+|发送通知给完成的用户|当数据集标记为“完成”时，向数据输入用户发送DHIS2消息。|！[]（../../../ resources / images / admin / icon-incomplete.png）| |
+|数据元素的所有字段必填|如果使用一个或多个类别来分解数据元素，则此设置将强制用户完成所有分解，或者将其全部留空。|！[]（../../../ resources / images / admin / icon-complete.png） | |
+|仅在验证通过后完成|如果未触发验证规则，则仅允许将数据集标记为完整。|！[]（../../../ resources / images / admin / icon-complete.png）| |
+|离线跳过|如果值留为空白（或数据集无法“完成”），则要求用户添加“注释”。仅允许在连接到Internet时选择用于数据输入的数据集（尽管选择后，数据输入可以脱机继续）。|！[]（../../../ resources / images / admin / icon-incomplete.png）| |
+|数据元素装饰|当鼠标悬停在数据元素名称上时，显示数据元素的描述。|！[]（../../../ resources / images / admin / icon-complete.png） | |
+|剖面图-将剖面显示为选项卡|将表单中的每个部分显示为单独的选项卡，而不是在同一页面上一起显示。|！[]（../../../ resources / images / admin / icon-incomplete.png）| |
+|剖面图-垂直渲染||！[]（../../../ resources / images / admin / icon-incomplete.png）| |
+|数据元素-CatCombos|使单个数据元素能够自动分类为一个或多个类别（例如，男性/女性和儿童/成人），并为每种分类分别收集单独的字段/值。|！[]（../../../ resources / images / admin / icon-complete.png）| |
+|内联指标/部分表格总计|使每个数据元素的默认CatCombo可以仅对此数据集使用不同的CatCombo覆盖。|！[]（../../../ resources / images / admin / icon-incomplete.png）| |
+|剖面图-将剖面显示为选项卡|向数据集添加指标使它们可用于部分表格和自定义表格；行和/或列的总数也可以添加到这些表格中。 （两者都在屏幕上与数据捕获单元格一起显示，并在捕获值时自动更新。）|！[]（../../../ resources / images / admin / icon-incomplete.png）| |
+|组织单位分配|确保数据集仅可用于已分配了该数据集的组织单位。|！[]（../../../ resources / images / admin / icon-complete.png） | |
+|必修数据元素|这样就可以将特定的Data Elements / CatCombos标记为“必填”，这意味着用户必须输入一个值（不能留为空白）。| ！[]（../../../ resources / images / admin / icon-complete.png）| |
+|表格-默认表格|DHIS2自动将表单呈现为表格，每当类别组合更改（=不同的列标题）时都会启动一个新表格。|！[]（../../../ resources / images / admin / icon-complete.png） | |
+|表格-部分表格|可以指定表单节和节标题，从而使您可以更好地控制表单的分组和布局（但仍会自动呈现）。如果实施，此部分表单将自动覆盖默认表单。|！[]（../../../ resources / images / admin / icon-complete.png） | |
+|表格-自定义表格|可以设计自定义HTML表单，以完全控制布局，并使JavaScript代码可以包含在表单中。如果实现，此自定义表单将自动覆盖默认表单和部分表单。|！[]（../../../ resources / images / admin / icon-incomplete.png）| |
+|部分表格-禁用字段（灰色）|使用截面表单，您可以单独“灰显”字段（整个数据元素或特定的CatCombo选项），以便用户无法在其中输入数据。|！[]（../../../ resources / images / admin / icon-complete.png） | |
+|多组织单位表格|启用此服务器设置后，表单布局将更改为将多个组织单位显示为行，并将所有数据元素/ CatCombos显示为列（即，每个组织单位的宽度和宽度都非常平坦）。|！[]（../../../ resources / images / admin / icon-incomplete.png）| |
+|数据值弹出窗口：后续标记值|使用户可以标记此特定数据值以进行跟踪（可以在“数据质量” Web应用程序中查看标记的值）。|！[]（../../../ resources / images / admin / icon-incomplete.png）| |
+|数据值弹出窗口：为值添加注释|允许用户向此特定数据值添加注释。|！[]（../../../ resources / images / admin / icon-incomplete.png）| |
+|数据值弹出窗口：显示数据元素历史记录|显示此特定数据元素随时间的历史记录（即以前12个月的值）。|！[]（../../../ resources / images / admin / icon-incomplete.png）| |
+|数据值弹出窗口：显示审核记录|显示以前对此特定数据值进行编辑的历史记录。|！[]（../../../ resources / images / admin / icon-incomplete.png）| |
+|数据值弹出窗口：最小/最大范围（也可以通过数据管理应用访问）|这使用户能够为数据元素设置最小和最大期望值，从而使DHIS2可以在数据输入期间突出显示超出此范围的值（但不会阻止保存或“完成”）。您可以自动/批量（通过“数据管理”应用程序）或手动/单独（通过“数据输入”应用程序）设置最小/最大范围。|！[]（../../../ resources / images / admin / icon-incomplete.png）| |
+|打印表格/打印空白表格|允许打印数据输入表单，以允许在纸上捕获数据，以及稍后进行数据输入。|！[]（../../../ resources / images / admin / icon-incomplete.png）| |
+|保存数据|输入到屏幕的数据只有在“保存”后才会被捕获-在此之前，它仅保存在内存中，并且在关闭电源等情况下会丢失。|！[]（../../../ resources / images / admin / icon-complete.png）| |
+|完整的数据集|这使用户可以将期间/组织单位/等的数据输入标记为“完成”。请注意，这仅用于数据输入跟踪和及时性目的，并不锁定数据集或阻止进一步的编辑。|！[]（../../../ resources / images / admin / icon-complete.png）| |
+|数据元素：验证规则|基于比较不同的值/值集合，允许创建规则（在数据元素级别）以增强数据质量。 （例如，当月见到的患者人数必须少于该月的就诊人数。）|！[]（../../../ resources / images / admin / icon-complete.png）| |
+|数据共享级别/可以捕获数据|允许用户在数据集中添加新值，编辑值和删除值。|！[]（../../../ resources / images / admin / icon-complete.png） | |
+|数据共享级别/可以查看数据|使用户能够查看数据集中的值。|！[]（../../../ resources / images / admin / icon-complete.png） | |
+|数据共享级别/无访问权限|用户将无法看到数据集。|！[]（../../../ resources / images / admin / icon-complete.png） | |
+|数据批准工作流程|如果管理员选择了预先配置的数据批准工作流程，它将用于执行“批准”或“接受和批准”级联，从而使用户可以签名和锁定数据。|！[]（../../../ resources / images / admin / icon-complete.png） | 批准过程必须通过网络进行。数据集获得批准后，该数据将不再可在应用程序中进行编辑。 |
+|缺少值需要评论完整|任何缺失的值都需要添加注释以证明其缺失。|--||
+
+

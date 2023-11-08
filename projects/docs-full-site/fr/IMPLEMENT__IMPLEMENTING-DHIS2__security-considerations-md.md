@@ -1,0 +1,169 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs-implementation/blob/master/content/implementation/security_considerations.md"
+revision_date: '2022-09-16'
+tags:
+- Implémentation
+---
+
+# Considérations en matière de sécurité{ #security-considerations } 
+
+L'objectif de ces directives est d'aider les responsables de la mise en œuvre du système DHIS2 et les propriétaires du système à prendre des mesures raisonnables et appropriées pour identifier et gérer les risques associés à l'exploitation du système DHIS2. Nous espérons qu'elles seront particulièrement utiles aux propriétaires du système qui sans cela pourraient avoir du mal à définir et à imposer des contraintes techniques aux responsables de la mise en œuvre.
+
+Le système DHIS2 est mis en œuvre par de nombreux types d'organisations différentes, à des échelles différentes et à des fins différentes. Le principal propriétaire du système auquel nous pensons ici est un service ou un ministère de la Santé. Cependant, un grand nombre de principes directeurs devraient également être applicables aux ONG et aux organisations du secteur privé.
+
+En tant que système basé sur le web, le système DHIS2 est exploité à 100 % lorsqu'il est accessible en ligne pour les agents de santé, quel que soit l'appareil utilisé ou le fournisseur de services Internet disponible (par exemple, les systèmes de téléphonie mobile 4G). Nous avons vu comment, en utilisant un tel modèle ouvert, il est possible de déployer des systèmes nationaux dans les pays, ainsi que des programmes en quelques mois au lieu de plusieurs années.
+
+Malheureusement, au cours de la même période, nous avons également constaté que les systèmes basés sur Internet sont confrontés à des menaces croissantes de la part de gouvernements et de criminels. Les attaques sont devenues plus fréquentes et plus sophistiquées. La nécessité de faire preuve de plus de rigueur et d'intelligence est beaucoup plus évidente de nos jours, contrairement à 10 ans auparavant, lors du déploiement des premières versions Web de DHIS2.
+
+Une pratique de sécurité globale concerne la CONFIDENTIALITÉ, l'INTÉGRITÉ et la DISPONIBILITÉ des données.
+
+Le système DHIS2 a remarquablement réussi à être adapté et maintenu dans de nombreux pays en tant que système national d'information sanitaire, et en général, en tant que système agrégé d'établissement régulier de rapports.Même si la confidentialité des données de routine ne constitue sans doute pas une préoccupation très importante, l'**intégrité** et la **disponibilité** des données deviennent plus importantes à mesure que le système s'institutionnalise. L'impact en cas de perte de données, en particulier, devient plus sérieux.
+
+La nature des données collectées dans le système DHIS2 est également devenue plus sensible. Une base de données DHIS2 contient de plus en plus une quantité importante d'informations personnelles identifiables (PII) ou de données personnelles. Il peut s'agir de données démographiques sur les patients, mais aussi de données personnelles sur le personnel de santé (e-mail, téléphone, adresse, messages) saisies en tant qu'informations utilisateur. Des mesures appropriées doivent être mises en place pour assurer la **confidentialité** de ces données et la vie privée des personnes concernées.
+
+## Contexte d'utilisation { #context-of-use } 
+
+### Contexte juridique et réglementaire{ #legal-and-regulatory-context } 
+
+Il n'existe aucun ensemble universel de lois, de pratiques et de principes qui s'appliquent dans tous les pays. Par exemple, dans l'Union européenne, la principale législation récente en matière de confidentialité est le [RGPD](https://gdpr.eu/) (General Data Protection Regulation, in force from May 2018). This legislation introduces a set of guiding principles and accompanying terminology which differs in scope, justificatory narrative and intent from the U.S. [HIPAA](https://www.cdc.gov/phlp/publications/topic/hipaa.html) (Health Insurance Portability and Accountability Act), qui est la principale législation régissant les données médicales dans ce pays.
+
+Ces deux textes législatifs sont relativement nouveaux et complexes. Les pays exploitant le système DHIS2 ne sont généralement pas soumis aux règlementations HIPAA ou RGPD, mais beaucoup ont élaboré ou sont en train d'élaborer une législation nationale dans ce domaine, par exemple la Loi sur la protection des données à caractère personnel de 2013 en Afrique du Sud, et le projet de loi sur la protection des données à caractère personnel de 2019 en Inde. Les responsables de la mise en œuvre et les propriétaires du système doivent s'efforcer de se familiariser pleinement avec la législation en vigueur dans leur juridiction d'utilisation. Le [CNUCED](https://unctad.org/page/data-protection-and-privacy-legislation-worldwide) gère une page mise à jour régulièrement permettant de visualiser les lois sur la protection de la vie privée appliquées par chaque pays du monde.
+
+Pour les systèmes du secteur public (qui représentent peut-être la majorité des cas d'utilisation du système DHIS2), des politiques supplémentaires et des procédures opérationnelles standard liées à la sécurité des systèmes et des données peuvent également avoir force de loi.
+
+Dans la plupart des cas, plaider la méconnaissance de la loi n'est pas une défense.
+
+Il est difficile d'opérer en dehors du contexte de toute législation et politique pertinente, mais dans les contextes où l'environnement réglementaire existant est obsolète ou inadéquat, des contrôles appropriés doivent être établis par consensus dans le cadre même du système DHIS2.
+
+### Contexte humain et organisationnel { #human-and-organisational-context } 
+
+Les économies capitalistes « développées » se caractérisent par une division du travail très développée. Cela se voit clairement dans le secteur informatique en Europe et aux États-Unis, où il existe des distinctions très nettes entre les administrateurs système, les programmeurs, les ingénieurs réseau, les utilisateurs finaux de l'information, ainsi que les structures, les rôles et les pratiques de gestion informatique très développés, en particulier dans les grandes organisations.
+
+Il est insensé de s'attendre à retrouver le même type de structures et de rôles dans tous les pays, en particulier lorsque le système DHIS2 pourrait être le premier, ou du moins le plus important, système national d'un ministère de la Santé. La mise en œuvre d'un système complexe basé sur le Web, comme DHIS2, mais sans une base relativement moderne de gestion et une main-d'œuvre qualifiée, comporte des risques et des défis uniques. Le développement de formes organisationnelles appropriées pour gérer le risque et permettre au système de s'épanouir et de se maintenir est au moins aussi important que toute considération technique.
+
+Ce problème est aggravé lorsqu'on a plusieurs ministères, organisations partenaires et donateurs, tous différents, ne peuvent pas tous partager les mêmes perspectives et priorités en matière de sécurité et de confidentialité.
+
+## Mesures { #measures } 
+### Mesures organisationnelles { #organisational-measures } 
+
+Face aux défis organisationnels auxquels les propriétaires du système peuvent être confrontés, il devient plus important pour ces derniers de développer un plan approprié pour gérer la sécurité du système. Vous trouverez ci-dessous un petit recueil de conseils pratiques.
+
+Disposer d'un plan de gestion de la sécurité est la première étape pour revendiquer une quelconque forme de propriété sur le système. Lorsque le ministère de la Santé est un utilisateur passif d'un système développé et géré par des organisations partenaires, il n'en revendique pas la propriété.
+
+La sécurité est une question de gestion. Vous ne pouvez pas la déléguer cette question à un technicien expérimenté et situé au plus bas de l'échelon de l'organisation (ce qui est courant) ni la confier à un partenaire technique (ce qui est également courant). Vous vous appuierez très certainement sur ces ressources, mais il est important que les motivations viennent de la direction.
+
+Dans un monde idéal, vous pouvez employer un chef de la sécurité (CSO) ayant une expérience professionnelle dans l'un des nombreux cadres de sécurité et de gouvernance (TOGAF, ITIL, ISO27000x, etc.). Il est beaucoup plus probable que ce ne soit pas le cas et qu'il faut que les personnes concernées établissent un plan plus agile avec les ressources dont ils disposent. L'improvisation peut être la clé. Il vaut mieux avoir un mauvais plan de gestion de la sécurité, ou du moins un plan mal élaboré, que ne pas en avoir du tout. Un mauvais plan peut être amélioré et développé.
+
+Nous recommandons aux organisations d'adopter une partie de la méthodologie de la norme ISO27002 (gestion de la sécurité de l'information), sans nécessairement s'engager sur la voie de la conformité à la norme ISO27000. Au minimum, cela impliquerait ce qui suit :
+
+> 1\. Vous disposez d'une déclaration de haut niveau résumant le niveau de sécurité de votre organisation. Dans un document d'une page, il doit être indiqué les principes et les intentions, ainsi que l'engagement de la haute direction envers le processus.
+>
+> 2\. Vous avez clairement identifié un membre (raisonnablement plus expérimenté) de votre équipe qui sera chargé de développer, de maintenir et de mettre en œuvre le plan de sécurité. Cette personne sera appelée le chef de la sécurité.
+>
+> 3\. Le gestionnaire de sécurité s'engage dans un processus visant à identifier, documenter et atténuer les risques. Il s'agit d'un processus continu qui porte généralement sur la tenue d'un registre des risques, lequel fait l'objet d'un examen régulier.
+>
+> 4\. Un processus est en place (y compris le temps et le budget) pour assurer un audit interne et/ou externe régulier du déploiement, de la configuration et des métadonnées du système DHIS2, y compris le plan de sécurité de l'organisation.
+>
+> 5\. Les parties ont conclu un accord de partage de données qui définit les données à traiter, à quelles fins et comment, fixe des limites claires pour éviter toute violation des données des patients et assure l'intégrité ainsi que la confidentialité des données.
+>
+> 6\. La propriété des données et des technologies est établie pour le système DHIS2.
+
+De nombreux autres artefacts et processus envisagés dans un cadre, tel que l'ISO 27000, pourraient émerger naturellement de ce cycle. Par exemple, s'il n'existe pas de plan de reprise après sinistre ou de stratégie de sauvegarde, cela sera mis en évidence comme un risque majeur dans le registre. La constitution et la tenue d'un tel registre permettent à l'équipe d'identifier et de hiérarchiser les tâches à accomplir et d'évaluer les progrès accomplis pour être plus efficace.
+
+Les documents suivants devraient être au moins créés pour commencer à établir un programme de sécurité :
+- Inventaire des actifs
+- Évaluation des risques/document du registre des risques
+- Politique de sauvegarde
+- Politique de reprise après sinistre
+- Plan d'intervention en cas d'incident
+- Plan de gestion des identités et des accès
+
+Pour aider les responsables de la mise en œuvre à lancer leurs programmes de sécurité, nous avons développé un ensemble de modèles appelé [Security Starter Kit](https://drive.google.com/drive/folders/17sPX4aWSQvfKSJVbRBPfjNJvPS16OmF4) que chacun peut utiliser et adapter selon ses besoins. Pour en savoir plus, cliquez [ici](https://docs.google.com/document/d/1bEzUB-xh8Bmd4JNWOFMKi5IzpcJVfpJldRs-sAqQcXM/).
+
+### Mesures de configuration du système { #system-configuration-measures } 
+Il existe également un certain nombre de mesures qui peuvent être prises pour améliorer la sécurité au niveau de la configuration du système DHIS2, par exemple pour garantir un accès approprié au système et aux données. Un projet de liste présentant les 10 meilleures mesures de configuration du système est disponible ici :
+
+
+> **Administration du système**
+> 
+> 1\. Il y a un nombre limité (moins de 5) personnes ayant un accès superutilisateur (complet) au système. 
+> *Peut être facilement évaluée à travers l'API: `/api/users.json?filter=userCredentials.userRoles.authorities:!in:[_ALL_]&filter=userCredentials.userRoles.authorities:in:\[ALL]`*
+> 
+> 2\. Les administrateurs de système ne sont autorisés à exécuter que les fonctions qui relèvent de leur rôle d'administrateur de système.
+> *Par exemple, un administrateur responsable de la gestion des graphiques et des tableaux de bord n'a pas besoin de droits pour modifier les unités d'organisation.*
+> 
+> 3\. Le compte utilisateur DHIS2 par défaut (nom d'utilisateur "admin") est supprimé ou désactivé.
+> *Le compte admin ne doit être utilisé que lors du premier démarrage de DHIS2, pour configurer un superutilisateur personnel. Il doit ensuite être désactivé et/ou supprimé. Le statut du compte administrateur peut être vérifié à l'aide de l'API: `/api/users.json?filter=userCredentials.username:eq:admin&fields=name,userCredentials\[name,disabled\]`*
+
+> **Gestion des utilisateurs**
+>
+> 4\. Des procédures sont en place pour désactiver ou supprimer les comptes utilisateurs des personnes qui quittent le département.
+> *Des procédures claires doivent être mises en place pour désactiver/supprimer les comptes d'utilisateur des personnes qui quittent le département (de la santé). Des indications à ce sujet peuvent être tirées de l'API, en examinant les comptes d'utilisateurs qui ne sont pas désactivés et qui ne se sont pas connectés au système, par exemple au cours de l'année en cours.: `/api/users.json?filter=userCredentials.disabled:eq:false&filter=userCredentials.lastLogin:lt:2021`*
+> 
+> 5\. Tous les comptes d'utilisateur du système sont personnels, c'est-à-dire qu'ils ne sont pas partagés par plusieurs personnes.
+> *Les comptes d'utilisateurs ne doivent pas être partagés par plusieurs personnes, car cela rend l'audit impossible. Ceci est particulièrement important si Tracker est utilisé pour des données au niveau individuel.*
+> 
+> 6\. Les rôles et les groupes d'utilisateurs sont clairement définis, avec des conseils sur les rôles et les groupes à utiliser en fonction de la position de l'utilisateur au sein du département (de santé).
+> 
+> 7\. Si l'auto-enregistrement des utilisateurs est activé, le rôle attribué à ces derniers doit être très limité, par exemple à uniquement consulter les tableaux de bord publics.
+>
+> 8\. La désactivation des comptes peut être un bon moyen de limiter l'accès à certains utilisateurs qui ont été oubliés dans le système. Le DHIS2 fournit une tâche planifiée pour automatiser cette opération. Cependant, il faut savoir que cela peut avoir des conséquences (entraînant la perte de données) lors de l'utilisation d'appareils Android, comme expliqué dans la [documentation officielle] (https://docs.dhis2.org/en/full/use/user-guides/dhis-core-version-master/dhis2-user-manual.html#mgt_user).
+
+> **Tracker**
+> 
+> 9\. L'accès aux données de Suivi est limité aux utilisateurs ayant un besoin légitime de modifier/visualiser les données grâce à une utilisation appropriée du partage et des groupes d'utilisateurs. Aucun programme de suivi destiné à enregistrer des informations sur des personnes individuelles n'est configuré sur la base d'un accès public.
+> *Les données de suivi sont généralement liées à des individus et doivent donc être réservées aux utilisateurs qui en font un usage légitime. S'il est souhaitable que les données agrégées soient accessibles à tous les utilisateurs, ce n'est pas le cas des données de suivi.*
+> 
+> 10\. Les programmes de suivi sont configurés de manière à ce que les utilisateurs ne puissent rechercher et accéder qu'aux données des personnes qu'ils ont une raison légitime de consulter.
+> *Par exemple, un utilisateur travaillant dans un établissement de santé ne doit pas être affecté à un district. L'"unité d'organisation de recherche d'entités suivies" ne doit pas être plus étendue que ce qui est nécessaire en pratique, si elle est utilisée.*
+
+> **Android**
+>
+>L'utilisation d'appareils mobiles (Android) dans le DHIS2 est de plus en plus courante en raison de leurs capacités hors ligne et de leur capacité à être utilisés sur le dernier kilomètre. Toutefois, elle s'accompagne d'exigences supplémentaires à prendre en compte du point de vue de la sécurité, car l'exposition augmente lors du passage d'un serveur contenant des informations à de multiples appareils susceptibles de contenir des informations sensibles.
+>
+>Si des informations sensibles sont stockées dans les appareils, il convient de s'en préoccuper par le biais d'une formation et/ou d'une documentation. Les administrateurs de système pourraient vouloir activer différentes mesures susceptibles de réduire les risques pour lesquels l'application Web des paramètres Android (ASWA) est disponible.
+>
+> L'ASWA permet aux administrateurs de système (entre autres) de:
+>
+> - Forcer le cryptage de la base de données locale DHIS2 sur les appareils afin d'empêcher la fuite de données par des acteurs malveillants en cas d'accès à un appareil.
+> - Autoriser/interdire les fonctionnalités de capture d'écran réduit (mais ne limite pas) le risque de fuite d'informations confidentielles.
+>
+> Une section de la documentation officielle [(DHIS2 Android App](https://docs.dhis2.org/en/full/use/dhis2-android-app.html#capture_app_android_settings_webapp)) décrit tous ces éléments en détail.
+>
+> En outre, l'application Android peut être configurée individuellement afin de demander un code PIN comme couche de sécurité supplémentaire à la paire nom d'utilisateur/mot de passe.
+>
+> Dans les implémentations où le risque de perte ou de vol des appareils existe, les administrateurs de système peuvent vouloir ajouter une autre couche de sécurité apportée par des outils tels que la gestion des appareils mobiles qui pourrait permettre une suppression à distance, une localisation, etc. Un guide spécifique est disponible dans la documentation officielle : [gestion des appareils mobiles](https://docs.dhis2.org/en/full/implement/managing-mobile-devices.html).
+
+### Mesures techniques{ #technical-measures } 
+
+Il existe de nombreuses façons de mettre en service un système DHIS2, notamment dans différents environnements physiques (sur site, en colocalisation, sur un Cloud privé, sur un Cloud public), en utilisant différents systèmes d'exploitation, des conteneurs, le partage de charge, la réplication, etc. Il existe différents ensembles détaillés de contrôles de sécurité qui peuvent et doivent être appliqués en fonction des choix de conception effectués lors de la mise en service.
+
+Dans le sens le plus général, ces éléments doivent être présents :
+
+- un ensemble documenté de contrôles techniques mandatés ; et
+- un processus d'audit de ces contrôles.
+
+Des organisations telles que le Centre for Internet Security ([https://cisecurity.org](https://cisecurity.org)) consignent en détail des points de référence pour les produits logiciels qui peuvent être utilisés pour compiler un ensemble de contrôles dans le cadre de votre mise en œuvre. Dans la plupart des cas, vous ne les appliquerez pas tous, mais sélectionnerez ceux qui sont les plus pertinents. Dans la liste disponible sur le site [https://www.cisecurity.org/cis-benchmarks/](https://www.cisecurity.org/cis-benchmarks/), vous devez télécharger et étudier les points de référence pour Apache Tomcat, Postgresql, nginx (ou Apache2). En outre, en fonction de vos choix technologiques, vous pourrez trouver des points de référence pour Ubuntu linux, lxd, Docker ou Microsoft Windows, qui sont pertinents pour votre mise en œuvre.
+
+Voici le projet de liste présentant les 10 meilleures mesures techniques à mettre en place :
+
+> 1\. Le système d'exploitation est une édition LTS (édition du service à long terme).
+> 
+> 2\. Il existe un processus automatique d'application des patchs de sécurité du système d'exploitation..
+> 
+> 3\. Pare-feu configuré au niveau de l'hôte et/ou du réseau, n'exposant au réseau que les services nécessaires.
+> 
+> 4\. L'accès administratif au serveur DHIS2 se fait via SSH conformément aux bonnes pratiques convenues - authentification par clés uniquement, pas d'accès root, liste explicite d'utilisateurs autorisés, faible nombre de tentatives d'authentification maximales.
+> 
+> 5\. La version du DHIS2 n'est pas décalée de plus de 3 versions par rapport à la dernière parution. Il existe un processus permettant d'appliquer régulièrement les versions corrigées.
+> 
+> 6\. Un système de sauvegarde automatisé est en place et régulièrement testé, même hors site.
+> 
+> 7\.Les utilisateurs de Postgres et du système suivent le principe du moindre privilège : ils n'accordent que des autorisations et des accès minimaux.
+> 
+> 8\.DHIS2 est accessible via un serveur web-proxy configuré avec TLS/SSL (doit obtenir un minimum de A dans [ssllabs](https://www.ssllabs.com/ssltest/)).
+> 
+> 9\. Les données de la base de données se trouvent dans un endroit séparé (partition de données, disque dur, stockage en nuage, etc.), ce qui permet le chiffrement au repos.
+> 
+> 10\. Des systèmes de surveillance et d'alerte sont en place pour les mesures du système (CPU, mémoire, disque, réseau, base de données, proxy web au minimum) avec des mécanismes d'authentification adéquats (par exemple 2FA, SSO, exigences de mots de passe solides) et un accès basé sur les rôles.
+
