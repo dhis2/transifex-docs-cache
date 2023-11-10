@@ -1,0 +1,149 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-capture-app/blob/master/docs/src/commonmark/en/content/capture-app/new-visual-configurations.md"
+revision_date: "2021-05-07"
+---
+
+# 外观配置 { #capture_app_visual }
+
+## 元数据同步错误 { #capture_app_visual_sync_error }
+
+如果在同步过程中出错，则会在设置菜单中显示一条消息（“同步数据”或“同步配置”部分）。此外，在主屏幕中，该程序旁边会显示一个红色的同步图标。同步错误日志提供了有关错误的详细信息，并准备与管理员共享。
+
+![](resources/images/capture-app-image43.jpg){ width=25%} ![](resources/images/capture-app-image11.png){ width=25%}
+
+您也可以从**设置**中打开同步错误日志：
+
+![](resources/images/capture-app-image15.jpg){ width=25%}
+
+## 个性化您的图标 { #capture_app_visual_icon }
+
+您可以使用DHIS 2 App Widget在墙纸中设置图标。该图标将是服务器中配置的标志。
+
+![](resources/images/capture-app-image32.jpg){ width=25%}
+
+> **注意**
+>
+>如何添加小部件：
+>
+>-长按墙纸
+>-选择小部件
+>-查找DHIS 2小部件
+>-选择
+>
+>它将为您的应用添加快捷方式。
+
+## 个性化应用程序的颜色 { #capture_app_visual_colour }
+
+您可以通过在我们的服务器中进行配置来设置应用的通用主题：
+
+![](resources/images/capture-app-image28.png){width=80% }
+
+> **注意**
+>
+> 如何设置服务器主题和标志：
+>
+> 转到 **系统设置 > 外观 > 风格**
+>
+> - 选择您的风格
+> - 绿色，
+> - 印度（橙色），
+> - 浅蓝色，
+> - 缅甸（红色），
+> - 越南
+> - 选择您的旗帜
+>
+> ![](resources/images/capture-app-image23.png){ width=25%}
+
+## 元数据的图标库 { #capture_app_visual_icon_lib }
+
+当前有134个图标可供选择。您可以在图标选择器小部件中按名称搜索。图标有正，负和轮廓形状。在将来的版本中，我们将添加更多图标。
+
+图标可以与程序，阶段，数据元素和选项集的选项相关联。这可以通过维护应用程序进行配置。
+
+> **注意**
+>
+>从DHIS 2 2.30起可以使用此功能
+
+![](resources/images/capture-app-image13.png){ .center width=80% }
+
+在Android App中，主屏幕中会显示图标，以说明用户或在添加舞台时可用的所有程序。对于数据元素和选项，当一个节包含单个DE时，图标将针对单个事件程序呈现，将选项集显示为图像矩阵或图像序列。
+
+![](resources/images/capture-app-image19.png){ width=25%} ![](resources/images/capture-app-image26.png){ width=25%}
+
+> **注意**
+>
+>图标最初只会在新的Android应用中呈现。新的基于Web的Capture App将在不久的将来将其合并。
+
+我们计划在每个以后的DHIS2-版本上扩展图标的收集，为此我们需要您的帮助：我们正在寻找有关新图标的想法-请使用[此表单]（https://www.google.com/url提交您的图标） ？q = https：//drive.google.com/open？id％3D1LmfYJQAu3KyDfkY3X6ne7qSsuTa9jXZhoQHzkDxeCdg＆sa = D＆ust = 1557433016147000）。
+
+## 元数据的调色板 { #capture_app_visual_colour_palette }
+
+跟踪器和事件捕获现在可以为程序，阶段，数据元素和选项集中的选项渲染颜色。维护应用程序中集成了一个颜色选择器，该颜色选择器显示为调色板，但允许选择任何颜色的选项除外。
+
+![](resources/images/capture-app-image20.png){ .center width=80% }
+
+在Android App中，该颜色将与带有图标（如果已选择）组合的程序和阶段显示为背景色。对于选项，它在单个事件程序的数据输入表单期间呈现为背景色。当用户选择具有指定颜色的程序时，该颜色将成为该程序域中所有屏幕的背景主题。
+
+![](resources/images/capture-app-image19.png){ width=25%} ![](resources/images/capture-app-image2.jpg){ width=25%}
+
+> **注意**
+>
+>颜色将首先在新的Android应用程序中可用，然后在以后的版本中将发布新的基于Web的Capture App。
+
+## 程序部分的渲染类型 { #capture_app_visual_rendering_type }
+
+![](resources/images/capture-app-image16.png){width=80% }
+
+**程序部分**：与图标结合使用时，具有单个数据元素和关联选项集的程序部分可以按顺序或矩阵布局呈现选项（请参见屏幕截图）。如果未找到该图标，应用程序将显示 DHIS 徽标。
+
+![](resources/images/capture-app-image26.png){ width=25%} ![](resources/images/capture-app-image36.png){ width=25%}
+
+> **注意**
+>
+>区域的渲染类型将首先在Android应用程序中提供，然后在以后的版本中提供新的基于Web的Capture App UI。
+
+## 日历 { #capture_app_visual_calendar }
+
+现在可以使用两个不同的日历。左边的是第一个出现的，但是您可以通过单击左下角的日历图标来更改它。
+
+在以下情况下可用：
+
+1. 进行新的注册。
+2. 创建一个新事件（带有和不带有注册的程序）。
+3. 在注册和不注册的情况下在数据集和程序中使用周期过滤器。
+
+![](resources/images/capture-app-image60.png){ width=25%} ![](resources/images/capture-app-image61.png){ width=25%}
+
+> **注意**
+>
+>对于Android 4.4、5.1版和小型设备，“接受”选项在第二个日历视图中不可见。
+
+## 渲染类型 { #capture_app_visual_render }
+
+可用的渲染选项已扩展为包括水平和垂直单选按钮，复选框和切换。允许的选项取决于值类型。
+
+- 仅是：可以呈现为单选按钮或复选框。
+
+![](resources/images/capture-app-image111.jpg){ width=25%}
+
+- 是/否：可以呈现为水平/垂直单选按钮或水平/垂直复选框或切换。
+
+![](resources/images/capture-app-image112.jpg){ width=25%}
+
+- 文本：链接到选项集时可以呈现为水平/垂直单选按钮或水平/垂直复选框。选项集必须配置为值类型“文本”，任何其他值类型将显示为下拉列表。
+
+![](resources/images/capture-app-image110.jpg){ width=25%}
+
+> **注意**
+>
+> 当选项集中的元素超过 15 个时，默认呈现选项将自动显示搜索框以方便选择。
+>
+> ![](resources/images/capture-app-options_no_search.png){ width=25% } ![](resources/images/capture-app-options_search.png){ width=60% }
+
+### QR和条形码 { #capture_app_visual_render_qr }
+
+数据元素或属性类型文本也可以配置为 QR 或条形码。当数据元素或属性呈现为 QR/条形码时，应用程序将打开设备摄像头以读取代码图像。当 QR/条形码是配置为可搜索的 TEI 属性时，将允许用户扫描代码以搜索和识别被跟踪的实体实例。这也适用于选项集。
+
+条形码还允许用户手动输入值。
+
+![](resources/images/capture-app-image118.png){ width=20%} ![](resources/images/capture-app-image119.png){ width=20%} ![](resources/images/capture-app-image120.png){ width=20%} ![](resources/images/capture-app-image121.png){ width=20%}

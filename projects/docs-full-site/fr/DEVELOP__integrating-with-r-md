@@ -1,0 +1,234 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/dhis2-and-r-integration.md"
+revision_date: '2021-10-14'
+tags:
+- Develop
+---
+
+# Intégration de DHIS2 et R { #rsetup }
+
+## Introduction { #rsetup_intro }
+
+R est un environnement informatique statistique open source et disponible gratuitement. 
+R fait référence à la fois au langage de programmation informatique et au logiciel qui peut être utilisé pour créer et exécuter des scripts R. 
+[Plusieurs sources sur le web](http://cran.r-project.org/) décrivent les fonctionnalités de R.
+
+R est une extension naturelle du DHIS2, car il fournit de puissantes routines de statistiques, des fonctions d'utilisation de données et des outils de visualisation. 
+Ce chapitre décrit comment configurer R et DHIS2 sur le même serveur, fournit un exemple simple de la façon de récupérer les données de la base de données du DHIS2 dans une trame de données R et effectuer quelques calculs de base.
+
+## Installation de R { #rsetup_install }
+
+Si vous installez R sur le même serveur que DHIS, pensez à utiliser le Comprehensive R Archive Network (CRAN) pour obtenir la dernière versiondistribution de R. Tout ce que vous avez à faire est d'ajouter le lien `/etc/apt/source.list` à votre fichier.
+
+**deb \<your R mirror\>/bin/linux/ubuntu \<your Ubuntu distribution\>**
+
+Vous devrez remplacer **\<your R mirror\>** par un élément de la liste disponible [ici.](http://cran.r-project.org/mirrors.html)
+Vous devrez également remplacer **\<your Ubuntu distribution\>** par le nom de la distribution que vous utilisez.
+
+Ensuite exécutez les commandes suivantes
+
+    sudo apt-get update
+    gpg --keyserver pgp.mit.edu --recv-keys 51716619E084DAB9
+    gpg --armor --export 51716619E084DAB9 | apt-key add -
+    sudo apt-get install r-base
+
+A ce stade, vous devriez avoir une installation fonctionnelle de R sur votre machine.
+
+Ensuite, voyons si tout fonctionne en exécutant simplement `R` à partir de la ligne de commande.
+
+```
+R version 3.4.4 (15/03/2018) -- "Someone to Lean On"
+Copyright (C) 2018 La Fondation R pour le calcul statistique
+Plateforme : x86_64-pc-linux-gnu (64 bits)
+
+R est un logiciel gratuit et ne comporte ABSOLUMENT AUCUNE GARANTIE.
+Vous pouvez le redistribuer sous certaines conditions.
+Tapez « license() » ou « licence() » pour obtenir les détails de la distribution.
+
+  Le langage naturel est pris en charge mais l'anglais est la langue de fonctionnement
+
+R est un projet collaboratif avec plusieurs contributeurs.
+Tapez « contributors() » pour plus d'informations et de
+'citation(s)' sur la façon de citer les packages R ou R dans les publications.
+
+Tapez 'demo()' pour certaines démos, 'help()' pour obtenir de l'aide en ligne ou
+'help.start()' pour obtenir de l'aide via une interface de navigation HTML.
+Tapez 'q()' pour quitter R.
+
+>
+```
+
+## Utiliser PL/R avec DHIS2 { #rsetup_plr }
+
+Le langage procédural de R est une extension du noyau de PostgreSQL qui permet de transférer des données de la base de données vers R, où des calculs peuvent être effectués. Les données peuvent ensuite être renvoyées à la base de données pour un traitement ultérieur. Dans cet exemple, nous allons utiliser R pour créer une fonction permettant de calculer des statistiques sommaires qui n'existent pas par défaut dans SQL. Nous allons ensuite créer une vue SQL dans DHIS2 pour afficher les résultats. L'utilisation de R dans ce contexte a l'avantage de ne pas nécessiter l'écriture d'une quantité importante de code pour renvoyer ces statistiques récapitulatives. Il suffit d'utiliser les fonctions intégrées de R pour qu'elles fassent le travail à notre place.
+
+Tout d'abord, vous devrez installer [PL/R](http://www.joeconway.com/plr/).
+La procédure est décrite [ici.](http://www.joeconway.com/plr/doc/plr-install.html). En nous basant sur l'exemple du site PL/R, nous allons créer des fonctions agrégées personnalisées tel que détaillé [ici.](http://www.joeconway.com/plr/doc/plr-aggregate-funcs.html) Nous allons créer deux fonctions pour obtenir la médiane et l'asymétrie d'une plage de valeurs.
+
+    CRÉER OU REMPLACER UNE FONCTION r_median(_float8) renvoie float sous la forme '
+      médiane (arg1)
+    ' langue 'plr';
+
+    CRÉER LA médiane AGRÉGÉE (
+      sfunc = plr_array_accum,
+      type de base = float8,
+      style = _float8,
+      finalfunc = r_median
+    );
+
+    CRÉER OU REMPLACER UNE FONCTION r_skewness(_float8) renvoie float sous la forme '
+      exiger (e1071)
+      asymétrie (arg1)
+    ' langue 'plr';
+
+    CRÉER une asymétrie AGRÉGÉE (
+      sfunc = plr_array_accum,
+      type de base = float8,
+      style = _float8,
+      finalfunc = r_skewness
+    );
+
+Ensuite, nous définirons une requête SQL qui sera utilisée pour récupérer les deux nouvelles fonctions agrégées (médiane et asymétrie), lesquelles seront calculées à l'aide de R. Dans ce cas, nous n'allons récupérer qu'un seul indicateur de la base de données au niveau du district et calculer les valeurs récapitulatives en nous basant sur le nom du district auquel les valeurs appartiennent. Cette requête est très spécifique, mais elle peut être facilement adaptée à votre propre base de données.
+
+    SELECTIONNER ou.shortname,avg(dv.value),
+    médiane (valeur dv), asymétrie (valeur dv) DE la valeur de l'indicateur agrégé dv
+    INNER JOIN period p on p.periodid = dv.periodid
+    INNER JOIN organisationunit ou on 
+    dv.organisationunitid = ou.organisationunitid
+    OÙ dv.indicateurid = 112670
+    ET dv.niveau = 3
+    ET dv.periodtypeid = 3
+    ET p.startdate >='2009-01-01'
+    REGROUPÉ PAR ou.shortname;
+
+Nous pouvons ensuite sauvegarder cette requête sous forme de Vue SQL dans DHIS2. Une version des résultats est présentée ci-dessous.
+
+
+![](resources/images/r/r_plr.PNG)
+
+Dans cet exemple simple, nous avons montré comment utiliser PL/R avec la base de données et l'interface Web de DHIS2 pour afficher des statistiques récapitulatives en utilisant R pour effectuer les calculs.
+
+## Utilisation de cette API Web DHIS2 avec R { #rsetup_web_api }
+
+DHIS2 dispose d'une API web puissante facilement accessible à l'aide de R. Dans cette section, nous illustrerons quelques cas d'utilisation des métadonnées de DHIS2 et de l'API d'analyse avec R. L'API web utilise l'authentification HTTP de base ( tel que décrit dans la section API web de ce document). En utilisant deux packages R "httr" et "readr", nous pourrons travailler avec les résultats de l'API dans R. Dans le premier exemple, nous obtiendrons quelques métadonnées de la base de données.
+
+```
+#Nous aurons besoin de ces deux bibliothèques
+require(httr)
+require(readr)
+#and this for the `%>%` operation
+require(magrittr)
+base.url<-"https://play.dhis2.org/dev/"
+url<-paste0(base.url,"api/me")
+username<-"admin"
+password<-"district"
+login<-GET(url, authenticate(username,password))
+#If we cannot login, stop with an error
+if(login$status == 200L) { print("Logged in successfully!")} else {stop("Could not login")}
+
+
+
+
+mydata<-paste0(base.url,"api/reportTables/KJFbpIymTAo/data.csv") %>% #Define the API endpoint
+    GET(.,authenticate(username,password)) %>% #Make the HTTP call
+    content(.,"text") %>% #Read the response
+    readr::read_csv() #Parse the CSV
+head(mydata)
+```
+
+Dans cet exemple, nous allons simplement récupérer un tableau de rapport qui a été créé dans DHIS2 via l'API. Nous analyserons ensuite la réponse CSV dans une trame de données R.
+
+Dans le prochain exemple de code, nous récupérerons quelques métadonnées, à savoir une liste des éléments de données et de leurs identifiants uniques.
+
+```
+
+#Obtenez la liste des éléments de données. Désactivez la pagination et obtenez seulement quelques attributs.
+require(httr)
+nom d'utilisateur <-"admin"
+mot de passe<-"district"
+base.url<-"https://play.dhis2.org/dev/"
+
+login<-function (nom d'utilisateur, mot de passe, base.url) {
+url<-paste0(base.url,"api/moi")
+r<-GET(url,authentifier(nom d'utilisateur,mot de passe))
+if(r$status == 200L) { print("Connecté avec succès !")} else {stop("Connexion impossible")}
+}
+
+getDataElements<-function(base.url) {
+url<-paste0(base.url,"api/dataElements?fields=id,name,shortName")
+r<-content(GET(url,authenticate(username,password)),as="parsed")
+faire.call(rbind.data.frame,r$dataElements)
+}
+
+connexion (nom d'utilisateur, mot de passe, base.url)
+data_elements<-getDataElements(base.url)
+tête (éléments_données)
+```
+
+L'objet `data_elements` doit maintenant contenir une trame de données de tous les éléments de données du système.
+
+```
+                        Nom                                    Identifiant
+2 Paralysie flasque aiguë (décès < 5 ans) FTRrcoaog83
+210 Suivi des cas de paralysie flasque aiguë (PFA) P3jJH5Tu5VC
+3 Paralysie flasque aiguë (PFA) nouveaux cas FQ2o8UBlcrS
+4 Personnes référées pour paralysie flasque aiguë (PFA) M62VHgYT2n0
+5 Notes complémentaires sur l'installation uF1DLnZNlWe
+6 Date d'admission eMyVanycQSC
+```
+
+## Utilisation de cette API Web DHIS2 avec datiutils { #r_datimutils }
+
+Le package [`datimutils`](https://github.com/pepfar-datim/datimutils) est une bibliothèque open-source développée par [ PEPFAR ](https://pepfar.gov), qui fournit une gamme de fonctions utiles pour interagir avec l'API DHIS2. Bien que le package ait été développé spécifiquement pour interagir avec DATIM (l'instance DHIS2 du PEPFAR), nous n'essaierons pas de reproduire la documentation du package lui-même, mais nous présenterons plutôt quelques exemples pratiques de la façon de travailler avec la bibliothèque.
+
+ L'authentification avec DHIS2 est gérée via un objet spécial `d2_default_session`. Le nom et l'environnement parent de cet objet peuvent être modifiés si nécessaire. Consultez la documentation du package pour plus de détails.
+
+ ```
+ loginToDATIM(nom d'utilisateur = "admin", mot de passe = "district", base_url = "https://play.dhis2.org/dev/")
+ ```
+
+ Nous devrions maintenant avoir un objet appelé `d2_default_session` dans notre environnement R. Les appels d'API ultérieurs peuvent utiliser cet objet pour gérer l'authentification, et il n'est donc pas nécessaire de spécifier explicitement le nom d'utilisateur et le mot de passe à chaque appel de fonction.
+
+ `datimutils` fournit une fonction pour la plupart des points de terminaison de l'API de métadonnées et a été conçu pour fonctionner de manière transparente avec les packages `tidyverse`. A titre d'exemple, nous pouvons obtenir un objet de métadonnées spécifique avec la commande suivante :
+
+ ```
+datiutils::getDataElements("hCVSHjcml9g",fields = "name,shortName,id")
+                                      nom shortName identifiant
+1 Albendazole administré lors de la CPN (2e trimestre) Albendazole lors de la CPN hCVSHjcml9g
+ ```
+
+
+ Les commandes `datimutils` fonctionnent également avec des listes pour récupérer plusieurs objets de métadonnées.
+
+ ```
+> de_groups<-c("oDkJh5Ddh7d","zmWJAEjfv59")
+> datimutils::getDataElementGroups(de_groups,fields = "name,shortName,id")
+                            name                      shortName          id
+1 Acute Flaccid Paralysis (AFP)  Acute Flaccid Paralysis (AFP)  oDkJh5Ddh7d
+2                           Yaws                           Yaws zmWJAEjfv59
+ ```
+
+ Les commandes `datimutils` sont adaptables et peuvent donc être rattachées à d'autres commandes `tidyverse`.
+
+ ```  
+
+ > datimutils::getMetadata("dataElementGroups", fields = "id,name,shortName") 
+ %>%  dplyr::filter(grepl("ART",`shortName`)) 
+ %>%  dplyr::select(name) 
+
+                     name
+1                     ART
+2          ART enrollment
+3        ART entry points
+4  ART pediatric 1st line
+5             ART staging
+6           ART treatment
+7              New on ART
+8       Prev month on ART
+9     Shift from ART reg.
+10      Shift to ART reg.  
+
+```
+
+Pour plus d'informations sur le package `datimutils`, veuillez consulter la documentation du package.
+

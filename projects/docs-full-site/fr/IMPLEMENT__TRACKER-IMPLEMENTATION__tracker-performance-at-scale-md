@@ -1,0 +1,410 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs-implementation/blob/master/content/tracker_implementation/optimizing_for_covid_vacc_campaigns.md"
+revision_date: '2022-01-19'
+tags:
+- Implement
+---
+
+# Performance du tracker à l'échelle { #tracker-performance-at-scale }
+
+Ce document décrit les approches permettant d'optimiser les implémentations des trackers DHIS2 pour la livraison à grande échelle du vaccin anti-COVID-19.
+
+## Sommaire { #executive-summary }
+> **Serveur**
+>
+> *  Les versions appropriées des logiciels sont utilisées:
+>   * JDK11
+>   * PostgreSQL 12 or 13
+>   * DHIS2 version 2.35 ou supérieure, dernière version disponible du patch
+> * La surveillance du serveur est configurée. Recommandé : munin, glowroot
+> * Le serveur est de taille appropriée. Pour le covax, du moins :
+>   * 32 CPU cores
+>   * 32GB RAM
+>   * SSD/fast disk
+>   * Connectivité Internet et réseau interne rapide et stable
+> *Dans un environnement d'hébergement partagé, vérifiez que le serveur dispose en 
+> pratique des ressources spécifiées 
+> *  Utiliser un serveur dédié pour la base de données/postgresql si possible
+>
+>
+> **Tracker/Tracker Analytics**
+>
+> * Minimiser l'utilisation d'indicateurs de programme dans les tableaux de bord, car cela a entraîné des problèmes de performance.
+>   * Solution : servir les analyses des trackers via le modèle de données agrégées, en utilisant les stratégies décrites dans ce document.
+> * Limiter l'accès aux tableaux de bord qui utilisent des indicateurs de programme, en particulier les tableaux de bord qui se chargent par défaut en tant que "page d'accueil" lors de la connexion à DHIS2.
+>   * Solution : Mettre en place un tableau de bord de type " texte seulement/information " qui exclut les analyses des trackers pour minimiser l'impact. Limitez les tableaux de bord basés sur les indicateurs du programme aux seuls utilisateurs/groupes d'utilisateurs qui en ont besoin à des fins d'analyse (par exemple, pas pour les utilisateurs qui saisissent des données en général)
+> * Activer le cache analytique
+> *  Ne pas utiliser l'analyse continue
+> * Tracker : Désactivez le contrôle "Afficher la liste des pages de garde" dans les 
+> détails du programme.
+> * Appliquer des index de base de données personnalisés pour les attributs TEI fréquemment
+>  recherchés.
+> * S'assurer que les attributs générés par le système n'utilisent pas le motif RANDOM
+>
+>
+> **Android**
+>
+> * S'assurer que les administrateurs responsables des déploiements Android sont familiers avec :
+>   * L'utilisation de l'application Android Settings App et les différentes stratégies de synchronisation qui peuvent améliorer les performances.
+>   * Une configuration spécifique pour les utilisateurs qui utiliseront Android est fortement recommandée.
+>   * La distribution des mécanismes de l'Android App et la gestion des mises à jour des versions.
+>
+> **Stratégies d'implémentation**
+>
+> * S'assurer qu'il existe une configuration agrégée disponible pour la production de rapports (par exemple, des rapports quotidiens basés sur des feuilles de pointage) qui peut être utilisée de manière routinière, ou comme solution de secours en cas de retard dans la saisie des données Tracker pendant les périodes de fort volume (par exemple, le paquet agrégé COVAC)
+> 16. Utiliser la dernière version de l'outil de suivi COVID-19 Immunisation/REI et les ensembles de données agrégées correspondants (pour le tableau de bord) comme référence ; nous ne recommandons toutefois pas de " mettre à jour " un outil qui a déjà été largement personnalisé pour le pays.
+
+
+## Contexte { #background } 
+
+### Public cible { #audience }
+
+Le principal public visé par cette section est constitué par les administrateurs de système qui soutiennent le ministère de la Santé dans ses plans nationaux de livraison du vaccin anti-COVID-19. Cependant, bien que la livraison du vaccin COVID-19 soit le cas d'utilisation spécifique présenté ici, la plupart des recommandations sont applicables aux implémentations de trackers à grande échelle de manière générale.
+
+
+### Objectif { #purpose } 
+
+- Partager les "meilleures informations disponibles", les conseils, astuces et outils en temps réel/émergents afin d'optimiser les implémentations du DHIS2 pour l'échelle anticipée des vaccins anti-COVID-19. Ces informations proviennent souvent de la communauté de pratique.
+- Il ne s'agit pas d'un guide normatif, mais plutôt d'une série de recommandations qui peuvent évoluer en temps réel, au fur et à mesure que nous tirons des enseignements des implémentations en situation réelle et que nous mettons à jour/améliorons les produits mondiaux.
+- Notre objectif est de faciliter le partage d'informations entre les pays confrontés à des défis similaires et qui peuvent bénéficier de solutions communes.
+
+## Directives à l'intention des responsables de la mise en œuvre { #guidance-for-implementers }
+
+### Directives générales { #general-guidance }
+
+* Des améliorations considérables des performances ont été apportées à partir de la version 2.35. Nous recommandons fortement de mettre à niveau les instances tracker vers la dernière version de patch 2.35 ou 2.36, où des améliorations de performance ont également été ajoutées dans les versions ponctuelles.
+* Nous vous recommandons vivement de mettre en place un outil de surveillance du serveur pour identifier quand et pourquoi votre serveur rencontre des difficultés.
+    * Voici quelques recommandations : [https://glowroot.org](https://glowroot.org/) et [https://munin-monitoring.org](https://munin-monitoring.org/)
+    * Voici un [tutoriel pour installer Glowroot sur DHIS2](https://github.com/dhis2/dhis2-docs/blob/glowroot-tutorial/src/tutorials/glowroot.md)
+
+### Performance analytique { #analytics-performance }
+
+Conscients du fait que les demandes des pays en matière de fréquence des données analytiques "en temps réel" pour la prise de décision peuvent varier et qu'il est indispensable de disposer de données en temps voulu, nous recommandons d'éviter de lancer des analyses pendant les périodes de saisie intensive de données. Nous avons constaté des pics importants dans les temps de réponse globaux lorsque les tableaux d'analyse sont générés. **Ces pics semblent avoir le plus d'impact lorsque de nombreux utilisateurs accèdent à des tableaux de bord contenant des indicateurs de programmes calculés à la volée**.
+
+#### Performance du tableau de bord { #dashboard-performance }
+
+Les mesures suivantes peuvent être prises pour améliorer les performances des tableaux de bord.
+
+* Les utilisateurs ne devraient **pas** avoir des tableaux de bord contenant des analyses basées sur des trackers comme page d'accueil après s'être connectés.
+  a. Ajouter un tableau de bord sans analyse comme tableau de bord par défaut/premier tableau de bord auquel les utilisateurs accèdent après s'être connectés. (Veiller à ce qu'il soit le premier dans l'ordre alphabétique. Par exemple, "\*\*NOTICE\*\* or \*\*INFO\*\*) 
+   b. Ce tableau de bord pourrait être complété par des éléments textuels pour communiquer des informations clés, des mises à jour, des procédures opérationnelles standard, etc. 
+  c. Le tableau de bord devrait être mis à la disposition du public.
+
+![Exemple de tableau de bord sans analyse utilisé comme page de renvoi après connexion.](resources/images/covax_perf_image2.jpg)
+
+* Limitez le partage des tableaux de bord aux seuls utilisateurs de l'analytique qui ont besoin d'utiliser les données pour la prise de décision, en excluant les utilisateurs de la saisie de données. Cela peut être réalisé avec des groupes d'utilisateurs, combinés avec un tableau de bord pour les utilisateurs non analytiques comme indiqué ci-dessus.
+
+* Les demandes d'analyse du tracker, en particulier pour certaines configurations d'indicateurs de programme, peuvent être lentes et créer des problèmes de performance. Lors de l'extraction de ces données :
+  a. Faites-le en dehors des heures de pointe du personnel de vaccination, afin d'éviter tout ralentissement de leur travail.
+  b. Travaillez avec des ensembles de données plus restreints en temps réel. Par exemple, il peut être nécessaire d'obtenir des chiffres pour un sous-ensemble d'unités d'organisation à un moment donné (par exemple, par région).
+  c. Au lieu que plusieurs personnes téléchargent les mêmes données (par exemple, pour le niveau national) à partir de DHIS2, téléchargez-les une seule fois et partagez-les via excel, par exemple.
+
+* Assurez-vous que la mise en cache est activée dans la configuration de dhis2, afin que les requêtes répétées pour les mêmes ressources analytiques soient servies à partir du cache et que les requêtes dans la base de données soient ignorées.
+  a. conf.dhis - `analytics.cache.expiration` fixé à au moins 3600 (6 heures).
+  b. Réglages du système -\>Analyse -\>Stratégie de cache. Valeur recommandée : au moins CACHE_6AM_TOMORROW. Définir la cacheabilité sur " privé " pour éviter le cache nginx.
+
+* Désactiver l'analyse continue. Si vous désactivez l'analyse continue, vous ne verrez vos analyses mises à jour qu'après l'exécution de vos tables d'analyse.
+
+* A titre de **dernier recours/mesure immédiate pour les tableaux de bord peu performants, vous pouvez également:** a. Supprimer l'accès aux analyses des trackers pour les utilisateurs non essentiels. b. Définir l'application d'atterrissage par défaut via les paramètres du système sur les applications de capture ou de saisie de données. Cela signifie que tous les utilisateurs seront d'abord dirigés vers ces applications. Cela peut être perturbant pour les utilisateurs qui ne saisissent pas de données, mais cela minimisera le trafic vers les tableaux de bord.
+
+* Envisagez de fournir des analyses du tracker du COVID-19 REI Tracker via le modèle de données agrégées tel que décrit dans la [section sur la mise en œuvre] (#implementation-strategies). En résumé :
+  a. Mapping des IP pour agréger les éléments de données
+  b. Acheminer des valeurs de données vers le modèle de données agrégées (via un script) à une fréquence prédéterminée.
+  c. Les tableaux de bord partagés plus largement sur la base du modèle de données agrégées via des indicateurs peuvent être 100 fois plus performants (les éléments du tableau de bord se chargent en 0,02-0,1 seconde contre 10-200 secondes sur l'instance de test). En outre, ils offrent une plus grande puissance analytique grâce à l'utilisation de dimensions (par exemple pour représenter et découper les combinaisons de catégories).
+
+#### Évaluation de la performance des indicateurs d'analyse/programme { #assessing-analyticsprogram-indicator-performance }
+
+Une analyse des tableaux de bord initialement inclus dans le package Tracker REI COVID-19 (note : ces tableaux de bord Tracker sont désormais retirés du package et ne sont pas recommandés) a révélé que :
+
+* Les tableaux de bord sont considérablement ralentis par les longues requêtes pour les indicateurs de programmes de type inscription.
+
+* Les taux d'abandon sont certes importants à connaître, mais ils prennent beaucoup de temps à charger, même sur notre base de données de test. Nous pensons qu'il est peu probable que les taux d'abandon nécessitent un suivi quotidien, mais qu'ils peuvent plutôt être analysés chaque semaine ou même chaque mois à un niveau plus élevé grâce au module de base COVAC (ensembles de données agrégées et tableau de bord de suivi de la couverture, etc.)
+
+![](resources/images/covax_perf_image6.png)
+
+![](resources/images/covax_perf_image5.png)
+
+D'autres visualisations "lourdes" devraient être supprimées des tableaux de bord de surveillance de routine qui sont partagés avec des utilisateurs de niveau inférieur et qui entraîneront un stress au niveau des performances. Elles peuvent être déplacées vers des tableaux de bord qui sont consultés moins fréquemment, un rapport HTML ou un autre outil de reporting :
+
+a. Cartes à des niveaux inférieurs, ou demande d'unités d'organisation inutiles
+
+b. Rapports d'événements comportant plus de 100 lignes d'événements ou plus de 50 lignes d'inscriptions
+
+c. Visualisations demandant de longues périodes de données longitudinales, par exemple les 12 derniers mois
+
+d. Toute visualisation avec des indicateurs de programme de type inscription, tels que les taux d'abandon
+
+e. Dans les tests des indicateurs de programme du package COVAC, les indicateurs de programme du "type d'inscription" ont pris le temps de réponse le plus long. De plus, ils ont une moins bonne évolutivité, car il leur faut plus de temps pour fournir des données lorsqu'on demande des périodes, des unités d'organisation ou des TEI supplémentaires.
+
+### Performance du Tracker { #tracker-performance }
+
+* Les TEA qui génèrent des ID système uniques à l'aide du modèle SEQUENTIAL() sont beaucoup plus performants que ceux qui utilisent le modèle "RANDOM()". **Nous recommandons d'éviter le modèle RANDOM** car :
+    * C'est ouvert aux situations de compétition ;
+    * La tendance à la baisse des performances sera d'autant plus forte que la durée d'utilisation sera longue ; et
+    * Il utilise la table des valeurs réservées dans la base de données pour suivre les valeurs qui ont déjà été distribuées. Cette table est connue pour être un point sensible lors de l'importation des trackers.
+    * Note pour les implémentations utilisant Android : le fait de réserver des valeurs aux appareils pour une utilisation hors ligne peut affecter la perception de l'utilisateur de la génération SEQUENTIELLE, comme documenté ici : [https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_dhis2_config_reserved_id](https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_dhis2_config_reserved_id)
+
+* Dans les premières versions du registre des vaccins COVID-19, certaines listes de travail causaient des problèmes de performance. Elles ont été supprimées des packages du package REI COVID V 1.1.2. Si vous constatez que le tracker affiche des temps de chargement lents, cela peut être lié aux listes de travail et à un grand nombre de TEI dans une unité d'organisation. Une solution consiste à désactiver la case "Afficher la liste de la page d'accueil" dans les détails du programme (ce qui a pour inconvénient de désactiver également les listes de travail)
+
+* Les recherches sur les TEI portant sur des attributs (en particulier ceux qui ne sont pas uniques comme le prénom, le nom de famille ou le numéro de téléphone) peuvent être considérablement améliorées en ajoutant des index trigrammes partiels pour cet attribut particulier de l'entité suivie. Cela a été fait au Nigeria et au Rwanda et l'amélioration des performances a été énorme. Cela n'a pas encore été ajouté au noyau, et les implémentations devront donc permettre de les créer manuellement pour le moment. Pour ajouter des index de trigrammes et les combiner avec des types de colonnes primitives, deux extensions doivent être créées. Ces extensions font déjà partie de l'installation par défaut de posgresql. Extensions :
+
+```
+create extension pg_trgm;
+create extension btree_gin;
+```
+
+Exemple d'index pour trackedentityattributeid 1234 (ex : PhoneNumber). Doit être répété pour chaque attribut qui est fortement utilisé lors des recherches (prénom, nom, etc).
+```
+créer un index simultanément in_gin_teavalue_1234 ON trackedentityattributevalue
+en utlisant gin (trackedentityinstanceid,lower(value) gin_trgm_ops)
+avec trackedentityattributeid = 1234;
+```
+
+* De même, les index trigrammes seront utiles si le système effectue des recherches sur la base de valeurs de données d'événement. Au Nigeria, le code QR pour les vaccinations effectuées était une valeur de données d'événement sur laquelle le système effectuait de nombreuses recherches (par exemple : vérification du code QR des passagers avant l'embarquement). En fonction des modèles de recherche pour la configuration de l'implémentation spécifique, cet index trigramme peut également être appliqué. Toutes les implémentations n'en auront pas besoin. En supposant que les extensions mentionnées ci-dessus sont déjà créées, un exemple de création d'index pour un élément de données (uid=LavUrktwH5D, qrCode), attaché à une scène de programme. Dans cet exemple, le dataelementid=233047 et le programstageid=64527.
+
+```
+créer un index simultanément in_gin_psi_edv_64527_233047 on > programstageinstance
+en utilisant gin (lower(eventdatavalues #>> '{LavUrktwH5D, value}') gin_trgm_ops);
+```
+
+* L'utilisation d'applications personnalisées peut avoir un impact positif ou négatif sur les performances. Les apps peuvent être un moyen de réaliser des fonctionnalités plus ciblées qui évitent des clics et des appels supplémentaires à l'API. Elles sont aussi une source de précaution, et nous avons vu certaines applications personnalisées utiliser des fonctionnalités de l'API qui provoquent un stress inutile sur le système. Les paramètres permettant d'ignorer la pagination, le comptage du nombre de résultats dans la pagination, l'utilisation de l'opérateur LIKE pour comparer alors que EQ(equals) est plus approprié sont quelques-uns des erreurs qui causent un certain stress. Si l'opérateur LIKE est utilisé avec des attributs uniques, l'index trigramme mentionné ci-dessus doit être créé pour lui. Le SkipPaging doit toujours être évité. Lors de l'utilisation de la pagination, il faut toujours éviter totalPages, car cela oblige la requête de la base de données à obtenir le nombre total d'enregistrements pour les compter, au lieu de ne récupérer que la page donnée. Si possible, une limite minimale de 3 caractères pour searchString devrait être appliquée aux attributs interrogeables. Le Nigeria avait une application personnalisée qui appliquait la limite de recherche de 3 caractères minimum du côté de l'application, ce qui a permis d'alléger plusieurs requêtes lourdes. Les index trigrammes ne seront utilisés par l'optimiseur de requêtes que si la chaîne de recherche comporte au moins 3 caractères.
+
+> **Note**
+>
+> Les appels effectués par les applications personnalisées doivent faire l'objet d'une attention particulière, car ils peuvent être construits d'une manière qui n'a pas été testée et prouvée comme étant performante. La liste des erreurs courantes de performance fournie ici n'est pas exhaustive. Il est important de mettre en place une surveillance et de garder un œil sur les appels effectués par les applications personnalisées, les intergiciels d'intégration et les scripts externes.
+
+* Tracker Capture App met à jour les valeurs des données d'événement individuellement. Dans un environnement hautement concurrent, cela peut provoquer un verrouillage au niveau des lignes de la base de données et une attente. Le Sri Lanka a créé une application Tracker Capture personnalisée en utilisant l'application Tracker Capture de base comme base de référence. Dans l'application personnalisée, ils ont modifié le flux de sorte que toutes les valeurs de données d'événement sont mises à jour ensemble dans une seule API lorsque l'utilisateur clique sur "Enregistrer et terminer". Le bouton était "Terminer" dans l'application de base originale. Si les groupes/administrateurs/metteurs en œuvre du HISP ont les compétences nécessaires, ils peuvent peut-être envisager de faire de même.
+
+### Gestion de l' utilisateur { #user-management } 
+
+* Nous vous déconseillons de partager les identifiants des utilisateurs sur plusieurs appareils. Cela a donné lieu à certains scénarios où les utilisateurs sont déconnectés par inadvertance.
+    * Autres solutions : un utilisateur par appareil (par exemple, l'utilisateur suit l'appareil, c'est-à-dire le personnel chargé de la saisie des données sur le site du vaccin ; les mots de passe pourraient être recyclés chaque jour pour plus de sécurité)
+* Optimisation des utilisateurs pour Android (décrite dans la section Android)
+* Restriction de l'accès inutile aux tableaux de bord basés sur le suivi, tel que décrit ci-dessus
+
+## Orientations pour les déploiements Android { #guidance-for-android-deployments }
+
+### Recommandations relatives à la configuration du DHIS2 { #dhis2-configuration-recommendations }
+
+Cette sous-section aborde les recommandations spécifiques pouvant être formulées en modifiant directement la configuration du serveur DHIS2.
+
+#### Accès des utilisateurs { #user-access }
+
+Étant donné qu'Android peut fonctionner hors ligne, l'application essaiera de télécharger le plus d'informations possible au cas où l'appareil serait hors ligne. Pour réduire la quantité de données transférées :
+
+- Définissez les unités d'organisation, les programmes et les ensembles de données auxquels les utilisateurs auront accès ; cela réduira considérablement la quantité de données transférées et la charge du serveur
+
+- Veuillez consulter les recommandations sur la façon de [créer un utilisateur](https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_dhis2_config_creating_user)
+
+#### Valeurs générées automatiquement { #auto-generated-values }
+
+En raison de sa nature hors ligne, Android téléchargera également les valeurs réservées. L'application essaiera d'évaluer le nombre de valeurs restantes et d'en récupérer davantage sur le serveur à chaque synchronisation.
+
+Dans les cas d'implémentation où les utilisateurs seront hors ligne pendant de longues périodes, il peut être nécessaire d'augmenter cette valeur (voir la section ci-dessous). Si les valeurs générées automatiquement comprennent l'utilisation de dates sous toutes ses formes (jours, mois, années), l'administrateur du système doit prêter une attention particulière à leur définition et à l'utilisation de l'application Android. Notez également que la réservation de valeurs à des appareils pour une utilisation hors ligne avec le motif SEQUENTIAL() (par exemple pour un attribut TEI "ID généré par le système") prendra chacune de ces valeurs de manière séquentielle au fur et à mesure qu'elles sont *réservées dans les appareils*, ce qui peut être déroutant pour certains utilisateurs. Ce comportement est prévisible et documenté [ici] (https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_dhis2_config_reserved_id).
+
+Vous trouverez de plus amples informations sur cette question dans la [documentation officielle] (https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_dhis2_config_reserved_id) et dans [this post dans la CdP] (https://community.dhis2.org/t/question-regarding-expiry-of-reserved-ids-of-an-auto-generated-unique-values-configured-with-a-text-pattern-containing-current-date-mm-yyyy/40761/2)
+
+### Android Settings WebApp { #android-settings-webapp }
+
+La [Android Settings WebApp] (https://apps.dhis2.org/app/a1bd6b5b-de8c-4998-8d34-56c18a139683) est une application qui peut être installée sur n'importe lequel des derniers serveurs DHIS2 et permet à l'administrateur du système de définir certains paramètres qui seront lus par chaque mobile.
+
+#### Valeurs réservées { #reserved-values }
+
+Dans la section ci-dessus, l'utilisation des valeurs générées automatiquement a été brièvement expliquée. Avec l'application Android Settings, l'administrateur système peut définir le nombre de ces valeurs qui seront récupérées par chaque utilisateur mobile. Si vos utilisateurs mobiles doivent être hors ligne pendant de très longues périodes, il peut être judicieux d'augmenter cette valeur. Cependant, la définition d'un nombre très élevé peut entraîner l'épuisement des valeurs et une augmentation des données transférées lors de la synchronisation initiale.
+
+![](resources/images/covax_perf_image4.png)
+
+Par exemple, imaginons une implémentation avec des appareils mobiles qui seront déconnectés pendant une semaine complète et qui reviendront ensuite à un emplacement central pour la synchronisation des données. Chaque utilisateur peut voir jusqu'à 50 patients par jour et donc, pendant une semaine, jusqu'à 350 patients. En fixant les *valeurs réservées téléchargées par attribut TEI* à au moins 350, les utilisateurs pourront donc travailler correctement hors ligne sans risquer d'épuiser les valeurs.
+
+#### Synchronisation des métadonnées { #metadata-sync }
+
+![](resources/images/covax_perf_image1.png)
+
+S'il est très peu probable que votre programme soit modifié, la définition d'une valeur de longue période pour ce paramètre réduira le nombre de connexions vers le serveur. Il est bon de trouver un équilibre entre l'importance d'avoir des appareils sans métadonnées entièrement mis à jour et la charge que peut subir le serveur en raison du nombre d'appareils.
+
+Par exemple, imaginons que nous ayons une implémentation avec 10.000 appareils et qu'ils soient configurés pour se synchroniser tous les jours. Cela signifie que le serveur devrait être prêt à gérer 10.000 demandes de mise à jour de métadonnées par jour. Même si ces requêtes donneront lieu à une réponse vide si aucune modification n'a été apportée, il peut être plus judicieux de fixer cette valeur à 1 semaine ou même manuellement (avec un moyen de communication approprié avec les utilisateurs sur le terrain) si aucune modification ne sera apportée au package ou si les modifications sont peu susceptibles d'être critiques.
+
+Vous pouvez même désactiver la synchronisation automatique des métadonnées et vous fier aux synchronisations manuelles déclenchées par vos utilisateurs, si cette option est envisageable dans votre implémentation.
+
+#### Synchronisation des données { #data-sync }
+
+La synchronisation des données suit le même principe que celle des métadonnées et doit être adaptée en fonction de l'implémentation. Par exemple, on peut trouver des implémentations où les utilisateurs vont sur le terrain où ils vont travailler hors ligne, il est donc important de fournir à ces utilisateurs toutes les données nécessaires à leur travail. Il peut aussi s'agir d'implémentations dans lesquelles les utilisateurs enregistreront très probablement des patients sur le terrain et transféreront des données des appareils au serveur.
+
+Voir les exemples suivants :
+
+* Dans le cas d'une implémentation où les utilisateurs travaillent pratiquement hors ligne et doivent disposer d'autant de données que possible sur leur appareil, la *synchronisation des données* peut être définie sur *Manuelle* si les utilisateurs sont invités à effectuer cette opération avant de partir sur le terrain. Ou quotidien si ce processus doit être automatisé.
+
+* Dans le cas d'une implémentation où les utilisateurs se rendent sur le terrain et sont susceptibles d'être volés, ou si la peur de perdre les appareils est présente, il pourrait être intéressant de définir la *synchronisation des données* au minimum (30 minutes) afin que les données soient poussées vers le serveur dès que possible. On pourrait également demander aux utilisateurs d'utiliser la [synchronisation granulaire] (https://docs.dhis2.org/en/full/use/dhis2-android-app.html#capture_app_generic_sync_info) chaque fois qu'ils ajoutent ou modifient un patient, mais cela pourrait être plus compliqué.
+
+![](resources/images/covax_perf_image3.png)
+
+Vous pouvez également désactiver la synchronisation automatique des données et vous fier aux synchronisations manuelles déclenchées par vos utilisateurs, mais cela présente plus de risques que des données soient enregistrées et non synchronisées si les utilisateurs ne sont pas systématiques.
+
+#### Paramètres de téléchargement { #download-settings }
+
+Ces paramètres permettent aux utilisateurs de définir la quantité de TEIs qui seront téléchargés lors de la synchronisation des données. Ils devraient probablement être combinés avec le paramètre *Synchronisation des données* expliqué ci-dessus. Il est important de comprendre le fonctionnement de ces paramètres pour définir une approche ciblée et valide. La documentation officielle, [paramètres de synchronisation] (https://docs.dhis2.org/en/full/use/dhis2-android-app.html#capture_app_andoid_settings_webapp_synchronization), explique en détail ce à quoi il faut s'attendre lors de la configuration de ces paramètres. Les capacités de connectivité des implémentations devraient également jouer un rôle important lors de la définition de ces paramètres, car dans les implémentations avec une très bonne connectivité, réduire cette valeur au maximum diminuerait la charge du serveur pendant la *synchronisation des données* sans avoir un grand impact sur les utilisateurs (ils seront toujours en mesure de trouver les patients en ligne). Toutefois, cela pourrait entraîner une surcharge du serveur lors de recherches très larges. La façon dont les utilisateurs mobiles se connecteront au serveur (c'est-à-dire en utilisant des packages de données mobiles plutôt que le wifi) joue également un rôle car le téléchargement de nombreux patients qui pourraient ne pas être utilisés entraînera une dépense de données mobiles sans raison.
+
+Voir les exemples suivants :
+
+*  Dans le cas d'une implémentation où les utilisateurs ajouteront principalement des patients au système (c'est-à-dire qu'ils enregistreront des patients avec COVID), il n'est pas nécessaire d'avoir beaucoup de patients sur l'appareil. Par conséquent, en fixant une faible valeur pour le téléchargement des TEI, on diminue la charge du serveur pendant la synchronisation des données et on réduit la quantité de données transférées (à prendre en compte lors de la connexion avec des données mobiles).
+
+*  Dans le cas d'une implémentation où les utilisateurs visiteront les patients hors ligne sans possibilité de recherche en ligne, l'administrateur du système pourrait vouloir laisser les utilisateurs télécharger autant de TEI que possible afin qu'ils emportent avec eux toutes les données des patients dont ils auront besoin.
+
+*  Dans le cas d'une implémentation avec une très bonne connectivité, l'administration des utilisateurs pourrait décider de réduire les paramètres de téléchargement afin que les appareils aient le moins de TEI possible et se reposent entièrement sur la recherche en ligne. Étant donné que les utilisateurs effectueront leur recherche à l'aide d'un identifiant unique (c'est-à-dire un numéro d'identification national), ce qui constitue une tâche peu exigeante pour le serveur, la configuration semble adéquate. Cependant, si les utilisateurs ne sont pas en mesure de rechercher les patients par un identifiant unique et utilisent un nom de famille, le serveur pourrait souffrir d'une surcharge des recherches et il pourrait donc être plus intéressant de permettre aux utilisateurs de télécharger plus de patients et de miser sur le mode hors ligne.
+
+### Mises à jour de l'application { #application-updates }
+
+![](resources/images/covax_perf_image8.jpg)
+
+L'application Android DHIS2 est publiée via deux canaux : [Google Play Store] (https://play.google.com/store/apps/details?id=com.dhis2) et [Github] (https://github.com/dhis2/dhis2-android-capture-app/releases). Nous publions des versions tous les 6 mois et apportons des correctifs aussi souvent que nécessaire. Si les implémentations utilisent le Google Play Store comme source d'approvisionnement, elles pourraient bénéficier de mises à jour automatiques. Cependant, cela peut ne pas être souhaitable dans certains scénarios où les implémentations veulent tester une version plus récente avant de la mettre à la disposition de leurs utilisateurs. Nous recommandons de désactiver les mises à jour automatiques afin que l'application puisse être largement testée par les administrateurs/testeurs avant de demander à leurs utilisateurs de le faire.
+
+Pour désactiver les mises à jour automatiques, une fois l'application installée via le Google Play, procédez comme suit :
+
+- Cliquez sur le menu à 3 points dans le coin droit de votre écran. Par défaut, "Activer la mise à jour automatique" sera sélectionné.
+- Désélectionnez ce bouton. Ainsi, l'application Android ne sera pas mise à jour automatiquement lorsqu'une mise à jour est disponible.
+- Une fois terminé, la case "Activer la mise à jour automatique" ne doit pas être cochée.
+
+Les administrateurs système peuvent désormais vérifier les nouvelles versions et informer les utilisateurs de la nécessité de mettre à jour leur application. Pour ce faire, il suffit de se rendre sur le Play Store et de cliquer sur le bouton de mise à jour qui s'affiche chaque fois qu'une nouvelle version est disponible.
+
+Vous trouverez de plus amples informations sur les plans de déploiement et les tests dans les [guides officiels] (https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_testing).
+
+### Recommandations relatives aux dispositifs et à leur gestion { #device-and-management-recommendations }
+
+Dans cette section, nous abordons brièvement certaines recommandations relatives aux dispositifs eux-mêmes et à leur gestion.
+
+#### Spécifications des appareils Android { #android-device-specifications }
+
+Il est très difficile de donner des recommandations générales sur les appareils à utiliser. Les responsables de la mise en œuvre devraient tester leur configuration finale sur un ensemble de dispositifs afin de comprendre l'expérience de l'utilisateur.
+
+Par exemple, si les utilisateurs doivent se rendre sur le terrain et travailler hors ligne avec un grand nombre de TEI, ils doivent opter pour des appareils haut de gamme car l'application Android consommera plus de ressources. En revanche, si les implémentations sont soumises à des contraintes budgétaires et qu'elles comptent des milliers d'utilisateurs mais qu'elles travaillent avec des quantités beaucoup plus faibles de TEI et de données, elles peuvent préférer utiliser des appareils de classe moyenne.
+
+Vous trouverez de plus amples informations sur ce processus dans le [guide officiel] (https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_mobile_specs).
+
+#### Gestion des terminaux mobiles (MDM) { #mobile-device-management }
+
+Nous recommandons fortement l'utilisation d'une application de gestion des appareils mobiles (MDM) dans les implémentations mobiles. L'utilisation d'une application de MDM offre plusieurs avantages qui peuvent faciliter la mise en œuvre et le support. Cependant, il entraîne généralement des coûts plus élevés.
+
+Les implémentations peuvent opter pour des solutions MDM prêtes à l'emploi ou déployer une solution dans leur propre infrastructure. Cette dernière solution est sans doute la plus avantageuse en termes de budget, mais elle requiert des compétences techniques élevées, notamment en matière d'administration système et de gestion des bases de données.
+
+Ce [[guide officiel]{.ul}](https://docs.dhis2.org/en/full/implement/managing-mobile-devices.html) couvre plusieurs MDM qui ont été testées en énumérant leurs principaux avantages et inconvénients.
+
+### Check-list des recommandations pour mobiles { #mobile-recommendations-checklist }
+
+
+| **Check-list pour l'implémentation mobile du DHIS2 à l'échelle** |  |
+| --- | --- |
+| Configuration de l'accès aux utilisateurs |  |
+| Modèle de valeurs générées automatiquement            |                           |
+| Android Settings Webapp:                  |                           |
+| *Nombre de valeurs réservées*              |                           |
+| *Période de synchronisation automatique des métadonnées*         |                           |
+| *Période de synchronisation automatique des données*             |                           |
+| *Paramètres de téléchargement des données*                 |                           |
+| Gestion des mises à jour des applications Android        |                           |
+| Mobile Devices Management (Gestion des dispositifs mobiles)                |                           |
+
+
+## Hébergement, administration et surveillance du serveur { #server-hosting-administration-and-monitoring }
+
+Deux conditions fondamentales doivent être remplies en matière d'hébergement du serveur :
+
+- Il doit y avoir une personne - de préférence deux - ayant la formation et l'expérience requises pour gérer le serveur.
+- Il faut une politique de confidentialité/sécurité pour couvrir le stockage d'une grande partie des données relatives à la population.
+
+### Spécifications du serveur { #server-specifications }
+
+Comme l'indique la documentation sur les [spécifications] du serveur (https://docs.dhis2.org/en/manage/performing-system-administration/dhis-core-version-237/installation.html#install_server_specifications), "DHIS2 évolue linéairement en fonction de la quantité de RAM et du nombre de cœurs de processeur, de sorte que plus vous en avez les moyens, plus l'application sera performante". Les implémentations Covax, qui visent généralement la population adulte totale d'un pays, seront à grande échelle même dans les petits pays. Les exigences exactes varieront en fonction du nombre d'utilisateurs et de TEI prévus, mais 32 Go de RAM et 32 CPU peuvent être considérés comme un point de départ pour toutes les implémentations, sauf les plus petites. Toutes les implémentations doivent être prêtes à mettre à niveau le matériel pour supporter l'évolution de l'échelle et l'augmentation des données.
+
+La performance du SSD/disque est également essentielle pour la performance globale, influençant fortement les activités clés telles que la recherche de TEI et l'analyse. La documentation suggère que "la vitesse de lecture minimale est de 150 Mb/s, 200 Mb/s est bon, 350 Mb/s ou mieux est idéal." Les performances réelles du disque peuvent également être évaluées en examinant la latence du disque. Vous pouvez voir ces chiffres sur Munin, une simple évaluation ponctuelle peut être faite avec dd :
+
+```
+dd if=/dev/zero of=/root/testfile bs=512 count=1000 oflag=dsync
+```
+
+Pour un bon disque, cette commande devrait se terminer en une fraction de seconde (\<0,5s). Tout ce qui dépasse 5 secondes sera probablement trop lent pour atteindre des niveaux de performance acceptables.
+
+### Architecture et infrastructure du serveur { #server-architecture-and-infrastructure }
+
+L'application (tomcat) et la base de données (postgresql) *pourraient* être hébergées sur le même serveur, mais l'idéal serait que la base de données soit installée sur un serveur dédié.
+
+Une connexion internet rapide et stable est toujours nécessaire, mais lorsque la base de données est installée sur un serveur distinct, il est également important de s'assurer qu'il existe une connexion réseau *interne* rapide et stable entre les deux.
+
+Une attention particulière doit être portée lorsque le serveur est hébergé dans un environnement partagé et virtualisé. Dans ce cas, le fournisseur d'hébergement peut surdimensionner les ressources (par exemple, les processeurs, les disques), ce qui signifie que le serveur ne dispose pas réellement des ressources qu'il semble avoir. Cela signifie également que les performances fluctuent en fonction de la charge des autres systèmes. Dans certains cas, les pays ont dû négocier avec l'hébergeur pour s'assurer que le serveur utilisé n'était pas surdimensionné, ou bien passer à un serveur physique.
+
+### Installation et configuration { #installation-and-configuration }
+
+Il est important de s'assurer que les bonnes versions de logiciels sont utilisées pour optimiser les performances :
+
+- JDK11
+- PostgreSQL version 12 ou 13
+- DHIS2 version 2.35 ou supérieure, **dernière version de patch disponible**
+
+Tomcat doit être configuré avec suffisamment de mémoire. Cela dépendra de la mémoire totale disponible du serveur, et si celle-ci est partagée avec postgresql ou si la base de données fonctionne sur un serveur séparé. Avec un compte super utilisateur DHIS2, vous pouvez vérifier la configuration de la mémoire de Tomcat en ouvrant "About DHIS2" et en regardant le champ "Memory info" :
+
+![](resources/images/covax_perf_image7.png)
+
+Il est également très important de configurer correctement postgresql pour obtenir de bonnes performances. Des instructions à ce sujet sont disponibles dans la [documentation du serveur] (https://docs.dhis2.org/en/manage/performing-system-administration/dhis-core-version-237/installation.html#install_postgresql_performance_tuning).
+
+### Surveillance du serveur { #server-monitoring }
+
+Nous vous recommandons vivement de mettre en place un outil de surveillance du serveur afin d'identifier quand et pourquoi votre serveur rencontre des difficultés. Les principales mesures de performance doivent être surveillées, par exemple la RAM, le CPU, les performances du disque sur tous les nœuds et les mesures spécifiques aux applications sur le proxy, la base de données et tomcat. Parmi les recommandations, citons [https://glowroot.org](https://glowroot.org/) et [https://munin-monitoring.org](https://munin-monitoring.org/). Un [tutoriel pour l'installation de glowroot sur DHIS2](#glowroot_tutorial) a été élaboré à cet effet.
+
+Parmi les autres options qui peuvent nécessiter davantage de configuration mais qui permettent une personnalisation importante, citons prometheus/grafana et le ELK stack.
+
+## Stratégies d'implémentation { #implementation-strategies }
+
+D'après les expériences du Sri Lanka, de l'Indonésie, du Nigéria, du Rwanda et d'autres pays, les visualisations basées sur l'analyse du tracker dans les déploiements à grande échelle de vaccins COVID-19 peuvent entraîner des requêtes de comptage TEI très lourdes, rendant presque le système inutilisable. Des stratégies d'atténuation brutales ont été adoptées au Rwanda (désactivation de toutes les applications d'analyse), tandis que le Sri Lanka est revenu aux requêtes SQL.
+
+Ces défis peuvent être partiellement relevés grâce aux conseils en matière d'optimisation des performances présentés ci-dessus. Nous reconnaissons également que :
+
+* L'imprévisibilité des performances du Tracker à une échelle sans précédent, étant donné les nombreux facteurs variables en jeu dans l'implémentation, la configuration et la personnalisation du pays
+* Les capacités, les ressources et les structures d'administration des serveurs varient fortement d'un pays à l'autre.
+
+Entre-temps, le reporting quotidien agrégé via DHIS2 s'est avéré très efficace à grande échelle lors de la campagne rougeole-rubéole au Bangladesh en 2020. Une configuration agrégée peut faciliter l'établissement de rapports quotidiens sur les stocks et les doses administrées (par exemple, à partir de feuilles de pointage), des données qui sont largement suffisantes pour servir au suivi "quotidien en temps réel" de la campagne globale via des tableaux de bord. En Ouganda, une implémentation agrégée a été utilisée en parallèle avec le tracker REI COVID, afin de permettre un suivi quotidien et de vérifier l'exhaustivité des données pendant les périodes de fort volume où la saisie des données du tracker ne pouvait être maintenue (pas assez de dispositifs, etc.).
+
+Sur la base des retours d'information, nous comprenons que la plupart des implémentations nécessitent au moins un suivi quotidien pendant les phases de campagne de distribution du vaccin anti-COVID-19, mais la définition de " temps réel " est variable. Il peut y avoir un moment de la journée où les centres d'opérations de la campagne surveillent la performance quotidienne et cela devrait être pris en compte pour la mise en œuvre et la programmation des analyses dans le pays.
+
+### Utilisation du modèle de données agrégées avec les déploiements des trackers { #use-of-aggregate-data-model-with-tracker-deployments }
+
+Nous recommandons d'incorporer des modèles de données agrégées dans les implémentations du vaccin anti-COVID-19 pour deux fonctions distinctes.
+
+#### Rapports agrégés parallèles : stocks quotidiens et feuilles de pointage des doses de vaccin administrées au niveau du site de vaccination { #parallel-aggregate-reporting-daily-stock-tally-sheets-of-vaccine-doses-administered-at-vaccination-site-level }
+
+La recommandation de s'assurer que les pays disposent d'un package COVAC agrégé en parallèle du registre Tracker est une recommandation ancienne. Nous fournissons ici quelques raisons pour lesquelles nous pensons qu'un pays devrait être préparé avec une configuration agrégée pour le reporting en parallèle de son déploiement  du Tracker :
+
+- Dans de nombreux pays, cela sera nécessaire pour garantir l'exhaustivité des données aux fins du suivi de la campagne : par exemple, si la totalité de la population ne peut être couverte par le Tracker Registry pour un certain nombre de raisons
+
+- Dans certains contextes, ce mécanisme de rapport (par exemple, basé sur des feuilles de pointage quotidiennes) peut être utilisé pendant les périodes de forte activité de la campagne où la saisie des données au niveau individuel peut prendre du retard (pas assez de dispositifs, problèmes de connectivité, pas assez de personnel pour la saisie des données, etc.)
+
+- Les rapports quotidiens issus des feuilles de pointage sont également souvent utilisés pour comparer la qualité des données aux données Tracker, et aident le pays à évaluer le déploiement du Tracker et à prendre des décisions concernant les sources et les flux de données
+
+Le [package agrégé de base COVAC](https://docs.dhis2.org/en/topics/metadata/covid-19-vaccine-delivery/covac-aggregate/version-110/design.html) contient une configuration permettant d'y parvenir (alignée sur les directives de surveillance de l'OMS, les outils de rapportage de l'OMS AFRO et eJRF) :
+
+- Ensemble de données quotidiennes : COVIDVAC - Administration des vaccins (e.g. doses administrées, par groupes cibles)
+
+- Ensemble de données quotidiennes : rapports sur les stocks au niveau du site (par exemple, les flacons utilisés, le comptage des stocks physiques, etc.)
+
+- Ensemble de données annuelle (qui pourraient aussi être mensuelles/trimestrielles selon le plan du pays) : fixer des cibles de population, qui peuvent être désagrégées par groupes prioritaires, etc.
+
+- Tableau de bord de suivi COVAC qui présente les taux de couverture, les doses administrées, les données clés sur les stocks, les taux d'abandon, etc. Ce tableau de bord de suivi est généralement conçu pour un suivi de plus haut niveau du plan national global de fourniture de vaccins COVID ; tous les éléments de ce tableau de bord ne sont pas destinés à un suivi " en temps réel "/quotidien.
+
+#### Convertir les données des trackers en modèle de données agrégées → à des fins d'analyse (par exemple, servir des tableaux de bord performants){ #converting-tracker-data-to-aggregate-data-model-for-the-purpose-of-analysis-eg-serving-performant-dashboards }
+
+En raison du risque de problèmes de performance avec les tableaux de bord fournissant des données basées sur des trackers (par exemple, des indicateurs de programme lourds calculés à la volée à chaque fois que le tableau de bord est chargé), nous recommandons qu'un tableau de bord quotidien/en temps quasi réel puisse être fourni en utilisant le modèle de données agrégées. Lors de nos tests, cela s'est avéré beaucoup plus performant et toujours capable de servir les indicateurs clés aux utilisateurs de l'analyse. Un avantage supplémentaire pour l'analyse est la structuration des données en dimensions (combinaisons de catégories) pour le pivotement et le découpage.
+
+Pour pouvoir effectuer des analyses COVID-19 à partir des données sources du tracker (par exemple, le registre des vaccins COVID), vous aurez besoin de :
+
+1. Un ensemble de données agrégées (dans la même instance que le programme Tracker ou dans une autre instance) et un ensemble d'ED et de COC pour recevoir les données agrégées du tracker
+
+2. Un tableau de bord pour remplacer le tableau de bord basé sur les trackers pour le suivi des campagnes ; le tableau de bord devrait être entièrement basé sur des indicateurs et/ou des éléments de données basés sur le domaine agrégé.
+
+3. Un ensemble d'indicateurs de programme qui peuvent agréger les données du tracker pour les pousser vers les agrégats cibles d'ED/COC, avec des attributs mappés aux métadonnées des agrégats cibles
+
+4. Un script pour pousser les données du tracker (par exemple les valeurs des indicateurs du programme) vers les ED agrégés. Un exemple de script est en cours de développement et sera partagé prochainement.
+
+Des [orientations génériques pour le suivi des données agrégées sont disponibles] (https://docs.dhis2.org/en/implement/maintenance-and-use/tracker-and-aggregate-data-integration.html#how-to-saving-aggregated-tracker-data-as-aggregate-data-values) et continueront d'être mises à jour.
+
+## Liste des problèmes logiciels connus { #list-of-known-software-issues }
+
+[COVAC: problèmes de performance](https://docs.google.com/document/d/1NJoio5qkdtdljflbt3_AS6N2HgGTepW_TW2m4-qHlTE/edit#)
+

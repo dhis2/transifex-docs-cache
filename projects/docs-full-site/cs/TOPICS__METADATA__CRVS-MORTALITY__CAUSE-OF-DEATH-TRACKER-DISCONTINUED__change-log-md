@@ -1,0 +1,82 @@
+---
+edit_url: "https://github.com/dhis2-metadata/CRVS_COD/blob/master/docs/changelog.md"
+revision_date: "2021-09-23"
+---
+
+# WHO Příčina úmrtí – Protokol změn { #cod-change-log }
+
+## 1.2.0 { #120 }
+
+### Obecné změny { #general-changes }
+
+-   Všechna zobrazení SQL byla překonfigurována pro novější verze DHIS2.
+
+| Název | id | Program |
+| :-- | --- | --- |
+| CoD: Anacod export 2017 | nOrVs1Gi9Nt | událost |
+| CoD: Anacod export 2018 | iy8xEmIhMph | událost |
+| CoD: Anacod export 2019 | ojaXg9yV9is | událost |
+| CoD: Anacod export 2020 | atLa12jpN4y | událost |
+| CoD: Anacod export 2017 | fn3zQtRrETh | Trasovač |
+| CoD: Anacod export 2018 | KdIAkgUzCv7 | Trasovač |
+| CoD: Anacod export 2019 | xzxuZVKZw3A | Trasovač |
+| CoD: Anacod export 2020 | hMLDxoR33ej | Trasovač |
+| CoD: Slovníkové položky kombinující hlavní a dílčí kategorie | Siuqk0lMzC7 | Událost a Tracker |
+| CoD: Slovníková hesla s neplatným odkazem ICD-SMoL  |  nWsSOLLJPjG  |  Událost a Tracker  |
+| CoD: Slovníkové položky s neplatným formátem kódu | dS3uFpYtlss | Událost a Tracker |
+| CoD: Slovníkové termíny s ICD (pro IRIS) | DNveLCRg2zU | Událost a Tracker |
+| CoD: Další indexové číslo slovníku | ekC6LY25qMk | Událost a Tracker |
+| CoD: Termíny nenalezené ve slovníku | ZVl5kudO8Vt | událost |
+| CoD: Termíny nenalezené ve slovníku | hhrfqhx47bt | Trasovač |
+
+-   Standardní zprávy (ověření) pro programy Událost a Tracker byly překonfigurovány. Je možné otevřít příslušné registrace/události přímo ze standardního formuláře zprávy pomocí pravého tlačítka myši.
+
+-   Duplicitní možnosti z **ICD -SMoL - sada možností místního slovníku** byly odstraněny. Byly přidány další možnosti související s COVID-19. Podrobnosti viz referenční soubor metadat. Všechny názvy možností byly změněny na formát všech velkých písmen.
+
+-   ID replacement
+
+| Objekt | Vlastnictví | Stará hodnota | Nová hodnota | Program |
+| --- | --- | --- | --- | --- |
+| možnost | id | CvivP1rh4ii | x9yVKkv9koc | Událost a Tracker |
+| možnost | id | PLlPgcfbL1D | R98tI2c6rF5 | Událost a Tracker |
+| možnost | id | TKD1XJ4ZhMO | pqxvAQU1z9W | Událost a Tracker |
+| optionSet | id | bLA3AqDKdwx | L6eMZDJkCwX | Událost a Tracker |
+| indicatorType | id | e1jRVY5Mcq0 | hmSnCXmLYwt | Událost a Tracker |
+| trackedEntityAttribute | id | flGbXLXCrEo | HAZ7VQ730yn | Trasovač |
+| dataElement | id | YUcJrLWmGyv | G5ljtyKdtYU | Událost a Tracker |
+
+-   Francouzský slovník pro lokalizovaný francouzský balíček
+
+Francouzská lokalizovaná verze balíčku Cause of Death používá jiný **ICD -SMoL - místní slovník** než generický balíček. Skládá se z různých možností a používá `INT_FRxxxxx` jako předponu v segmentu 3 kódu opce. Další podrobnosti viz referenční soubor metadat pro francouzský lokalizovaný balíček.
+
+## 1.1.0 { #110 }
+
+### Trasovač { #tracker }
+
+-   Zahrnuté zobrazení SQL v souboru metadat
+-   Byly aktualizovány následující možnosti:
+
+| id          | Vlastnictví | Stará hodnota               | Nová hodnota             |
+| ----------- | -------- | ----------------------- | --------------------- |
+| y400ZT7P7Tk | code     | 5-2\|A019\|INT00638     | 5-2\|A010\|INT00638   |
+| nW8UW4mIHoj | code     | 5-80\|O16/O15\|INT05700 | 5-80\|O16\|INT05700   |
+| eGSBH8BXVxt | code     | 5-106\|T309\|INT05605   | 5-106\|T300\|INT05605 |
+| Wvw6LctDL3R | code     | 5-106\|T309\|INT00043   | 5-106\|T300\|INT00043 |
+| V8CuD9AucgW | code     | 5-85\|O999\|INT02339    | 5-85\|O998\|INT02339  |
+
+-   Byly odstraněny následující možnosti:  `oBOM5bEVVLk, LW7CuavQo3n, leyPoGqs597, k7XHmj3a4nT, trEzz9R11r5, OrqWo8PX6f2, HopjEbx2cdt, C0RFtymQ1zT, VOW0QufZ5NM, w4TLLFtwyMy`
+
+### událost { #event }
+
+-   Zahrnuté zobrazení SQL v souboru metadat
+-   Byly aktualizovány následující možnosti:
+
+| id          | Vlastnictví | Stará hodnota               | Nová hodnota             |
+| ----------- | -------- | ----------------------- | --------------------- |
+| y400ZT7P7Tk | code     | 5-2\|A019\|INT00638     | 5-2\|A010\|INT00638   |
+| nW8UW4mIHoj | code     | 5-80\|O16/O15\|INT05700 | 5-80\|O16\|INT05700   |
+| eGSBH8BXVxt | code     | 5-106\|T309\|INT05605   | 5-106\|T300\|INT05605 |
+| Wvw6LctDL3R | code     | 5-106\|T309\|INT00043   | 5-106\|T300\|INT00043 |
+| V8CuD9AucgW | code     | 5-85\|O999\|INT02339    | 5-85\|O998\|INT02339  |
+
+-   Byly odstraněny následující možnosti:  `oBOM5bEVVLk, LW7CuavQo3n, leyPoGqs597, k7XHmj3a4nT, trEzz9R11r5, OrqWo8PX6f2, HopjEbx2cdt, C0RFtymQ1zT, VOW0QufZ5NM, w4TLLFtwyMy`

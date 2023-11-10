@@ -1,0 +1,87 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-capture-app/blob/master/docs/src/commonmark/en/content/capture-app/program-indicators.md"
+revision_date: "2021-09-16"
+---
+
+# 计划指标 { #capture_app_program_ind }
+
+以下是DHIS2中所有程序指示符变量的完整列表，并说明了是否已在Android Capture应用中实现这些指示符。
+
+与Android使用特定功能有关的所有问题均以感叹号突出显示。
+
+| 传说 | 描述 |
+| :-: | :-- |
+| ![](resources/icons/icon-complete.png) | 组件已实现 |
+| ![](resources/icons/icon-incomplete.png) | 组件未实现（规则失败） |
+| ![](resources/icons/icon-na.png) | 不适用 |
+| ![](resources/icons/icon-wip.png) | 工作正在进行中。该功能尚未完全实现，或者已经报告了异常行为。 |
+
+## 程序指示符表达式或过滤器中使用的常用功能 { #capture_app_program_ind_common_functions }
+
+| 功能 | 描述 | 状态 | 实施注意事项 |
+| --- | --- | :-: | --- |
+| 如果 | 计算布尔表达式，如果 true 返回 true 表达式值，如果 false 返回 false 表达式值。参数必须遵循任何指标表达式的规则。 | ![](resources/icons/icon-complete.png) |  |
+| 一片空白 | 如果元素值缺失 (null)，则返回 true，否则返回 false。 | ![](resources/icons/icon-complete.png) |  |
+| 不为空 | 如果元素值不缺失（不为空），则返回 true，否则返回 false。 | ![](resources/icons/icon-complete.png) |  |
+| 第一个非空 | 返回第一个不缺失（不为空）的元素的值。可以提供任意数量的参数。任何参数也可以是数字或字符串文字，如果所有先前的对象都有缺失值，则将返回该参数。 | ![](resources/icons/icon-complete.png) |  |
+| 最伟大的 | 返回给定表达式的最大（最高）值。可以提供任意数量的参数。 | ![](resources/icons/icon-complete.png) |  |
+| 最小 | 返回给定表达式的最小（最低）值。可以提供任意数量的参数。 | ![](resources/icons/icon-complete.png) |  |
+
+## （d2）在程序指示符表达式或过滤器中使用的函数 { #capture_app_program_ind_d2_functions }
+
+| 功能 | 描述 | 状态 | 实施注意事项 |
+| --- | --- | :-: | --- |
+| 添加天数 | 根据第一个参数日期产生一个日期，加上第二个参数天数。 | ![](resources/icons/icon-complete.png) |  |
+| 细胞 | 将输入参数四舍五入到最接近的整数。 | ![](resources/icons/icon-complete.png) |  |
+| 健康）状况 | 计算布尔表达式，如果 true 返回 true 表达式值，如果 false 返回 false 表达式值。条件表达式必须加引号。 true-expr 和 false-expr 参数必须遵循任何程序指示符表达式（包括函数）的规则。 | ![](resources/icons/icon-complete.png) |  |
+| 计数 | 计算注册过程中为给定程序阶段和数据元素收集的数据值的数量。参数数据元素由 #{programStage.dataElement} 语法提供。 | ![](resources/icons/icon-complete.png) |  |
+| 条件计数 | 计算注册过程中与给定程序阶段和数据元素的给定条件标准相匹配的数据值的数量。参数数据元素由 #{programStage.dataElement} 语法提供。条件作为单引号中的表达式提供。 | ![](resources/icons/icon-complete.png) |  |
+| 计数值 | 计算注册过程中与给定程序阶段和数据元素的给定文字值匹配的数据值的数量。参数数据元素由 #{programStage.dataElement} 语法提供。该值可以是硬编码文本或数字。 | ![](resources/icons/icon-complete.png) |  |
+| 零位置计数 | 计算为参数中的源字段输入的零或正值的数量。 | ![](resources/icons/icon-complete.png) |  |
+| 天之间 | 生成日期类型的两个数据元素/属性之间的天数。 | ![](resources/icons/icon-complete.png) |  |
+| 地板 | 将输入参数四舍五入到最接近的整数。 | ![](resources/icons/icon-complete.png) |  |
+| 具有用户角色 | 如果当前用户具有此角色，则返回 true，否则返回 false。 | ![](resources/icons/icon-complete.png) |  |
+| 有值 | 如果数据元素/属性有值，则返回 true。 | ![](resources/icons/icon-complete.png) |  |
+| 在组织单位组中 | 评估当前组织单位是否在参数组中。该参数可以使用 ID 或组织单位组代码来定义。 | ![](resources/icons/icon-complete.png) |  |
+| 剩下 | 从第一个字符开始算起num-chars，计算到文本的左侧。 | ![](resources/icons/icon-complete.png) |  |
+| 长度 | 查找字符串的长度。 | ![](resources/icons/icon-complete.png) |  |
+| 分钟之间 | 生成“日期和时间”类型的两个数据元素/属性之间的分钟数。 | ![](resources/icons/icon-complete.png) |  |
+| 模数 | 将第一个参数除以第二个参数时产生模数。 | ![](resources/icons/icon-complete.png) |  |
+| 月份之间 | 生成第一个参数和第二个参数之间的完整月份数。 | ![](resources/icons/icon-complete.png) |  |
+| 奥兹普 | 如果表达式为零或正数，则返回 1，否则返回零。 | ![](resources/icons/icon-complete.png) |  |
+| RelationshipCount | 生成连接到注册或事件的给定类型的关系数。当没有给出类型时，所有类型都会被计算在内。 | ![](resources/icons/icon-incomplete.png) |  |
+| 对 | 从最后一个字符开始计算num-chars，计算到文本的右侧。 | ![](resources/icons/icon-complete.png) |  |
+| 回合 | 将输入参数四舍五入到最接近的整数。 | ![](resources/icons/icon-complete.png) |  |
+| 分裂 | R按分隔符分割文本，并保留第 n 个元素（0 为第一个）。 | ![](resources/icons/icon-complete.png) |  |
+| 子串 | 求值到由开始和结束字符号指定的字符串部分。 | ![](resources/icons/icon-complete.png) |  |
+| 验证模式 | 如果输入文本与提供的正则表达式模式完全匹配，则求值为 true。 | ![](resources/icons/icon-complete.png) |  |
+| 周之间 | 生成日期类型的两个数据元素/属性之间的整周数。 | ![](resources/icons/icon-complete.png) |  |
+| 年份之间 | 生成第一个参数和第二个参数之间的年数。 | ![](resources/icons/icon-complete.png) |  |
+| 津 | 如果表达式为负数则返回零，否则返回表达式值。 | ![](resources/icons/icon-complete.png) |  |
+| 聚氯乙烯 | 返回给定对象参数中数字零和正值的数量。 | ![](resources/icons/icon-complete.png) |  |
+
+## 程序指示符表达式或过滤器中使用的变量 { #capture_app_program_ind_variables }
+
+| 变量类型 | 变量类型说明 | 状态 | 实施注意事项 |
+| --- | --- | :-: | --- | --- |
+| 活动日期<br/> event_date | 事件发生的日期。 | ![](resources/icons/icon-complete.png) |  |
+| 创建日期\ * <br/> creation_date | 在系统中创建事件或注册的日期。 | ![](resources/icons/icon-complete.png) |  |
+| 到期日期<br/>due_date | 事件到期的日期。 | ![](resources/icons/icon-complete.png) |  |
+| 同步日期\ * <br/> sync_date | 事件或注册最后一次与Android应用程序同步的日期。 | ![](resources/icons/icon-incomplete.png) |  |
+| 事故日期<br/>incident_date | 事件发生的日期。 | ![](resources/icons/icon-complete.png) |  |
+| 注册日期（在用户界面上不可见）<br/> enrollment_date | 跟踪的实体实例在程序中注册的日期。 | ![](resources/icons/icon-complete.png) |  |
+| 注册状态<br/> enrollment_status | 可用于包括或排除某些状态的注册。 | ![](resources/icons/icon-complete.png) |  |
+| 当前日期<br/> current_date | 当前日期。 | ![](resources/icons/icon-complete.png) |  |
+| 完成日期 | 活动完成的日期。 | ![](resources/icons/icon-complete.png) |  |
+| 值计数<br/> value_count | 事件的表达式部分中非空值的数量。 | ![](resources/icons/icon-complete.png) |  |
+| 零值或正值计数<br/> zero_pos_value_count | 事件的表达式部分中的正数值。 | ![](resources/icons/icon-complete.png) |  |
+| 事件计数<br/> event_count | 事件计数（与过滤器结合使用）。 | ![](resources/icons/icon-complete.png) |  |
+| 注册计数<br/> enrollment_count | 注册计数（与过滤器结合使用）。 | ![](resources/icons/icon-complete.png) | Android应用程序中的指标是在一个TEI注册范围内计算的。永远价值1。 |  |
+| TEI计数<br/> tei_count | 跟踪的实体实例的计数（与过滤器结合使用）。 | ![](resources/icons/icon-na.png) | Android应用程序中的指标是在一个TEI注册范围内计算的。永远价值1。 |  |
+| 程序阶段名称<br/> program_stage_name | 可以在过滤器中使用，以仅将某些程序阶段包括在跟踪程序的过滤器中。 | ![](resources/icons/icon-incomplete.png) |  |
+| 程序阶段ID <br/> program_stage_id | 可以在过滤器中使用，以仅将某些程序阶段包括在跟踪程序的过滤器中。 | ![](resources/icons/icon-incomplete.png) |  |
+| 报告期开始<br/> report_period_start | 可以在过滤器或表达式中使用，以将每个报告期中的任何日期与第一个日期进行比较。 | ![](resources/icons/icon-na.png) | Android应用程序中的指标是在一个TEI注册范围内计算的。 |  |
+| 报告期末<br/> report_period_end | 可以在过滤器或表达式中使用，以将任何日期与每个报告期间的最后一个包含日期进行比较。 | ![](resources/icons/icon-na.png) | Android应用程序中的指标是在一个TEI注册范围内计算的。 |  |
+| 组织单位计数<br/> Organisationunit_count | 。 | ![](resources/icons/icon-na.png) |  |  |
+
+[文档参考](https://docs.dhis2.org/master/en/user/html/configure_program_indicator.html%23program_indicator_functions_variables_operators&sa=D&ust=1557433016643000)
