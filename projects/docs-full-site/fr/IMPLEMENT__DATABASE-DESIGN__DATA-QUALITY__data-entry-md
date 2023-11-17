@@ -1,0 +1,411 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs-implementation/blob/data-quality-toolkit/content/database_design/data-quality-02-data-entry.md"
+revision_date: '2023-10-11'
+tags:
+- Implémentation
+---
+
+# Saisie des données agrégées { #data-entry-for-aggregate-data } 
+
+Dans la mesure du possible, les problèmes de qualité des données doivent être détectés et traités le plus tôt possible. Au moment où les données sont saisies dans DHIS2, elles ont souvent été enregistrées d'abord sur des cartes ou des registres de patients, puis comptées manuellement sur des feuilles de pointage, avant d'être agrégées en valeurs hebdomadaires, mensuelles ou trimestrielles et consignées dans des formulaires de rapport agrégés de l'établissement. Enfin, les données de ces formulaires agrégés sont saisies dans DHIS2. La conception et la qualité de ces différents outils, ainsi que la formation dispensée au personnel et le temps qui lui est alloué pour effectuer correctement ces activités de collecte de données, sont essentiels pour assurer la qualité des données.
+
+
+## Conception de la saisie des données { #design-of-data-entry } 
+
+La conception des formulaires de collecte de données est un élément souvent négligé pour assurer la qualité des données. La conception d'outils et de formulaires de collecte de données sur papier est au-delà du champ d'application du présent document, mais des formulaires sur papier bien conçus et faciles à remplir par le personnel chargé de la collecte des données constituent un facteur important pour l'amélioration de la qualité des données. Les formulaires extrêmement complexes peuvent être difficiles à remplir sur papier, ce qui peut entraîner des erreurs de transcription sur le formulaire papier original. Ces erreurs peuvent ensuite se propager au format numérique (c.-à-d. DHIS2) lors de la saisie électronique des données.
+
+Dans DHIS2, les [formulaires de saisie] (https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/metadata.html#manage_data_set) peuvent être générés automatiquement (formulaires par défaut ou formulaires de section) ou être personnalisés (formulaires personnalisés). À l'aide de HTML et de JavaScript, les implémenteurs du DHIS2 peuvent créer des formulaires personnalisés complexes qui peuvent imiter de très près la mise en page et la conception d'un formulaire papier. Les formulaires dits de section sont générés automatiquement par DHIS2 et sont composés de sections de données qui partagent un même type de désagrégation. Les formulaires de section sont généralement plus faciles à gérer et fonctionnent bien sur les appareils mobiles tels qu'Android. Les formulaires de section devraient être l'option préférée lorsque c'est possible. Cependant, les formulaires de section peuvent ne pas correspondre à la conception des formulaires papier, ce qui peut compliquer le processus de saisie des données, entraînant ainsi une plus grande probabilité d'erreurs au cours du processus de transcription.
+
+Les formulaires personnalisés sont parfois nécessaires pour pouvoir créer un formulaire de saisie de données qui facilite le passage du papier au numérique ; toutefois, les formulaires personnalisés sont sensibles aux modifications des métadonnées sous-jacentes (par exemple, les éléments de données et les dimensions des catégories). Cela peut conduire à la saisie de données dans une combinaison incorrecte d'éléments de données et d'options de catégories sans que l'utilisateur s'en aperçoive. Les formulaires personnalisés compliqués peuvent également nécessiter un travail supplémentaire pour que la "tabulation" entre les cellules fonctionne correctement, ce qui est important pour une saisie de données efficace et sans erreurs.
+
+En général, les formulaires de saisie de données trop volumineux (tels que les tableaux de + 100 lignes x + 10 colonnes, ce qui n'est pas rare pour l'enregistrement des données de morbidité) présentent le risque que l'utilisateur ne sache plus dans quelle ligne/colonne (par exemple, maladie et ventilation par âge/sexe) les données sont saisies.
+
+Bien que nous ne couvrions pas ici tous les aspects de la création de formulaires de saisie de données, il convient de prendre en compte certains de ces éléments dans votre conception **_avant_** de configurer tout ensemble de données dans DHIS2, car cela peut contribuer à réduire certains problèmes potentiels de qualité des données avant qu'ils ne se posent.
+
+
+
+* Quels sont les éléments de données présents dans le formulaire ?
+* Quelle est la période de collecte du formulaire ?
+* Les éléments de données doivent-ils faire l'objet d'une désagrégation ?
+* Quelles sont les unités d'organisation qui doivent régulièrement établir des rapports sur le formulaire ?
+* Y a-t-il des éléments qui peuvent être automatiques - par exemple des indicateurs ou des totaux calculés ?
+* Y a-t-il des éléments que nous devrions collecter par d'autres moyens (données démographiques, totaux cumulés, etc.) 
+* Concevez vos dimensions en gardant à l'esprit l'utilisation des données, et non leur collecte.
+    * Cela signifie que la désagrégation des valeurs des données au moment de la collecte doit pouvoir être facilement agrégée selon les différentes dimensions, c'est-à-dire qu'elle doit permettre d'obtenir un total cohérent.
+* Réutiliser les dimensions autant que possible car cela augmente la capacité à comparer les données désagrégées (par exemple, les groupes d'âge, les services fixes/de proximité, le sexe, etc.)
+
+Il est également essentiel que les éléments de données soient configurés avec les types de valeurs appropriés, afin que seuls les bons types de valeurs de données soient enregistrés. Par exemple, il faut s'assurer que les éléments de données utilisés pour saisir l'utilisation de la prestation de services, les cas/décès, le nombre de tests, etc. sont configurés comme des zéros ou des nombres entiers positifs, afin d'éviter les nombres négatifs ou les décimales.
+
+
+## Règles de validation { #validation-rules } 
+
+Les [règles de validation] (https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/metadata.html#about_validation_rule) sont un élément essentiel pour garantir que les valeurs des données individuelles qui sont liées suivent des modèles définis. À titre d'exemple, il n'est pas possible d'avoir plus de personnes testées positives au paludisme que de personnes qui ont été testées pour le paludisme. De même, s'il y a des personnes dont le test est positif pour le paludisme, il doit y avoir au moins autant de personnes qui ont été testées.
+
+Dans DHIS2, les règles de validation se composent de deux valeurs (un côté gauche et un côté droit) qui sont comparées à l'aide d'un opérateur mathématique (moins que, plus que, etc.) pour produire un résultat logique vrai ou faux. Les règles de validation comparent des valeurs qui se trouvent dans DHIS2, au niveau de la saisie et de la périodicité définis par la règle de validation. Si l'on reprend les exemples ci-dessus, une règle de validation dans DHIS2 peut ressembler à ce qui suit :
+
+![](resources/images/dq_image3.png)
+
+Si ces données sont collectées mensuellement au niveau de l'établissement, elles peuvent être comparées au moins tous les mois au niveau de l'établissement, et peuvent en outre être exploitées à des niveaux supérieurs et à des fréquences inférieures si nécessaire (par exemple, au niveau du district pendant un an).
+
+Notez que les règles de validation ne sont pas déclenchées lorsque vous travaillez hors ligne dans l'application de saisie de données basée sur le web ; cependant, elles fonctionnent hors ligne lorsque vous utilisez l'application DHIS2 android sur un appareil mobile.
+
+
+### Configuration des règles de validation { #configuring-validation-rules } 
+
+Créons l'exemple de règle de validation que nous avons mentionné précédemment dans DHIS2. Comme les tests de dépistage du paludisme peuvent être effectués à l'aide de différentes méthodes, nous allons créer cette règle spécifiquement pour les tests TDR.
+
+![](resources/images/dq_image3.png)
+
+
+1. Ouvrez en premier lieu l'application Maintenance et sélectionnez l'onglet Validation.
+
+![](resources/images/dq_image44.png)
+
+![](resources/images/dq_image32.png)
+
+2. Créez une nouvelle règle en sélectionnant l'icône "+" sous la règle de validation.
+
+![](resources/images/dq_image81.png)
+
+3. Passez en revue les champs qui seront utilisés pour décrire la règle. Vous devrez saisir un nom, sélectionner le type d'importance et de période et définir au minimum le côté gauche, le côté droit et l'opérateur.
+
+4. Ajouter un nom. Ce nom doit être unique parmi les règles de validation du système. Essayez de le rendre descriptif afin de comprendre ce qu'il représente. Dans cet exemple, nous pourrions utiliser le nom "MAL - Positif ( TDR) &lt;= Testé (TDR)".
+
+5. Ajouter une instruction. Ce champ n'est pas obligatoire, mais c'est ce que l'utilisateur verra à la fois dans l'analyse de validation et lors de l'examen des règles de validation dans la saisie des données. C'est pourquoi il est recommandé de toujours prévoir une instruction pour indiquer clairement à l'utilisateur comment vérifier la règle de validation.
+
+6. (Facultatif) Attribuer à la règle un nom court, un code, une description.
+
+![](resources/images/dq_image63.png)
+
+7. Sélectionner une importance : Élevée, Moyenne ou Faible. Il s'agit d'une description de la règle de validation qui sera affichée à l'utilisateur et qui n'affecte pas la priorité ou le fait qu'elle soit exécutée ou non.
+
+8. Sélectionner un type de période. Notez que vous ne pouvez pas sélectionner un type de période inférieur à la fréquence de saisie des données. Si vos données sont collectées mensuellement, vous ne pouvez pas définir une période comme hebdomadaire, par exemple.
+
+9. Créer le côté gauche de l'expression :
+    1. Cliquez sur Côté gauche.
+    2. Sélectionnez **Fenêtre coulissante** si vous souhaitez afficher les données relatives à la période que vous comparez. [Voir aussi "À propos des règles de validation"](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/metadata.html#about_validation_rule)
+    3. Sélectionnez une stratégie de valeur manquante. Cette sélection détermine comment le système évalue une règle de validation si des données sont manquantes.
+
+
+| Option                            | Description                                                                                                                                                                                                                                           |
+|--------------------------------   |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  |
+| Ne jamais ignorer                        | La règle de validation ne sera jamais ignorée en cas de données manquantes, et tous les opérandes manquants seront traités comme des zéros. Il s'agit de l'option par défaut. Sélectionnez toujours cette option si vous utilisez l'opérateur Paire exclusive ou Paire obligatoire.   |
+| Ignorer si toutes les valeurs sont manquantes    | La règle de validation ne sera ignorée que si tous les opérandes qui la composent sont manquantes.                                                                                                                                                          |
+| Ignorer si une valeur est manquante      | La règle de validation sera ignorée si l'une des valeurs composant l'expression est manquante.                                                                                                                                                    |
+   4. Tapez une Description.
+   5. Construisez une expression basée sur les éléments de données, les objets de programme, les unités d'organisation, les comptes et les constantes disponibles. Pour ce faire, dans le volet de droite, double-cliquez sur les objets de données que vous souhaitez inclure dans l'expression. Combinez-les avec les opérateurs mathématiques situés sous le volet gauche.
+
+
+![](resources/images/dq_image69.png)
+
+```
+Remarque:
+
+Il est recommandé d'utiliser les éléments de données désagrégés plutôt que l'élément de données total comme indiqué dans la figure ci-dessus, c'est-à-dire tous les cas positifs de paludisme par âge et par sexe comme nous le voyons ici. En effet, lors de l'analyse des règles de validation, si l'élément de données total a été sélectionné, les détails seront vides et il ne sera pas possible d'identifier l'origine du problème.
+```
+
+  6. Lorsque vous ajoutez vos éléments de données du volet droit au volet gauche, vous verrez #{élément de données uid.catégorie option combo uid}. Cela n'a peut-être pas beaucoup de sens, mais si vous faites défiler l'écran vers le bas, vous verrez le nom en texte clair.
+
+![](resources/images/dq_image106.png)
+
+7. Une fois que vous avez sélectionné toutes les entrées requises, sélectionnez Enregistrer. La description du côté gauche devrait apparaître après avoir sauvegardé le côté gauche.
+
+![](resources/images/dq_image102.png)
+
+
+10. Sélectionnez un Opérateur : Paire obligatoire, Égale à, Couple exclusive, Supérieur à, Supérieur ou égale à ou Non égale à.
+
+    1. L'opérateur **_Paire obligatoire_** vous permet d'exiger que les valeurs des données soient saisies pour un formulaire à la fois pour les côtés gauche et droit de l'expression, ou pour aucun des deux côtés. Cela signifie que vous pouvez exiger que si un champ d'un formulaire est rempli, alors un ou plusieurs autres champs que vous avez sélectioné doivent également être remplis.
+    2. L'opérateur  de la  **_paire exclusive_** nous permet d'affirmer que si une valeur existe sur le côté gauche, alors il ne devrait y avoir aucune valeur sur le côté droit (ou vice versa). Cela signifie que les éléments de données qui composent la règle de chaque côté doivent être mutuellement exclusifs l'un de l'autre, pour une combinaison donnée période / unité organisationnelle / option d'attribut.
+    3. Dans cet exemple, nous sélectionnerons inférieur ou égal à
+
+
+![](resources/images/dq_image60.png)
+
+11. Créer le côté droit de l'expression en suivant le même processus que pour le côté gauche (point 9 ci-dessus).
+12. Lorsque vous avez sélectionné le côté gauche, l'opérateur et le côté droit, vous devriez voir les descriptions et les opérateurs pour chacun de ces éléments dans l'écran de gestion de validation.
+
+
+![](resources/images/dq_image90.png)
+
+13. (Facultatif) Choisissez les Niveaux d'unité d'organisation pour lesquels cette règle doit être évaluée. Si vous laissez ce champ vide, la règle de validation sera alors évaluée à tous les niveaux et représente l'option la plus fréquemment utilisée.
+
+14. (Facultatif) Cliquez sur Ignorer cette règle lors de la validation du formulaire pour éviter de déclencher cette règle lors de la saisie des données. Normalement, cette option n'est pas sélectionnée afin que l'utilisateur puisse également consulter cette règle de validation lors de la saisie des données.
+
+15. Cliquez sur Enregistrer pour sauvegarder la règle de validation
+
+
+#### Création de groupes de règles de validation { #creating-validation-rule-groups } 
+
+Après avoir créé nos règles de validation, nous devons les regrouper. Le regroupement de règles de validation similaires est particulièrement utile lorsque les règles de validation sont examinées ensemble dans le cadre d'une analyse globale.
+
+Allez dans Maintenance> Validation> Groupe de validation
+
+![](resources/images/dq_image65.png)
+
+Sélectionnez le bouton Ajouter et remplissez les détails du groupe de validation (le nom, le code et la description).
+
+![](resources/images/dq_image48.png)
+
+Ajoutez toutes les règles de validation connexes que vous avez regroupées en les sélectionnant dans le volet gauche et en les déplaçant vers le volet droit. Une fois que vous avez ajouté toutes les règles au groupe, sélectionnez "Enregistrer". La meilleure façon de définir les groupes dépend de la manière dont les éléments et les ensembles de données sont structurés dans une implémentation particulière. Toutefois, des exemples sont possibles :
+
+* Créer un lien entre un groupe contenant toutes les règles de validation et les éléments de données d'un ensemble de données spécifique (par exemple, un ensemble de données mensuelles pour la déclaration des cas de paludisme)
+* Créer un groupe avec toutes les règles de validation liées à l'élément de données dans une section particulière de l'ensemble de données (par exemple une _section_ _paludisme_ d'un ensemble de données intégré HMIS).
+* Créer un groupe avec toutes les règles de validation liées à l'élément de données dans plusieurs ensembles de données connexes (par exemple dans des ensembles de données distincts pour le _dépistage du paludisme_ et le _traitement du paludisme_)
+
+#### Examiner les violations des règles de validation lors de la saisie des données { #review-validation-rule-violations-in-data-entry } 
+
+Chaque système ayant une configuration différente, des règles de validation devront être établies comme indiqué dans la section "Configuration des règles de validation" du présent document avant de procéder à l'examen des violations. Une fois que vous aurez établi toutes les règles de validation dont vous avez besoin, vous souhaiterez les utiliser pour vérifier vos données de manière régulière. Les règles de validation peuvent être examinées à la fois lors de la saisie des données et lors de l'analyse de validation [LIEN DE SECTION]. Lors de l'examen des règles de validation, nous ne serons avertis que des règles qui sont violées, et non de celles qui passent les contrôles que nous avons créés.
+
+Reprenons notre exemple
+
+![](resources/images/dq_image3.png)
+
+Nous pouvons commencer par revoir nos règles de validation dans l'application de saisie des données. Nous avons fixé la période de la règle de validation que nous avons définie comme étant "mensuelle" car les données relatives au paludisme sont collectées tous les mois. Dans notre exemple, les données proviennent du tableau suivant
+
+![](resources/images/dq_image46.png)
+
+Afin de vérifier si nos données présentent un problème en fonction des règles de validation que nous avons définies, nous pouvons faire défiler l'ensemble des données en haut ou en bas de l'application de saisie des données et sélectionner "Exécuter la validation" [Remarque : les règles de validation seront également exécutées si vous sélectionnez " Terminé " en bas de l'écran de saisie des données].
+
+![](resources/images/dq_image15.png)
+
+Cette opération permet d'exécuter toutes les règles de validation qui utilisent des éléments de données dans l'ensemble de données que vous avez sélectionné.
+
+Nous pouvons voir les résultats dans une fenêtre contextuelle qui nous montre les règles de validation qui ont été violées lorsqu'elles ont été vérifiées lors de la saisie des données.
+
+![](resources/images/dq_image75.png)
+
+Nous pouvons voir qu'il y a plusieurs violations, y compris la règle qui a été créée précédemment. Il serait bon de revoir chacune de ces règles pour s'assurer que les valeurs des données de cet ensemble de données ont été saisies correctement avant de finaliser le processus de saisie des données. Si possible, les valeurs incorrectes devraient être modifiées afin de minimiser les erreurs au niveau de la source de collecte.
+
+En examinant notre exemple, nous pouvons voir une erreur évidente et nous voudrions la corriger pour obtenir la valeur correcte
+
+![](resources/images/dq_image18.png)
+
+![](resources/images/dq_image7.png)
+
+Si nous passons en revue et corrigeons toutes les erreurs identifiées dans le cadre de la validation de cet ensemble de données, de cette période et de cette combinaison d'unités d'organisation et que nous relançons la validation, nous allons obtenir un message indiquant que la validation s'est déroulée avec succès.
+
+![](resources/images/dq_image59.png)
+
+Idéalement, nous devrions nous efforcer de créer les règles de validation avant de dispenser la formation à la saisie des données pour un programme particulier, car cela vous permettrait de dispenser la formation sur les violations de la validation et de les corriger pendant la formation. Pendant la formation, vous devez alors vous assurer que tous les ensembles de données passent avec succès la validation, dans la mesure du possible, avant d'être soumis.
+
+#### Examiner les violations des règles de validation lors de la saisie des données (beta) { #review-validation-rule-violations-in-data-entry-beta } 
+
+Les règles de validation peuvent également être exécutées dans la nouvelle application de saisie des données (disponible à partir de la version 2.39). Pour ce faire, il suffit de sélectionner "Exécuter la validation" à tout moment ou " Cocher terminé " si l'ensemble de données est censé être terminé.
+
+![](resources/images/dq_image29.png)
+
+
+Les résultats s'affichent sur le côté droit de l'application de saisie des données, indiquant le nombre d'infractions de priorité élevée, moyenne et faible, ainsi que la liste des infractions surlignées dans la couleur appropriée en fonction de la priorité qui leur a été attribuée. Nous verrons que la nouvelle application affiche les infractions légèrement différemment de l'ancienne application de saisie des données, en montrant l'instruction, puis le côté gauche avec sa valeur, l'opérateur, et le côté droit avec sa valeur.
+
+![](resources/images/dq_image68.png)
+
+Nous devrions suivre un processus similaire à celui décrit pour l'application de saisie des données et examiner chacune des valeurs associées à ces règles afin de déterminer si une correction peut être apportée avant de procéder à d'autres opérations dans DHIS2.
+
+### Notifications des règles de validation { #validation-rule-notifications } 
+
+Les notifications de règles de validation permettent de créer des messages qui peuvent être envoyés en réponse à la violation d'une règle de validation. Ces notifications se composent de la ou des règles de validation qui déclenchent la notification, du ou des destinataires et du message lié à la violation. Les notifications peuvent être envoyées sous forme de messages aux destinataires prévus à l'aide de trois mécanismes de DHIS2 : le courrier électronique, les SMS et le service de messagerie interne de DHIS2. Pour plus d'informations sur la configuration de [e-mail], veuillez vous référer à la documentation.(https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/system-settings.html?h=system+settings+master+use#system_email_settings) and [SMS](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/maintaining-the-system/configure-sms.html). Voici un exemple de notification de règle de validation envoyée par e-mail.
+
+![](resources/images/dq_image4.png)
+
+En ce qui concerne la création et l'utilisation des notifications de règles de validation, nous devons veiller à ce que les résultats contenus dans un message ne soient pas ignorés. Habituellement, nous sommes prudents quant au nombre de notifications que nous créons afin que les utilisateurs ne reçoivent pas trop de messages. L'expérience montre que lorsque c'est le cas, les utilisateurs ont tendance à ignorer ces messages et les points qui posent problème ne sont pas corrigés. En général, il convient de créer des notifications pour les points à corriger en priorité et de s'assurer que ces notifications ne sont envoyées qu'aux utilisateurs qui ont besoin de les voir. D'autres violations peuvent être identifiées par le biais des procédures habituelles d'examen de qualité des données.
+
+Pour créer une notification de règle de validation, les groupes d'utilisateurs sont utilisés pour définir les destinataires. Veuillez consulter la [documentation sur les groupes d'utilisateurs] (https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/users-roles-and-groups.html#mgt_usergroup) pour savoir comment créer un groupe d'utilisateurs dans DHIS2.
+
+#### Configuration des notifications de validation { #configuring-validation-notifications } 
+
+Allez dans Maintenance> Validation> Notification de validation
+
+![](resources/images/dq_image89.png)
+
+Sélectionnez le bouton Ajouter pour examiner les détails d'une nouvelle notification de validation. Il existe un certain nombre de champs que nous pouvons décomposer.
+
+1. Nom : Il s'agit du nom de la notification de validation que vous créez.
+2. Code : Vous pouvez également ajouter un code si nécessaire. Le code peut être utilisé pour identifier de manière unique la notification au lieu de l'UID par exemple.
+
+![](resources/images/dq_image98.png)
+
+3. Règles de validation : Dans cette section, vous décidez des règles de validation que vous souhaitez ajouter à votre notification. Bien que vous puissiez ajouter plusieurs règles de validation à votre notification, il est généralement recommandé de ne conserver qu'une seule règle de validation dans votre notification afin de faciliter l'interprétation des messages. N'oubliez pas qu'il peut y avoir plusieurs violations au cours d'une période donnée si les utilisateurs qui reçoivent la notification ont accès à plusieurs unités d'organisation, et que chaque violation pourra être identifiée dans le message que vous envoyez.
+
+![](resources/images/dq_image30.png)
+
+4. Groupes d'utilisateurs : Cette section définit qui recevra la notification que vous créez. Vous devez disposer de groupes d'utilisateurs créés pour pouvoir utiliser les notifications de validation. Vous pouvez consulter [cette section dans la documentation] (https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/users-roles-and-groups.html#mgt_usergroup) pour savoir comment créer des groupes d'utilisateurs. En fonction de la méthode utilisée pour envoyer le message, l'utilisateur doit remplir les informations pertinentes correspondantes. Par exemple, si vous envoyez des notifications par e-mail, les utilisateurs du groupe d'utilisateurs que vous avez sélectionné doivent renseigner leur e-mail, faute de quoi ils ne recevront pas la notification. Vous pouvez sélectionner plusieurs groupes d'utilisateurs si nécessaire, mais gardez à l'esprit que vous ne devez envoyer la notification qu'à ceux qui ont besoin de recevoir cette information plutôt que d'essayer de cibler un grand nombre d'utilisateurs qui risqueraient d'ignorer le message.
+
+![](resources/images/dq_image21.png)
+
+5. Stratégie de notification : Nous décidons ici de comment nos notifications doivent être envoyées lorsque plusieurs violations de validation sont détectées (par exemple sur plusieurs unités d'organisation et/ou périodes de temps).
+    1. Résumé collectif : cette option permet de générer un résumé de toutes les violations détectées pour la ou les période(s)/d'unité(s) d'organisation que vous contrôlez au cours de votre examen des règles de validation. Par exemple, si vous détectez 10 violations, elles seront toutes résumées dans un seul message e-mail/SMS/DHIS2.
+    2. Notification unique : Dans ce cas, un message sera envoyé pour chaque violation de validation détectée pour les unités d'organisation et les périodes que vous examinez. Par exemple, si vous détectez 10 violations, 10 messages distincts seront envoyés. Utilisez cette option avec modération pour les violations à grande priorité.
+
+![](resources/images/dq_image37.png)
+
+6. Notifier uniquement les utilisateurs de la hiérarchie :
+7. Modèle de message : Dans cette section, nous définissons à quoi ressemblera le message lorsqu'il sera envoyé à nos destinataires. Le modèle peut être composé de variables de modèle et de texte brut. Les variables du modèle seront remplacées par les valeurs collectées dans DHIS2.
+
+![](resources/images/dq_image11.png)
+
+Nous pouvons examiner un exemple de message généré pour voir comment les variables de modèle et le texte brut apparaissent dans une notification lorsqu'elle est envoyée.
+
+![](resources/images/dq_image6.png)
+
+1. Il s'agit du modèle de sujet du message. Pour chaque violation, cet élément s'affichera avant de vous montrer le contenu du modèle de message.
+2. Dans le modèle lui-même, nous avons un mélange de texte libre et de variables. La première variable est la description du côté gauche. Dans le message, elle est remplacée par Positif (TDR) .
+3. Il s'agit de la valeur gauche. Elle est remplacée dans le message actuel par la valeur issue de DHIS2.
+4. Il s'agit de l'opérateur de la règle de validation
+5. Il s'agit de la description du côté droit, remplacée par Testé (TDR) dans le message.
+6. Il s'agit de la valeur du côté droit, issue de DHIS2.
+7. Il s'agit de l'unité d'organisation
+8. Il s'agit de la période
+
+Nous constatons qu'il est possible d'utiliser un certain nombre de variables différentes pour créer notre message et fournir des résultats corrects à la personne qui consulte la notification.
+
+Pour créer le modèle, remplissez le message avec un mélange de texte libre et en sélectionnant les variables appropriées à droite de l'écran.
+
+
+Une fois que vous avez rempli ces champs, sélectionnez "Enregistrer" pour sauvegarder la notification.
+
+
+### Recommandation sur la configuration des règles de validation { #recommendation-on-validation-rules-configuration } 
+
+Les règles de validation sont un outil puissant pour éviter les erreurs de saisie, mais si elles ne sont pas configurées de manière appropriée, elles peuvent également être une source d'erreur si elles incitent les utilisateurs à " corriger " les erreurs.
+
+Dans certains cas, il se peut que vous souhaitiez créer des règles de validation qui sont _ le plus souvent_ de véritables problèmes de qualité des données, mais qui peuvent être signalées à tort par DHIS2. Un exemple est la comparaison entre les femmes qui effectuent leur première (CPN1) et leur quatrième visite de soins prénatals (CPN4). Si nous considérons la population dans son ensemble, nous pouvons dire que le nombre de visites CPN1 devrait être supérieur ou égal au nombre de visites CPN4. Chaque femme qui effectue une quatrième visite a également effectué la première visite, mais il est inévitable que certaines femmes ne se présentent pas à leur quatrième rendez-vous. Ainsi, la CPN4 devrait toujours être inférieure ou égale à la CPN1 ; cependant, cette règle de validation n'est pas appropriée, car les visites de CPN sont réparties sur plusieurs mois et les femmes peuvent effectuer des visites différentes dans des établissements de santé différents. Par exemple, un établissement de santé peut avoir 100 visites de CPN 1 et 74 visites de CPN 4 au cours d'une année (CPN 1 ≥ CPN 4), mais au cours d'un mois donné, il peut y avoir 9 femmes qui effectuent leur quatrième visite et seulement 8 qui effectuent leur première visite (CPN 1 &lt ; CPN 4). Il ne s'agit pas d'un problème de qualité des données, mais il serait enregistré comme tel avec une règle de validation comparant la CPN1 et la CPN4.
+
+Nous recommandons de _ne pas_ créer de règles de validation dans ces cas, car l'utilisateur qui saisit les données peut être dérouté par l'avertissement de la règle de validation et, dans le pire des cas, il peut modifier les données pour satisfaire aux critères de la règle de validation. Si vous _créez_ ce type de règle de validation, le message adressé aux utilisateurs doit clairement indiquer que l'avertissement de la règle de validation doit être examiné, mais qu'il ne s'agit pas nécessairement d'un problème de qualité des données dans tous les cas.
+
+Le [kit de données sur la santé] (https://dhis2.org/metadata-downloads/) - en particulier les différents ensembles de métadonnées agrégées - contient des règles de validation pour les différents programmes de santé.
+
+
+## Valeurs min-max { #min-max-values } 
+
+La fonction "Min-Max" de DHIS2 est un ensemble de caractéristiques qui vous permet de vérifier les valeurs aberrantes dans les données _pendant la saisie des données_. La valeur min-max est basée sur la définition de valeurs minimales et maximales acceptées pour une combinaison d'éléments de données, une combinaison d'options de catégorie et une unité d'organisation. Lors de la saisie des données, les valeurs en dehors de ces seuils minimum et maximum sont mises en évidence dans l'écran de saisie des données. Comme pour les règles de validation, si une valeur de données se situe en dehors des limites définies par les valeurs minimales et maximales, DHIS2 autorisera tout de même la sauvegarde de la valeur de données en question. Toutefois, la valeur sera surlignée dans l'écran de saisie des données et une boîte de dialogue s'affichera, et qui devra être validée par l'utilisateur.
+
+La fonction min-max présente deux avantages principaux :
+
+* Elle permet de détecter et de signaler les problèmes de qualité des données au moment de la saisie, de sorte que l'utilisateur qui saisit les données puisse immédiatement les vérifier, corriger les fautes de frappe, etc.
+
+* Contrairement aux règles de validation, qui ne peuvent être définies que lorsqu'il existe plusieurs éléments de données ayant une relation logique entre eux, les valeurs min-max peuvent être définies pour tout élément de données numériques pour lequel un minimum de données historiques est disponible.
+
+Remarque : pour les ensembles de données désagrégés avec une combinaison de catégories d'attributs, les valeurs min-max s'appliquent à toutes les combinaisons d'options d'attributs.
+
+
+### Configuration des valeurs min/max { #configuring-minmax-values } 
+
+Les valeurs minimales et maximales peuvent être définies manuellement dans l'application de saisie des données ou à l'aide de méthodes de calcul des valeurs minimales et maximales basées sur des méthodes statistiques à partir de données historiques. Pour les raisons exposées plus en détail ci-dessous, nous  ***ne *** recommandons pas l'utilisation de l'outil intégré à DHIS2 pour générer des valeurs min-max. Nous discutons de ces restrictions [ici] (#limitations-with-minmax-values).
+
+
+#### Configuration et visualisation des valeurs min/max { #configuring-and-viewing-minmax-values } 
+
+Les valeurs min-max ne peuvent actuellement être visualisées que dans l'application saisie des données ; la composante dédiée à "l'analyse min-max" de l'application Qualité des données a été supprimée.
+
+
+#### Visualisation et configuration des valeurs min/max dans l'application de saisie de données { #viewing-and-configuring-minmax-values-in-the-data-entry-app } 
+
+Dans l'application saisie de données, un double clic dans un champ de saisie (c'est-à-dire les cellules pour la saisie de données) ouvre une fenêtre contextuelle avec des informations sur cette combinaison particulière d'éléments de données et d'options de catégorie.
+
+![](resources/images/dq_image86.png)
+
+La section située dans le coin supérieur droit de la fenêtre indique toutes les limites minimales et maximales actuellement définies et permet aux utilisateurs disposant des autorisations appropriées de supprimer et/ou d'enregistrer de nouvelles valeurs minimales et maximales. Comme expliqué ci-dessous, ces valeurs seront alors applicables à cette combinaison particulière d'élément de données, de combinaison d'options de catégorie et d'unités d'organisation. Le graphique _Historique de l'élément de données_ indique également la valeur maximale lorsqu'elle est définie.
+
+#### Visualisation et configuration des valeurs min/max dans l'application de saisie de données  (beta)  { #viewing-and-configuring-minmax-values-in-the-data-entry-beta-app } 
+
+Dans l'application de saisie des données (bêta), les informations sur les valeurs min-max sont affichées en mettant en évidence un champ de saisie (c'est-à-dire les cellules pour la saisie des données) et en cliquant sur le bouton Afficher les détails dans la barre d'outils au bas de l'application.
+
+![](resources/images/dq_image104.png)
+
+Cela ouvre un panneau de Détails sur le côté droit de l'écran, avec une section dédiée aux limites mini-maxi. Tout utilisateur peut voir les valeurs mini-maxi définies actuellement, et les utilisateurs disposant des autorisations appropriées peuvent également les modifier ou les supprimer.
+
+![](resources/images/dq_image20.png)
+
+#### Générateur intégré { #built-in-generator } 
+
+DHIS2 comprend une fonctionnalité permettant de générer et de supprimer des valeurs min-max en masse pour un ou plusieurs ensembles de données pour une sélection d'unités d'organisation. Cette fonctionnalité se trouve dans l'application Administration des données. Suivez les étapes suivantes pour générer ou supprimer des valeurs min-max en vrac :
+
+
+1. Naviguer vers l'application d'administration des données
+2. Sélectionnez la section Génération de valeurs min-max
+3. Sélectionnez un ou plusieurs ensembles de données pour lesquels vous souhaitez générer des valeurs min-max. Les valeurs mini-maxi seront générées/supprimées pour tous les éléments de données avec des combinaisons d'options de catégorie dans cet ensemble de données.
+4. Sélectionnez la limite de l'unité d'organisation pour laquelle des valeurs doivent être générées. Les valeurs minimales et maximales seront générées/supprimées pour toutes les unités d'organisation situées en dessous de l'unité d'organisation sélectionnée, y compris l'unité d'organisation elle-même.
+5. Sélectionnez Générer ou Supprimer les valeurs min-max.
+
+Remarque : les valeurs min-max ne sont générées que pour les combinaisons d'éléments de données, de combinaisons d'options de catégories et d'unités d'organisation pour lesquelles des données existent déjà, et ce indépendamment de la manière dont l'ensemble de données est assigné.
+
+![](resources/images/dq_image34.png)
+
+DHIS2 génère des valeurs min-max en déterminant la moyenne de toutes les valeurs de données existantes (pour une combinaison donnée d'élément de données/catégorie/option/unité d'organisation), puis en calculant des limites inférieures et supérieures basées sur un certain nombre d'écarts-types par rapport à cette moyenne. Le nombre d'écarts types utilisé est basé sur une propriété de réglage du système appelée _Data analysis std dev factor_ (facteur d'écart type de l'analyse des données). La valeur par défaut utilisée est de 2 écarts types. Cette valeur peut être modifiée dans l'application Paramètres du système, dans la section Généralités.
+
+![](resources/images/dq_image97.png)
+
+
+##### Limites des valeurs min/max { #limitations-with-minmax-values } 
+
+En règle générale, nous ***ne recommandons pas*** l'utilisation de l'outil de génération de valeurs min-max dans sa fonctionnalité actuelle, car il présente plusieurs limitations majeures qui l'amènent à générer des valeurs min-max trop restrictives. Cela signifie que trop de valeurs seront signalées comme potentiellement erronées dans l'application de saisie des données, ce qui peut à la fois gêner le personnel chargé de la saisie des données et l'amener à modifier incorrectement les valeurs pour qu'elles se situent dans les limites fixées.
+
+Dans _certains_ cas, cette fonctionnalité peut fonctionner suffisamment bien pour être utilisée : s'il y a suffisamment de données historiques sur lesquelles baser l'analyse statistique, si les données sont raisonnablement distribuées normalement (c'est-à-dire qu'elles ne sont pas saisonnières et ne changent pas au fil du temps) et s'il n'y a pas d'installations qui rapportent toujours des chiffres très bas. En réalité, il y a très peu de cas où c'est le cas. Dans la pratique, une ou plusieurs de ces conditions ne sont le plus souvent _pas_ remplies :
+
+
+
+* Certains petits établissements de santé déclarent régulièrement des chiffres très bas chaque mois. Dans l'exemple hypothétique d'un établissement de santé qui déclare des valeurs de 2 ou 3 tous les deux mois au cours d'une année, le seuil basé sur deux écarts types au-dessus/au-dessous de la moyenne sera de 1,5 et 3,5. En d'autres termes, si l'établissement déclare 1 ou 4 au cours d'un mois, il se situe en dehors du seuil.
+
+* Très souvent, les données ne sont _pas_ réparties normalement. L'exemple type est celui des données associées aux saisons des pluies, comme le paludisme. Cependant, même les données qui ne sont pas typiquement considérées comme saisonnières auront certains mois de l'année avec des chiffres plus ou moins élevés, par exemple la santé reproductive (y compris, par conséquent, les vaccinations, la PTME, etc.)
+
+* Les valeurs minimales et maximales seront générées pour toutes les combinaisons d'éléments de données, de combinaisons d'options de catégories et d'unités d'organisation pour lesquelles il existe une valeur. Ainsi, par exemple, même si un établissement de santé n'a commencé à déclarer dans DHIS2 que récemment et que les données n'existent que depuis quelques mois, des valeurs minimales et maximales seront générées, mais sur une base très limitée.
+
+* Comme la génération min-max intégrée ne peut se faire que sur la base de la _moyenne_ des données existantes, elle est sensible à toutes les valeurs aberrantes existantes.
+
+
+#### Génération personnalisée des valeurs min-max { #custom-generation-of-min-max-values } 
+
+Il existe une [API DHIS2] (https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-240/maintenance.html?h=2.40#webapi_min_max_data_elements) qui permet de sauvegarder et de supprimer les valeurs min-max. Il est donc possible de générer les valeurs min-max à l'extérieur en utilisant d'autres outils, puis de les importer via l'API. Cette approche est limitée par le fait que l'API ne permet que de POSTER ou de SUPPRIMER des valeurs _individuelles_ (pour un élément de données, une combinaison d'options de catégorie, une combinaison d'unités d'organisation). Toutefois, étant donné que cette valeur minimale n'a pas besoin d'être mise à jour fréquemment (contrairement aux analyses, par exemple), il est possible de contourner cette limitation.
+
+
+#### Outil prototype pour la génération min-max { #prototype-tool-for-min-max-generation } 
+
+Un prototype permettant de tester des méthodes améliorées de génération de valeurs min-max a été développé. Il s'agit d'un [outil python](https://github.com/search?q=owner%3Aolavpo+min-max&type=repositories) créé dans l'optique d'une plus grande flexibilité pour la génération de valeurs min-max. Une documentation détaillée sur l'utilisation de cet outil est disponible dans le [dépôt github](https://github.com/search?q=owner%3Aolavpo+min-max&type=repositories).
+
+Cet outil est conçu pour remédier aux principales lacunes de la fonctionnalité intégrée de génération de valeurs min-max :
+
+* Il permet de définir différents paramètres en fonction des valeurs médianes rapportées par les unités ; par exemple, les valeurs minimales et maximales pour les petites installations peuvent être définies sur la base des valeurs les plus élevées précédentes plutôt que sur la base des écarts types, et les installations plus grandes peuvent disposer d'un seuil plus strict.
+
+* Il permet de définir un niveau minimum d'exhaustivité des données pour une unité avant d'essayer de générer des valeurs minimales et maximales.
+
+* Il permet de normaliser les données à l'aide de la transformation box-cox avant de définir les valeurs min-max, afin de mieux travailler avec des données qui ne sont pas réparties normalement.
+* Il permet d'utiliser la médiane en plus de la moyenne pour fixer les seuils.
+
+```
+Remarque : l'outil n'est pour l'instant qu'un prototype et doit être testé de manière approfondie dans un environnement de test avant d'être utilisé dans un environnement de production.
+```
+
+#### Vérifier les valeurs min/max lors de la saisie des données { #review-minmax-values-in-data-entry } 
+
+Aucune action de l'utilisateur n'est nécessaire pour vérifier les valeurs min-max dans l'application de saisie de données : lorsqu'un nombre en dehors de la valeur min-max spécifiée est saisi, une fenêtre contextuelle apparaît immédiatement avec un message d'avertissement, et la cellule est surlignée en orange foncé.
+
+![](resources/images/dq_image91.png)
+![](resources/images/dq_image101.png)
+
+
+Lorsque l'on marque l'ensemble de données comme étant terminé ou que l'on utilise le bouton Exécuter la validation, les violations des valeurs minimales et maximales sont également répertoriées de la même manière que les violations des règles de validation.
+
+![](resources/images/dq_image51.png)
+
+#### Examiner les valeurs min-max dans l'application Qualité des données { #review-min-max-values-in-the-data-quality-app } 
+
+Les valeurs minimales et maximales peuvent être examinées par lots dans le cadre de la détection des valeurs aberrantes dans l'application Qualité des données. Min-max est disponible comme l'un des "Algorithmes" disponibles.
+
+![](resources/images/dq_image110.png)
+
+
+Pour effectuer une analyse des valeurs en dehors des seuils min-max :
+
+1. sélectionnez un ou plusieurs ensembles de données à analyser
+2. Sélectionnez une ou plusieurs unités d'organisation.
+3. préciser les dates de début et de fin
+4. Sélectionnez les valeurs Min-max comme algorithme
+5. Cliquez sur Démarrer
+
+Le résultat est présenté sous la forme d'une liste indiquant l'élément de données, la période et l'unité d'organisation pour lesquels une valeur dépassant les seuils minimal et maximal a été déclarée.
+
+![](resources/images/dq_image87.png)
+
+La colonne _Valeur_ correspond à la valeur des données déclarées, la colonne _Déviation_ indique de combien le nombre est supérieur au seuil maximum ou inférieur au seuil minimum, et les colonnes _Min_ et _Max_ indiquent les seuils minimum et maximum pour l'élément de données et l'unité d'organisation en question. Le tableau est trié par écart, car les violations ayant l'écart le plus élevé ont l'impact le plus important sur l'ensemble des données. Le suivi permet de marquer des valeurs de données pour le suivi ; elles peuvent ensuite être examinées à l'aide de la fonctionnalité [Analyse de suivi] (https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/collecting-data/data-quality.html?h=follow-up+anal+master+use#about-follow-up-analysis).
+
