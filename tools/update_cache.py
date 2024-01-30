@@ -15,6 +15,9 @@ tx = tx3.tx(org,tx_token)
 
 projects = ["docs-full-site","dhis2-single-page-docs"]
 
+# files that should not be cached
+skip_files = ["0__Navigation-Menu"]
+
 for p in projects:
     project = tx.project(p)
 
@@ -39,7 +42,7 @@ for p in projects:
         # get the min date from the "last_update" file in the project directory (minus one day to give some overlap)
         if os.path.exists(cache_timestamp_file):
             with open(cache_timestamp_file) as f:
-                min_date = datetime.datetime.strptime(f.readline().strip(),'%Y-%m-%dT%H:%M:%SZ') - datetime.timedelta(days=365)
+                min_date = datetime.datetime.strptime(f.readline().strip(),'%Y-%m-%dT%H:%M:%SZ') - datetime.timedelta(days=30)
 
 
         tic = time.perf_counter()
@@ -47,11 +50,10 @@ for p in projects:
         # use multithreaded workers to pull the translations from transifex
         with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
             for r in resources:
-                l_stats = r.language_stats(l.code)
-                last_update = datetime.datetime.strptime(l_stats['last_update'], '%Y-%m-%dT%H:%M:%SZ')
-                if last_update > min_date:
-                    # print(r.name,r.slug,last_update)
-                    if l_stats['untranslated_strings'] == 0:
+                if r.slug not in skip_files:
+                    l_stats = r.language_stats(l.code)
+                    last_update = datetime.datetime.strptime(l_stats['last_update'], '%Y-%m-%dT%H:%M:%SZ')
+                    if l_stats['untranslated_strings'] > 0 and last_update > min_date:
                         # print(last_update,r.name,r.slug)
                         # pull the resource from transifex
                         path = proj_lang_path+"/"+r.slug
