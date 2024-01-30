@@ -1,0 +1,241 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.37/src/developer/web-api/scheduling.md"
+revision_date: '2021-10-26'
+tags:
+- DHIS core version 2.37
+- Develop
+---
+
+# 排程 { #webapi_scheduling } 
+
+DHIS2允许安排各种类型的作业。每种类型的作业都有不同的配置属性，可让您更好地控制作业的运行方式。此外，如果需要，您可以将同一作业配置为以不同的配置和不同的时间间隔运行。
+
+
+
+Table: Main properties
+
+| Property | 描述 | 类型 |
+|---|---|---|
+| 名称 | Name of the job. | 串 |
+| cronExpression | The cron expression which defines the interval for when the job should run. | String (Cron expression) |
+| jobType | The job type represent which task is run. In the next table, you can get an overview of existing job types. Each job type can have a specific set of parameters for job configuration. | String (Enum) |
+| jobParameters | Job parameters, if applicable for job type. | (See list of job types) |
+| enabled | A job can be added to the system without it being scheduled by setting `enabled` to false in the JSON payload. Use this if you want to temporarily stop scheduling for a job, or if a job configuration is not complete yet. | Boolean |
+
+
+
+Table: Available job types
+
+| Job type | Parameters | Param(Type:Default) |
+|---|---|---|
+| DATA_INTEGRITY | NONE ||
+| ANALYTICS_TABLE | * lastYears: Number of years back to include<br> * skipTableTypes: Skip generation of tables<br>Possible values: DATA_VALUE, COMPLETENESS, COMPLETENESS_TARGET, ORG_UNIT_TARGET, EVENT, ENROLLMENT, VALIDATION_RESULT<br> * skipResourceTables: Skip generation of resource tables | * lastYears (int:0)<br> * skipTableTypes (Array of String (Enum):None )<br> * skipResourceTables (Boolean) |
+| CONTINUOUS_ANALYTICS_TABLE | * fullUpdateHourOfDay: Hour of day for full update of analytics tables (0-23)<br> * lastYears: Number of years back to include<br> * skipTableTypes: Skip generation of tables<br>Possible values: DATA_VALUE, COMPLETENESS, COMPLETENESS_TARGET, ORG_UNIT_TARGET, EVENT, ENROLLMENT, VALIDATION_RESULT<br> * skipResourceTables: Skip generation of resource tables | * lastYears (int:0)<br> * skipTableTypes (Array of String (Enum):None )<br> * skipResourceTables (Boolean) |
+| DATA_SYNC | 没有任何 ||
+| META_DATA_SYNC | 没有任何 ||
+| SEND_SCHEDULED_MESSAGE | 没有任何 ||
+| PROGRAM_NOTIFICATIONS | NONE ||
+| MONITORING (Validation rule analysis) | * relativeStart: A number related to date of execution which resembles the start of the period to monitor<br> * relativeEnd: A number related to date of execution which resembles the end of the period to monitor<br> * validationRuleGroups: Validation rule groups(UIDs) to include in job<br> * sendNotification: Set "true" if job should send notifications based on validation rule groups<br> * persistsResults: Set "true" if job should persist validation results | * relativeStart (int:0)<br> * relativeEnd (int:0)<br> * validationRuleGroups (Array of String (UIDs):None )<br> * sendNotification (Boolean:false)<br> * persistsResults (Boolean:false) |
+| PUSH_ANALYSIS | * pushAnalysis: The uid of the push analysis you want to run | * pushAnalysis (String:None) |
+| PREDICTOR | * relativeStart: A number related to date of execution which resembles the start of the period to monitor<br> * relativeEnd: A number related to date of execution which resembles the start of the period to monitor<br> * predictors: Predictors(UIDs) to include in job | * relativeStart (int:0)<br> * relativeEnd (int:0)<br> * predictors (Array of String (UIDs):None ) |
+
+### 获取可用的工作类型 { #get-available-job-types } 
+
+要获取所有可用作业类型的列表，可以使用以下端点：
+
+    GET /api/jobConfigurations/jobTypes
+
+响应包含有关每个作业类型的信息，包括名称、作业类型、键、调度类型和可用参数。调度类型可以是 `CRON`，这意味着可以使用带有 `cronExpression` 字段的 cron 表达式来调度作业，或者是`FIXED_DELAY`，意味着可以使用 `delay` 字段将作业调度为以固定延迟运行.场延迟以秒为单位。
+
+响应将类似于以下内容：
+
+```json
+{
+  "jobTypes": [
+    {
+      "name": "Data integrity",
+      "jobType": "DATA_INTEGRITY",
+      "key": "dataIntegrityJob",
+      "schedulingType": "CRON"
+    }, {
+      "name": "Resource table",
+      "jobType": "RESOURCE_TABLE",
+      "key": "resourceTableJob",
+      "schedulingType": "CRON"
+    }, {
+      "name": "Continuous analytics table",
+      "jobType": "CONTINUOUS_ANALYTICS_TABLE",
+      "key": "continuousAnalyticsTableJob",
+      "schedulingType": "FIXED_DELAY"
+    }
+  ]
+}
+```
+
+### 建立工作 { #create-job } 
+
+要配置作业，您可以对以下资源发出POST请求：
+
+    /api/jobConfigurations
+
+不含JSON格式参数的作业如下所示：
+
+```json
+{
+  "name": "",
+  "jobType": "JOBTYPE",
+  "cronExpression": "0 * * ? * *",
+}
+```
+
+参数为JSON格式的分析表作业的示例：
+
+```json
+{
+  "name": "Analytics tables last two years",
+  "jobType": "ANALYTICS_TABLE",
+  "cronExpression": "0 * * ? * *",
+  "jobParameters": {
+    "lastYears": "2",
+    "skipTableTypes": [],
+    "skipResourceTables": false
+  }
+}
+```
+
+作为带有JSON格式参数的推送分析作业的示例：
+
+```json
+{
+   "name": "Push anlysis charts",
+   "jobType": "PUSH_ANALYSIS",
+   "cronExpression": "0 * * ? * *",
+   "jobParameters": {
+     "pushAnalysis": [
+       "jtcMAKhWwnc"
+     ]
+    }
+ }
+```
+
+An example of a job with scheduling type `FIXED_DELAY` and 120 seconds delay:
+
+```json
+{
+  "name": "Continuous analytics table",
+  "jobType": "CONTINUOUS_ANALYTICS_TABLE",
+  "delay": "120",
+  "jobParameters": {
+    "fullUpdateHourOfDay": 4
+  }
+}
+```
+
+### 找工作 { #get-jobs } 
+
+列出所有作业配置：
+
+    GET /api/jobConfigurations
+
+检索作业：
+
+    GET /api/jobConfigurations/{id}
+
+响应有效负载如下所示：
+
+```json
+{
+  "lastUpdated": "2018-02-22T15:15:34.067",
+  "id": "KBcP6Qw37gT",
+  "href": "http://localhost:8080/api/jobConfigurations/KBcP6Qw37gT",
+  "created": "2018-02-22T15:15:34.067",
+  "name": "analytics last two years",
+  "jobStatus": "SCHEDULED",
+  "displayName": "analytics last two years",
+  "enabled": true,
+  "externalAccess": false,
+  "jobType": "ANALYTICS_TABLE",
+  "nextExecutionTime": "2018-02-26T03:00:00.000",
+  "cronExpression": "0 0 3 ? * MON",
+  "jobParameters": {
+    "lastYears": 2,
+    "skipTableTypes": [],
+    "skipResourceTables": false
+  },
+  "favorite": false,
+  "configurable": true,
+  "access": {
+    "read": true,
+    "update": true,
+    "externalize": true,
+    "delete": true,
+    "write": true,
+    "manage": true
+  },
+  "lastUpdatedBy": {
+    "id": "GOLswS44mh8"
+  },
+  "favorites": [],
+  "translations": [],
+  "userGroupAccesses": [],
+  "attributeValues": [],
+  "userAccesses": []
+}
+```
+
+### 更新工作 { #update-job } 
+
+使用以下端点和JSON有效负载格式，通过参数更新作业：
+
+    PUT /api/jobConfiguration/{id}
+
+```json
+{
+  "name": "analytics last two years",
+  "enabled": true,
+  "cronExpression": "0 0 3 ? * MON",
+  "jobType": "ANALYTICS_TABLE",
+  "jobParameters": {
+    "lastYears": "3",
+    "skipTableTypes": [],
+    "skipResourceTables": false
+  }
+}
+```
+
+### 删除工作 { #delete-job } 
+
+使用以下方法删除作业：
+
+    删除/ api / jobConfiguration / {id}
+
+请注意，某些具有自定义配置参数的作业可能不会被添加，如果
+未配置所需的系统设置。一个例子是数据
+同步，这需要远程服务器配置。
+
+## 同步化 { #webapi_synchronization } 
+
+本节介绍数据和元数据的提取和推送。
+
+### 数据值推送 { #webapi_sync_data_push } 
+
+要将数据值推送到远程服务器，必须首先配置
+系统设置 > 中相关服务器的 URL 和凭据
+同步，然后向以下资源发出 POST 请求：
+
+    / api / 33 / synchronization / dataPush
+
+### 元数据拉取 { #webapi_sync_metadata_pull } 
+
+要从远程 JSON 文档中启动元数据拉取，您可以创建一个
+使用 *url* 作为请求负载的 POST 请求到以下资源：
+
+    / api / 33 / synchronization / metadataPull
+
+### 可用性检查 { #webapi_sync_availability_check } 
+
+检查远程数据服务器的可用性并验证用户
+您可以向以下资源发出 GET 请求：
+
+    / api / 33 /同步/可用性
+

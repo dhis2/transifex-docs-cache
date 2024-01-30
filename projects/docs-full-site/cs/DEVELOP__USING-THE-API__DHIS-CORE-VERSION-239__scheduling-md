@@ -1,0 +1,354 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.39/src/developer/web-api/scheduling.md"
+revision_date: '2022-09-13'
+tags:
+- DHIS základní verze 2.39
+- Vývoj
+---
+
+# Plánování { #webapi_scheduling }
+
+DHIS2 umožňuje plánování úloh různých typů. Každý typ úlohy má různé vlastnosti pro konfiguraci, což vám dává lepší kontrolu nad tím, jak jsou úlohy spouštěny. Kromě toho můžete nakonfigurovat stejnou úlohu tak, aby běžela s různými konfiguracemi a v případě potřeby v různých intervalech.
+
+
+
+Tabulka: Hlavní vlastnosti
+
+| Vlastnictví | Popis | Typ |
+|---|---|---|
+| název | Název jobu. | Řetězec |
+| cronExpression | Výraz cron, který definuje interval, kdy se má úloha spustit. | Řetězec (výraz Cron) |
+| jobType | Typ úlohy představuje, která úloha je spuštěna. V další tabulce můžete získat přehled stávajících typů pracovních míst. Každý typ úlohy může mít specifickou sadu parametrů pro konfiguraci úlohy. | Řetězec (výčet) |
+| jobParameters | Parametry úlohy, pokud jsou pro typ úlohy použitelné. | (Viz seznam typů úloh) |
+| povoleno | Úlohu lze přidat do systému, aniž by byla naplánována, nastavením `enabled` na hodnotu false v datové části JSON. Tuto možnost použijte, pokud chcete dočasně zastavit plánování úlohy nebo pokud konfigurace úlohy ještě není dokončena. | Boolean |
+
+
+
+### Job Parameters { #job-parameters } 
+
+Tabulka: Parametry úlohy `DATA_INTEGRITY`
+
+| Název          | Typ          | Výchozí | Popis                                      |
+|---------------|---------------|---------|--------------------------------------------------|
+| `checks` | pole řetězců | `[]` = vše | názvy kontrol, které se mají spustit v pořadí provedení |
+| `type`   | enum            | `REPORT`   | REPORT, SUMMARY nebo DETAILS                       |
+
+Tabulka: Parametry úlohy `ANALYTICS_TABLE`
+
+| Název          | Typ          | Výchozí | Popis                                      |
+|---------------|---------------|---------|--------------------------------------------------|
+| `lastYears` | int  | 0       | Počet let zpět k zahrnutí |
+| `skipTableTypes` | array of enum  | `[]`    | Přeskočit generování tabulek; Možné hodnoty: `DATA_VALUE`, `COMPLETENESS`, `COMPLETENESS_TARGET`, `ORG_UNIT_TARGET`, `EVENT`, `ENROLLMENT`, `VALIDATION_RESULT` |
+| `skipResourceTables` | boolean | `false`   | Přeskočit generování tabulek zdrojů |
+| `skipPrograms` | pole řetězců | `[]`    | Volitelný seznam programů (ID), které by měly být přeskočeny |
+
+Tabulka: Parametry úlohy `CONTINUOUS_ANALYTICS_TABLE`
+
+| Název          | Typ          | Výchozí | Popis                                      |
+|---------------|---------------|---------|--------------------------------------------------|
+| `lastYears` | int           | `0`     | Počet let zpět k zahrnutí |
+| `skipTableTypes` | array of enum | `[]`    | Přeskočit generování tabulek; Možné hodnoty: `DATA_VALUE`, `COMPLETENESS`, `COMPLETENESS_TARGET`, `ORG_UNIT_TARGET`, `EVENT`, `ENROLLMENT`, `VALIDATION_RESULT` |
+| `fullUpdateHourOfDay` | int           | `0`     | Hodina dne pro úplnou aktualizaci analytických tabulek (0-23) |
+
+Tabulka: Parametry úlohy `DATA_SYNC`
+
+| Název          | Typ          | Výchozí | Popis                                      |
+|---------------|---------------|---------|--------------------------------------------------|
+| `pageSize` | int | `10000` | počet datových hodnot zpracovaných jako jednotka |
+
+Tabulka: Parametry úlohy `META_DATA_SYNC`
+
+| Název          | Typ          | Výchozí | Popis                                      |
+|---------------|---------------|---------|--------------------------------------------------|
+| `trackerProgramPageSize` | int | `20` | počet trasovaných entit zpracovaných jako jednotka |
+| `eventProgramPageSize` | int | `60` | počet událostí zpracovaných jako jednotka           |
+| `dataValuesPageSize` | int | `10000` | počet datových hodnot zpracovaných jako jednotka  |
+
+Tabulka: Parametry úlohy `MONITOROVÁNÍ` (analýza ověřovacích pravidel).
+
+| Název          | Typ          | Výchozí | Popis                                      |
+|---------------|---------------|---------|--------------------------------------------------|
+| `relativeStart` | int | `0` | Číslo související s datem provedení, které připomíná začátek sledovaného období |
+| `relativeEnd` | int | `0` | Číslo související s datem provedení, které se podobá konci sledovaného období |
+| `validationRuleGroups` | pole řetězců | `[]` | Skupiny ověřovacích pravidel (UID), které mají být zahrnuty do úlohy |
+| `sendNotification` | boolean | `false` | Nastavte `true`, pokud má úloha posílat upozornění na základě skupin ověřovacích pravidel |
+| `persistsResults` | boolean | `false` | Pokud má úloha přetrvat výsledky ověření, nastavte `true` |
+
+Tabulka: Parametry úlohy `PUSH_ANALYSIS`
+
+| Název          | Typ          | Výchozí | Popis                                      |
+|---------------|---------------|---------|--------------------------------------------------|
+| `pushAnalysis` | pole řetězců | `[]` |  UID analýzy push, kterou chcete spustit |
+
+Tabulka: Parametry úlohy `PREDICTOR`
+
+| Název          | Typ          | Výchozí | Popis                                      |
+|---------------|---------------|---------|--------------------------------------------------|
+| `relativeStart` | int | `0` | Číslo související s datem provedení, které připomíná začátek sledovaného období |
+| `relativeEnd` | int | `0` | Číslo související s datem provedení, které připomíná začátek sledovaného období |
+| `predictors` | pole řetězců | `[]` | Prediktory (UID), které se mají zahrnout do úlohy                                                      |
+| `predictorGroups` | pole řetězců | `[]` | Skupiny prediktorů (UID), které se mají zahrnout do úlohy                                                |
+
+
+### Získejte dostupné typy úloh { #get-available-job-types } 
+
+Chcete-li získat seznam všech dostupných typů úloh, můžete použít následující koncový bod:
+
+    GET /api/jobConfigurations/jobTypes
+
+Odpověď obsahuje informace o každém typu úlohy, včetně názvu, typu úlohy, klíče, typu plánování a dostupných parametrů. Typ plánování může být buď `CRON`, což znamená, že úlohy lze naplánovat pomocí výrazu cron s polem `cronExpression`, nebo `FIXED_DELAY`, což znamená, že je možné naplánovat spuštění úloh s pevným zpožděním mezi polem `delay`. Zpoždění pole se udává v sekundách.
+
+Odpověď bude vypadat podobně jako tato:
+
+```json
+{
+  "jobTypes": [
+    {
+      "name": "Data integrity",
+      "jobType": "DATA_INTEGRITY",
+      "key": "dataIntegrityJob",
+      "schedulingType": "CRON"
+    }, {
+      "name": "Resource table",
+      "jobType": "RESOURCE_TABLE",
+      "key": "resourceTableJob",
+      "schedulingType": "CRON"
+    }, {
+      "name": "Continuous analytics table",
+      "jobType": "CONTINUOUS_ANALYTICS_TABLE",
+      "key": "continuousAnalyticsTableJob",
+      "schedulingType": "FIXED_DELAY"
+    }
+  ]
+}
+```
+
+### Create a Job Configuration { #create-a-job-configuration } 
+
+Chcete-li konfigurovat úlohy, můžete provést požadavek POST na následující prostředek:
+
+    /api/jobConfigurations
+
+Úloha bez parametrů ve formátu JSON vypadá takto:
+
+```json
+{
+  "name": "",
+  "jobType": "JOBTYPE",
+  "cronExpression": "0 * * ? * *",
+}
+```
+
+Příklad úlohy analytické tabulky s parametry ve formátu JSON:
+
+```json
+{
+  "name": "Analytics tables last two years",
+  "jobType": "ANALYTICS_TABLE",
+  "cronExpression": "0 * * ? * *",
+  "jobParameters": {
+    "lastYears": "2",
+    "skipTableTypes": [],
+    "skipResourceTables": false
+  }
+}
+```
+
+Jako příklad úlohy nabízené analýzy s parametry ve formátu JSON:
+
+```json
+{
+   "name": "Push anlysis charts",
+   "jobType": "PUSH_ANALYSIS",
+   "cronExpression": "0 * * ? * *",
+   "jobParameters": {
+     "pushAnalysis": [
+       "jtcMAKhWwnc"
+     ]
+    }
+ }
+```
+
+Příklad úlohy s typem plánování `FIXED_DELAY` a 120 sekundovým zpožděním:
+
+```json
+{
+  "name": "Continuous analytics table",
+  "jobType": "CONTINUOUS_ANALYTICS_TABLE",
+  "delay": "120",
+  "jobParameters": {
+    "fullUpdateHourOfDay": 4
+  }
+}
+```
+
+### Get Job Configurations { #get-job-configurations } 
+
+Seznam všech konfigurací úloh:
+
+    GET /api/jobConfigurations
+
+Načtení úlohy:
+
+    GET /api/jobConfigurations/{id}
+
+Datový obsah odpovědi vypadá takto:
+
+```json
+{
+  "lastUpdated": "2018-02-22T15:15:34.067",
+  "id": "KBcP6Qw37gT",
+  "href": "http://localhost:8080/api/jobConfigurations/KBcP6Qw37gT",
+  "created": "2018-02-22T15:15:34.067",
+  "name": "analytics last two years",
+  "jobStatus": "SCHEDULED",
+  "displayName": "analytics last two years",
+  "enabled": true,
+  "externalAccess": false,
+  "jobType": "ANALYTICS_TABLE",
+  "nextExecutionTime": "2018-02-26T03:00:00.000",
+  "cronExpression": "0 0 3 ? * MON",
+  "jobParameters": {
+    "lastYears": 2,
+    "skipTableTypes": [],
+    "skipResourceTables": false
+  },
+  "favorite": false,
+  "configurable": true,
+  "access": {
+    "read": true,
+    "update": true,
+    "externalize": true,
+    "delete": true,
+    "write": true,
+    "manage": true
+  },
+  "lastUpdatedBy": {
+    "id": "GOLswS44mh8"
+  },
+  "favorites": [],
+  "translations": [],
+  "userGroupAccesses": [],
+  "attributeValues": [],
+  "userAccesses": []
+}
+```
+
+### Update a Job Configuration { #update-a-job-configuration } 
+
+Aktualizujte úlohu s parametry pomocí následujícího formátu koncového bodu a datového obsahu JSON:
+
+    PUT /api/jobConfiguration/{id}
+
+```json
+{
+  "name": "analytics last two years",
+  "enabled": true,
+  "cronExpression": "0 0 3 ? * MON",
+  "jobType": "ANALYTICS_TABLE",
+  "jobParameters": {
+    "lastYears": "3",
+    "skipTableTypes": [],
+    "skipResourceTables": false
+  }
+}
+```
+
+### Delete a Job Configuration { #delete-a-job-configuration } 
+
+Smazat úlohu pomocí:
+
+    DELETE /api/jobConfiguration/{id}
+
+Některé úlohy s vlastními konfiguračními parametry nemusí být přidány, pokud nejsou nakonfigurována požadovaná nastavení systému. Příkladem toho je synchronizace dat, která vyžaduje konfiguraci vzdáleného serveru.
+
+### Run Jobs Manually { #run-jobs-manually } 
+
+Úlohy lze spustit ručně pomocí:
+
+    POST /api/jobConfiguration/{id}/execute
+
+
+### Observe Running Jobs { #observe-running-jobs } 
+The execution steps and state can be observed while the job is running.
+A list of all types of jobs that are currently running is provided by:
+
+    GET /api/scheduling/running/types
+
+To get an overview of all running jobs by job type use:
+
+    GET /api/scheduling/running
+
+As there only can be one job running for each type at a time the status of a
+running job can be viewed in details using:
+
+    GET /api/scheduling/running/{type}
+
+Chcete-li například zobrazit stav použití spuštěné úlohy `ANALYTICS_TABLE`.
+
+    GET /api/scheduling/running/ANALYTICS_TABLE
+
+A job is a sequence of processes. Each process has a sequence of `stages`.
+Within each stage there might be zero, one or many `items`. Items could be
+processed strictly sequential or parallel, n items at a time. Often the
+number of `totalItems` is known up-front.
+
+In general the stages in a process and the items in a stage are "discovered"
+as a "side effect" of processing the data. While most processes have a fixed
+sequence of stages some processed might have varying stages depending on the
+data processed. Items are usually data dependent. Most jobs just include a
+single process.
+
+Každý z uzlů ve stromu procesu-fáze-položky má stav, který je buď
+* `RUNNING`: aktuálně zpracováno (ještě nedokončeno)
+* `SUCCESS`: po úspěšném dokončení
+* `CHYBA`: po dokončení s chybami nebo když došlo k výjimce
+* `ZRUŠENO`: když bylo požadováno zrušení a položka se nedokončí
+
+### See Completed Job Runs { #see-completed-job-runs } 
+Once a job has completed successful or with a failure as a consequence of an
+exception or cancellation the status moves from the set of running states to
+the completed job states. This set keeps only the most recent execution
+state for each job type. The overview is available at:
+
+    GET /api/scheduling/completed
+
+Podrobnosti o konkrétním typu práce jsou odpovídajícím způsobem uvedeny na:
+
+    GET /api/scheduling/completed/{type}
+
+V případě úlohy `ANALYTICS_TABLE` by to bylo:
+
+    GET /api/scheduling/completed/ANALYTICS_TABLE
+
+### Request Cancelling a Running Jobs { #request-cancelling-a-running-jobs } 
+Once a job is started it works through a sequence of steps. Each step might
+in turn have collections of items that are processed. While jobs usually
+cannot be stopped at any point in time we can request cancellation and the
+process gives up cooperatively once it has completed an item or step and
+recognises that a cancellation was requested. This means jobs do not stop
+immediately and leave at an unknown point right in the middle of some
+processing. Instead, they give up when there is an opportunity to skip to
+the end. This still means that the overall process is unfinished and is not
+rolled back. It might just have done a number of steps and skipped others at
+the end.
+
+Chcete-li zrušit běžící úlohu, použijte:
+
+    POST /api/scheduling/cancel/{type}
+
+Chcete-li například zrušit spuštění úlohy `ANALYTICS_TABLE`, postupujte takto:
+
+    POST /api/scheduling/cancel/ANALYTICS_TABLE
+
+Depending on the current step and item performed this can take from
+milliseconds to minutes before the cancellation becomes effective.
+However, the status of the overall process will be shown as `CANCELLED`
+immediately when check using
+
+    GET /api/scheduling/running/ANALYTICS_TABLE
+
+Only jobs that have been split into processes, stages and items can be
+cancelled effectively. Not all jobs have been split yet. These will run till
+completion even if cancellation has been requested.
+

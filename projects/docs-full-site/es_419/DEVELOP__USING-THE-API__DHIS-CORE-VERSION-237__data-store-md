@@ -1,0 +1,438 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.37/src/developer/web-api/data-store.md"
+revision_date: '2021-08-19'
+tags:
+- DHIS core version 2.37
+- Desarrollar
+---
+
+# Data store { #data-store } 
+
+## Data store { #webapi_data_store } 
+
+Using the *dataStore* resource, developers can store arbitrary data for
+their apps. Access to a datastore's key is based on its sharing settings.
+By default all keys created are publicly accessible (read and write).
+Additionally,  access to a datastore's namespace is limited to the user's
+access to the corresponding app, if the app has reserved the namespace.
+For example a user with access to the "sampleApp" application will also
+be able to use the sampleApp namespace in the datastore. If a namespace
+is not reserved, no specific access is required to use it.
+
+    /api/33/dataStore
+
+Note that there are reserved namespaces used by the system that require 
+special authority to be able to read or write entries. 
+For example the namespace for the android settings app `ANDROID_SETTINGS_APP`
+will require `F_METADATA_MANAGE` authority.
+
+### Data store structure { #webapi_data_store_structure } 
+
+Data store entries consist of a namespace, key and value. The
+combination of namespace and key is unique. The value data type is JSON.
+
+
+
+Tabla: Estructura del almacén de datos
+
+| Item | Descripción | Tipo de dato |
+|---|---|---|
+| Namespace | Espacio de nombres para la organización de entradas. | Cadena |
+| Clave | Clave para identificación de valores. | Cadena |
+| Value | Valor que contiene la información para la entrada. | JSON |
+| Encrypted | Indica si el valor de la clave dada debe ser encriptado | Booleano |
+
+### Get keys and namespaces { #webapi_data_store_get_keys_and_namespaces } 
+
+Para obtener una lista de todos los espacios de nombres existentes:
+
+    GET /api/33/dataStore
+
+Ejemplo de petición curl para listado:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore" -u admin:district
+```
+
+Ejemplo de respuesta:
+
+```json
+[
+  "foo",
+  "bar"
+]
+```
+
+Para obtener una lista de todas las claves de un espacio de nombres:
+
+    GET /api/33/dataStore/<namespace>
+
+Ejemplo de petición curl para listado:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo" -u admin:district
+```
+
+Ejemplo de respuesta:
+
+```json
+[
+  "key_1",
+  "key_2"
+]
+```
+
+Para recuperar un valor para una clave existente de un espacio de nombres:
+
+    GET /api/33/dataStore/<namespace>/<key>
+
+Ejemplo de petición curl para recuperación:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo/key_1"-u admin:district
+```
+
+Ejemplo de respuesta:
+
+```json
+{
+  "foo":"bar"
+}
+```
+
+Para recuperar los metadatos de una clave existente de un espacio de nombres:
+
+    GET /api/33/dataStore/<namespace>/<key>/metaData
+
+Ejemplo de petición curl para recuperación:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo/key_1/metaData" -u admin:district
+```
+
+Ejemplo de respuesta:
+
+```json
+{
+  "id": "dsKeyUid001", 
+  "created": "...",
+  "user": {...},
+  "namespace": "foo",
+  "key": "key_1"
+}
+```
+
+### Create values { #webapi_data_store_create_values } 
+
+Para crear una nueva clave y valor para un espacio de nombres:
+
+    POST /api/33/dataStore/<namespace>/<key>
+
+Ejemplo de petición curl para crear, asumiendo una carga útil JSON válida:
+
+```bash
+curl "https://play.dhis2.org/demo/api/33/dataStore/foo/key_1" -X POST
+  -H "Content-Type: application/json" -d "{\"foo\":\"bar\"}" -u admin:district
+```
+
+Ejemplo de respuesta:
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 201,
+  "status": "OK",
+  "message": "Key 'key_1' created."
+}
+```
+
+If you require the data you store to be encrypted (for example user
+credentials or similar) you can append a query to the url like this:
+
+    GET /api/33/dataStore/<namespace>/<key>?encrypt=true
+
+### Update values { #webapi_data_store_update_values } 
+
+Para actualizar una clave que existe en un espacio de nombres:
+
+    PUT /api/33/dataStore/<namespace>/<key>
+
+Ejemplo de petición curl de actualización, asumiendo una carga útil JSON válida:
+
+```bash
+curl "https://play.dhis2.org/demo/api/33/dataStore/foo/key_1" -X PUT -d "[1, 2, 3]"
+  -H "Content-Type: application/json" -u admin:district
+```
+
+Ejemplo de respuesta:
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 200,
+  "status": "OK",
+  "message": "Key 'key_1' updated."
+}
+```
+
+### Delete keys { #webapi_data_store_delete_keys } 
+
+Para eliminar una clave existente de un espacio de nombres:
+
+    DELETE /api/33/dataStore/<namespace>/<key>
+
+Ejemplo de petición curl para eliminar:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo/key_1" -X DELETE -u admin:district
+```
+
+Ejemplo de respuesta:
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 200,
+  "status": "OK",
+  "message": "Key 'key_1' deleted from namespace 'foo'."
+}
+```
+
+Para eliminar todas las claves en un espacio de nombres:
+
+    DELETE /api/33/dataStore/<namespace>
+
+Ejemplo de petición curl para eliminar:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo" -X DELETE -u admin:district
+```
+
+Ejemplo de respuesta:
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 200,
+  "status": "OK",
+  "message": "Namespace 'foo' deleted."
+}
+```
+
+### Sharing datastore keys { #webapi_data_store_sharing } 
+
+Sharing of datastore keys follows the same principle as for other metadata sharing (see
+[Sharing](#webapi_sharing)).
+
+Para obtener la configuración de uso compartido de una clave de almacén de datos específica:
+
+    GET /api/33/sharing?type=dataStore&id=<uid>
+
+Donde el id para la clave del almacén de datos viene del endpoint `/metaData` para esa clave:
+
+    /api/33/dataStore/<namespace>/<key>/metaData
+
+Para modificar la configuración de uso compartido de una clave de almacén de datos específica:
+
+    POST /api/33/sharing?type=dataStore&id=<uid>
+
+con la siguiente petición:
+
+```json
+{
+  "object": {
+    "publicAccess": "rw------",
+    "externalAccess": false,
+    "user": {},
+    "userAccesses": [],
+    "userGroupAccesses": [
+      {
+        "id": "hj0nnsVsPLU",
+        "access": "rw------"
+      },
+      {
+        "id": "qMjBflJMOfB",
+        "access": "r-------"
+      }
+    ]
+  }
+}
+```
+
+## User data store { #webapi_user_data_store } 
+
+In addition to the *dataStore* which is shared between all users of the
+system, a user-based data store is also available. Data stored to the
+*userDataStore* is associated with individual users, so that each user
+can have different data on the same namespace and key combination. All
+calls against the *userDataStore* will be associated with the logged in
+user. This means one can only see, change, remove and add values
+associated with the currently logged in user.
+
+    /api/33/userDataStore
+
+### User data store structure { #webapi_user_data_store_structure } 
+
+*userDataStore* consists of a user, a namespace, keys and associated
+values. The combination of user, namespace and key is unique.
+
+
+
+Tabla: Estructura del almacén de datos de usuario
+
+| Item | Descripción | Tipo de dato |
+|---|---|---|
+| Usuario | El usuario con el que se asocian estos datos | Cadena |
+| Namespace | El espacio de nombres al que pertenece la clave | Cadena |
+| Clave | La clave en la que se almacena el valor. | Cadena |
+| Value | El valor almacenado | JSON |
+| Encrypted | Indica si el valor debe ser encriptado | Booleano |
+
+### Get namespaces { #webapi_user_data_store_get_namespaces } 
+
+Devuelve una matriz de todos los espacios de nombres existentes
+
+    GET /api/33/userDataStore
+
+Example
+    request:
+
+```bash
+curl -H "Content-Type: application/json" -u admin:district "play.dhis2.org/api/33/userDataStore"
+```
+
+```json
+[
+  "foo",
+  "bar"
+]
+```
+
+### Get keys { #webapi_user_data_store_get_keys } 
+
+Devuelve una matriz de todas las claves existentes en un espacio de nombres dado
+
+    GET /api/userDataStore/<namespace>
+
+Ejemplo de petición:
+
+```bash
+curl -H "Content-Type: application/json" -u admin:district "play.dhis2.org/api/33/userDataStore/foo"
+```
+
+```json
+[
+  "key_1",
+  "key_2"
+]
+```
+
+### Get values { #webapi_user_data_store_get_values } 
+
+Devuelve el valor de un espacio de nombres y una clave dados
+
+    GET /api/33/userDataStore/<namespace>/<key>
+
+Ejemplo de petición:
+
+```bash
+curl -H "Content-Type: application/json" -u admin:district "play.dhis2.org/api/33/userDataStore/foo/bar"
+```
+
+```json
+{
+  "some": "value"
+}
+```
+
+### Create value { #webapi_user_data_store_create_values } 
+
+Agrega un nuevo valor a una clave dada en un espacio de nombres dado.
+
+    POST /api/33/userDataStore/<namespace>/<key>
+
+Ejemplo de petición:
+
+```bash
+curl -X POST -H "Content-Type: application/json" -u admin:district -d "['some value']"
+  "play.dhis2.org/api/33/userDataStore/foo/bar"
+```
+
+```json
+{
+  "httpStatus": "Created",
+  "httpStatusCode": 201,
+  "status": "OK",
+  "message": "Key 'bar' in namespace 'foo' created."
+}
+```
+
+If you require the value to be encrypted (For example user credentials
+and such) you can append a query to the url like this:
+
+    GET /api/33/userDataStore/<namespace>/<key>?encrypt=true
+
+### Update values { #webapi_user_data_store_update_values } 
+
+Actualizar un valor existente
+
+    PUT /api/33/userDataStore/<namespace>/<key>
+
+Ejemplo de petición:
+
+```bash
+curl -X PUT -H "Content-Type: application/json" -u admin:district -d "['new value']"
+  "play.dhis2.org/api/33/userDataStore/foo/bar"
+```
+
+```json
+{
+  "httpStatus":"Created",
+  "httpStatusCode":201,
+  "status":"OK",
+  "message":"Key 'bar' in namespace 'foo' updated."
+}
+```
+
+### Delete key { #webapi_user_data_store_delete_key } 
+
+Eliminar una clave
+
+    DELETE /api/33/userDataStore/<namespace>/<key>
+
+Ejemplo de petición:
+
+```bash
+curl -X DELETE -u admin:district "play.dhis2.org/api/33/userDataStore/foo/bar"
+```
+
+```json
+{
+  "httpStatus":"OK",
+  "httpStatusCode":200,
+  "status":"OK",
+  "message":"Key 'bar' deleted from the namespace 'foo."
+}
+```
+
+### Delete namespace { #webapi_user_data_store_delete_namespace } 
+
+Eliminar todas las claves en el espacio de nombres dado
+
+    DELETE /api/33/userDataStore/<namespace>
+
+Ejemplo de petición:
+
+```bash
+curl -X DELETE -u admin:district "play.dhis2.org/api/33/userDataStore/foo"
+```
+
+```json
+{
+  "httpStatus":"OK",
+  "httpStatusCode":200,
+  "status":"OK",
+  "message":"All keys from namespace 'foo' deleted."
+}
+```
+

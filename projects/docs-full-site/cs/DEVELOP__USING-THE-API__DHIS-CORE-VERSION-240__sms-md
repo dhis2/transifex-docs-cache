@@ -1,0 +1,328 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.40/src/developer/web-api/sms.md"
+revision_date: '2021-06-14'
+tags:
+- DHIS základní verze 2.40
+- Vývoj
+---
+
+# SMS { #sms } 
+
+## Short Message Service (SMS) { #webapi_sms } 
+
+This section covers the SMS Web API for sending and receiving short text
+messages.
+
+### Odchozí služba SMS { #outbound-sms-service } 
+
+The Web API supports sending outgoing SMS using the POST method. SMS can
+be sent to single or multiple destinations. One or more gateways need
+to be configured before using the service. An SMS will not be sent if
+there is no gateway configured. It needs a set of recipients and
+message text in JSON format as shown below.
+
+    /api/sms/outbound
+
+```json
+{
+  "message":"Sms Text",
+  "recipients": [
+    "004712341234",
+    "004712341235"
+  ]
+}
+```
+
+> **Poznámka**
+>
+> Seznam příjemců bude rozdělen, pokud `MAX_ALLOWED_RECIPIENTS` překročí limit 200.
+
+The Web API also supports a query parameter version, but the
+parameterized API can only be used for sending SMS to a single
+destination.
+
+    /api/sms/outbound?message=text&recipient=004712341234
+
+Odchozí zprávy lze načíst pomocí prostředku GET.
+
+    GET /api/sms/outbound
+    GET /api/sms/outbound?filter=status:eq:SENT
+    GET /api/sms/outbound?filter=status:eq:SENT&fields=*
+
+Odchozí zprávy lze odstranit pomocí prostředku DELETE.
+
+    DELETE /api/sms/outbound/{uid}
+    DELETE /api/sms/outbound?ids=uid1,uid2
+
+#### Kódy odezvy brány { #gateway-response-codes } 
+
+Brána může reagovat s následujícími kódy odpovědí.
+
+
+
+Tabulka: Kódy odezvy brány
+
+| Kód odezvy | Zpráva s odpovědí | Detailní popis |
+|---|---|---|
+| RESULT_CODE_0 | success | Zpráva byla úspěšně odeslána |
+| RESULT_CODE_1 | scheduled | Zpráva byla úspěšně naplánována |
+| RESULT_CODE_22 | internal fatal error | Vnitřní fatální chyba |
+| RESULT_CODE_23 | authentication failure | Ověřovací údaje jsou nesprávné |
+| RESULT_CODE_24 | data validation failed | Parametry uvedené v požadavku jsou nesprávné |
+| RESULT_CODE_25 | insufficient credits | Kredit nestačí k odeslání zprávy |
+| RESULT_CODE_26 | upstream credits not available | Upstream kredity nejsou k dispozici |
+| RESULT_CODE_27 | exceeded your daily quota | Překročili jste svou denní kvótu |
+| RESULT_CODE_40 | temporarily unavailable | Služba je dočasně mimo provoz |
+| RESULT_CODE_201 | maximum batch size exceeded | Překročena maximální velikost dávky |
+| RESULT_CODE_200 | success | Žádost byla úspěšně dokončena |
+| RESULT_CODE_202 | accepted | Zpráva(y) budou zpracovány |
+| RESULT_CODE_207 | multi-status | Do rozhraní API byla odeslána více než jedna zpráva; ne všechny zprávy však mají stejný stav |
+| RESULT_CODE_400 | bad request | Selhání ověření (například chybějící / neplatné parametry nebo záhlaví) |
+| RESULT_CODE_401 | unauthorized | Selhání autentizace. To může být také způsobeno nastavením uzamčení IP |
+| RESULT_CODE_402 | payment required | Nedostatek kreditu k odeslání zprávy |
+| RESULT_CODE_404 | not found | Zdroj neexistuje |
+| RESULT_CODE_405 | method not allowed | Metoda HTTP není na zdroji podporována |
+| RESULT_CODE_410 | gone | Mobilní číslo je blokováno |
+| RESULT_CODE_429 | too many requests | Obecná chyba omezení četnosti |
+| RESULT_CODE_503 | service unavailable | Na naší platformě došlo k dočasné chybě – zkuste to prosím znovu |
+
+### Služba příchozích SMS { #inbound-sms-service } 
+
+The Web API supports collecting incoming SMS messages using the POST
+method. Incoming messages routed towards the DHIS2 Web API can be
+received using this API. The API collects inbound SMS messages and
+provides it to listeners for parsing, based on the SMS content (SMS
+Command). An example payload in JSON format is given below. Text,
+originator, received date and sent date are mandatory parameters. The
+rest are optional but the system will use the default value for these
+parameters.
+
+    /api/sms/inbound
+
+```json
+{
+  "text": "sample text",
+  "originator": "004712341234",
+  "gatewayid": "unknown",
+  "receiveddate": "2016-05-01",
+  "sentdate": "2016-05-01",
+  "smsencoding": "1",
+  "smsstatus": "1"
+}
+```
+
+Příchozí zprávy lze načíst pomocí prostředku GET 
+
+    GET /api/sms/inbound
+    GET /api/sms/inbound?fields=*&filter=smsstatus=INCOMING
+
+Příchozí zprávy lze odstranit pomocí prostředku DELETE
+
+    DELETE /api/sms/inbound/{uid}
+    DELETE /api/sms/inbound?ids=uid1,uid2
+
+Chcete-li importovat všechny nepřečtené zprávy
+
+    POST /api/sms/inbound/import
+
+
+
+Tabulka: Parametry dotazu uživatele
+
+| Parametr | Typ | Popis |
+|---|---|---|
+| message | Řetězec | Toto je povinný parametr, který nese skutečnou textovou zprávu. |
+| originator | Řetězec | Toto je povinný parametr, který ukazuje, od koho byla tato zpráva skutečně odeslána. |
+| gateway | Řetězec | Toto je volitelný parametr, který udává ID brány. Pokud není uveden, bude uložen výchozí text „NEZNÁMÝ“. |
+| receiveTime | Datum | Toto je volitelný parametr. Je to časové razítko, ve kterém byla zpráva přijata na bráně. |
+
+### Správa služby brány { #gateway-service-administration } 
+
+The Web API exposes resources which provide a way to configure and
+update SMS gateway configurations.
+
+The list of different gateways configured can be retrieved using a GET
+method.
+
+    GET /api/33/gateways
+
+Configurations can also be retrieved for a specific gateway type using
+GET method.
+
+    GET /api/33/gateways/{uid}
+
+New gateway configurations can be added using POST. POST api requires type request parameter and currently its value can have either one *http,bulksms,clickatell,smpp*. First added gateway will be set to default. Only one gateway is allowed to be default at one time. Default gateway can only be changed through its api. If default gateway is removed then the next one the list will automatically becomes default.
+
+    POST /api/33/gateways
+
+Konfiguraci lze aktualizovat poskytnutím konfigurací uid a gateway, jak je uvedeno níže
+
+    PUT /api/33/gateways/{uids}
+
+Configurations can be removed for specific gateway type using DELETE
+method.
+
+    DELETE /api/33/gateways/{uid}
+
+Výchozí bránu lze načíst a aktualizovat.
+
+    GET /api/33/gateways/default
+
+Výchozí bránu lze nastavit pomocí metody PUT.
+
+    PUT /api/33/gateways/default/{uid}
+
+### Konfigurace brány { #gateway-configuration } 
+
+Webové rozhraní API umožňuje vytvářet a aktualizovat konfigurace brány. Pro každý typ brány jsou v zátěži JSON různé parametry. Níže jsou uvedeny příklady užitečných zatížení JSON pro jednotlivé brány. Pro vytvoření konfigurace se používá POST a pro aktualizaci PUT. Parametr hlavičky lze použít v případě brány GenericHttpGateway k odeslání jednoho nebo více parametrů jako hlavičky http.
+
+#### Clickatell { #clickatell } 
+
+```json
+{
+  "type": "clickatell",
+  "name": "clickatell",
+  "username": "clickatelluser",
+  "authToken": "XXXXXXXXXXXXXXXXXXXX",
+  "urlTemplate": "https://platform.clickatell.com/messages"
+}
+```
+
+#### Bulksms { #bulksms }
+
+```json
+{
+  "type": "bulksms",
+  "name": "bulkSMS",
+  "username": "bulkuser",
+  "password": "abc123"
+}
+```
+
+#### SMPP Brána { #smpp-gateway } 
+
+```json
+{
+  "type": "smpp",
+  "name": "smpp gateway2",
+  "systemId": "smppclient1",
+  "host": "localhost",
+  "systemType": "cp",
+  "numberPlanIndicator": "UNKNOWN",
+  "typeOfNumber": "UNKNOWN",
+  "bindType": "BIND_TX",
+  "port": 2775,
+  "password": "password",
+  "compressed": false
+}
+```
+
+#### Obecný HTTP { #generic-http } 
+
+```json
+{
+  "type": "http",
+  "name": "Generic",
+  "configurationTemplate": "username=${username}&password=${password}&to=${recipients}&countrycode=880&message=${text$}&messageid=0",
+  "useGet": false,
+  "sendUrlParameters": false,
+  "contentType": "APPLICATION_JSON",
+  "urlTemplate": "https://samplegateway.com/messages",
+  "parameters": [
+    {
+      "header": true,
+      "encode": false,
+      "key": "username",
+      "value": "user_uio",
+      "confidential": true
+    },
+    {
+      "header": true,
+      "encode": false,
+      "key": "password",
+      "value": "123abcxyz",
+      "confidential": true
+    },
+    {
+      "header": false,
+      "encode": false,
+      "key": "deliveryReport",
+      "value": "yes",
+      "confidential": false
+    }
+  ],
+  "isDefault": false
+}
+```
+
+V obecné bráně http lze přidat libovolný počet parametrů.
+
+
+
+Tabulka: Obecné parametry SMS brány
+
+| Parametr | Typ | Popis |
+|---|---|---|
+| název | Řetězec | název brány |
+| configurationTemplate | Řetězec | Šablona konfigurace, která se naplní hodnotami parametrů. Například výše uvedená konfigurační šablona bude vyplněna takto { "to": "+27001234567", "body": "Hello World!"} |
+| useGet | Boolean | Ve výchozím nastavení bude použita metoda POST Http. Chcete-li to změnit a Http GET, může uživatel nastavit příznak useGet na true. |
+| contentType | Řetězec | Typ obsahu určete, jaký typ dat se odesílá. Podporované typy jsou APPLICATION_JSON, APPLICATION_XML, FORM_URL_ENCODED, TEXT_PLAIN |
+| urlTemplate | Řetězec | Šablona adresy URL |
+| header | Boolean | Pokud je třeba odeslat parametr v hlavičkách HTTP |
+| encode | Boolean | Pokud je třeba parametr zakódovat |
+| key | Řetězec | parameter key |
+| value | Řetězec | parameter value |
+| confidential | Boolean | Pokud je parametr důvěrný. Tento parametr nebude vystaven prostřednictvím API |
+| sendUrlParameters | Boolean | Pokud je tento příznak zaškrtnutý, lze k urlTemplate přidat parametry dotazu. To je užitečné, pokud rozhraní API brány podporuje pouze HTTP GET. Ukázková šablona url vypadá takto  `"urlTemplate":"https://samplegateway.com/messages?apiKey={apiKey}&to={recipients},content={text},deliveryreport={dp}"` |
+
+HTTP.OK will be returned if configurations are saved successfully otherwise *Error*
+
+## SMS příkazy { #webapi_sms_commands } 
+
+SMS commands are being used to collect data through SMS. These commands
+belong to specific parser type. Each parser has different functionality.
+
+Seznam příkazů lze vyvolat pomocí GET.
+
+    GET /api/smsCommands
+
+Jeden konkrétní příkaz lze načíst pomocí GET.
+
+    GET /api/smsCommands/uid
+
+Jeden konkrétní příkaz lze aktualizovat pomocí PUT.
+
+    PUT /api/smsCommands/uid
+
+Příkaz lze vytvořit pomocí POST.
+
+    POST /api/smsCommands
+
+Jeden konkrétní příkaz lze odstranit pomocí DELETE.
+
+    DELETE /api/smsCommands/uid
+
+#### Typy příkazů SMS { #sms-command-types } 
+
+| Typ | Používání |
+|---|---|
+|KEY_VALUE_PARSER | Pro agregovaný sběr dat.|
+|ALERT_PARSER | Odesílání výstražných zpráv.|
+|UNREGISTERED_PARSER | Pro hlášení případů dozoru nad chorobami.|
+|TRACKED_ENTITY_REGISTRATION_PARSER | Pro registraci entity trasovače.|
+|PROGRAM_STAGE_DATAENTRY_PARSER | Sběr dat pro programovou fázi. (TEI je identifikován na základě phoneNumner)|
+|EVENT_REGISTRATION_PARSER | Registrace jednotlivé události. Používá se pro programy událostí.|
+
+#### Typy příkazů SMS pro Android { #sms-command-types-for-android } 
+
+Tyto typy příkazů může aplikace pro Android používat k odesílání dat pomocí SMS, když není k dispozici internet. SMS se skládá z aplikace pro Android.
+
+| Typ | Používání |
+|---|---|
+|AGGREGATE_DATASET | Pro agregovaný sběr dat.|
+|ZÁPIS | Pro registraci entity trasovače.|
+|TRACKER_EVENT | Registrace události pro programy sledování.|
+|SIMPLE_EVENT | Registrace události pro programy událostí.|
+|VZTAH | Vytvářet vztahy.|
+|SMAZAT | Smazat událost.|
+

@@ -1,0 +1,317 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.37/src/user/scheduling.md"
+revision_date: '2021-10-14'
+tags:
+- DHIS core verze 2.37
+- Použití
+---
+
+# Plánování { #scheduling } 
+
+The Scheduler is an application for managing background jobs in DHIS2.
+Background jobs can do a number of tasks, such as running analytics,
+synchronizing data and meta data, or sending a push analysis report. The
+application provides the ability to create, modify and delete such jobs.
+
+The Scheduler comes bundled with DHIS2 and is accessed through the App
+Menu.
+
+![Úvodní stránka aplikace Plánovač](resources/images/scheduler/overview.png)
+
+The start page of the Scheduler app shows an overview of existing jobs.
+By default, pre-defined system jobs are hidden. To view these, click
+*Include system jobs in list* in the top right corner.
+
+When you create or modify a job, it will be scheduled according to
+the selected schedule. To run a job on demand, go to the job list,
+click the "Actions" button of the job you want to run and click
+"Run manually". This action is only available for enabled jobs.
+
+## Vytváření úloh { #scheduling_create_job } 
+
+1.  Open the **Scheduler** app and click the "New job" button in the top
+    right corner.
+
+1.  Vyberte vhodný **název** pro novou úlohu.
+
+1.  Select the **Job type** you want to schedule using the
+    drop-down menu.
+
+1.  Select a schedule for the job. Each job type has its own scheduling type,
+    either **Cron** scheduling or **Delay** scheduling.
+
+    1.  For **Cron** scheduled job types you can set a schedule using the 
+        [Spring scheduling](https://docs.spring.io/spring/docs/current/javadoc-api/org/springframework/scheduling/support/CronSequenceGenerator.html) 
+        syntax. You can also select a predefined **Cron expression** by clicking
+        "Choose from preset times". This schedule will only start a new job run
+        if the previous job run has finished, to prevent the system from spawning
+        too many jobs.
+
+    1.  For **Delay** scheduled jobs you can set a delay in seconds. Unlike the
+        **Cron** scheduled jobs, these jobs aren't executed according to a set 
+        schedule, but with a specific delay in between job runs. The delay timer
+        starts when a job ends, starting a new job run when the delay timer reaches
+        zero. This will continue as long as the job is enabled.
+
+1.  If the job type is customizable, a **Parameters** section will appear below
+    the scheduling settings. These additional options specify the details of the
+    scheduled job, and will vary depending on the job type.
+
+1.  Press the **Save** button to confirm the job creation. On successful job
+    creation you will be redirected to the job overview, where the newly
+    created job will now be listed.
+
+![Vytvoření nové úlohy plánovače](resources/images/scheduler/add_new_job.png)
+
+Nově vytvořené úlohy jsou ve výchozím nastavení povoleny.
+
+## Editing a job { #scheduling_configure_job } 
+
+With the proper permissions, you can modify the details of user-created
+jobs. To quickly enable or disable a user created job from running, use the
+switches in the **On/off** column on the landing page of the Scheduler app.
+Note that system jobs are always enabled and cannot be disabled.
+
+Další úpravy uživatelských úloh:
+
+1.  Click the "Actions" button of the job you want to edit and click "Edit" (only
+    user jobs can be edited).
+
+1.  Po dokončení úprav stiskněte tlačítko **Uložit** pro uložení změn.
+
+## Mazání úlohy { #dataAdmin_scheduler_delete } 
+
+1.  Click the "Actions" button of the job you want to delete and click "Delete"
+    (only user jobs can be deleted).
+
+1.  Potvrďte dalším stisknutím tlačítka **Odstranit** ve vyskakovacím okně.
+
+Uživatelské úlohy lze také odstranit z obrazovky úprav.
+
+![Odstranění úlohy plánovače](resources/images/scheduler/delete_job.png)
+
+## Typy pracovních míst { #job-types } 
+
+Následující část popisuje různé typy úloh.
+
+### Disable Inactive Users { #scheduling_disable_inactive_users } 
+Users that have not been active - not logged in - for a number of months can automatically be disabled.
+Select the number of inactive months as the job parameter.
+All users that have not logged in for that number of months or longer will be disabled by the job.
+Disabled users will no longer be able to log into the system.
+
+The _Reminder days before_ parameter can be set to send a reminder email to
+those users the specified number of days before their account is due to expire.
+If the value is not set (blank) no reminder is sent.
+
+
+### Tabulka zdrojů { #scheduling_resource_table } 
+
+Úloha tabulky prostředků je zodpovědná za generování a aktualizaci tabulek databáze prostředků. Tyto tabulky používají různé komponenty v DHIS 2 a jsou určeny ke zjednodušení dotazů na databázi.
+
+Všimněte si, že při zadávání kterékoli z úloh analytické tabulky mohou být tabulky zdrojů součástí procesu a není nutné specifikovat také úlohu tabulky zdrojů.
+
+### Tabulka Analytiky { #scheduling_analytics_table } 
+
+Úloha analytických tabulek je zodpovědná za generování a aktualizaci analytických tabulek. Analytické tabulky se používají jako základ pro dotazy na analýzu dat v DHIS2. Aplikace, jako je ovládací panel, vizualizér a mapy, načítají data z těchto tabulek prostřednictvím analytického API DHIS2 a je nutné je aktualizovat, aby byla dostupná analytická data. Tento proces můžete naplánovat tak, aby se pravidelně spouštěl prostřednictvím typu úlohy analytické tabulky.
+
+Úloha analytické tabulky se ve výchozím nastavení naplní daty pro všechny roky a datové prvky. K dispozici jsou následující parametry:
+
+- **Last years:** Počet posledních let pro naplnění analytických tabulek. Jako příklad, pokud zadáte 2 roky, proces aktualizuje data za poslední dva roky, ale neaktualizuje starší data. Tento parametr je užitečný ke zkrácení času potřebného na dokončení procesu, a je vhodný, pokud se starší data nezměnila a při aktualizaci nejnovějších dat je žádoucí.
+- **Přeskočit tabulky zdrojů:** Přeskočí tabulky zdrojů během procesu aktualizace analytické tabulky. To snižuje čas potřebný k dokončení procesu, ale vede ke změnám metadat, které se v analytických datech neprojeví.
+- **Přeskočit typy tabulek:** Přeskočit jeden nebo více typů analytické tabulky. To snižuje čas potřebný k dokončení procesu, ale vede k tomu, že tyto datové typy nebudou v analytických datech aktualizovány.
+
+### Kontinuální analytická tabulka { #scheduling_continuous_analytics_table } 
+
+Úloha analytických tabulek je zodpovědná za generování a aktualizaci analytických tabulek. Analytické tabulky se používají jako základ pro dotazy na analýzu dat v DHIS2. Aplikace, jako je ovládací panel, vizualizér a mapy, načítají data z těchto tabulek prostřednictvím analytického API DHIS2 a je nutné je aktualizovat, aby byla dostupná analytická data. Tento proces můžete naplánovat tak, aby se pravidelně spouštěl prostřednictvím typu úlohy analytické tabulky.
+
+Kontinuální úloha analytické tabulky je založena na dvou fázích:
+
+- _Poslední aktualizace:_ Aktualizace nejnovějších dat, kde nejnovější odkazuje na data, která byla přidána, aktualizována nebo odstraněna od poslední aktualizace nejnovějších dat nebo úplných dat. K tomuto procesu musíte často.
+- _Úplná aktualizace:_ Aktualizace všech dat za všechny roky. Tento proces proběhne jednou denně.
+
+Kontinuální úloha analytické tabulky často aktualizuje nejnovější data. Proces nejnovějších dat využívá speciální databázový oddíl, který slouží pouze k uložení nejnovějších dat. Tento oddíl lze rychle aktualizovat kvůli relativně malému množství dat. Velikost oddílu se bude zvětšovat, dokud nebude provedena úplná aktualizace. Jednou denně budou aktualizována všechna data za všechny roky. Tím se vymaže nejnovější oddíl.
+
+Úloha analytické tabulky se ve výchozím nastavení naplní daty pro všechny roky a datové prvky. K dispozici jsou následující parametry:
+
+- **Hodina dne úplné aktualizace:** Hodina dne, kdy bude provedena úplná aktualizace. Jako příklad, pokud zadáte 1, bude úplná aktualizace provedena v 1:00.
+- **Last years:** Počet posledních let pro naplnění analytických tabulek. Jako příklad, pokud zadáte 2 roky, proces aktualizuje data za poslední dva roky, ale neaktualizuje starší data. Tento parametr je užitečný ke zkrácení času potřebného na dokončení procesu, a je vhodný, pokud se starší data nezměnila a při aktualizaci nejnovějších dat je žádoucí.
+- **Přeskočit tabulky zdrojů:** Přeskočí tabulky zdrojů během procesu aktualizace analytické tabulky. To snižuje čas potřebný k dokončení procesu, ale vede ke změnám metadat, které se v analytických datech neprojeví.
+
+### Synchronizace dat { #scheduling_data_sync } 
+
+DHIS2 provides synchronisation of data between remotely distributed
+instances and a central instance of DHIS2. This can be useful e.g. when
+you have deployed multiple stand-alone instances of DHIS2 which are
+required to submit data values to a central DHIS2 instance. Both tracker
+data and aggregate data synchronization is supported.
+
+Toto jsou kroky k povolení synchronizace dat:
+
+- Go to Synchronization Settings, enter the remote server URL,
+  username and password. Press the TAB button to automatically save
+  the new password. Refresh the page and check that the filled values
+  are still present. Note that the password field will be empty after
+  the refresh, since this value is encrypted, so you can consider it
+  saved.
+
+- Using the Scheduler app, create a new job using the "Event Programs 
+  Data Sync" and/or "Tracker Programs Data Sync" job type. Make sure it 
+  is enabled when you finish. (Note: If the "Program Data Synchronization" 
+  job, available in previous versions, was set up in Scheduler app before, 
+  it was automatically replaced by the two new jobs "Event Programs Data Sync" 
+  and "Tracker Programs Data Sync" with the identical settings. )
+
+Některé aspekty funkce synchronizace dat je třeba mít na paměti:
+
+- The local DHIS2 instance will store the password of the user account
+  on the remote instance encrypted in the local database. The remote
+  account is used for authentication when transferring data. For
+  security purposes make sure you set the _encryption.password_
+  configuration parameter in _hibernate.properties_ to a strong
+  password.
+
+- Deploying the remote server on SSL/HTTPS is strongly recommended as
+  the username and password are sent in clear text using basic
+  authentication and could be intercepted by an attacker.
+
+- The data synchronization uses the UID property of data elements,
+  category option combos and organisation units to match the
+  meta-data. Hence the synchronization is dependent on these three
+  meta-data objects being harmonized on the local and remote instance
+  in order to work appropriately.
+
+- The first time DHIS2 runs the synchronization job, it will include
+  any data available. The subsequent synchronization jobs will only
+  include data added and changed since the last successful job. A
+  synchronization job is considered successful only if all the data
+  was saved successfully on the remote server (Any data successfully
+  synced will remain on the receiving instance, regardless if the job
+  eventually fails). Whether the job was successful or not can be
+  decided from the import summary returned from the central server.
+
+- The initial synchronization job may take a significant amount of
+  time, possibly slowing down your instance, depending on how much
+  data is being synchronized. It could be a good idea to configure the
+  job to run when there are few online users, then later change this
+  to your own preference. If you do not want or need to synchronize all 
+  the data, there is a possibility to <a href="#skip_changed_before">skip 
+  some of the data being synchronised</a>.
+
+  When DHIS2 synchronizes tracker data, it determines the set of data
+  to synchronize based on the last time it was synchronized. Each of
+  the tracked entity instances and events have their own records of
+  when they where last successfully synchronized.
+
+- The system will start a synchronization job based on the rules set
+  in the configuration of the job. If the synchronization job starts
+  while there is no connection to the remote server, it will retry up
+  to three times before it aborts. The job will run again at a
+  scheduled time.
+
+- The server handles each set of programs separately, which means one
+  set of programs can be synchronized successfully, while the other
+  fails. The failure or success of one doesn't influence the other, as
+  the last successful synchronization time is tracked individually for
+  each item as previously mentioned.
+
+- The attributes of TrackedEntityInstances (TrackedEntityAttribute)
+  and the data elements of ProgramStages (ProgramStageDataElement)
+  which have an option "Skip synchronization" turned on will not be
+  synchronized. This feature allows you to decide to not synchronize
+  some sensitive or not relevant data and to keep them only locally.
+
+- The authority `Ignore validation of required fields in Tracker and Event Capture`
+  (`F\_IGNORE\_TRACKER\_REQUIRED\_VALUE\_VALIDATION`) should be used when
+  there is a requirement that some mandatory attribute / data element
+  has at the same time a "Skip synchronization" property turned on.
+  Such a setting will lead to validation failure on the central server
+  as the given attribute / data element will not be present in the
+  payload.
+
+  The validation won't fail for the user with this authority. The
+  authority should be assigned to the user, on the central server,
+  that will be used for synchronization job.
+
+- In specific cases, **the initial synchronization of all the data can be undesirable**; 
+  for example, when a database on the local instance is a fresh copy of the 
+  database present on the central instance, or when it is preferred to not 
+  synchronize old data in favor of initial synchronization taking less 
+  time. 
+
+  The *syncSkipSyncForDataChangedBefore* SettingKey can be used to skip 
+  the synchronisation of all the data (data values, Event and Tracker 
+  program data, complete data set registrations) that were *last 
+  changed before the specified date*. The `SettingKey` is used in the 
+  synchronization job all the time. Therefore, if you need to synchronize 
+  the old data, you should change the `SettingKey`.
+
+- Both Tracker Programs and Event Programs synchronization job supports 
+  paging in order to avoid timeouts and to deal with unstable network.
+  Default page size for "Event Programs Data Sync" job is set to 60. 
+  Default page size for "Tracker Programs Data Sync" job is set to 20.
+
+  If default values do not fit your purpose, own page size can be specified 
+  via parameter in particular sync job in Scheduler app.
+
+### Plánování synchronizace metadat { #scheduling_metadata_sync } 
+
+DHIS2 provides a feature for synchronizing meta data from a remote
+instance to a local instance of DHIS2. This can be useful when you have
+deployed multiple stand-alone instances of DHIS2 and you need to create
+meta data in all the local instances similar to the central DHIS2
+instance.
+
+Toto jsou kroky k povolení synchronizace metadat:
+
+- Go to Settings \> Synchronization, enter the remote server URL,
+  username and password and click Save.
+
+- Go to Metadata administration \> Scheduling. Under Metadata
+  synchronization set strategy to Enabled, select the time-period and
+  click Start.
+
+Mějte na paměti některé aspekty funkce synchronizace metadat:
+
+- The local DHIS2 instance will store the password of the user account
+  of the remote instance in its database. The remote user account is
+  used for authentication when transferring/downloading data. For
+  security purposes make sure you set the _encryption.password_
+  configuration parameter in _hibernate.properties_ to a strong
+  password.
+
+- Deploying the remote server on SSL/HTTPS is strongly recommended as
+  the username and password are sent in clear text using basic
+  authentication and could be intercepted by an attacker.
+
+- Also ensure that the remote user is not having ALL authority,
+  instead simply create a user with F\_METADATA\_MANAGE authority so
+  that even if these details are intercepted by a hacker, one cannot
+  have full control of the remote system.
+
+- The meta data synchronization relies on the underlying import layer.
+  Each meta data version is an export of meta data between two given
+  timestamps. Each sync of meta data version is an attempt to import
+  that meta data snapshot into the local instance. The sync of
+  versions is incremental. The local instance will try to download the
+  meta data versions from the central instance one after the other.
+  Failure to sync a specific meta data version will not let the sync
+  proceed to further versions. In case of failures, appropriate
+  changes must be made to meta data at central to ensure that the
+  error gets resolved. Metadata configuration is critical and the
+  user should be careful while rolling out the updates to the
+  production. It's always recommended to have staging environments in
+  place to ensure the sanity of the meta data versions and their
+  impact thereafter. The local instance will sync the meta data from
+  first version so that harmony is maintained and local and central
+  instance will work appropriately.
+
+- The system will attempt a synchronization at the scheduled time. If
+  the local or remote server does not have a working Internet
+  connection at the time, the synchronization will be aborted and
+  re-attempted after as per the retry count as mentioned in the
+  _dhis.conf_ file.
+
+- You can see the time of last successful synchronization with remote
+  server in the scheduling screen next to the "Last success" label.
+

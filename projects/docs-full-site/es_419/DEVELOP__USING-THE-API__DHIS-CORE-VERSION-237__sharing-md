@@ -1,0 +1,274 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.37/src/developer/web-api/sharing.md"
+revision_date: '2021-10-26'
+tags:
+- DHIS core version 2.37
+- Desarrollar
+---
+
+# Sharing { #sharing } 
+
+## Sharing { #webapi_sharing } 
+
+The sharing solution allows you to share most objects in the system with
+specific user groups and to define whether objects should be publicly
+accessible or private. To get and set sharing status for objects you can
+interact with the *sharing* resource.
+
+    /api/33/sharing
+
+### Get sharing status { #webapi_get_sharing_status } 
+
+Para solicitar el estado compartido de un objeto, utilice una solicitud GET para hacer lo siguiente:
+
+    /api/33/sharing?type=dataElement&id=fbfJHSPpUQD
+
+La respuesta es como la siguiente.
+
+```json
+{
+  "meta": {
+    "allowPublicAccess": true,
+    "allowExternalAccess": false
+  },
+  "object": {
+    "id": "fbfJHSPpUQD",
+    "name": "ANC 1st visit",
+    "publicAccess": "rw------",
+    "externalAccess": false,
+    "user": {},
+    "userGroupAccesses": [
+      {
+        "id": "hj0nnsVsPLU",
+        "access": "rw------"
+      },
+      {
+        "id": "qMjBflJMOfB",
+        "access": "r-------"
+      }
+    ]
+  }
+}
+```
+
+### Set sharing status { #webapi_set_sharing_status } 
+
+You can define the sharing status for an object using the same URL with
+a POST request, where the payload in JSON format looks like this:
+
+```json
+{
+  "object": {
+    "publicAccess": "rw------",
+    "externalAccess": false,
+    "user": {},
+    "userGroupAccesses": [
+      {
+        "id": "hj0nnsVsPLU",
+        "access": "rw------"
+      },
+      {
+        "id": "qMjBflJMOfB",
+        "access": "r-------"
+      }
+    ]
+  }
+}
+```
+
+In this example, the payload defines the object to have read-write
+public access, no external access (without login), read-write access to
+one user group and read-only access to another user group. You can
+submit this to the sharing resource using curl:
+
+```bash
+curl -d @sharing.json "localhost/api/33/sharing?type=dataElement&id=fbfJHSPpUQD"
+  -H "Content-Type:application/json" -u admin:district
+```
+**Nota**
+> It is possible to create surprising sharing combinations. For
+> instance, if `externalAccess` is set to `true` but `publicAccess` is
+> set to `--------`, then users will have access to the object 
+> only when they are logged out.
+
+
+
+
+## New Sharing object { #new-sharing-object } 
+From 2.36 a new `sharing` property has been introduced in order to replace the old sharing properties `userAccesses`, `userGroupAccesses`, `publicAccess`, `externalAccess` in all metadata classes that have sharing enabled. This `Sharing` object is saved as a JSONB column in database. 
+However, in order make it backward compatible the old sharing objects still work normally as before, for both import and export. In backend sharing data will be saved to new  JSONb `sharing` column instead of the old `*accesses` tables.
+
+El formato se ve así:
+```json
+{
+  "name": "ANC 1st visit",
+  "publicAccess": "rw------",
+  "externalAccess": false,
+  "userGroupAccesses": [
+      {
+          "access": "r-r-----",
+          "userGroupUid": "Rg8wusV7QYi",
+          "displayName": "HIV Program Coordinators",
+          "id": "Rg8wusV7QYi"
+      }
+  ],
+  "userAccesses": [],
+  "user": {
+      "displayName": "Tom Wakiki",
+      "name": "Tom Wakiki",
+      "id": "GOLswS44mh8",
+      "username": "system"
+  },
+  "sharing": {
+      "owner": "GOLswS44mh8",
+      "external": false,
+      "users": {},
+      "userGroups": {
+          "Rg8wusV7QYi": {
+              "access": "r-r-----",
+              "id": "Rg8wusV7QYi"
+          }
+      },
+      "public": "rw------"
+  }
+}
+```
+
+### Set sharing status using new JSON Patch Api { #webapi_set_sharing_status_using_json_patch_api } 
+Puede usar [JSON Patch API] (#webapi_partial_updates) para actualizar el recurso compartido para un objeto  enviando una petición `PATCH` a este endpoint con encabezado `Content-Type: application/json-patch+json` 
+```
+api/dataElements/fbfJHSPpUQD
+```
+Please note that this function ***only supports*** new `sharing` format. The payload in JSON format looks like this:
+```json
+[
+  {
+    "op": "replace",
+    "path": "/sharing/users",
+    "value": {
+      "NOOF56dveaZ": {
+        "access": "rw------",
+        "id": "NOOF56dveaZ"
+      },
+      "Kh68cDMwZsg": {
+        "access": "rw------",
+        "id": "Kh68cDMwZsg"
+      }
+    }
+  }
+]
+```
+Puede agregar usuarios a la propiedad `sharing` de un objeto así
+```json
+[
+  {
+    "op": "add",
+    "path": "/sharing/users",
+    "value": {
+      "NOOF56dveaZ": {
+        "access": "rw------",
+        "id": "NOOF56dveaZ"
+      },
+      "Kh68cDMwZsg": {
+        "access": "rw------",
+        "id": "Kh68cDMwZsg"
+      }
+    }
+  }
+]
+```
+Puede agregar una usuario a `sharing` así
+```json
+[
+  {
+    "op": "add",
+    "path": "/sharing/users/NOOF56dveaZ",
+    "value": {
+      "access": "rw------",
+      "id": "NOOF56dveaZ"
+    }
+  }
+]
+```
+Puede eliminar un usuario de `sharing` así
+```json
+[
+  { 
+    "op": "remove", 
+    "path": "/sharing/users/N3PZBUlN8vq"
+    }
+]
+```
+
+## Cascade Sharing for Dashboard { #cascade-sharing-for-dashboard } 
+
+### Overview { #overview } 
+
+- The sharing solution supports cascade sharing for Dashboard. 
+- This function will copy `userAccesses` and `userGroupAccesses` of a Dashboard to all of its DashboardItem's objects including `Map`, `EventReport`, `EventChart`, `Visualization`. 
+- This function will ***NOT*** copy `METADATA_WRITE` access. The copied `UserAccess` and `UserGroupAccess` will **only** have `METADATA_READ` permission. 
+- The `publicAccess` setting is currently ***NOT*** handled by this function. Means the `publicAccess` of the current `Dashboard` will not be copied to its `DashboardItems`'s objects.
+- Si el objeto de destino tiene `publicAccess` habilitado, entonces será ignorado por esta función. Significa que ningún `UserAccesses` o `UserGroupAccesses` se copiará desde `Tablero`.
+- Se requiere que el `Usuario` actual tenga permiso de uso compartido `METADATA_READ` para todos los objetos de destino, de lo contrario se producirá el error `E5001`. Y para actualizar los objetos de destino, se requiere `METADATA_WRITE`, de lo contrario se generará el error `E3001`.
+- Ejemplo de caso de uso:
+
+    - DashboardA se comparte con el userA con el permiso `METADATA_READ_WRITE`.
+
+    - DashboardA tiene VisualizationA el cual tiene DataElementA.
+
+    - VisualizationA, DataElementA have `publicAccess`  *disabled* and are *not shared* to userA.
+
+    - Después de ejecutar compartir en cascada para DashboardA, el userA tendrá acceso `METADATA_READ` a VisualizationA y DataElementA.
+
+### API endpoint  { #api-endpoint } 
+
+- Send `POST` request to endpoint 
+```
+api/dashboards/cascadeSharing/{dashboardUID}
+```
+
+
+### API Parameters { #api-parameters } 
+
+| Nombre | Predeterminado | Descripción |
+| --- | --- | -- |
+| dryRun | falso | Si se establece en `true`, la función de uso compartido en cascada continuará sin actualizar ningún objeto. </br> La respuesta incluirá errores, si los hay, y todos los objetos que serán actualizados. </br>Esto ayuda al usuario a conocer el resultado antes de ejecutar realmente la función de compartir en cascada.
+| atomic | falso | Si esto se establece como `true`, entonces la función de compartir en cascada se detendrá y no actualizará ningún objeto si hay un error. </br>De lo contrario, si esto es `false` entonces la función tratará de proceder con el modo de mejor esfuerzo.
+
+Sample response: 
+
+```json
+{
+  "errorReports": [
+    {
+      "message": "No matching object for reference. Identifier was s46m5MS0hxu, and object was DataElement.",
+      "mainKlass": "org.hisp.dhis.dataelement.DataElement",
+      "errorCode": "E5001",
+      "errorProperties": [
+        "s46m5MS0hxu",
+        "DataElement"
+      ]
+    }
+  ],
+  "countUpdatedDashBoardItems": 1,
+  "updateObjects": {
+    "dataElements": [
+      {
+        "id": "YtbsuPPo010",
+        "name": "Measles doses given"
+      },
+      {
+        "id": "l6byfWFUGaP",
+        "name": "Yellow Fever doses given"
+      }
+    ]
+  }
+}
+```
+
+### Response properties: { #response-properties } 
+
+- `errorReports`: incluye todos los errores durante el proceso de compartir en cascada.
+- `countUpdatedDashBoardItems`: El número de `DashboardItem` será o ha sido actualizado dependiendo del modo `dryRun`.
+- `updateObjects`: Lista de todos los objetos que serán o han sido actualizados depende del modo `dryRun`.
+

@@ -1,0 +1,50 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-releases/blob/master/releases/2.36/README.md"
+revision_date: '2023-08-30'
+tags:
+- DHIS core version 2.36
+- Implement
+---
+
+# 2.36 升级说明{ #236-upgrade-notes }
+
+> **如果从早期版本升级，请确保您已阅读 [PREVIOUS RELEASE](../2.35/README.md) 中的升级说明**
+
+## 数据库 { #database } 
+
+- A `shortName` column (mandatory property) has been added to the `category`, `dataelementgroupset` and `organisationunitgroupset` tables.
+- A `description` column has been added to the `dataelementgroupset` and `organisationunitgroupset` tables.
+- New index on table `trackedentityprogramowner` over columns `(trackedentityinstanceid, programid, organisationunitid)`. Improves lookup related to organisation unit scopes in the context of a program.
+- New index on table `programinstance` over columns `(programid)`. Improves general lookup for programinstances based on program in most cases.
+- New index on table `trackedentityattributevalue` over columns `(trackedentityinstanceid, trackedentityattributeid, lower(value))`. This is in addition to the previous index over the columns `(trackedentityattributeid, lower(value))`. We saw situations related to value lookup in the context of tracked entity instances where postgres would revert to a sequential scan, when using the existing index would yield a much better result. With the new index we are successfully encouraging postres to use the index also when we are matching on tracked entity instances.
+- New index on table `programstageinstance` over the columns `(status, executiondate)`. This table often grows a lot bigger than tracked entity instance and program instance tables, and we saw a bottleneck in some of our queries when including program stage instances as filters in searches. We added this index to improve the performance of the most common column we filter by, status, as well as executiondate, which is often used together with status when searching for events.
+- 注意：由于添加到可能较大的表中的新索引数量较多，因此升级过程可能会花费大量时间。
+- Sharing: a new JSONB column `sharing` is added to all metadata tables which is used to store sharing data. All of current `*useraccesses` and `*usergroupaccesses` tables are deprecated. There is a Flyway script executed at start up which migrates all sharing data from deprecated tables to the new `sharing` column. In order to update sharing data with a SQL query you can use [PostgreSQL JSON Functions](https://www.postgresql.org/docs/12/functions-json.html). The JSON format of the new `sharing` column looks like the below.
+
+```json
+{
+  "owner": "GOLswS44mh8",
+  "external": false,
+  "users":{},
+  "userGroups":
+  {
+    "Rg8wusV7QYi":
+    {
+      "access": "r-r-----",
+      "id": "Rg8wusV7QYi"
+    }
+  },
+  "public": "rw------"
+}
+```
+
+
+## API { #api }
+
+- The `POST /api/dataAnalysis/stdDevOutlier` and `POST /api/dataAnalysis/minMaxOutlier` API endpoints are deprecated and will be removed in 2.37. These endpoints are superseded by the `/api/outlierDetection` API which offers higher performance and more sophisticated outlier detection.
+- The `POST /api/dataAnalysis/followup` API endpoint for reading follow-up data values is deprecated and will be removed in 2.38. This endpoint is superseded by the `GET /api/dataAnalysis/followup` API endpoint.
+- The `type` field in the `/api/analytcs` API endpoint `metadata` > `headers` response is deprecated and will be removed in 2.37. Instead use the `valueType` field.
+- 作为与可视化 API (`/api/visualizations`) 更改相关的弃用过程的一部分，多个可视化属性被设为只读。您可以在 [DHIS2-10054](https://jira.dhis2.org/browse/DHIS2-10054) 中找到“新格式”和相应更改的属性。 DHIS2 文档的可视化部分介绍了新格式。为了避免破坏现有应用程序，旧格式仍将作为响应的一部分返回。对重构属性的更改仅在使用新格式时才会生效。请参阅 [DHIS2-1369](https://jira.dhis2.org/browse/DHIS2-1369)。
+- The `restrictToCaptureScope` parameter in the API endpoints `api/categoryOptions` and `api/programs`  is no longer supported. For programs alone, an alternate endpoint `/api/programs/orgUnits?programs={programUids}` for fetching organisationUnit associations can be used. 
+- Sharing: the introduction of new `sharing` column only affects the backend services and database as we try to keep this change backward compatible. Means that all api and apps should be working normally as before. All sharing related api endpoints still accept old format with `userAccesses` and `userGroupAccesses`, in backend we convert them to new format and saved to database. All api endpoints will return both new and old sharing format. Please see [Sharing](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-237/sharing.html) for more details.
+

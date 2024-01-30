@@ -1,0 +1,564 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.37/src/developer/web-api/maintenance.md"
+revision_date: '2021-06-14'
+tags:
+- DHIS core verze 2.37
+- Vývoj
+---
+
+# Údržba { #maintenance } 
+
+## Resource and analytics tables { #webapi_generating_resource_analytics_tables } 
+
+DHIS2 features a set of generated database tables which are used as
+a basis for various system functionality. These tables can be executed
+immediately or scheduled to be executed at regular intervals through the
+user interface. They can also be generated through the Web API as
+explained in this section. This task is typically one for a system
+administrator and not consuming clients.
+
+The resource tables are used internally by the DHIS2 application for
+various analysis functions. These tables are also valuable for users
+writing advanced SQL reports. They can be generated with a POST or PUT
+request to the following URL:
+
+    /api/33/resourceTables
+
+The analytics tables are optimized for data aggregation and used
+currently in DHIS2 for the pivot table module. The analytics tables can
+be generated with a POST or PUT request to:
+
+    /api/33/resourceTables/analytics
+
+
+
+Tabulka: Volitelné parametry dotazu tabulek Analytiky
+
+| Parametr dotazu | Možnosti | Popis |
+|---|---|---|
+| skipResourceTables | false &#124; true | Přeskočit generování tabulek zdrojů |
+| skipAggregate | false &#124; true | Přeskočit generování souhrnných dat a dat o úplnosti |
+| skipEvents | false &#124; true | Přeskočit generování dat událostí |
+| skipEnrollment | false &#124; true | Přeskočit generování dat o zápisu |
+| lastYears | celé číslo | Počet údajů za poslední roky, které mají být zahrnuty |
+
+"Kvalitu dat" a "Dohled nad daty" lze spustit prostřednictvím monitorovací úlohy, která se spouští pomocí následujícího koncového bodu:
+
+    /api/33/resourceTables/monitoring
+
+This task will analyse your validation rules, find any violations and
+persist them as validation results.
+
+These requests will return immediately and initiate a server-side
+process.
+
+## Údržba { #webapi_maintenance } 
+
+To perform maintenance you can interact with the *maintenance* resource. You should use *POST* or *PUT* as a method for requests. The following methods are available.
+
+Vymazání analytických tabulek zruší všechny analytické tabulky.
+
+    POST PUT /api/maintenance/analyticsTablesClear
+
+Analýza analytické tabulky shromáždí statistiky o obsahu analytických tabulek v databázi.
+
+    POST PUT /api/maintenance/analyticsTablesAnalyze
+
+Expired invitations clear will remove all user account invitations which
+have expired.
+
+    POST PUT /api/maintenance/expiredInvitationsClear
+
+Period pruning will remove periods which are not linked to any data
+values.
+
+    POST PUT /api/maintenance/periodPruning
+
+Zero data value removal will delete zero data values linked to data
+elements where zero data is defined as not significant:
+
+    POST PUT /api/maintenance/zeroDataValueRemoval
+
+Odebráním hodnot s měkkými odstraněnými daty trvale odstraníte hodnoty s měkkými odstraněnými daty.
+
+    POST PUT /api/maintenance/softDeletedDataValueRemoval
+
+Odebrání instance instance programu s měkkým odstraněním trvale odstraní události s měkkým odstraněním.
+
+    POST PUT /api/maintenance/softDeletedProgramStageInstanceRemoval
+
+Odebrání instance programu s měkkým odstraněním trvale odstraní registrace s měkkým odstraněním.
+
+    POST PUT /api/maintenance/softDeletedProgramInstanceRemoval
+
+Odstranění instance trasované entity s měkkým odstraněním trvale odstraní instance s trasovanou entitou s měkkým odstraněním.
+
+    POST PUT /api/maintenance/softDeletedTrackedEntityInstanceRemoval
+
+Zrušit zobrazení SQL zruší všechna zobrazení SQL v databázi. Všimněte si, že neodstraní entity zobrazení DHIS2 SQL.
+
+    POST PUT /api/maintenance/sqlViewsDrop
+
+Vytvoření pohledů SQL znovu vytvoří všechny pohledy SQL v databázi.
+
+    POST PUT /api/maintenance/sqlViewsCreate
+
+Aktualizace kombinace možností kategorie odstraní zastaralé a vygeneruje chybějící kombinace možností kategorie pro všechny kombinace kategorií.
+
+    POST PUT /api/maintenance/categoryOptionComboUpdate
+
+Je také možné aktualizovat kombinace možností kategorie pro kombo jedné kategorie pomocí následujícího koncového bodu.
+
+    POST PUT /api/maintenance/categoryOptionComboUpdate/categoryCombo/<category-combo-uid>
+
+Vyčištění mezipaměti vymaže mezipaměť aplikace Hibernate a mezipaměti analytického oddílu.
+
+    POST PUT /api/maintenance/cacheClear
+
+Aktualizace cest organizačních jednotek znovu vygeneruje vlastnost cesty organizační jednotky. To může být užitečné např. pokud jste importovali organiyační jednotky s SQL.
+
+    POST PUT /api/maintenance/ouPathsUpdate
+
+Ořezání dat odstraní kompletní registrace datových sad, schválení dat, audity hodnot dat a hodnoty dat, v tomto případě pro organizační jednotku.
+
+    POST PUT /api/maintenance/dataPruning/organisationUnits/<org-unit-id>
+
+Ořezávání dat pro datové prvky, které odstraní audity a hodnoty dat.
+
+    POST PUT /api/maintenance/dataPruning/dataElement/<data-element-uid>
+
+Ověření metadat použije všechna pravidla ověření metadat a vrátí výsledek operace.
+
+    POST PUT /api/metadataValidation
+
+Opětovné načtení aplikace obnoví mezipaměť spravovanou DHIS2 nainstalovaných aplikací čtením ze systému souborů.
+
+    POST PUT /api/appReload
+
+Operace údržby jsou podporovány v dávkovém stylu s požadavkem POST na prostředek api / údržba, kde jsou operace dodávány jako parametry dotazu:
+
+    POST PUT /api/maintenance?analyticsTablesClear=true&expiredInvitationsClear=true
+      &periodPruning=true&zeroDataValueRemoval=true&sqlViewsDrop=true&sqlViewsCreate=true
+      &categoryOptionComboUpdate=true&cacheClear=true&ouPathsUpdate=true
+
+## Systémová informace { #webapi_system_resource } 
+
+The system resource provides you with convenient information and
+functions. The system resource can be found at */api/system*.
+
+### Generování identifikátorů { #webapi_system_resource_generate_identifiers } 
+
+Chcete-li vygenerovat platné, náhodné identifikátory DHIS2, můžete zadat požadavek GET na tento zdroj:
+
+    /api/33/system/id?limit=3
+
+The *limit* query parameter is optional and indicates how many
+identifiers you want to be returned with the response. The default is to
+return one identifier. The response will contain a JSON object with an
+array named codes, similar to this:
+
+```json
+{
+  "codes": [
+    "Y0moqFplrX4",
+    "WI0VHXuWQuV",
+    "BRJNBBpu4ki"
+  ]
+}
+```
+
+Formát DHIS2 UID má tyto požadavky:
+
+  - Délka 11 znaků.
+
+  - Alphanumeric characters only, ie. alphabetic or numeric characters
+    (A-Za-z0-9).
+
+  - Začíná abecedním znakem (A-Za-z).
+
+### Zobrazení informací o systému { #webapi_system_resource_view_system_information } 
+
+To get information about the current system you can do a GET request to
+this URL:
+
+    /api/33/system/info
+
+JSON and JSONP response formats are supported. The system info response
+currently includes the below properties.
+
+```json
+{
+  "contextPath": "http://yourdomain.com",
+  "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/29.0.1547.62",
+  "calendar": "iso8601",
+  "dateFormat": "yyyy-mm-dd",
+  "serverDate": "2021-01-05T09:16:03.548",
+  "serverTimeZoneId": "Etc/UTC",
+  "serverTimeZoneDisplayName": "Coordinated Universal Time",
+  "version": "2.13-SNAPSHOT",
+  "revision": "11852",
+  "buildTime": "2013-09-01T21:36:21.000+0000",
+  "serverDate": "2013-09-02T12:35:54.311+0000",
+  "environmentVariable": "DHIS2_HOME",
+  "javaVersion": "1.7.0_06",
+  "javaVendor": "Oracle Corporation",
+  "javaIoTmpDir": "/tmp",
+  "javaOpts": "-Xms600m -Xmx1500m -XX:PermSize=400m -XX:MaxPermSize=500m",
+  "osName": "Linux",
+  "osArchitecture": "amd64",
+  "osVersion": "3.2.0-52-generic",
+  "externalDirectory": "/home/dhis/config/dhis2",
+  "databaseInfo": {
+    "type": "PostgreSQL",
+    "name": "dhis2",
+    "user": "dhis",
+    "spatialSupport": false
+  },
+  "memoryInfo": "Mem Total in JVM: 848 Free in JVM: 581 Max Limit: 1333",
+  "cpuCores": 8
+}
+```
+
+> **Poznámka**
+>
+> Pokud uživatel požadující tento zdroj nemá plné oprávnění, budou zahrnuty pouze vlastnosti, které nejsou považovány za citlivé.
+
+To get information about the system context only, i.e. `contextPath` and
+`userAgent`, you can make a GET request to the below URL. JSON and
+JSONP response formats are supported:
+
+    /api/33/system/context
+
+### Zkontrolujte, zda je kombinace uživatelského jména a hesla správná { #webapi_system_resource_check_username_password } 
+
+To check if some user credentials (a username and password combination)
+is correct you can make a *GET* request to the following resource using
+*basic authentication*:
+
+    /api/33/system/ping
+
+You can detect the outcome of the authentication by inspecting the *HTTP
+status code* of the response header. The meanings of the possible status
+codes are listed below. Note that this applies to Web API requests in
+general.
+
+
+
+Tabulka: Stavové kódy HTTP
+
+| Stavový kód HTTP | Popis | Výsledek |
+|---|---|---|
+| 200 | OK | Ověření proběhlo úspěšně |
+| 302 | Nalezeno | S požadavkem nebyly dodány žádné přihlašovací údaje – neproběhlo žádné ověření |
+| 401 | Neoprávněný | Kombinace uživatelského jména a hesla byla nesprávná – ověření se nezdařilo |
+
+### Zobrazení stavu asynchronního úkolu { #webapi_system_resource_view_async_task_status } 
+
+Tasks which often take a long time to complete can be performed
+asynchronously. After initiating an async task you can poll the status
+through the `system/tasks` resource by supplying the task category and
+the task identifier of interest.
+
+When polling for the task status you need to authenticate as the same
+user which initiated the task. The following task categories are
+supported:
+
+
+
+Tabulka: Kategorie úkolů
+
+| Identifikátor | Popis |
+|---|---|
+| ANALYTICS_TABLE | Generování analytických tabulek. |
+| RESOURCE_TABLE | Generování tabulek zdrojů. |
+| MONITORING | Zpracování validačních pravidel dohledu / monitorování dat. |
+| DATAVALUE_IMPORT | Import hodnot dat. |
+| EVENT_IMPORT | Import událostí. |
+| ENROLLMENT_IMPORT | Import zápisů. |
+| TEI_IMPORT | Import instancí trasovaných entit. |
+| METADATA_IMPORT | Import metadat. |
+| DATA_INTEGRITY | Zpracování kontrol integrity dat. |
+
+Každému asynchronnímu úkolu je automaticky přiřazen identifikátor, který lze použít ke sledování stavu úkolu. Tento identifikátor úkolu je vrácen API, když inicializujete asynchronní úkol prostřednictvím různých koncových bodů s povolenou async.
+
+#### Monitorování úkolu { #monitoring-a-task } 
+
+You can poll the task status through a GET request to the system tasks
+resource like this:
+
+    /api/33/system/tasks/{task-category-id}/{task-id}
+
+Příklad požadavku může vypadat takto:
+
+    /api/33/system/tasks/DATAVALUE_IMPORT/j8Ki6TgreFw
+
+The response will provide information about the status, such as the
+notification level, category, time and status. The *completed* property
+indicates whether the process is considered to be complete.
+
+```json
+[{
+  "uid": "hpiaeMy7wFX",
+  "level": "INFO",
+  "category": "DATAVALUE_IMPORT",
+  "time": "2015-09-02T07:43:14.595+0000",
+  "message": "Import done",
+  "completed": true
+}]
+```
+
+#### Monitorování všech úkolů pro kategorii { #monitoring-all-tasks-for-a-category } 
+
+You can poll all tasks for a specific category through a GET request to
+the system tasks resource:
+
+    /api/33/system/tasks/{task-category-id}
+
+An example request to poll for the status of data value import tasks
+looks like this:
+
+    /api/33/system/tasks/DATAVALUE_IMPORT
+
+#### Monitorujte všechny úkoly { #monitor-all-tasks } 
+
+You can request a list of all currently running tasks in the system with
+a GET request to the system tasks resource:
+
+    /api/33/system/tasks
+
+Odpověď bude vypadat podobně jako tato:
+
+```json
+[{
+  "EVENT_IMPORT": {},
+  "DATA_STATISTICS": {},
+  "RESOURCE_TABLE": {},
+  "FILE_RESOURCE_CLEANUP": {},
+  "METADATA_IMPORT": {},
+  "CREDENTIALS_EXPIRY_ALERT": {},
+  "SMS_SEND": {},
+  "MOCK": {},
+  "ANALYTICSTABLE_UPDATE": {},
+  "COMPLETE_DATA_SET_REGISTRATION_IMPORT": {},
+  "DATAVALUE_IMPORT": {},
+  "DATA_SET_NOTIFICATION": {},
+  "DATA_INTEGRITY": {
+    "OB1qGRlCzap": [{
+      "uid": "LdHQK0PXZyF",
+      "level": "INFO",
+      "category": "DATA_INTEGRITY",
+      "time": "2018-03-26T15:02:32.171",
+      "message": "Data integrity checks completed in 38.31 seconds.",
+      "completed": true
+    }]
+  },
+  "PUSH_ANALYSIS": {},
+  "MONITORING": {},
+  "VALIDATION_RESULTS_NOTIFICATION": {},
+  "REMOVE_EXPIRED_RESERVED_VALUES": {},
+  "DATA_SYNC": {},
+  "SEND_SCHEDULED_MESSAGE": {},
+  "DATAVALUE_IMPORT_INTERNAL": {},
+  "PROGRAM_NOTIFICATIONS": {},
+  "META_DATA_SYNC": {},
+  "ANALYTICS_TABLE": {},
+  "PREDICTOR": {}
+}]
+```
+
+### Zobrazit asynchronní souhrny úkolů { #view-asynchronous-task-summaries } 
+
+The task summaries resource allows you to retrieve a summary of an
+asynchronous task invocation. You need to specify the category and
+optionally the identifier of the task. The task identifier can be
+retrieved from the response of the API request which initiated the
+asynchronous task.
+
+Chcete-li načíst souhrn konkrétního úkolu, můžete vystavit požadavek na:
+
+    /api/33/system/taskSummaries/{task-category-id}/{task-id}
+
+Příklad požadavku může vypadat takto:
+
+    /api/33/system/taskSummaries/DATAVALUE_IMPORT/k72jHfF13J1
+
+Odpověď bude vypadat podobně jako tato:
+
+```json
+{
+  "responseType": "ImportSummary",
+  "status": "SUCCESS",
+  "importOptions": {
+    "idSchemes": {},
+    "dryRun": false,
+    "async": true,
+    "importStrategy": "CREATE_AND_UPDATE",
+    "mergeMode": "REPLACE",
+    "reportMode": "FULL",
+    "skipExistingCheck": false,
+    "sharing": false,
+    "skipNotifications": false,
+    "datasetAllowsPeriods": false,
+    "strictPeriods": false,
+    "strictCategoryOptionCombos": false,
+    "strictAttributeOptionCombos": false,
+    "strictOrganisationUnits": false,
+    "requireCategoryOptionCombo": false,
+    "requireAttributeOptionCombo": false,
+    "skipPatternValidation": false
+  },
+  "description": "Import process completed successfully",
+  "importCount": {
+    "imported": 0,
+    "updated": 431,
+    "ignored": 0,
+    "deleted": 0
+  },
+  "dataSetComplete": "false"
+}
+```
+
+You might also retrieve import summaries for multiple tasks of a
+specific category with a request like
+this:
+
+    /api/33/system/taskSummaries/{task-category-id}
+
+### Získejte informace o vzhledu { #webapi_system_resource_get_appearance_information } 
+
+You can retrieve the available flag icons in JSON format with a GET
+request:
+
+    /api/33/system/flags
+
+You can retrieve the available UI styles in JSON format with a GET
+request:
+
+    /api/33/system/styles
+
+## Cluster info { #cluster-info } 
+
+Když je DHIS 2 nastaven v konfiguraci klastru, je užitečné vědět, který uzel v klastru funguje jako vedoucí klastru. Následující API lze použít k získání podrobností o instanci vedoucího uzlu. Rozhraní API podporuje formáty JSON i XML.
+
+```
+GET /api/36/cluster/leader
+```
+
+Ukázková odpověď JSON vypadá takto:
+
+```json
+{
+  "leaderNodeId": "play-dhis2-org-dev",
+  "leaderNodeUuid": "d386e46b-26d4-4937-915c-025eb99c8cad",
+  "currentNodeId": "play-dhis2-org-dev",
+  "currentNodeUuid": "d386e46b-26d4-4937-915c-025eb99c8cad",
+  "leader": true
+}
+```
+
+## Min-max datové prvky { #webapi_min_max_data_elements } 
+
+Prostředek datových prvků min-max umožňuje nastavit rozsahy minimálních a maximálních hodnot pro datové prvky. Je jedinečnou kombinací organizační jednotky, datového prvku a kombinace možnosti kategorie.
+
+    /api/minMaxDataElements
+
+
+
+Tabulka: Min-max datová struktura datového prvku
+
+| Položka | Popis | Datový typ |
+|---|---|---|
+| zdroj | Identifikátor organizační jednotky | Řetězec |
+| dataElement | Identifikátor datového prvku | Řetězec |
+| optionCombo | Kombinovaný identifikátor kategorie datových prvků | Řetězec |
+| min | Minimální hodnota | Celé číslo |
+| max | Maximální hodnota | Celé číslo |
+| vytvořené | Označuje, zda je tento objekt generován systémem (a není nastaven ručně). | Boolean |
+
+You can retrieve a list of all min-max data elements from the following
+resource:
+
+    GET /api/minMaxDataElements.json
+
+Odpověď můžete filtrovat takto:
+
+    GET /api/minMaxDataElements.json?filter=dataElement.id:eq:UOlfIjgN8X6
+
+    GET /api/minMaxDataElements.json?filter=dataElement.id:in:[UOlfIjgN8X6,xc8gmAKfO95]
+
+The filter parameter for min-max data elements supports two operators:
+eq and in. You can also use the `fields` query parameter.
+
+    GET /api/minMaxDataElements.json?fields=:all,dataElement[id,name]
+
+### Přidat / aktualizovat datový prvek min-max { #webapi_add_update_min_max_data_element } 
+
+Chcete-li přidat nový datový prvek min-max, použijte požadavek POST k:
+
+    POST /api/minMaxDataElements.json
+
+Formát obsahu JSON vypadá takto:
+
+```json
+{
+  "min": 1,
+  "generated": false,
+  "max": 100,
+  "dataElement": {
+    "id": "UOlfIjgN8X6"
+  },
+  "source": {
+    "id": "DiszpKrYNg8"
+  },
+  "optionCombo": {
+    "id": "psbwp3CQEhs"
+  }
+}
+```
+
+Pokud existuje kombinace datového prvku, organizační jednotky a kombinace 
+možností kategorie, bude aktualizována minimální a maximální hodnota.
+
+### Odstranit datový prvek min-max { #webapi_delete_min_max_data_element } 
+
+Chcete-li odstranit datový prvek min-max, odešlete požadavek metodou DELETE:
+
+    DELETE /api/minMaxDataElements.json
+
+Obsah JSON je v podobném formátu jako výše:
+
+```json
+{
+  "min": 1,
+  "generated": false,
+  "max": 100,
+  "dataElement": {
+    "id": "UOlfIjgN8X6"
+  },
+  "source": {
+    "id": "DiszpKrYNg8"
+  },
+  "optionCombo": {
+    "id": "psbwp3CQEhs"
+  }
+}
+```
+
+## Zamknout výjimky { #webapi_lock_exceptions } 
+
+The lock exceptions resource allows you to open otherwise locked data
+sets for data entry for a specific data set, period and organisation
+unit. You can read lock exceptions from the following resource:
+
+    /api/lockExceptions
+
+To create a new lock exception you can use a POST request and specify
+the data set, period and organisation unit:
+
+    POST /api/lockExceptions?ds=BfMAe6Itzgt&pe=201709&ou=DiszpKrYNg8
+
+To delete a lock exception you can use a similar request syntax with a
+DELETE request:
+
+    DELETE /api/lockExceptions?ds=BfMAe6Itzgt&pe=201709&ou=DiszpKrYNg8
+

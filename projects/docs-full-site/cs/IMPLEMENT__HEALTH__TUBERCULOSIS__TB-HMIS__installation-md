@@ -1,0 +1,204 @@
+---
+edit_url: "https://github.com/dhis2-metadata/TB_AGG/blob/master/docs/tb_agg-installation.md"
+revision_date: '2024-01-05'
+tags:
+- Implementace
+---
+
+# Průvodce instalací agregátu TB { #tb-agg-installation }
+
+This document includes an installation guide for TB HMIS packages.
+
+Výchozí jazyk systému: angličtina
+
+## Přehled { #overview } 
+
+The package includes metadata json files containing the following components:
+
+1. TB HMIS - Complete package
+2. TB HMIS - Dashboard package
+3. TB Laboratory
+4. TB Laboratory (dashboard)
+5. TB Household Contacts
+6. TB Household Contacts (dashboard)
+7. TB Stock
+8. TB Stock (dashboard)
+9. TB Data Quality (dashboard)
+
+## Instalace { #installation } 
+
+Instalace modulu se skládá z několika kroků:
+
+1. [Příprava souboru metadat s metadaty DHIS2](#preparing-the-metadata-file).
+2. [Import souboru metadat do DHIS2](#importing-metadata).
+3. [Konfigurace importovaných metadat](#configuration).
+4. [Přizpůsobení programu po importu](#adapting-the-program)
+
+Před zahájením procesu instalace a konfigurace v DHIS2 se doporučuje nejprve přečíst každou část instalační příručky. Identifikujte příslušné sekce v závislosti na typu vašeho importu:
+
+1. importovat do prázdné instance DHIS2
+2. importovat do instance DHIS2 s existujícími metadaty.
+
+Kroky popsané v tomto dokumentu by měly být otestovány v testovací instanci DHIS2 a teprve poté aplikovány na produkční prostředí.
+
+## Požadavky { #requirements } 
+
+Pro instalaci modulu je vyžadován uživatelský účet správce na DHIS2.
+
+Velkou péči je třeba věnovat tomu, aby byl server samotný i aplikace DHIS2 dobře zabezpečeny, měla by být definována přístupová práva ke shromážděným datům. Podrobnosti o zabezpečení systému DHIS2 jsou mimo rozsah tohoto dokumentu a odkazujeme na [dokumentaci DHIS2](https://docs.dhis2.org/).
+
+## Metadata files { #metadata-files } 
+
+I když to není vždy nutné, může být často výhodné provést určité úpravy souboru metadat před jeho importem do DHIS2.
+
+## Příprava souboru metadat { #preparing-the-metadata-file } 
+
+Před importem souboru metadat je nutné provést některé změny. Rozsah práce se může balíček od balíčku lišit.
+
+### Výchozí dimenze dat { #default-data-dimension } 
+
+V dřívějších verzích DHIS2 byla UID výchozích datových dimenzí automaticky generována. I když tedy všechny instance DHIS2 mají výchozí volbu kategorie, kategorii datových prvků, kombinaci kategorií a kombinaci možností kategorie, UID těchto výchozích hodnot se mohou lišit. Novější verze DHIS2 mají pevně zakódovaná UID pro výchozí dimenzi a tato UID se používají v konfiguračních balíčcích.
+
+Aby se předešlo konfliktům při importu metadat, je vhodné vyhledat a nahradit celý soubor .json pro všechny výskyty těchto výchozích objektů a nahradit UID souboru .json UID z instance, do které bude soubor importován. Tabulka 1 ukazuje UID, která by měla být nahrazena, a také koncové body API pro identifikaci stávajících UID
+
+|Objekt                       | UID           | Koncový bod API                                              |
+|-----------------------------|---------------|-----------------------------------------------------------|
+| Kategorie                    | `GLevLNI9wkl` | `../api/categories.json?filter=name:eq:default`           |
+| Možnost kategorie             | `xYerKDKCefk` | `../api/categoryOptions.json?filter=name:eq:default`      |
+| Kombinace kategorií        | `bjDvmb4bfuf` | `../api/categoryCombos.json?filter=name:eq:default`       |
+| Kombinace možností kategorie | `HllvX50cXC0` | `../api/categoryOptionCombos.json?filter=name:eq:default` |
+
+Identifikujte UID výchozích dimenzí ve vaší instanci pomocí uvedených požadavků API a nahraďte UID v souboru json UID z instance.
+
+> **POZNÁMKA**
+>
+> Pamatujte, že tato operace hledání a nahrazování musí být provedena pomocí editoru prostého textu, nikoli textového procesoru, jako je Microsoft Word.
+
+### Typy indikátorů { #indicator-types } 
+
+Typ indikátoru je dalším typem objektu, který může způsobit konflikt importu, protože určitá jména se používají v různých databázích DHIS2 (např. "Procento"). Vzhledem k tomu, že typy indikátorů jsou definovány svým faktorem (včetně 1 pro indikátory „pouze čitatel“), jsou jednoznačné a lze je nahradit vyhledáváním a nahrazováním UID. Tato metoda pomáhá vyhnout se potenciálním konfliktům při importu a zabraňuje implementátoru ve vytváření duplicitních typů indikátorů. Níže uvedená tabulka obsahuje UID, která lze nahradit, a také koncové body API pro identifikaci stávajících UID:
+
+|Objekt                  | UID           | Koncový bod API                                                          |
+|------------------------|---------------|-----------------------------------------------------------------------|
+| Pouze čitatel (číslo)| `CqNPn5KzksS` | `../api/indicatorTypes.json?filter=number:eq:true&filter=factor:eq:1` |
+
+### Visualizations using Root Organisation Unit UID { #visualizations-using-root-organisation-unit-uid } 
+
+Visualizations, report tables, maps, validation rules that reference a specific organisation unit level or organisation unit group, contain placeholders eg. `<OU_ROOT_UID>` or `<OU_LEVEL_FACILITY_UID>`. Use the search function in the .json file editor to identify such placeholders and replace `<OU_ROOT_UID>` with the UID of the level 1 organisation unit in the target instance and `<OU_LEVEL_FACILITY_UID>` with the UID of the facility organisation unit level .
+
+## Import metadat { #importing-metadata } 
+
+K importu balíčků metadat použijte aplikaci [Import/Export](#import_export) DHIS2. Před pokusem o skutečný import metadat je vhodné použít funkci „suchého běhu“ k identifikaci problémů. Pokud "suchý běh" nahlásí nějaké problémy nebo konflikty, podívejte se do sekce [konflikty importu](#handling-import-conflicts) níže. Pokud import „suché spuštění“/„ověření“ funguje bez chyby, pokuste se importovat metadata. Pokud import proběhne bez chyb, můžete přistoupit ke [konfiguraci](#configuration) modulu. V některých případech se konflikty nebo problémy při importu nezobrazí během „suchého běhu“, ale objeví se při pokusu o vlastní import. V tomto případě budou v souhrnu importu uvedeny všechny chyby, které je třeba vyřešit.
+
+### Updating TB HMIS to version 2.0.0 from previous versions { #updating-tb-hmis-to-version-200-from-previous-versions } 
+
+An update of the TB HMIS package from previous versions is possible with following considerations:
+
+  1. All existing metadata and data have to be backed up prior to the update.
+  2. Existing TB HMIS indicators have to be accessible for reference (in a separate dev instance)
+  3. TB HMIS version 2 package uses reuses a number of metadata objects from the previous package version. While UIDs of the objects remain the same, the metadata objects may have changed: data elements have new names, validation rules have been adapted for the new data sets, indicator numerators and denominators are based on the metadata, visualizations use new indicators. When importing new package into an instance with a previous version of the TB HMIS package, the existing metadata objects will be overwritten.
+  4. TB HMIS version 2.0.0 package contains additional age and sex disaggregations. The data element `tr0lVojK425` **TB - New episodes of TB by age and sex** has been assigned a new Category Combo that contains these additional category option combinations. The data element was reused from the previous version where it had a name **TB - New and relapse TB cases by age and sex**. After importing the new package into an instance with the previous version of TB HMIS, please check the old data sets and use the category option override function and reassign the legacy category combo to this data element.
+  5. When planning to use the legacy data and combine it with the new data to preserve the consistency of notification and outcomes data overtime, it is important to combine legacy data elements and new data elements within the new indicators where possible. Please refer to this [mapping guide](resources/dashboards_1.5.0_vs_2.0.0.xlsx) when aligning old and new data.
+
+### Tracker-to-aggregate data transfer { #tracker-to-aggregate-data-transfer } 
+
+If you are implementing tracker to aggregate data transfer between TB tracker and TB HMIS packages, please consider that the configuration of such transfer has to be reconfigured based on new guidelines, data element definitions, data element codes, etc.
+
+### Řešení konfliktů importu { #handling-import-conflicts } 
+
+> **POZNÁMKA**
+>
+> Pokud importujete balíček do nové instance DHIS2, nezaznamenáte konflikty importu, protože v cílové databázi nejsou žádná metadata. Po importu metadat přejděte k části „[Konfigurace](#configuration)“.
+
+Může dojít k řadě různých konfliktů, i když nejběžnějším je, že v konfiguračním balíčku jsou objekty metadat s názvem, zkratkou a/nebo kódem, které již v cílové databázi existují. Existuje několik alternativních řešení těchto problémů s různými výhodami a nevýhodami. Který z nich je vhodnější, bude záviset například na typu objektu, u kterého ke konfliktu dojde.
+
+#### Alternativa 1 { #alternative-1 } 
+
+Přejmenujte existující objekt v databázi DHIS2, u kterého existuje konflikt. Výhodou tohoto přístupu je, že není potřeba upravovat soubor .json, protože změny se místo toho provádějí prostřednictvím uživatelského rozhraní DHIS2. To bude pravděpodobně méně náchylné k chybám. To také znamená, že konfigurační balíček zůstane tak, jak je, což může být výhodou například při vydání aktualizací balíčku. Na původní objekty balíčku se také často odkazuje ve školicích materiálech a dokumentaci.
+
+#### Alternativa 2 { #alternative-2 } 
+
+Přejmenujte objekt, u kterého došlo ke konfliktu v souboru .json. Výhodou tohoto přístupu je, že stávající metadata DHIS2 jsou ponechána tak, jak jsou. To může být faktor, když existuje školicí materiál nebo dokumentace, jako jsou SOP datových slovníků propojených s daným objektem, a to nezahrnuje žádné riziko záměny uživatelů úpravou metadat, se kterými jsou obeznámeni.
+
+Všimněte si, že pro alternativu 1 i 2 může být modifikace stejně jednoduchá jako přidání malého pre / post-fix k názvu, aby se minimalizovalo riziko záměny.
+
+#### Alternativa 3 { #alternative-3 } 
+
+Třetím a komplikovanějším přístupem je úprava souboru .json pro opětovné použití existujících metadat. Například v případech, kdy pro určitý koncept již existuje sada možností (např. „Pohlaví“), by tato sada možností mohla být odstraněna ze souboru .json a všechny odkazy na jeho UID nahrazeny odpovídající sadou možností již v databázi. Velkou výhodou tohoto (která se neomezuje na případy přímého konfliktu importu) je vyhnout se vytváření duplicitních metadat v databázi. Při provádění tohoto typu modifikace je třeba provést několik klíčových úvah:
+
+- vyžaduje odborné znalosti podrobné struktury metadat DHIS2
+- přístup nefunguje u všech typů objektů. Zejména určité typy objektů mají závislosti, které se tímto způsobem komplikovaně řeší, například v souvislosti s rozčleněními.
+- budoucí aktualizace konfiguračního balíčku budou komplikované.
+
+## Konfigurace { #configuration } 
+
+Po úspěšném importu všech metadat existuje několik kroků, které je třeba provést, než bude modul funkční.
+
+### Sdílení { #sharing } 
+
+First, you will have to use the *Sharing* functionality of DHIS2 to configure which users (user groups) should see the metadata and data associated with the program as well as who can register/enter data into the program. By default, sharing has been configured for the following:
+
+- Ovládací panely
+- Visualizations, maps, report tables
+- Datové sady
+- Možnosti kategorie
+
+Další informace o sdílení naleznete v [dokumentaci DHIS2](#sharing).
+
+Balíčky obsahují tři základní skupiny uživatelů:
+
+- TB přístup (zobrazit metadata / zobrazit data)
+- TB správce (zobrazit a upravit metadata / žádný přístup k datům)
+- TB sběr dat – (zobrazení metadat / zachycení a zobrazení dat)
+
+Pro balíček TB Zásob jsou skupiny:
+
+- TB přístup (zobrazit metadata / zobrazit data)
+- TB správce (zobrazit a upravit metadata / žádný přístup k datům)
+- TB sběr dat zásob – (zobrazení metadat / zachycení a zobrazení dat)
+
+Uživatelé jsou přiřazeni do příslušné skupiny uživatelů na základě jejich role v systému. Sdílení pro další objekty v balíčku může být upraveno v závislosti na nastavení. Další informace naleznete v [dokumentaci DHIS2 o sdílení](#sharing).
+
+### Uživatelské role { #user-roles } 
+
+Uživatelé budou potřebovat uživatelské role, aby mohli pracovat s různými aplikacemi v rámci DHIS2. Doporučují se následující minimální role:
+
+1. Analýza dat trasovače: Může zobrazit analytiku událostí a přistupovat k ovládacím panelům, zprávám o událostech, vizualizátorům událostí, vizualizátorům dat, kontingenčním tabulkám, zprávám a mapám.
+2. Zachycování dat Trasovače: Může přidávat datové hodnoty, aktualizovat trasované entity, prohledávat trasované entity napříč organizačními jednotkami a přistupovat k zachycení trasovačů
+
+Další informace o konfiguraci rolí uživatelů najdete v [dokumentaci DHIS2](https://docs.dhis2.org/).
+
+### Organisation unit assignment { #organisation-unit-assignment } 
+
+Sady dat musí být přiřazeny organizačním jednotkám v rámci existující hierarchie, aby byly přístupné prostřednictvím aplikace pro zachycení.
+
+### Indicator mapping (dashboard package) { #indicator-mapping-dashboard-package } 
+
+Při implementaci pouze balíčku _dashboard_ musí být čitatele a jmenovatele indikátorů konfigurovány pomocí objektů metadat v existující instanci. Informace o konfiguraci jsou k dispozici v dokumentaci a popis čitatelů a jmenovatelů v souboru metadat.
+
+### Duplikovaná metadata { #duplicated-metadata } 
+
+> **NOTE**
+>
+> This section only applies if you are importing into a DHIS2 database where other metadata is already present. If you are working in a new DHIS2 instance, please skip this section and go to [Adapting the tracker program](#adapting-the-tracker-program).
+> If you are using any third party applications that rely on the current metadata, please take into account that this update could "break" their functionality.
+
+I když byla metadata úspěšně importována bez jakýchkoli konfliktů při importu, v metadatech mohou existovat duplikáty - datové prvky, trasované atributy entit nebo sady voleb, které již existují. Jak bylo uvedeno v části výše o řešení konfliktů, je třeba mít na paměti důležitý problém, že rozhodnutí o provádění změn metadat v DHIS2 musí také zohledňovat další dokumenty a zdroje, které jsou různými způsoby spojeny s existujícími metadaty a metadata, která byla importována prostřednictvím konfiguračního balíčku. Vyřešení duplikátů tedy není jen otázkou „vyčištění databáze“, ale také zajištěním toho, aby se tak dělo například bez narušení potenciálu integrace s jinými systémy, možnosti použít školicí materiál, rozbití SOP atd. To bude velmi záviset na kontextu.
+
+Jedna důležitá věc, kterou je třeba mít na paměti, je, že DHIS2 má nástroje, které mohou skrýt některé složitosti potenciálních duplikací v metadatech. Například tam, kde existují duplicitní sady možností, mohou být skryty pro skupiny uživatelů pomocí [sharing](#sharing).
+
+## Adapting the program { #adapting-the-program } 
+
+Once the program has been imported, you might want to make certain modifications to the program. Examples of local adaptations that *could* be made include:
+
+- Přidání dalších proměnných do formuláře.
+- Přizpůsobení názvů datových prvků / možností podle národních konvencí.
+- Přidávání překladů do proměnných nebo do formuláře pro zadávání údajů.
+- Modifikace ukazatelů na základě definic místních případů
+
+Důrazně se však doporučuje věnovat velkou pozornost, pokud se rozhodnete změnit nebo odebrat některý ze zahrnutých formulářů / metadat. Existuje nebezpečí, že by úpravy mohly narušit funkčnost, například pravidla programu a indikátory programu.
+
+## Removing metadata { #removing-metadata } 
+
+Aby byla vaše instance čistá a předešlo se chybám, doporučuje se z instance odstranit nepotřebná metadata. Odstranění nepotřebných metadat vyžaduje pokročilé znalosti DHIS2 a různých závislostí.
+

@@ -1,0 +1,122 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.37/src/sysadmin/audit.md"
+revision_date: '2021-12-02'
+tags:
+- Gestionar
+- DHIS core version 2.37
+---
+
+# Audit { #audit } 
+
+## Introducción { #introduction } 
+
+DHIS2 soporta un nuevo servicio de auditoría basado en _Apache ActiveMQ Artemis_. Artemis se utiliza como un sistema de mensajería asíncrona por DHIS2.
+
+Después de guardar una entidad en la base de datos, se creará un mensaje de auditoría y se enviará al servicio de consumidor de mensajes de Artemis. El mensaje entonces será procesado en un subproceso diferente.
+
+Los registros de auditoría pueden recuperarse de la base de datos de DHIS2. Actualmente no hay UI o API endpoint disponible para recuperar las entradas de auditoría.
+
+
+## Single Audit table { #audit_table } 
+
+Todas las entradas de auditoría se guardarán en una sola tabla llamada `auditoría`
+
+| Columna     | Tipo                        | Descripción |   |
+|------------|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|---|
+| auditid    | entero                     | Clave primaria. |   |
+| auditType  | texto                        | LEER, CREAR, ACTUALIZAR, ELIMINAR, BUSCAR                                                                                                                  |   |
+| auditscope | texto                        | METADATOS, AGREGADO, TRACKER                                                                                                                        |   |
+| klass      | texto                        | Nombre de la clase Java de la entidad auditoría.                                                                                                                     |   |
+| attributes | jsonb                       | Una cadena JSON con atributos del objeto auditado. Ejemplo: `{"valueType":"TEXT", "categoryCombo":"SWQW313FQY", "domainType":"TRACKER"}`. |   |
+| data       | bytea                       | Cadena JSON comprimida de la entidad de auditoría en formato de matriz de bytes (no legible por humanos).                                                                                             |   |
+| createdat  | marca de tiempo sin zona horaria | Tiempo de creación. |   |
+| createdby  | texto                        | Nombre de usuario del usuario que realiza la operación auditada. |   |
+| uid        | texto                        | El UID del objeto auditado. |   |
+| code       | texto                        | El código del objeto auditado. |   |
+
+The audit service makes use of two new concepts: *Audit Scope* and *Audit Type*.
+
+## Audit Scope { #audit_scope } 
+
+Un ámbito de auditoría es un área lógica de la aplicación que puede ser auditada. Actualmente existen tres ámbitos de auditoría.
+
+| **Ámbito** | Clave       | Objetos auditados                                              |
+| --------- | --------- | ------------------------------------------------------------ |
+| Tracker   | tracker   | Instancia de entidad Tracker, Valor de atributo de entidad Tracker, Inscripción, Evento. |
+| Metadatos  | metadatos  | Todos los objetos de metadatos (por ejemplo, elemento de datos, unidad organizativa). |
+| Agregado | agregado | Valor de datos agregados.                                        |
+
+
+## Audit Type { #audit_type } 
+
+Un tipo de auditoría es una acción que desencadena una operación de auditoría. Actualmente admitimos los siguientes cuatro tipos.
+
+| Nombre     | Clave      | Descripción         |
+| -------- | -------- | ------------------- |
+| Read     | READ     | Se leyó el objeto.    |
+| Create   | CREATE   | El objeto fue creado. |
+| Update   | UPDATE   | El objeto fue actualizado. |
+| Delete   | DELETE   | El objeto fue eliminado. |
+| Disabled | DISABLED | Deshabilitar auditoría.      |
+
+> **Precaución**
+>
+> El tipo de auditoría READ puede generar una gran cantidad de datos en la base de datos y puede tener un impacto en el rendimiento.
+
+## Setup { #audit_configuration } 
+
+El sistema de auditoría está habilitado de forma predeterminada para los siguientes ámbitos y tipos.
+
+Ámbitos:
+
+- `CREATE`
+- `UPDATE`
+- `DELETE`
+
+Tipos:
+
+- `METADATOS`
+- `TRACKER`
+- `AGREGADO`
+
+Esto significa que **no se requiere ninguna acción** para habilitar el sistema de auditoría predeterminado. La configuración predeterminada es equivalente a la siguiente configuración `dhis.conf`.
+
+```properties
+audit.metadata = CREATE;UPDATE;DELETE
+audit.tracker = CREATE;UPDATE;DELETE
+audit.aggregate = CREATE;UPDATE;DELETE
+```
+
+La auditoría se puede configurar utilizando la _matriz de auditoría_. La matriz de auditoría representa las combinaciones válidas de ámbitos y tipos, y se define con las siguientes propiedades en el archivo de configuración `dhis.conf`. Cada propiedad acepta una lista delimitada por punto y coma (`;`) de tipos de auditoría.
+
+* `audit.metadata`
+* `audit.tracker`
+* `audit.aggregate`
+
+## Examples { #examples } 
+
+Esta sección demuestra cómo configurar el sistema de auditoría en `dhis.conf`.
+
+Para habilitar la auditoría de creación y actualización de metadatos y tracker únicamente: 
+
+```properties
+audit.metadata = CREATE;UPDATE
+audit.tracker = CREATE;UPDATE
+audit.aggregate = DISABLED
+```
+
+Para auditar sólo objetos relacionados con tracker crear y eliminar:
+
+```properties
+audit.metadata = DISABLED
+audit.tracker = CREATE;DELETE
+audit.aggregate = DISABLED
+```
+
+Para deshabilitar completamente la auditoría para todos los ámbitos:
+```properties
+audit.metadata = DISABLED
+audit.tracker = DISABLED
+audit.aggregate = DISABLED
+```
+

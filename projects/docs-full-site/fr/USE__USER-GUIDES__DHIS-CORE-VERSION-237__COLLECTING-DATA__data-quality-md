@@ -1,0 +1,444 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.37/src/user/control-data-quality.md"
+revision_date: '2021-10-14'
+tags:
+- DHIS core version 2.37
+- Utilisation
+---
+
+# Contrôler la qualité des données { #control_data_quality } 
+
+## À propos des contrôles qualité des données { #about_data_quality } 
+
+L'application **Qualité des données** dispose d'outils permettant de valider l'exactitude et 
+la fiabilité des données du système. Vous pouvez évaluer différentes dimensions de 
+la qualité des données comme l'indique le tableau ci-dessous :
+
+
+| Dimension | Description |
+|---|---|
+| Exactitude  | Les données doivent se situer dans la fourchette normale des données collectées dans l'établissement. Les données ne doivent pas présenter de divergences flagrantes lorsqu'elles sont comparées à des données provenant d'éléments de données connexes. |
+| Complétude | Les données correspondant à tous les éléments de données pour toutes les unités d'organisation déclarantes doivent avoir été soumises. |
+| Cohérence | Les données doivent être cohérentes avec les données saisies au cours des mois et années précédents, tout en tenant compte des changements liés à la réorganisation, à l'augmentation de la charge de travail, etc. et cohérentes avec d'autres établissements similaires. |
+| Respect des délais | Toutes les données de toutes les unités d'organisation déclarantes doivent être soumises à la date prévue. |
+
+Vous pouvez contrôler la qualité des données de différentes manières. Par exemple :
+
+  - Au moment de la saisie des données, le DHIS 2 peut vérifier si
+    les données saisies se situent dans la fourchette des valeurs de cet élément de 
+    données (sur la base de toutes les données enregistrées précédemment).
+
+  - En définissant des règles de validation, qui peuvent être exécutées une fois que l'utilisateur a
+    terminé la saisie des données. L'utilisateur peut également vérifier les données saisies pour une 
+    période et une unité d'organisation particulières par rapport aux règles de validation
+    et afficher les violations de ces règles de validation.
+
+  - En analysant les ensembles de données, c'est-à-dire, examiner les écarts dans les données.
+
+  - Par triangulation des données, qui consiste à comparer les mêmes données ou indicateurs
+    provenant de différentes sources.
+
+## Analyse des règles de validation { #validation_rule_analysis } 
+
+### À propos de l'analyse des règles de validation { #about-validation-rule-analysis } 
+
+Une règle de validation repose sur une expression qui définit une relation numérique 
+entre les valeurs des éléments de données. L'expression constitue une condition qui 
+doit permettre de vérifier que certains critères logiques sont remplis.
+
+L'expression se compose de :
+
+  - Un  côté gauche
+
+  - Un côté droit
+
+  - Un opérateur
+
+Une règle de validation pourrait être : "Les cas suspects de paludisme testés" \>= 
+"Cas de paludisme confirmés".
+
+Les côtés gauche et droit doivent renvoyer des valeurs numériques.
+
+L'analyse des règles de validation permet de tester les règles de validation par rapport aux données 
+enregistrées dans le système. Les violations de ces règles sont signalées lorsque la 
+condition définie dans l'expression de règle de validation n'est pas remplie, c'est à dire 
+lorsque la condition est fausse.
+
+Vous pouvez configurer une analyse de règle de validation pour envoyer automatiquement 
+les informations relatives aux  violations aux groupes d'utilisateurs sélectionnés. Ces 
+messages sont appelés *notifications de validation* et sont créés dans l'application 
+**Maintenance**. Les notifications de validation sont envoyées via le 
+ystème de messagerie interne de DHIS2.
+
+### Déroulement { #workflow } 
+
+1.  Dans l'application **Maintenance**, créez des règles de validation et des groupes de
+    règles de validation.
+
+2.  (Facultatif) Dans l'application **Maintenance**, créez des notifications de 
+    validation.
+
+3.  Exécutez l'analyse automatiquement ou manuellement des règles de validation.
+
+      - Dans l'application **Scheduler**, vous planifiez l'exécution 
+        automatique de l'analyse des règles de validation pour toutes les règles de
+        validation incluses dans un ou plusieurs groupes de règles de validation. Une fois que
+        le système a exécuté l'analyse, vous verrez les violations de  
+        validation ( s'il y en a) dans les notifications de validation envoyées via le
+        système de messagerie interne du DHIS 2.
+
+      - Dans l'application **Qualité des données**, vous exécutez 
+        manuellement l'analyse des règles de validation pour les règles de validation sélectionnées. Une fois le
+        processus d'analyse terminé, vous verrez une liste des violations 
+        de validation (s'il y en a).
+
+### Programmez l'éxécution automatique de l'analyse des règles de validation { #schedule-a-validation-rule-analysis-to-run-automatically } 
+
+> **N.B.**
+>
+> Seules les règles de validation associées à une ou plusieurs notifications de validation 
+> seront prises en compte dans l'analyse des règles de validation. Au cas 
+> où il n'y a pas de notification de validation correspondante à une règle de validation, 
+> le système n'a nulle part où envoyer les violations de validation.
+
+> **N.B.**
+>
+> Lors de l'exécution automatique de l'analyse des règles de validation, les résultats  non 
+> encore maintenus seront conservés pendant cette exécution. Les résultats conservés 
+> ne sont actuellement accessibles que via l'API. Veuillez consulter 
+> le guide du développeur pour plus d'informations sur la manière d'accéder aux 
+> violations persistantes des règles de validation.
+
+1.  Vérifiez que vous avez créé toutes les règles de validation, les groupes de règles
+    de validation et les notifications de validation dont vous avez besoin.
+
+2.  Ouvrez l'application **Programmateur** et cliquez sur le bouton d'ajout dans le coin inférieur droit.
+
+3.  Choisissez un nom approprié pour la nouvelle tâche.
+
+4. Sélectionnez le type de tâche **Monitoring** à l'aide du menu déroulant.
+
+5. Choisissez une fréquence d'exécution de la tâche, c'est-à-dire quand et à quelle fréquence la tâche doit être exécutée.
+
+6. Renseignez la section **Paramètres**, y compris les groupes de règles de validation.
+
+7. Appuyez sur le bouton **Ajouter une tâche** pour confirmer la création de la tâche. Pour plus d'informations sur l'ajout de tâches, voir [Scheduling] (data-administration.html#scheduling).
+
+### Exécuter  manuellement une analyse de règles de validation { #run-a-validation-rule-analysis-manually } 
+
+![](resources/images/data_quality/validation_rule_analysis.png)
+
+1.  Vérifiez que vous avez créé toutes les règles de validation, les groupes de règles
+    de validation et les notifications de validation dont vous avez besoin.
+
+2.  Ouvrez l'application **Qualité des données** et cliquez sur **Analyse des règles de 
+    validation**.
+
+3.  Sélectionnez une **Date de début** et une **Date de fin**.
+
+4.  Sélectionnez le **Groupe de règles de validation** à inclure dans 
+    l'analyse.
+
+    Vous pouvez sélectionner toutes les règles de validation ou toutes les règles de validation d'un 
+    seul groupe de règles de validation.
+
+5.  (Facultatif) Sélectionnez **Envoyer les notifications** pour déclencher les notifications de 
+    validation.
+
+    > **Note**
+    >
+    > If you want to send out validation notifications, you must first
+    > create them in the **Maintenance** app.
+
+6.  (Facultatif) Sélectionnez *Maintenir les nouveaux résultats* pour maintenir tous les résultats non sauvegardés
+    trouvés au cours de l'analyse.
+
+7.  Sélectionnez une **unité d'organisation mère**.
+
+8.  Cliquez sur **Valider**.
+
+    La durée du processus d'analyse dépend de la quantité de données 
+    analysées. Si les règles de validation ne sont pas enfreintes, 
+    le message suivant s'affiche : *La validation s'est déroulée avec succès*. S'il
+    y a des violations des règles de validation, elles seront présentées dans une
+     liste.
+
+    ![](resources/images/data_quality/validation_rule_analysis_result.png)
+
+9.  (Facultatif) Cliquez sur l'icône "Afficher les détails" pour obtenir plus d'informations sur
+    une violation de validation. Dans la fenêtre de dialogue, vous trouverez des informations 
+    sur les éléments de données inclus dans les règles de validation et leurs
+    valeurs de données correspondantes. Vous pouvez utiliser ces informations pour identifier
+    la source de la violation de la règle de validation.
+
+10. (Facultatif) Cliquez sur **Télécharger au format PDF**, **Télécharger au format Excel** ou
+    **Télécharger au format CSV** pour télécharger la liste des violations de validation au
+    format PDF, Excel ou CSV.
+
+### Voir également { #see-also } 
+
+  - [Gérer la validation
+    règles](https://docs.dhis2.org/master/en/user/html/manage_validation_rule.html)
+
+  - [Administration des données
+    application](https://docs.dhis2.org/master/en/user/html/data_admin.html)
+
+## Analyse des aberrations d'écart-type { #standard_deviation_analysis } 
+
+### À propos de l'analyse des aberrations d'écart-type { #about-standard-deviation-outlier-analysis } 
+
+The standard deviation outlier analysis identifies values that are
+numerically distant from the rest of the data, potentially indicating that they are outliers.
+The analysis is based on the standard normal distribution. DHIS 2 calculates the mean of
+all values for an organisation unit, data element, category option
+combination and attribute option combination. Outliers can occur by
+chance of course, but can potentially indicate a measurement or data entry error.
+
+> **Note**
+>
+>  As indicated above, this data quality analysis is only appropriate for 
+>  data which is actually normally distributed. Data which has large seasonal
+>  variation, or which may be distributed according to other statistical models
+>  (e.g. logistical ) may lead values being flagged which actually should be considered valid. 
+>  It is therefore recommended to confirm first, whether the data actually is normally 
+>  distributed before running a standard deviation outlier analysis.
+
+### Exécuter une analyse des aberrations d'écart-type { #run-a-standard-deviation-outlier-analysis } 
+
+![](resources/images/data_quality/std_dev_analysis.png)
+
+1.  Ouvrez l'application **Qualité des données** et cliquez sur **Détection des valeurs atypiques**.
+
+2.  Sélectionnez un ou des ensemble(s) de données.
+
+3.  Sélectionnez **Unités d'organisation**.
+
+    Il est possible de sélectionner plusieurs unités d'organisation. L'analyse porte sur les données brutes de toutes les unités d'organisation de la sous-hiérarchie des unités sélectionnées, et non sur des données agrégées.
+
+4.  Sélectionnez **À partir de la date** et **À la date**.
+
+5.  Set **Algorithm** to **Z-score**
+
+    Modified Z-score can also be selected. If selected, the median of the values is used instead of the mean.
+
+6.  Sélectionnez un **seuil**.
+
+    This refers to the number of standard deviations the data is allowed
+    to deviate from the mean before it is classified as an outlier.
+
+7.  Sélectionnez **Résultats maximums**
+
+    Il s'agit du nombre maximum de valeurs atypiques figurant dans les résultats.
+
+8.  (Facultatif) Sélectionnez une **Date de début des données** et une **Date de fin des données**.
+
+    These fields can be used to perform outlier detection analysis on a subset of the data within the provided date range. When left blank, the natural start and end date of the dataset will be used _(In advanced section)_.
+
+9.  (Optional) Select a measure to **Sort by** 
+
+    The outliers can be sorted by **Z-score** or by **Absolute deviation from Mean** _(In advanced section)_.
+
+10.  Cliquez sur **Démarrer**
+    La durée du processus d'analyse dépend de la quantité des données à analyser. S'il 
+existe des valeurs aberrantes, celles-ci seront présentées sous forme d'une liste.
+    ![](resources/images/data_quality/std_dev_analysis_outlier_result.png)
+    Pour chaque valeur aberrante, vous verrez l'élément de données, la période, l'unité d'organisation, , la valeur, le score z, l'écart, l'écart type, la moyenne, le minimum et le maximum. Les valeurs minimales et maximales sont des valeurs de bordure dérivées du nombre d'écarts-types sélectionnés pour l'analyse.
+
+11.  (Facultatif) Cliquez sur **Télécharger au format CSV** pour télécharger la liste au format CSV.
+
+> **Astuce**
+>
+> Cliquez sur la case à cocher pour marquer une valeur atypique pour un suivi ultérieur.
+
+## Analyse des valeurs aberrantes minimales et maximales { #min_max_analysis } 
+
+### À propos de l'analyse des valeurs aberrantes minimales et maximales { #about-minimum-maximum-value-based-outlier-analysis } 
+
+Vous pouvez vérifier la qualité des données au moment de la saisie en définissant une 
+plage de valeurs maximales et minimales pour chaque élément de donnée. Vous pouvez définir ces plages de valeurs 
+manuellement ou les générer automatiquement.
+
+La plage de valeurs générée automatiquement ne convient que pour 
+des données normalement distribuées. DHIS2 déterminera la moyenne arithmétique et 
+l'écart-type de toutes les valeurs pour un élément de donnée, une options de catégorie, 
+une unité d'organisation et attribuer une combinaison. Le système 
+calculera ensuite la plage de valeurs maximales et minimales sur la base du **Facteur 
+d'analyse de l'écart-type des données** spécifié dans l'application **Paramètres Système**.
+
+Pour les données fortement asymétriques ou nulles (comme c'est souvent le cas 
+pour les données agrégées), les valeurs générées automatiquement par DHIS2 ne peuvent 
+pas fournir une plage de valeurs précise. Cela peut entraîner de 
+fausses violations de règles, si vous analysez par exemple des valeurs liées à des 
+maladies saisonnières.
+
+> **Note**
+>
+> Les plages de valeurs minimales et maximales sont calculées pour toutes les options de 
+> combinaison d'attributs pour un élément de donnée particulier, une option de catégories et 
+> une combinaison d'unités d'organisation.
+
+### Déroulement { #workflow } 
+
+1.  Créer une plage de valeurs minimum et maximum automatiquement ou 
+    manuellement .
+
+      - Dans l'application **Administration des données**, vous pouvez générer des plages de valeurs
+        automatiquement.
+
+      - Dans l'application **Saisie des données**, vous pouvez définir manuellement les plages de valeurs.
+
+2.  Dans l'application **Qualité des données**, vous pouvez exécuter **L'analyse des valeurs aberrantes mini-maxi**.
+
+### Configurer une analyse des valeurs aberrantes minimum maximum { #configure-a-minimum-maximum-outlier-analysis } 
+
+#### Créer automatiquement une plage de valeurs minimum maximum { #create-minimum-maximum-value-range-automatically } 
+
+![](resources/images/data_quality/generate_min_max.png)
+
+> **Note**
+>
+> Les plages de valeurs maximales et minimales générées automatiquement peuvent être utiles pour de nombreuses 
+> applications, mais il est recommandé de vérifier que les données sont 
+> normalement distribuées avant l'utilisation de cette fonction.
+
+Vous pouvez générer des plages de valeurs maximales et minimales calculées par l'ensemble de donnée défini dans 
+l'application **Administration des données**. Les nouvelles plages de valeurs remplaceront toutes les valeurs 
+que le système a calculées précédemment.
+
+1.  Définissez le **Facteur d'analyse des valeurs d'écart-type (std dev) des données** :
+
+    1.  Ouvrez l'application **Paramètres système**, puis cliquez sur **Général**.
+
+    2.  Dans le champ **Facteur d'analyse des valeurs d'écart-type des données**, entrez une valeur.
+
+        Ce paramètre définit le nombre d'écarts types à utiliser dans 
+        l'analyse des valeurs aberrantes. La valeur par défaut est 2. Des valeurs plus élevées
+        indiquent une distribution plus large, ce qui peut entraîner une
+         mauvaise détection des valeurs aberrantes par l'analyse.
+
+2.  Ouvrez l'application **Administration des données** et cliquez sur **Génération des valeurs mini-maxi**.
+
+3.  Sélectionnez un ou des ensemble(s) de données.
+
+4.  Sélectionnez une **unité d'organisation**.
+
+5.  Cliquez sur **Générer**.
+
+    De nouvelles plages de valeurs minimales et maximales sont générées pour tous
+    les éléments de données des ensembles de données sélectionnés pour toutes les unités d'organisation (y compris
+    les descendants) des unités d'organisation sélectionnées.
+
+#### Créer manuellement une plage de valeurs minimum-maximum { #create-minimummaximum-value-range-manually } 
+
+![](resources/images/data_quality/set_min_max_manually.png)
+
+1.  Dans l'application **Saisie de données**, ouvrez un formulaire de saisie.
+
+2.  Double-cliquez sur le champs auquel vous souhaitez affecter une plage de valeurs minimum/maximum.
+
+3.  Dans la boîte de dialogue qui s'affiche, entrez **la limite Mini** et **la limite Maxi** 
+
+4.  Cliquez sur **Sauvegarder**.
+
+    Si les valeurs ne se retrouvent pas dans la nouvelle plage de valeurs lors de la prochaine
+    saisie de données, la cellule de saisie s'affiche sur
+    fond orange.
+
+5.  (Facultatif) Saisissez un commentaire pour expliquer la raison du décalage,
+    par exemple un événement dans un établissement qui a pu générer un grand 
+    nombre de clients.
+
+6.  (Facultatif) Cliquez sur **Enregistrer le commentaire**.
+
+> **Astuce**
+>
+> Cliquez sur l'icône étoile pour marquer la valeur en vue d'un suivi ultérieur.
+
+#### Supprimer une plage de valeurs minimum maximum { #delete-minimum-maximum-value-range } 
+
+Vous pouvez supprimer définitivement toutes les plages de valeurs maximales minimales 
+pour des ensembles de données et unités d'organisation sélectionnés dans l'application **Administration des données**.
+
+1.  Ouvrez l'application **Administration des données** et cliquez sur **Génération des valeurs mini-maxi**.
+
+2.  Sélectionnez un ou des ensemble(s) de données.
+
+3.  Sélectionnez une **Unité d'organisation**. Notez que la sélection se fait en cascade vers 
+    les unités d'organisation descendantes !
+
+4.  Cliquez sur **Supprimer**.
+
+### Exécuter une analyse de valeurs aberrantes minimales et maximales { #run-a-minimum-maximum-outlier-analysis } 
+
+![](resources/images/data_quality/min_max_analysis.png)
+
+1.  Vérifiez que vous avez créé des plages de valeurs maximales minimales.
+
+2.  Ouvrez l'application **Qualité des données** et cliquez sur **Détection des valeurs atypiques**.
+
+3.  Sélectionnez un ou des ensemble(s) de données.
+
+4.  Sélectionnez une **Unité d'organisation mère**.
+
+    Il est possible de sélectionner plusieurs unités d'organisation. L'analyse porte sur les données brutes de toutes les unités d'organisation de la sous-hiérarchie des unités sélectionnées, et non sur des données agrégées.
+
+5.  Sélectionnez **À partir de la date** et **À la date**.
+
+6.  Définissez **Algorithme** sur **Valeurs min-max**.
+
+7.  Sélectionnez **Résultats maximums**
+
+    Il s'agit du nombre maximum de valeurs atypiques figurant dans les résultats.
+
+8.  Cliquez sur **Démarrer**
+
+    La durée du processus d'analyse dépend de la quantité de données 
+    analysées. S'il existe des écarts types aberrants, ils seront
+    affichés dans une liste.
+
+    ![](resources/images/data_quality/min_max_result.png)
+
+    Pour chaque valeur atypique, vous verrez l'élément de données, la période, l'unité d'organisation, 
+    la valeur, l'écart, le minimum et le maximum.
+
+9.  (Facultatif) Cliquez sur **Télécharger au format CSV** pour télécharger la liste au format CSV.
+
+> **Astuce**
+>
+> Cliquez sur la case à cocher pour marquer la valeur pour un suivi ultérieur.
+
+## Analyse de suivi { #follow_up_analysis } 
+
+### À propos de l'analyse de suivi { #about-follow-up-analysis } 
+
+L'analyse de suivi crée une liste de toutes les valeurs de données marquées pour 
+suivi ultérieur. Vous pouvez marquer une valeur de données pour suivi ultérieur dans l'application **Saisie de données** 
+et dans la liste de résultats que vous obtenez de l'analyse des valeurs aberrantes d'écart-type ou 
+de l'analyse des valeurs aberrantes minimales et maximales.
+
+### Créer une liste de valeurs de données marquées pour un suivi ultérieur { #create-list-of-data-values-marked-for-follow-up } 
+
+![](resources/images/data_quality/follow_up_analysis.png)
+
+1.  Ouvrez l'application **Qualité des données** et cliquez sur **Analyse de suivi**.
+
+2.  Sélectionnez un ou plusieurs ensembles de données. 
+
+3.  Sélectionnez **Unités d'organisation**.
+
+    Il est possible de sélectionner plusieurs unités d'organisation. L'analyse porte sur les données brutes "sous" l'unité d'organisation, et non sur les données agrégées.
+
+4. Sélectionnez une **date de début** et une **date de fin** qui définissent les périodes pour lesquelles vous souhaitez rechercher des valeurs marquées pour le suivi.
+
+4. Appuyez sur **Suivre** pour générer une liste de valeurs marquées pour le suivi.
+
+5.  (Facultatif) Cliquez sur **Télécharger au format PDF**, **Télécharger au format Excel** ou **Télécharger au format CSV** pour télécharger la liste des violations de validation dans les formats PDF, Excel ou CSV.
+
+![](resources/images/data_quality/follow_up_analysis_result.png)
+
+> **Astuce**
+>
+> Cochez la case **Unfollow** dans la liste et cliquez sur le bouton **Unfollow** pour supprimer les balises de suivi des valeurs de données marquées. 
+> Vous pouvez également saisir un commentaire dans le champ pour indiquer toute 
+> information supplémentaire sur la valeur.
+

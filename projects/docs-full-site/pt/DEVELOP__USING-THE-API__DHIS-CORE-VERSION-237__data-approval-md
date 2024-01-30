@@ -1,0 +1,263 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.37/src/developer/web-api/data-approval.md"
+revision_date: '2021-08-18'
+tags:
+- DHIS core version 2.37
+- Desenvolver
+---
+
+# Aprovação de dados { #data-approval } 
+
+## Aprovação de dados { #webapi_data_approval } 
+
+This section explains how to approve, unapprove and check approval
+status using the *dataApprovals* resource. Approval is done per data
+approval workflow, period, organisation unit and attribute option combo.
+
+    /api/33/dataApprovals
+
+Um fluxo de trabalho de aprovação de dados está associado a várias entidades:
+
+* Um tipo de período que define a frequência de aprovação
+* Uma combinação opcional de categoria
+* Um ou vários níveis de aprovação de dados que fazem parte do fluxo de trabalho
+* Um ou vários conjuntos de dados que são usados para coleta de dados
+
+### Obter status de aprovação { #webapi_data_approval_get_status } 
+
+Para obter informações de aprovação para um conjunto de dados, pode emitir uma solicitação GET:
+
+    /api/dataApprovals?wf=rIUL3hYOjJc&pe=201801&ou=YuQRtpLP10I
+
+
+
+Table: Data approval query parameters
+
+| Query parameter | Requerido | Descrição |
+|---|---|---|
+| wf | sim | Identificador de fluxo de trabalho de aprovação de dados |
+| educaçao Fisica | sim | Identificador de período |
+| ou | sim | Organisation unit identifier |
+| aoc | Não | Identificador de combinação de opção de atributo |
+
+> **Nota**
+>
+> Para compatibilidade com versões anteriores, o parâmetro `ds` para conjunto de dados pode ser fornecido em vez de` wf` para fluxo de trabalho nesta e em outras solicitações de aprovação de dados, conforme descrito abaixo. Se o conjunto de dados for fornecido, o fluxo de trabalho associado a esse conjunto de dados será usado.
+
+Isso produzirá uma resposta semelhante a esta:
+
+```json
+{
+  "mayApprove": false,
+  "mayUnapprove": false,
+  "mayAccept": false,
+  "mayUnaccept": false,
+  "state": "UNAPPROVED_ELSEWHERE"
+}
+```
+
+Os parâmetros retornados são:
+
+
+
+Table: Data approval returned parameters
+
+| Return Parameter | Descrição |
+|---|---|
+| mayApprove | Whether the current user may approve this data selection. |
+| mayUnapprove | Whether the current user may unapprove this data selection. |
+| mayAccept | Whether the current user may accept this data selection. |
+| mayUnaccept | Whether the current user may unaccept this data selection. |
+| Estado | One of the data approval states from the table below. |
+
+
+
+Table: Data approval states
+
+| State | Descrição |
+|---|---|
+| UNAPPROVABLE | Data approval does not apply to this selection. (Data is neither approved nor unapproved.) |
+| UNAPPROVED_WAITING | Data could be approved for this selection, but is waiting for some lower-level approval before it is ready to be approved. |
+| UNAPPROVED_ELSEWHERE | Data is unapproved, and is waiting for approval somewhere else (not approvable here.) |
+| UNAPPROVED_READY | Data is unapproved, and is ready to be approved for this selection. |
+| APPROVED_HERE | Data is approved, and was approved here (so could be unapproved here.) |
+| APPROVED_ELSEWHERE | Data is approved, but was not approved here (so cannot be unapproved here.) This covers the following cases: <br> * Data is approved at a higher level.<br> * Data is approved for wider scope of category options.<br> * Data is approved for all sub-periods in selected period.<br>  In the first two cases, there is a single data approval object that covers the selection. In the third case there is not. |
+| ACCEPTED_HERE | Data is approved and accepted here (so could be unapproved here.) |
+| ACCEPTED_ELSEWHERE | Data is approved and accepted, but elsewhere. |
+
+Note that when querying for the status of data approval, you may specify
+any combination of the query parameters. The combination you specify
+does not need to describe the place where data is to be approved at one
+of the approval levels. For example:
+
+  - The organisation unit might not be at an approval level. The
+    approval status is determined by whether data is approved at an
+    approval level for an ancestor of the organisation unit.
+
+  - You may specify individual attribute category options. The approval
+    status is determined by whether data is approved for an attribute
+    category option combination that includes one or more of these
+    options.
+
+  - You may specify a time period that is longer than the period for the
+    data set at which the data is entered and approved. The approval
+    status is determined by whether the data is approved for all the
+    data set periods within the period you specify.
+
+For data sets which are associated with a category combo you might want
+to fetch data approval records for individual attribute option combos
+from the following resource with a GET request:
+
+    /api/dataApprovals/categoryOptionCombos?wf=rIUL3hYOjJc&pe=201801&ou=YuQRtpLP10I
+
+### Obter status de aprovação em massa { #bulk-get-approval-status } 
+
+Para obter uma lista de vários status de aprovação, pode emitir uma solicitação GET semelhante a esta:
+
+    /api/dataApprovals/approvals?wf=rIUL3hYOjJc&pe=201801,201802&ou=YuQRtpLP10I
+
+Os parâmetros `wf`,` pe`, `ou` e` aoc` são os mesmos para obter um único status de aprovação, exceto que pode fornecer uma lista separada por vírgulas de um ou mais valores para cada parâmetro.
+
+Isso lhe dará uma resposta contendo uma lista de parâmetros e status de aprovação, mais ou menos assim:
+
+```json
+[
+  {
+    "aoc": "HllvX50cXC0",
+    "pe": "201801",
+    "level": "KaTJLhGmU95",
+    "ou": "YuQRtpLP10I",
+    "permissions": {
+      "mayApprove": false,
+      "mayUnapprove": true,
+      "mayAccept": true,
+      "mayUnaccept": false,
+      "mayReadData": true
+    },
+    "state": "APPROVED_HERE",
+    "wf": "rIUL3hYOjJc"
+  },
+  {
+    "aoc": "HllvX50cXC0",
+    "pe": "201802",
+    "ou": "YuQRtpLP10I",
+    "permissions": {
+      "mayApprove": true,
+      "mayUnapprove": false,
+      "mayAccept": false,
+      "mayUnaccept": false,
+      "mayReadData": true
+    },
+    "state": "UNAPPROVED_READY",
+    "wf": "rIUL3hYOjJc"
+  }
+]
+```
+
+Os campos retornados são descritos na tabela a seguir.
+
+| Campo       | Descrição |
+| ----------- | ----------- |
+| aoc         | Identificador de combinação de opção de atributo |
+| educaçao Fisica          | Identificador de período |
+| ou          | Identificador de unidade organizacional |
+| permissões | As permissões: 'mayApprove', 'mayUnapprove', 'mayAccept', 'mayUnaccept' e 'mayReadData' (mesmas definições para obter o status de aprovação única). |
+| Estado       | Um dos estados de aprovação de dados (o mesmo para obter status de aprovação única). |
+| wf          | Identificador de fluxo de trabalho de aprovação de dados |
+
+### Aprovar dados { #webapi_data_approval_approve_data } 
+
+To approve data you can issue a *POST* request to the *dataApprovals*
+resource. To un-approve data, you can issue a *DELETE* request to the
+dataApprovals resource.
+
+    POST DELETE /api/33/dataApprovals
+
+To accept data that is already approved you can issue a *POST* request
+to the *dataAcceptances* resource. To un-accept data, you can issue a
+*DELETE* request to the *dataAcceptances* resource.
+
+    PÓS EXCLUIR / api / 33 / dataAcceptances
+
+Essas solicitações contêm os seguintes parâmetros:
+
+
+
+Table: Data approval action parameters
+
+| Action parameter | Requerido | Descrição |
+|---|---|---|
+| wf | sim | Identificador de fluxo de trabalho de aprovação de dados |
+| educaçao Fisica | sim | Identificador de período |
+| ou | sim | Organisation unit identifier |
+| aoc | Não | Identificador de combinação de opção de atributo |
+
+Note that, unlike querying the data approval status, you must specify
+parameters that correspond to a selection of data that could be
+approved. In particular, both of the following must be true:
+
+  - The organisation unit's level must be specified by an approval level
+    in the workflow.
+
+  - The time period specified must match the period type of the
+    workflow.
+
+### Dados de aprovação em massa { #webapi_data_approval_bulk_approve_data } 
+
+You can approve a bulk of data records by posting to
+the `/api/dataApprovals/approvals` resource.
+
+    POST /api/33/dataApprovals/approvals
+
+You can unapprove a bulk of data records by posting to the
+`/api/dataApprovals/unapprovals` resource.
+
+    POST /api/33/dataApprovals/unapprovals
+
+You can accept a bulk of records by posting to the
+`/api/dataAcceptances/acceptances` resource.
+
+    POST /api/33/dataAcceptances/acceptances
+
+You can unaccept a bulk of records by posting to the
+`/api/dataAcceptances/unacceptances` resource.
+
+    POST /api/33/dataAcceptances/unacceptances
+
+A carga útil de aprovação é compatível como JSON e tem a seguinte aparência:
+
+```json
+{
+  "wf": [
+    "pBOMPrpg1QX", "lyLU2wR22tC"
+  ],
+  "pe": [
+    "201601", "201602"
+  ],
+  "approvals": [
+    {
+      "ou": "cDw53Ej8rju",
+      "aoc": "ranftQIH5M9"
+    },
+    {
+      "ou": "cDw53Ej8rju",
+      "aoc": "fC3z1lcAW5x"
+    }
+  ]
+}
+```
+
+### Obtenha níveis de aprovação de dados { #get-data-approval-levels } 
+
+To retrieve data approval workflows and their data approval levels you
+can make a GET request similar to this:
+
+    /api/dataApprovalWorkflows?
+      fields=id,name,periodType,dataApprovalLevels[id,name,level,orgUnitLevel]
+
+
+### Authorities for data approval { #authorities-for-data-approval } 
+
+- `F_DATA_APPROVAL_WORKFLOW` : allow user to Add/Update Data Approval Workflow
+- `F_DATA_APPROVAL_LEVEL` : allow user to Add/Update Data Approval Level
+

@@ -1,0 +1,43 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-releases/blob/master/releases/2.35/README.md"
+revision_date: '2023-08-30'
+tags:
+- Implémentation
+- DHIS core version 2.35
+---
+
+# Notes de mise à jour de la version 2.35 { #235-upgrade-notes } 
+
+> :warning: **Please ensure you have read the upgrade notes from the [PREVIOUS RELEASE](../2.34/README.md), if upgrading from an earlier version**
+
+## Base de données { #database } 
+
+- Des opérandes d'éléments de données excessifs _pourraient_ être créés en raison d'un problème de sauvegarde des tableaux croisés dynamiques. Ce [script](https://github.com/dhis2/dhis2-utils/blob/master/resources/sql/delete_deprecated_operands.sql) pourrait être exécuté afin de supprimer les `opérandes d'éléments de données` dépréciés qui empêchent la suppression des `éléments de données`. Pour plus d'informations à ce sujet, voir [DHIS2-7043](https://jira.dhis2.org/browse/DHIS2-7043).
+
+## API { #api } 
+
+- L'autorité `F_USER_VIEW` ("Voir les utilisateurs") n'est plus nécessaire pour les utilisateurs finaux habituels, par exemple pour utiliser l'application Saisie Tracker. Cette autorité doit être supprimée des rôles d'utilisateur réservés aux utilisateurs finaux (et non aux gestionnaires d'utilisateurs). Pour en savoir plus, consultez la [note de modification] (https://github.com/dhis2/notes-backend/blob/master/platform/35/changelog/export_user_authority.md).
+- L'autorité `F_USER_VIEW` est désormais requise pour exporter les informations utilisateur via le point d'extrémité `/api/metadata`.
+- Les informations utilisateur liées aux entités de métadonnées dans l'API sont limitées. Le filtrage des champs est restreint et seuls les champs `id`, `code`, `nom d'utilisateur`, `nom`, `nom d'affichage` sont disponibles. Pour en savoir plus, consultez la [note de modification] (https://github.com/dhis2/notes-backend/blob/master/platform/35/changelog/user_property_transformer.md).
+
+## Fonctionnalité { #functionality } 
+
+- L'application mobile J2ME est désormais désactivée et ne pourra plus fonctionner.
+
+## Applications { #apps } 
+
+- Une nouvelle application web de `Configuration des SMS`  est désormais disponible. Cette application remplacera le module web `Configuration mobile`. Ce dernier module sera maintenu pendant un temps donné jusqu'à ce que l'ancienne application devienne stable.
+
+## Patch-specific Changes { #patch-specific-changes } 
+
+### 2.35.2 Database Schema { #2352-database-schema } 
+
+- New index on table `trackedentityprogramowner` over columns `(trackedentityinstanceid, programid, organisationunitid)`. Improves lookup related to organisation unit scopes in the context of a program.
+- New index on table `programinstance` over columns `(programid)`. Improves general lookup for programinstances based on program in most cases.
+- New index on table `trackedentityattributevalue` over columns `(trackedentityinstanceid, trackedentityattributeid, lower(value))`. This is in addition to the previous index over the columns `(trackedentityattributeid, lower(value))`. We saw situations related to value lookup in the context of tracked entity instances where postgres would revert to a sequential scan, when using the existing index would yield a much better result. With the new index we are successfully encouraging postres to use the index also when we are matching on tracked entity instances.
+- New index on table `programstageinstance` over the columns `(status, executiondate)`. This table often grows a lot bigger than tracked entity instance and program instance tables, and we saw a bottleneck in some of our queries when including program stage instances as filters in searches. We added this index to improve the performance of the most common column we filter by, status, as well as executiondate, which is often used together with status when searching for events.
+
+> **Caution** 
+> 
+> Due to the number of indexes, and the typical size of their tables, be aware that upgrading to this version or above might take a significant amount of time.
+

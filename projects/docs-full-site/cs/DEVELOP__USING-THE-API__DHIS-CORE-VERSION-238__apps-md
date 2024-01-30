@@ -1,0 +1,143 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.38/src/developer/web-api/apps.md"
+revision_date: '2021-06-14'
+tags:
+- DHIS core version 2.38
+- Vývoj
+---
+
+# Aplikace { #apps } 
+
+## Aplikace { #webapi_apps } 
+
+Koncový bod `/api/apps` lze použít k instalaci, mazání a výpisu aplikací. Klíč aplikace je založen na názvu aplikace, ale se všemi nealfanumerickými znaky odstraněnými a mezerami nahrazenými pomlčkou. *Moje aplikace!* Vrátí klíč *Moje aplikace*.
+
+> **Poznámka**
+>
+> Předchozí do 2.28 byl klíč aplikace odvozen od názvu archivu ZIP, 
+> s výjimkou přípony souboru. Adresy URL používající starý formát 
+> by měly v API vracet správnou aplikaci.
+
+    /api/33/apps
+
+### Získat aplikace { #webapi_get_apps } 
+
+> **Poznámka**
+>
+> Předchozí až 2.28 se složka vlastností aplikace odkazovala na skutečnou 
+> cestu nainstalované aplikace. Díky možnosti ukládat aplikace do cloudových 
+> služeb se změnil účel jmenné složky a nyní bude odkazovat na klíč 
+> aplikace.
+
+Můžete si přečíst klíče pro aplikace vypsáním všech aplikací ze zdroje aplikací a vyhledáním vlastnosti *key*. Seznam všech nainstalovaných aplikací v JSON:
+
+```bash
+curl -u user:pass -H "Accept: application/json" "http://server.com/api/33/apps"
+```
+
+Můžete také jednoduše nasměrovat webový prohlížeč na adresu URL zdroje:
+
+    http://server.com/api/33/apps
+
+Seznam aplikací lze filtrovat také podle typu aplikace a podle názvu připojením jednoho nebo více parametrů *filtru* k adrese URL:
+
+    http://server.com/api/33/apps?filter=appType:eq:DASHBOARD_APP&filter=name:ilike:youtube
+
+Názvy aplikací podporují operátory filtru *eq* a *ilike*, zatímco *appType* podporuje pouze *eq*.
+
+### Instalace aplikace { #webapi_install_app } 
+
+K instalaci aplikace lze provést následující příkaz:
+
+```bash
+curl -X POST -u user:pass -F file=@app.zip "http://server.com/api/33/apps"
+```
+
+### Smazat aplikaci { #webapi_delete_app } 
+
+Chcete-li aplikaci odstranit, můžete zadat následující příkaz:
+
+```bash
+curl -X DELETE -u user:pass "http://server.com/api/33/apps/<app-key>"
+```
+
+### Znovu načíst aplikace { #webapi_reload_apps } 
+
+Chcete-li vynutit opětovné načtení aktuálně nainstalovaných aplikací, můžete vydat následující příkaz. To je užitečné, pokud jste místo nahrání přes uživatelské rozhraní DHIS2 přidali soubor ručně přímo do systému souborů.
+
+```bash
+curl -X PUT -u user:pass "http://server.com/api/33/apps"
+```
+
+### Sdílet aplikace mezi instancemi { #webapi_share_apps_between_instances } 
+
+Pokud byla instance DHIS2 nakonfigurována pro použití cloudového úložiště, aplikace se nyní nainstalují a uloží do cloudové služby. To umožní více instancím sdílet stejné verze v nainstalovaných aplikacích namísto instalace stejných aplikací v každé jednotlivé instanci.
+
+> **Poznámka**
+>
+> Předchozí verze 2.28 by nainstalované aplikace ukládala pouze do místního 
+> souborového systému instance. Aplikace nainstalované před 2.28 budou stále 
+> k dispozici v instanci, ve které byla nainstalována, ale nebudou sdíleny s jinými 
+> instancemi, protože jsou stále umístěny v místním souborovém systému instancí.
+
+## App store { #webapi_app_store } 
+
+The Web API exposes the content of the DHIS2 App Store as a JSON
+representation which can found at the `/api/appHub` resource.
+
+    /api/33/appHub
+
+### Získat aplikace { #webapi_get_app_store_apps } 
+
+Aplikace můžete načíst s požadavkem GET:
+
+    GET /api/33/appHub
+
+Níže je popsána ukázková odpověď JSON.
+
+```json
+{
+  [
+    {
+      "name": "Tabular Tracker Capture",
+      "description": "Tabular Tracker Capture is an app that makes you more effective.",
+      "sourceUrl": "https://github.com/dhis2/App-repository",
+      "appType": "DASHBOARD_WIDGET",
+      "status": "PENDING",
+      "id": "NSD06BVoV21",
+      "developer": {
+        "name": "DHIS",
+        "organisation": "Uio",
+        "address": "Oslo",
+        "email": "dhis@abc.com",
+      },
+      "versions": [
+        {
+          "id": "upAPqrVgwK6",
+          "version": "1.2",
+          "minDhisVersion": "2.17",
+          "maxDhisVersion": "2.20",
+          "downloadUrl": "https://dhis2.org/download/appstore/tabular-capture-12.zip",
+          "demoUrl": "http://play.dhis2.org/demo"
+        }
+      ],
+      "images": [
+        {
+          "id": "upAPqrVgwK6",
+          "logo": "true",
+          "imageUrl": "https://dhis2.org/download/appstore/tabular-capture-12.png",
+          "description": "added feature snapshot",
+          "caption": "dialog",
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Instalovat aplikace { #webapi_install_app_store_apps } 
+
+Do instance DHIS2 můžete instalovat aplikace za předpokladu, že máte příslušná oprávnění. Na aplikaci se odkazuje pomocí vlastnosti `id` příslušné verze aplikace. Aplikace je nainstalována s požadavkem POST s ID verze do následujícího zdroje:
+
+    POST /api/33/appHub/{app-version-id}
+

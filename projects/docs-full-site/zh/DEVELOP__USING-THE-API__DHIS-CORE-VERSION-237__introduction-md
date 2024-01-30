@@ -1,0 +1,557 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.37/src/developer/web-api/overview.md"
+revision_date: '2021-10-14'
+tags:
+- DHIS core version 2.37
+- Develop
+---
+
+# 总览 { #webapi } 
+
+Web API 是一个组件，它使外部系统成为可能
+访问和操作存储在 DHIS2 实例中的数据。更多的
+准确地说，它为广泛的
+为第三方等应用程序公开数据和服务方法
+软件客户端、门户网站和内部 DHIS2 模块。
+
+## 介绍 { #webapi_introduction } 
+
+Web API 遵循 REST 背后的许多原则
+建筑风格。提几个重要的：
+
+1.  基本构建块称为*资源*。
+    资源可以是任何暴露在 Web 上的东西，从文档到
+    业务流程 - 客户可能想要与之交互的任何内容。
+    可以检索或交换资源的信息方面
+    通过资源*表示*。表示是一个视图
+    任何给定时间的资源状态。例如，*reportTable*
+    DHIS2 中的资源代表汇总数据的表格报告
+    一组特定的参数。该资源可以在
+    各种表示格式，包括 HTML、PDF 和 MS Excel。
+
+2.  所有资源都可以由 *URI* 唯一标识（也称为
+    作为 *URL*）。所有资源都有一个默认表示。你可以
+    通过以下方式表明您对特定表示感兴趣
+    提供 *Accept* HTTP 标头、文件扩展名或 *格式*
+    查询参数。所以为了检索一个的 PDF 表示
+    您可以提供一个 *Accept: application/pdf* 标题或
+    将 *.pdf* 或 *?format=pdf* 附加到您的请求 URL。
+
+3.  与 API 的交互需要正确使用 HTTP *方法* 或
+    *动词*。这意味着对于资源，您必须发出 *GET*
+    当你想要检索它时请求，当你想要时 *POST* 请求
+    要创建一个，* PUT *（当您要更新时），* DELETE *（当您要删除时）
+    你想删除它。所以如果你想检索默认值
+    报告表的表示，您可以向例如发送 GET 请求
+    */reportTable/iu8j/hYgF6t*，其中最后一部分是报告表
+    标识符。
+
+4.  资源表示形式是*可链接的*，这意味着
+    陈述宣传与该相关的其他资源
+    当前通过将链接嵌入到自身中（请注意，您
+    需要在您的字段过滤器中请求 *href* 才能使其正常工作。
+    这个特性极大地提高了系统的可用性和健壮性。
+    API，我们稍后会看到。例如，您可以轻松导航到
+    与报告表相关的指标
+    *reportTable* 资源通过使用您的嵌入式链接
+    首选表示格式。
+
+虽然所有这些听起来可能很复杂，但 Web API 实际上非常
+使用简单。我们将继续在一个实际的例子中
+分钟。
+
+## 认证方式 { #webapi_authentication } 
+
+The DHIS2 Web API supports three protocols for authentication: 
+
+- [Basic Authentication](#webapi_basic_authentication)
+- [Personal Access Tokens (PAT)](#webapi_pat_authentication)
+- [OAuth 2](#webapi_oauth2)
+
+You can verify and get information about the currently authenticated 
+user by making a GET request to the following URL:
+
+    / api / 33 / me
+
+以及有关权限的更多信息（如果用户有特定的
+权限）通过使用端点：
+
+    / api / 33 / me / authorities
+    / api / 33 / me / authorities / ALL
+
+## 基本认证 { #webapi_basic_authentication } 
+
+DHIS2 Web API 支持*基本身份验证*。基本认证
+是一种客户端通过 HTTP 将登录凭据发送到 Web 的技术
+服务器。从技术上讲，用户名后附有冒号和
+密码，Base64 编码，前缀 Basic 并作为值提供
+*Authorization* HTTP 标头。更正式的是：
+
+    授权：基本base64encode（用户名：password）
+
+大多数网络感知开发环境都支持 Basic
+身份验证，例如 *Apache HttpClient* 和 *Spring RestTemplate*。
+一个重要的注意事项是此身份验证方案不提供安全性
+因为用户名和密码是以纯文本形式发送的，可以很容易地
+被攻击者观察到。仅当服务器是
+使用 SSL/TLS (HTTPS) 加密与客户端的通信。考虑这个
+为了提供与 Web 的安全交互的硬性要求
+应用程序接口。
+
+## 两因素验证 { #webapi_2fa } 
+
+DHIS2 支持两因素身份验证。这可以为每个用户启用。
+启用后，用户将被要求在登录时输入 2FA 代码。您
+可以阅读更多关于 2FA [这里](https://www.google.com/landing/2step/)。
+
+## Personal Access Token { #webapi_pat_authentication }
+Personal access tokens (PATs) are an alternative to using passwords for
+authentication to DHIS2 when using the API.
+
+PATs can be a more secure alternative to HTTP Basic Authentication,
+and should be your preferred choice when creating a new app/script etc. 
+
+HTTP Basic Authentication is considered insecure because, among other things, 
+it sends your username and password in clear text. It may be deprecated in 
+future DHIS2 versions or made opt-in, meaning that basic authentication would 
+need to be explicitly enabled in the configuration.
+
+#### Important security concerns! { #important-security-concerns } 
+
+Your PATs will automatically inherit all the permissions and authorizations your
+user has. It is therefore extremely important that you limit the access granted to
+your token depending on how you intend to use it, see **Configuring your token**.
+
+**If you only want the token to have access to a narrow and specific part of the
+server, it is advised to rather create a new special user that you assign only
+the roles/authorities you want it to have access to.**
+
+
+### Creating a token { #creating-a-token } 
+To create a new PAT, you have two choices:
+* A. Create a token in the UI on your account's profile page.
+* B. Create a token via the API
+
+### A. Creating a token on the account's page { #a-creating-a-token-on-the-accounts-page } 
+Log in with your username and password, go to your profile page
+(Click top right corner, and chose "Edit profile" from the dropdown).
+On your user profile page, choose "Manage personal access tokens" from the
+left side menu.
+You should now be on the "Manage personal access tokens" page and see the
+text: "You don't have any active personal access tokens".
+Click "Generate new token" to make a new token.
+A "Generate new token" popup will be shown and present you with two choices:
+
+#### 1. Server/script context: { #1-serverscript-context } 
+_"This type is used for integrations and scripts that won't be accessed by a browser"._
+
+If you plan to use the token in an application, a script or similar, this
+type should be your choice.
+
+#### 2. Browser context: { #2-browser-context } 
+_"This type us used for applications, like public portals, that will be accessed with a web browser"._
+
+If you need to link to DHIS2 on a webpage, or e.g. embed in an iframe,
+this is probably the type of token you want.
+
+
+### Configuring your token { #configuring-your-token } 
+
+After choosing what token type you want, you can configure different access constraints on
+your token. By constraint, we mean how to limit and narrow down how your token can be used.
+This can be of crucial importance if you plan on using the token in a public environment,
+e.g. on a public dashboard on another site, embedded in an iframe.
+Since tokens always have the same access/authorities that your user currently has, taking special 
+care is needed if you intend to use it in any environment you don't have 100% control over.
+
+**NB**: If anyone else gets their hands on your token, they can do anything your user can do. 
+It is not possible to distinguish between actions performed using the token and other actions
+performed by your user.
+
+**Important**: It is strongly advised that you create a separate unique user with only the roles/authorities
+you want the token to have if you plan on using PAT tokens in a non-secure and/or public environment,
+e.g. on a PC or server, you don't have 100% control over, or "embedded" in a webpage on another server.
+
+#### The different constraint types are as follows: { #the-different-constraint-types-are-as-follows } 
+* Expiry time
+* Allowed UP addresses
+* Allowed HTTP methods
+* Allowed HTTP referrers
+
+##### Expiry time { #expiry-time } 
+Expiry time simply sets for how long you want your token to be usable, the default is 30
+days. After the expiry time, the token will simply return a 401 (Unauthorized) message.
+You can set any expiry time you want, but it is strongly advised that you set an expiry time 
+that is reasonable for your use case.
+
+#### Allowed IP addresses { #allowed-ip-addresses } 
+This is a comma-separated list of IP addresses you want to limit where the token requests can come from.
+
+**Important**: IP address validation relies on the X-Forwarded-For header, which can be spoofed.
+For security, make sure a load balancer or reverse proxy overwrites this header.
+
+#### Allowed HTTP methods { #allowed-http-methods } 
+A comma-separated list of HTTP methods you want your token to be able to use.
+If you only need your token to view data, not modify or delete, selecting only the GET HTTP method 
+makes sense.
+
+#### Allowed HTTP referrers { #allowed-http-referrers } 
+HTTP referer is a header added to the request, when you click on a link, this says which site/page 
+you were on when you clicked the link. 
+Read more about the HTTP referer header here: https://en.wikipedia.org/wiki/HTTP_referer
+
+This can be used to limit the use of a "public" token embedded on another page on another site. 
+Making sure that the referer header match the site hostname in should come from, can
+help avoid abuse of the token, e.g. if someone posts it on a public forum.
+
+**Important**: this is not a security feature. The `referer` header can easily be spoofed.
+This setting is intended to discourage unauthorized third-party developers from connecting
+to public access instances.
+
+#### Saving your token: { #saving-your-token } 
+When you are done configuring your token, you can save it by clicking the "Generate new token"
+button, on the bottom right of the pop-up.
+When doing so the token will be saved and a secret token key will be generated on the server.
+The new secret token key will be shown on the bottom of the PAT token list with a green background,
+and the text "Newly created token".
+The secret token key will look similar to this:
+```
+d2pat_5xVA12xyUbWNedQxy4ohH77WlxRGVvZZ1151814092
+```
+**Important**: This generated secret token key will only be shown once, so it is important 
+that you copy the token key now and save it in a secure place for use later. 
+The secret token key will be securely hashed on the server, and only the hash of this secret token 
+key will be saved to the database. This is done to minimize the security impact if someone gets 
+unauthorized access to the database, similar to the way passwords are handled.
+
+### B. Creating a token via the API { #b-creating-a-token-via-the-api } 
+
+Example of how to create a new Personal Access Token with the API:
+
+```
+POST https://play.dhis2.org/dev/api/apiToken
+Content-Type: application/json
+Authorization: Basic admin district
+
+{}
+```
+**NB**: Remember the empty JSON body (`{}`) in the payload! 
+
+This will return a response containing a token similar to this:
+```json
+{
+  "httpStatus": "已创建",
+  "httpStatusCode": 201,
+  "status": "正常",
+  "response": {
+     "responseType": "ApiTokenCreationResponse",
+     "key": "d2pat_5xVA12xyUbWNedQxy4ohH77WlxRGVvZZ1151814092",
+     "uid": "jJYrtIVP7qU",
+     "klass": "org.hisp.dhis.security.apikey.ApiToken",
+     "errorReports": []
+  }
+}
+```
+
+**Important**: The token key will only be shown once here in this response.
+You need to copy and save this is in a secure place for use later!
+
+The token itself consists of three parts:
+1. Prefix: (`d2pat_`) indicates what type of token this is.
+2. Random bytes Base64 encoded: (`5xVA12xyUbWNedQxy4ohH77WlxRGVvZZ`)
+3. CRC32 checksum: (`1151814092`) the checksum part is padded with 0 so that it always stays ten characters long.
+
+
+#### Configure your token via the API: { #configure-your-token-via-the-api } 
+To change any of the constraints on your token, you can issue the following HTTP API request.
+
+**NB**: Only the constraints are possible to modify after the token is created! 
+
+```
+PUT https://play.dhis2.org/dev/api/apiToken/jJYrtIVP7qU
+Content-Type: application/json
+Authorization: Basic admin district
+```
+
+```json
+{
+  “版本”：1，
+  “类型”：“PERSONAL_ACCESS_TOKEN”，
+  “过期”：163465349603200，
+  “属性”： [
+      {
+        "type": "IpAllowedList",
+        “allowedIps”：[“192.168.0.1”]
+      },
+      {
+        "type": "方法允许列表",
+        “允许的方法”：[“GET”]
+      }
+  ]
+}
+```
+
+### Using your Personal Access Token { #using-your-personal-access-token } 
+
+To issue a request with your newly created token, use the Authorization header
+accordingly.
+The Authorization header format is:
+```
+Authorization: ApiToken [YOUR_SECRET_API_TOKEN_KEY]
+```
+**Example**:
+```
+GET https://play.dhis2.org/dev/api/apiToken/jJYrtIVP7qU
+Content-Type: application/json
+Authorization: ApiToken d2pat_5xVA12xyUbWNedQxy4ohH77WlxRGVvZZ1151814092
+```
+
+
+### Deleting your Personal Access Token { #deleting-your-personal-access-token } 
+You can delete your PATs either in the UI on your profile page where you created it,
+or via the API like this:
+```
+DELETE https://play.dhis2.org/dev/api/apiToken/jJYrtIVP7qU
+Content-Type: application/json
+Authorization: ApiToken d2pat_5xVA12xyUbWNedQxy4ohH77WlxRGVvZZ1151814092
+```
+
+
+## OAuth2 { #webapi_oauth2 } 
+
+DHIS2支持* OAuth2 *身份验证协议。 OAuth2是开放的
+授权标准，允许第三方客户代表DHIS2用户进行连接，并为对Web API的后续请求*bearer token* 。 DHIS2不支持细粒度
+OAuth2角色，而是根据用户角色提供应用程序访问权限
+DHIS2用户的身份。
+
+您要允许其OAuth 2身份验证的每个客户端都必须
+在DHIS2中注册。要添加新的OAuth2客户端，请转到`应用>设置> OAuth2客户端`。
+在用户界面中，单击*添加新*，然后输入所需的客户端名称和授权类型。
+
+#### 使用Web API添加客户端 { #adding-a-client-using-the-web-api } 
+
+可以通过 Web API 添加 OAuth2 客户端。例如，我们可以
+发送这样的有效载荷：
+
+```json
+{
+  "name": "OAuth2 Demo Client",
+  "cid": "demo",
+  "secret": "1e6db50c-0fee-11e5-98d0-3c15c2c6caf6",
+  "grantTypes": [
+    "password",
+    "refresh_token",
+    "authorization_code"
+  ],
+  "redirectUris": [
+    "http://www.example.org"
+  ]
+}
+```
+
+可用以下命令发送有效负载：
+
+```bash
+SERVER="https://play.dhis2.org/dev"
+curl -X POST -H "Content-Type: application/json" -d @client.json
+  -u admin:district "$SERVER/api/oAuth2Clients"
+```
+
+我们将使用此客户端作为下一个赠款类型示例的基础。
+
+#### 授权类型密码 { #webapi_oauth2_password } 
+
+所有授权类型中最简单的是 *password* 授权类型。这
+授权类型类似于基本身份验证，因为它
+要求客户端收集用户的用户名和密码。作为
+例如，我们可以使用我们的演示服务器：
+
+```bash
+SERVER="https://play.dhis2.org/dev"
+SECRET="1e6db50c-0fee-11e5-98d0-3c15c2c6caf6"
+
+curl -X POST -H "Accept: application/json" -u demo:$SECRET "$SERVER/uaa/oauth/token"
+  -d grant_type=password -d username=admin -d password=district
+```
+
+这将给您类似的响应：
+
+```json
+{
+  "expires_in": 43175,
+  "scope": "ALL",
+  "access_token": "07fc551c-806c-41a4-9a8c-10658bd15435",
+  "refresh_token": "a4e4de45-4743-481d-9345-2cfe34732fcc",
+  "token_type": "bearer"
+}
+```
+
+现在，我们将专注于 `access_token`，这就是我们
+将用作我们的身份验证（承载）令牌。例如，我们将得到
+使用我们的令牌的所有数据元素：
+
+```bash
+SERVER="https://play.dhis2.org/dev"
+curl -H "Authorization: Bearer 07fc551c-806c-41a4-9a8c-10658bd15435" "$SERVER/api/33/dataElements.json"
+```
+
+#### 授予类型refresh \ _token { #webapi_refresh_token } 
+
+通常，访问令牌的有效性有限。你可以看看
+在上一个示例中响应的 `expires_in` 属性处
+了解令牌何时到期。要获得新的`access_token`，您
+可以再次往返服务器并使用`refresh_token`
+这允许您获得更新的令牌而无需要求
+再次使用用户凭据。
+
+```bash
+SERVER="https://play.dhis2.org/dev"
+SECRET="1e6db50c-0fee-11e5-98d0-3c15c2c6caf6"
+REFRESH_TOKEN="a4e4de45-4743-481d-9345-2cfe34732fcc"
+
+curl -X POST -H "Accept: application/json" -u demo:$SECRET "$SERVER/uaa/oauth/token"
+  -d "grant_type=refresh_token" -d "refresh_token=$REFRESH_TOKEN"
+```
+
+响应与获得令牌开始时的响应完全相同。
+
+#### 授予类型authorization_code { #webapi_authorization_code } 
+
+如果您不想的话，建议使用授权代码授予类型
+在外部存储用户凭据。它允许DHIS2收集
+用户名/密码直接来自用户而不是客户端
+收集它们，然后代表用户进行身份验证。请成为
+注意这种方法使用了客户端的` redirectUris`部分
+有效载荷。
+
+第 1 步：使用 Web 浏览器访问以下 URL。如果你有不止一个
+重定向 URI，您可能需要添加 `&redirect_uri=http://www.example.org`
+到网址：
+
+```bash
+SERVER="https://play.dhis2.org/dev"
+$SERVER/uaa/oauth/authorize?client_id=demo&response_type=code
+```
+
+第 2 步：在用户成功登录并接受您的
+客户端访问，它将重定向回您的重定向 uri，如下所示：
+
+    http://www.example.org/?code=XYZ
+
+第 3 步：这一步类似于我们在密码授予类型中所做的，
+使用给定的代码，我们现在将要求访问令牌：
+
+```bash
+SERVER="https://play.dhis2.org/dev"
+SECRET="1e6db50c-0fee-11e5-98d0-3c15c2c6caf6"
+
+curl -X POST -u demo:$SECRET -H "Accept: application/json" $SERVER/uaa/oauth/token
+-d "grant_type=authorization_code" -d "code=XYZ"
+```
+
+## 错误和信息消息 { #webapi_error_info_messages } 
+
+Web API 对所有错误/警告和
+信息性消息：
+
+```json
+{
+  "httpStatus": "Forbidden",
+  "message": "You don't have the proper permissions to read objects of this type.",
+  "httpStatusCode": 403,
+  "status": "ERROR"
+}
+```
+
+在这里我们可以从消息中看到用户试图访问一个
+我无权访问的资源。它使用 http 状态码 403，
+http 状态消息 *forbidden* 和描述性消息。
+
+
+
+Table: WebMessage properties
+
+| 名称 | 描述 |
+|---|---|
+| httpStatus | HTTP Status message for this response, see RFC 2616 (Section 10) for more information. |
+| httpStatusCode | HTTP Status code for this response, see RFC 2616 (Section 10) for more information. |
+| status | DHIS2状态，可能的值为*OK* | *WARNING* | *ERROR*，其中`OK`表示一切顺利，`ERROR`表示操作未完成，`WARNING`表示操作部分成功，如果消息包含`response`属性，请在那里查找更多信息。 |
+| message | A user-friendly message telling whether the operation was a success or not. |
+| devMessage | A more technical, developer-friendly message (not currently in use). |
+| response | Extension point for future extension to the WebMessage format. This will be documented when it starts being used. |
+
+## 日期和期间格式 { #webapi_date_perid_format } 
+
+在整个 Web API 中，我们指的是日期和期间。日期格式
+是：
+
+    yyyy-MM-dd
+
+例如，如果您想表达 2014 年 3 月 20 日，则必须使用
+*2014-03-20*。
+
+下表描述了期间格式（也可在
+API 端点`/api/periodTypes`)
+
+
+
+Table: Period format
+
+| Interval | 格式 | 例 | 描述 |
+|---|---|---|---|
+| Day | yyyyMMdd | 20040315 | March 15, 2004 |
+| Week | yyyyWn | 2004W10 | Week 10 2004 |
+| Week Wednesday | yyyyWedWn | 2015WedW5 | Week 5 with start Wednesday |
+| Week Thursday | yyyyThuWn | 2015年第6周星期四 | Week 6 with start Thursday |
+| Week Saturday | yyyySatWn | 2015SatW7 | Week 7 with start Saturday |
+| Week Sunday | yyyySunWn | 2015SunW8 | Week 8 with start Sunday |
+| Bi-week | yyyyBiWn | 2015BiW1 | Week 1-2 20015 |
+| Month | yyyyMM | 200403 | March 2004 |
+| Bi-month | yyyyMMB | 200401B | January-February 2004 |
+| Quarter | yyyyQn | 2004Q1 | January-March 2004 |
+| Six-month | yyyySn | 2004S1 | January-June 2004 |
+| Six-month April | yyyyAprilSn | 2004AprilS1 | April-September 2004 |
+| Year | yyyy | 2004 | 2004 |
+| Financial Year April | yyyyApril | 2004April | Apr 2004-Mar 2005 |
+| Financial Year July | yyyyJuly | 2004July | July 2004-June 2005 |
+| Financial Year Oct | yyyyOct | 2004Oct | Oct 2004-Sep 2005 |
+
+
+### 相对时期 { #webapi_date_relative_period_values } 
+
+
+在 API 的某些部分，例如分析资源，您可以
+除了固定期间（如上定义）之外，还使用相对期间。
+相对期间是相对于当前日期并允许例如
+用于创建动态报告。可用的相对期间值是：
+
+    THIS_WEEK, LAST_WEEK, LAST_4_WEEKS, LAST_12_WEEKS, LAST_52_WEEKS,
+    THIS_MONTH, LAST_MONTH, THIS_BIMONTH, LAST_BIMONTH, THIS_QUARTER, LAST_QUARTER,
+    THIS_SIX_MONTH, LAST_SIX_MONTH, MONTHS_THIS_YEAR, QUARTERS_THIS_YEAR,
+    THIS_YEAR, MONTHS_LAST_YEAR, QUARTERS_LAST_YEAR, LAST_YEAR, LAST_5_YEARS, LAST_10_YEARS, LAST_10_FINANCIAL_YEARS, LAST_12_MONTHS, 
+    LAST_3_MONTHS, LAST_6_BIMONTHS, LAST_4_QUARTERS, LAST_2_SIXMONTHS, THIS_FINANCIAL_YEAR,
+    LAST_FINANCIAL_YEAR, LAST_5_FINANCIAL_YEARS
+
+
+## Authorities { #authorities } 
+System authority ids and names can be listed using:
+
+    /api/authorities
+
+It returns the following format:
+```json
+{
+  "systemAuthorities": [
+    {
+      "id": "ALL",
+      "name": "ALL"
+    },
+    {
+      "id": "F_ACCEPT_DATA_LOWER_LEVELS",
+      "name": "Accept data at lower levels"
+    }
+    //...
+  ]
+}
+```
+

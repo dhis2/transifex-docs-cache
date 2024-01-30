@@ -1,0 +1,1912 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.40/src/sysadmin/installation.md"
+revision_date: '2023-07-18'
+tags:
+- DHIS základní verze 2.40
+- Správa
+---
+
+# Instalace { #installation } 
+
+Kapitola o instalaci obsahuje informace o tom, jak nainstalovat DHIS2 v různých kontextech, včetně online centrálního serveru, offline místní sítě, samostatné aplikace a samostatného balíčku nazvaného DHIS2 Live.
+
+## Úvod { #install_introduction } 
+
+DHIS2 runs on all platforms for which there exists a Java JDK, which includes most popular operating
+systems such as Windows, Linux and Mac. DHIS2 runs on the PostgreSQL
+database system. DHIS2 is packaged as a standard Java Web Archive
+(WAR-file) and thus runs on any Servlet containers such as Tomcat and
+Jetty.
+
+The DHIS2 team recommends Ubuntu 18.04 LTS operating system, PostgreSQL
+database system and Tomcat Servlet container as the preferred
+environment for server installations.
+
+Tato kapitola obsahuje průvodce nastavením výše uvedeného technologického zásobníku. Měla by však být čtena jako návod pro zprovoznění, nikoli jako vyčerpávající dokumentace k uvedenému prostředí. Pro podrobnější čtení odkazujeme na oficiální dokumentaci k Ubuntu, PostgreSQL a Tomcatu.
+
+The `dhis2-tools` Ubuntu package automates many of the tasks described in
+the guide below and is recommended for most users, especially those who
+are not familiar with the command line or administration of servers. It
+is described in detail in a separate chapter in this guide.
+
+## Specifikace serveru { #install_server_specifications } 
+
+DHIS2 je databázově náročná aplikace a vyžaduje, aby váš server měl odpovídající množství paměti RAM, počet jader procesoru a rychlý disk. Tato doporučení je třeba považovat za pravidla, nikoli za přesná opatření. DHIS2 se lineárně škáluje v závislosti na množství paměti RAM a počtu jader procesoru, takže čím více si jich můžete dovolit, tím lépe bude aplikace fungovat.
+
+- *RAM:* Alespoň 2 GB pro malou instanci, 12 GB pro střední instanci, 64 GB nebo více pro velkou instanci.
+- *CPU cores:* 4 CPU cores for a small instance, 8 CPU cores for a medium instance, 16 CPU cores or more for a large instance.
+- *Disk:* Jako úložné zařízení se doporučuje SSD. Minimální
+  rychlost čtení je 150 Mb/s, 200 Mb/s je dobré, 350 Mb/s nebo lepší je
+  ideal. At least 100 GB storage space is recommended, but
+  bude zcela záviset na množství dat obsažených v 
+  tabulkích datových hodnot. Tabulky Analytics vyžadují značné množství
+  storage space. Plan ahead and ensure that your server can be upgraded
+  s větším prostorem na disku podle potřeby.
+
+## Softwarové požadavky { #install_software_requirements } 
+
+Pozdější verze DHIS2 vyžadují pro provoz následující verze softwaru.
+
+- Operační systém, pro který existuje Java JDK nebo JRE verze 8 nebo 11. Doporučuje se Linux.
+- Java JDK. OpenJDK is recommended.  
+    - Pro DHIS 2 verze 2.38 a novější je vyžadován JDK 11.
+    - For DHIS 2 version 2.35 and later, JDK 11 is recommended and JDK 8 or later is required. 
+    - Pro verze DHIS 2 starší než 2.35 je vyžadován JDK 8.
+- PostgreSQL database version 9.6 or later. A later PostgreSQL version such as version 14 is recommended.
+- Rozšíření databáze PostGIS verze 2.2 nebo novější.
+- Kontejner servletu Tomcat verze 8.5.50 nebo novější nebo jiné rozhraní Servlet API
+  3.1 kompatibilní servletové kontejnery.
+- Pouze nastavení clusteru (volitelně): Redis datové úložiště verze 4 nebo novější.
+
+## Nastavení serveru { #install_server_setup } 
+
+This section describes how to set up a server instance of DHIS2 on
+Ubuntu 18.04 64 bit with PostgreSQL as database system and Tomcat as
+Servlet container. This guide is not meant to be a step-by-step guide
+per se, but rather to serve as a reference to how DHIS2 can be deployed
+on a server. There are many possible deployment strategies, which will
+differ depending on the operating system and database you are using, and
+other factors. The term *invoke* refers to executing a given command in
+a terminal.
+
+For this guide we assume that 8 Gb RAM is allocated for PostgreSQL and 8
+GB RAM is allocated for Tomcat/JVM, and that a 64-bit operating system
+is used. *If you are running a different configuration please adjust the
+suggested values accordingly\!*
+
+We recommend that the available memory
+is split roughly equally between the database and the JVM. Remember to
+leave some of the physical memory to the operating system for it to
+perform its tasks, for instance around 2 GB. The steps marked as
+*optional*, like the step for performance tuning, can be done at a later
+stage.
+
+### Vytvoření uživatele pro spuštění DHIS2 { #install_creating_user } 
+
+Měli byste vytvořit vyhrazeného uživatele pro běh DHIS2.
+
+> **Důležité**
+>
+> Server DHIS2 byste neměli spouštět jako privilegovaný uživatel, jako je root.
+
+Vytvořte nového uživatele s názvem dhis vyvoláním:
+
+```sh
+sudo useradd -d /home/dhis -m dhis -s /bin/false
+```
+
+Poté nastavte heslo pro svůj účet:
+
+```sh
+sudo passwd dhis
+```
+
+Ujistěte se, že jste nastavili silné heslo s alespoň 15 náhodnými znaky.
+
+### Vytvoření konfiguračního adresáře { #install_creating_config_directory } 
+
+Začněte vytvořením vhodného adresáře pro konfiguraci DHIS2. souborů. Tento adresář bude také používán pro aplikace, soubory a soubory protokolu. Příkladem může být adresář:
+
+```sh
+mkdir /home/dhis/config
+chown dhis:dhis /home/dhis/config
+```
+
+DHIS2 will look for an environment variable called `DHIS2_HOME` to
+locate the DHIS2 configuration directory. This directory will be
+referred to as `DHIS2_HOME` in this installation guide. We will define
+the environment variable in a later step in the installation process.
+
+If no environment variable `DHIS2_HOME` is found, the default 
+configuration file location `/opt/dhis2` is used.
+
+### Nastavení časového pásma a národního prostředí serveru { #install_setting_server_tz } 
+
+Může být nutné změnit konfiguraci časového pásma serveru tak, aby odpovídalo časovému pásmu místa, které bude server DHIS2 pokrývat. Pokud používáte virtuální privátní server, nemusí výchozí časové pásmo odpovídat časovému pásmu umístění DHIS2. Časové pásmo můžete snadno překonfigurovat vyvoláním níže uvedených pokynů a jejich dodržováním.
+
+```sh
+sudo dpkg-reconfigure tzdata
+```
+
+PostgreSQL je citlivý na místní jazyky, takže možná budete muset nejprve nainstalovat svůj místní jazyk. Chcete-li zkontrolovat existující locales a nainstalovat nové (např. norské):
+
+```sh
+locale -a
+sudo locale-gen nb_NO.UTF-8
+```
+
+### Instalace PostgreSQL { #install_postgresql_installation } 
+
+Nainstalujte PostgreSQL vyvoláním:
+
+```sh
+sudo apt-get install -y postgresql-12 postgresql-12-postgis-3
+```
+
+Vytvořte neprivilegovaného uživatele s názvem *dhis* vyvoláním:
+
+```sh
+sudo -u postgres createuser -SDRP dhis
+```
+
+Po výzvě zadejte zabezpečené heslo. Vytvořte databázi vyvoláním:
+
+```sh
+sudo -u postgres createdb -O dhis dhis2
+```
+
+Vraťte se do relace vyvoláním příkazu `exit` Nyní máte uživatele PostgreSQL s názvem *dhis* a databázi s názvem *dhis2*.
+
+Rozšíření *PostGIS* je nutné pro fungování několika funkcí GIS/mapování. DHIS 2 se pokusí nainstalovat rozšíření PostGIS během spuštění. Pokud uživatel databáze DHIS 2 nemá oprávnění vytvářet rozšíření, můžete jej vytvořit z konzoly pomocí uživatele *postgres* pomocí následujících příkazů:
+
+```sh
+sudo -u postgres psql -c "create extension postgis;" dhis2
+```
+
+For adding trigram indexes and compounding it with primitive column types, two extensions have to be created in the database for DHIS 2 verision 2.38 and later. The extensions are already part of the default posgresql installation:
+
+```sh
+sudo -u postgres psql -c "create extension btree_gin;" dhis2
+sudo -u postgres psql -c "create extension pg_trgm;" dhis2
+```
+
+Ukončete konzolu a vraťte se k předchozímu uživateli příkazem *\\q*, po kterém následuje příkaz *exit*.
+
+### Ladění výkonu PostgreSQL { #install_postgresql_performance_tuning } 
+
+Tuning PostgreSQL is required to achieve a high-performing system but
+is optional in terms of getting DHIS2 to run. The various settings can be
+specified in the `postgresql.conf` configuration file or, preferably, in a specific
+file in the `conf.d` directory. The settings is based on allocating 8 GB RAM to
+PostgreSQL and should be adjusted accordingly to the environment.
+
+```sh
+sudo nano /etc/postgresql/12/main/postgresql.conf
+```
+
+Set the following properties.
+
+```properties
+max_connections = 200
+```
+
+Určuje maximální počet připojení, které PostgreSQL povolí.
+
+```properties
+shared_buffers = 3GB
+```
+
+Určuje, kolik paměti má být přiděleno výhradně pro cachování PostgreSQL. Toto nastavení řídí velikost sdílené paměti jádra, která má být vyhrazena pro PostgreSQL. Mělo by být nastaveno na přibližně 40 % celkové paměti vyhrazené pro PostgreSQL.
+
+```properties
+work_mem = 24MB
+```
+
+Určuje množství paměti použité pro interní operace třídění a hashování. Toto nastavení se vztahuje na jedno připojení a jeden dotaz, takže při jeho příliš vysokém zvýšení může dojít ke spotřebě velkého množství paměti. Správné nastavení této hodnoty je zásadní pro výkon agregace DHIS2.
+
+```properties
+maintenance_work_mem = 1GB
+```
+
+Určuje množství paměti, které může PostgreSQL využít pro údržbové operace, jako je vytváření indexů, spouštění vakua, přidávání cizích klíčů. Zvýšení této hodnoty může zlepšit výkonnost vytváření indexů během procesů generování analýz.
+
+```properties
+temp_buffers = 16MB
+```
+
+Sets the maximum number of temporary buffers used by each database 
+session. These are session-local buffers used only for access to temporary 
+tables. 
+
+```properties
+effective_cache_size = 8GB
+```
+
+An estimate of how much memory is available for disk caching by the
+operating system (not an allocation) and is used by PostgreSQL to
+determine whether a query plan will fit into memory or not. Setting it
+to a higher value than what is really available will result in poor
+performance. This value should be inclusive of the `shared_buffers`
+setting. PostgreSQL has two layers of caching: The first layer uses the
+kernel shared memory and is controlled by the shared\_buffers setting.
+PostgreSQL delegates the second layer to the operating system disk cache
+and the size of available memory can be given with the
+`effective_cache_size` setting.
+
+```properties
+checkpoint_completion_target = 0.8
+```
+
+Nastaví paměť použitou pro vyrovnávací paměť během procesu zápisu WAL. Zvýšení této hodnoty může zlepšit propustnost v systémech náročných na zápis.
+
+```properties
+synchronous_commit = off
+```
+
+Určuje, zda odevzdání transakce počká na zapsání záznamů WAL na disk před návratem ke klientovi, nebo ne. Nastavení této hodnoty na vypnuto výrazně zlepší výkon. Znamená to také, že mezi ohlášením úspěšné transakce klientovi a jejím skutečným zabezpečením je mírná prodleva, ale stav databáze nemůže být poškozen a je to dobrá alternativa pro systémy náročné na výkon a zápis, jako je DHIS2.
+
+```properties
+wal_writer_delay = 10s
+```
+
+Určuje prodlevu mezi operacemi zápisu WAL. Nastavení této hodnoty na vysokou hodnotu zlepší výkon na systémech náročných na zápis, protože během jednoho zápisu na disk může být provedeno potenciálně mnoho operací zápisu.
+
+```properties
+random_page_cost = 1.1
+```
+
+*Pouze SSD.* Nastavuje odhad plánovače dotazů na cenu za stránku disku, která není sekvenčně načítána. Nízká hodnota způsobí, že systém upřednostní indexové skenování před sekvenčním skenováním. Nízká hodnota má smysl pro databáze běžící na jednotkách SSD nebo s velkou mezipamětí v paměti. Výchozí hodnota je 4,0, což je u tradičních disků rozumné.
+
+```properties
+max_locks_per_transaction = 96
+```
+
+Určuje průměrný počet zámků objektů přidělených pro každou transakci. Toto je nastaveno hlavně proto, aby bylo možné dokončit upgradovací rutiny, které se dotýkají velkého počtu tabulek.
+
+```properties
+track_activity_query_size = 8192
+```
+
+Určuje počet bajtů vyhrazených pro sledování aktuálně prováděného příkazu pro každou aktivní relaci. Užitečné pro zobrazení celého řetězce dotazu pro monitorování aktuálně běžících dotazů.
+
+Restartujte PostgreSQL zadáním následujícího příkazu:
+
+```sh
+sudo systemctl restart postgresql
+```
+
+### Instalace Java { #install_java_installation } 
+
+Doporučený Java JDK pro DHIS 2 je OpenJDK 11 (pro verzi 2.35 a novější). Můžete jej nainstalovat pomocí následujícího příkazu:
+
+```
+sudo apt-get install -y openjdk-11-jdk
+```
+
+Pokud dáváte přednost OpenJDK 8 (pro verze starší než 2.35), můžete jej nainstalovat pomocí tohoto příkazu:
+
+```
+sudo apt-get install -y openjdk-8-jdk
+```
+
+Ověřte správnost instalace zadáním:
+
+```
+java -version
+```
+
+### Konfigurace DHIS2 { #install_database_configuration } 
+
+The database connection information is provided to DHIS2 through a
+configuration file called `dhis.conf`. Create this file and save it in
+the `DHIS2_HOME` directory. As an example this location could be:
+
+```sh
+/home/dhis/config/dhis.conf
+```
+
+Konfigurační soubor pro PostgreSQL odpovídající výše uvedenému nastavení má tyto vlastnosti:
+
+```properties
+# ----------------------------------------------------------------------
+# Database connection
+# ----------------------------------------------------------------------
+
+# JDBC driver class
+connection.driver_class = org.postgresql.Driver
+
+# Database connection URL
+connection.url = jdbc:postgresql:dhis2
+
+# Database username
+connection.username = dhis
+
+# Database password
+connection.password = xxxx
+
+# ----------------------------------------------------------------------
+# Server
+# ----------------------------------------------------------------------
+
+# Enable secure settings if deployed on HTTPS, default 'off', can be 'on'
+# server.https = on
+
+# Server base URL
+# server.base.url = https://server.com
+```
+
+Důrazně doporučujeme povolit nastavení `server.https` a nasazení DHIS 2 pomocí šifrovaného protokolu HTTPS. Toto nastavení umožní např. zabezpečené cookies. Je-li toto nastavení povoleno, je vyžadováno nasazení HTTPS.
+
+Nastavení `server.base.url` odkazuje na adresu URL, na kterou koncoví uživatelé v síti přistupují k síti.
+
+Note that the configuration file supports environment variables. This
+means that you can set certain properties as environment variables and
+have them resolved, e.g. like this where `DB\_PASSWD` is the
+name of the environment variable:
+
+```properties
+connection.password = ${DB_PASSWD}
+```
+
+Note that this file contains the password for your DHIS2 database in clear
+text so it needs to be protected from unauthorized access. To do this, 
+invoke the following command which ensures only the *dhis* user is allowed to read it:
+
+```sh
+chmod 600 dhis.conf
+```
+
+### Instalace Tomcat a DHIS2 { #install_tomcat_dhis2_installation } 
+
+Pro instalaci kontejneru servletů Tomcat použijeme uživatelský balíček Tomcat voláním:
+
+```sh
+sudo apt-get install -y tomcat8-user
+```
+
+This package lets us easily create a new Tomcat instance. The instance
+will be created in the current directory. An appropriate location is the
+home directory of the `dhis` user:
+
+```sh
+cd /home/dhis/
+sudo tomcat8-instance-create tomcat-dhis
+sudo chown -R dhis:dhis tomcat-dhis/
+```
+
+This will create an instance in a directory called `tomcat-dhis`. Note
+that the `tomcat8-user` package allows for creating any number of DHIS2
+instances if that is desired.
+
+Dále upravte soubor `tomcat-dhis/bin/setenv.sh` a přidejte řádky níže.
+
+* `JAVA_HOME` nastavuje umístění instalace JDK.
+* `JAVA_OPTS` předává parametry do JVM.
+    * `-Xms` nastavuje počáteční přidělení paměti prostoru Java heap.
+    * `-Xmx` nastavuje maximální přidělení paměti prostoru Java heap. To by mělo odrážet, kolik paměti byste chtěli přidělit softwarové aplikaci DHIS 2 na vašem serveru.
+* `DHIS2_HOME` nastavuje umístění konfiguračního souboru `dhis.conf` pro DHIS 2.
+
+Check that the path the Java binaries are correct as they might vary from system to system, e.g. on AMD systems you might see
+`/java-11-openjdk-amd64`. Note that you should adjust these values to your environment.
+
+```sh
+JAVA_HOME='/usr/lib/jvm/java-11-openjdk-amd64/'
+JAVA_OPTS='-Xms4000m -Xmx7000m'
+DHIS2_HOME='/home/dhis/config'
+```
+
+The Tomcat configuration file is located in
+`tomcat-dhis/conf/server.xml`. The element which defines the connection
+to DHIS is the *Connector* element with port 8080. You can change the
+port number in the Connector element to a desired port if necessary. 
+The `relaxedQueryChars` attribute is necessary to allow certain characters 
+in URLs used by the DHIS2 front-end.
+
+```xml
+<Connector port="8080" protocol="HTTP/1.1"
+  connectionTimeout="20000"
+  redirectPort="8443"
+  relaxedQueryChars="[]" />
+```
+
+The next step is to download the DHIS2 WAR file and place it into the
+_webapps_ directory of Tomcat. You can download DHIS2 WAR files from the following location: 
+
+```sh
+https://releases.dhis2.org/
+```
+
+Move the WAR file into the Tomcat `webapps` directory. We want to call the
+WAR file `ROOT.war` in order to make it available at `localhost` directly
+without a context path:
+
+```sh
+mv dhis.war tomcat-dhis/webapps/ROOT.war
+```
+
+DHIS2 should never be run as a privileged user. After you have modified
+the `setenv.sh file`, modify the startup script to check and verify that the
+script has not been invoked as root.
+
+```sh
+#!/bin/sh
+set -e
+
+if [ "$(id -u)" -eq "0" ]; then
+  echo "This script must NOT be run as root" 1>&2
+  exit 1
+fi
+
+export CATALINA_BASE="/home/dhis/tomcat-dhis"
+/usr/share/tomcat8/bin/startup.sh
+echo "Tomcat started"
+```
+
+### Spuštění DHIS2 { #install_running_dhis2 } 
+
+DHIS2 lze nyní spustit vyvoláním:
+
+    sudo -u dhis tomcat-dhis/bin/startup.sh
+
+> **Důležité**
+>
+> Server DHIS2 by nikdy neměl být spuštěn jako root nebo jiný privilegovaný uživatel.
+
+DHIS2 lze zastavit zadáním:
+
+    sudo -u dhis tomcat-dhis/bin/shutdown.sh
+
+Pro sledování chování systému Tomcat je hlavním zdrojem informací protokol. Protokol lze zobrazit následujícím příkazem:
+
+    tail -f tomcat-dhis/logs/catalina.out
+
+Assuming that the WAR file is called ROOT.war, you can now access your
+DHIS2 instance at the following URL:
+
+    http://localhost:8080
+
+## Konfigurace úložiště souborů { #install_file_store_configuration } 
+
+DHIS2 is capable of capturing and storing files. By default, files will
+be stored on the local file system of the server which runs DHIS2 in a *files*
+directory under the `DHIS2_HOME` external directory location. 
+
+You can also configure DHIS2 to store files on cloud-based storage
+providers. AWS S3 is the only supported provider currently. To enable
+cloud-based storage you must define the following additional properties
+in your `dhis.conf` file:
+
+```properties
+# File store provider. Currently 'filesystem' and 'aws-s3' are supported.
+filestore.provider = 'aws-s3'
+
+# Directory in external directory on local file system and bucket on AWS S3
+filestore.container = files
+
+# The following configuration is applicable to cloud storage only (AWS S3)
+
+# Datacenter location. Optional but recommended for performance reasons.
+filestore.location = eu-west-1
+
+# Username / Access key on AWS S3
+filestore.identity = xxxx
+
+# Password / Secret key on AWS S3 (sensitive)
+filestore.secret = xxxx
+```
+
+This configuration is an example reflecting the defaults and should be
+changed to fit your needs. In other words, you can omit it entirely if
+you plan to use the default values. If you want to use an external
+provider the last block of properties needs to be defined, as well as the
+*provider* property is set to a supported provider (currently only
+AWS S3).
+
+> **Poznámka**
+>
+> Pokud jste v dhis.conf nakonfigurovali cloudové úložiště, všechny soubory, které nahrajete
+> nebo soubory, které systém generuje, budou využívat cloudové úložiště.
+
+U produkčního systému je třeba pečlivě zvážit počáteční nastavení úložiště souborů, protože přesun souborů mezi poskytovateli úložišť při zachování integrity databázových odkazů by mohl být složitý. Mějte na paměti, že obsah úložiště souborů může obsahovat citlivé i nedílné informace, a proto se při produkční implementaci doporučuje chránit přístup ke složce a zajistit plán zálohování.
+
+> **Note**
+> 
+> AWS S3 is the only supported provider but more providers are likely to 
+> be added in the future, such as Google Cloud Store and Azure Blob Storage.
+> Let us know if you have a use case for additional providers.
+
+## Konfigurace účtu služby Google { #install_google_service_account_configuration } 
+
+Systém DHIS2 se může připojit k různým rozhraním API služeb Google. Například komponenta DHIS2 GIS může využívat rozhraní Google Earth Engine API k načítání mapových vrstev. Pro poskytnutí přístupových tokenů API je třeba nastavit účet služby Google a vytvořit soukromý klíč:
+
+  - Vytvořte si účet služby Google. Nahlédněte prosím do [Identifikátor Google
+    platformy](https://developers.google.com/identity/protocols/OAuth2ServiceAccount#overview)
+    a její dokumentace. 
+
+  - Navštivte [Google cloud console](https://console.cloud.google.com)
+    a přejděte na API Manager \> Credentials \> Create credentials \>
+    Service account key. Vyberte svůj účet služby a JSON jako klíč
+    zadejte a klikněte na Create.
+
+  - Přejmenujte klíč JSON na *dhis-google-auth.json*.
+
+After downloading the key file, put the `dhis-google-auth.json` file in
+the `DHIS2_HOME` directory (the same location as the `dhis.conf` file).
+As an example this location could be:
+
+    /home/dhis/config/dhis-google-auth.json
+
+## Konfigurace OpenID Connect (OIDC) { #install_oidc_configuration } 
+
+DHIS2 podporuje vrstvu identity OpenID Connect (OIDC) pro jednotné přihlášení (SSO). OIDC je standardní ověřovací protokol, který uživatelům umožňuje přihlásit se pomocí poskytovatele identity (IdP), jako je například Google. Poté, co se uživatelé úspěšně přihlásí ke svému IdP, budou automaticky přihlášeni k DHIS2.
+
+Tato část poskytuje obecné informace o používání DHIS2 s poskytovatelem OIDC a také kompletní příklady konfigurace.
+
+Ověřovací postup DHIS2 OIDC „autorizační kód“:
+
+1. Uživatel se pokusí přihlásit do DHIS2 a klikne na tlačítko poskytovatele OIDC na přihlašovací stránce.
+
+2. DHIS2 přesměruje prohlížeč na přihlašovací stránku IdP.
+
+3. Pokud ještě není přihlášen, bude uživatel vyzván k zadání přihlašovacích údajů. Po úspěšné autentizaci IdP odpoví přesměrováním zpět na server DHIS2. Přesměrování obsahuje jedinečný autorizační kód vygenerovaný pro uživatele.
+
+4. Server DHIS2 interně odešle autorizační kód uživatele zpět na server IdP spolu se svým vlastním ID klienta a tajnými pověřeními klienta.
+
+5. IdP vrátí ID token zpět na server DHIS2. Server DHIS2 provede ověření tokenu.
+
+6. Server DHIS2 vyhledá interního uživatele DHIS2 s požadavky na mapování nalezenými v tokenu ID (výchozí nastavení pro e-mail), autorizuje uživatele a dokončí proces přihlášení.
+
+### Requirements for using OIDC with DHIS2: { #requirements-for-using-oidc-with-dhis2 } 
+
+#### IdP server account { #idp-server-account } 
+
+Musíte mít účet správce u poskytovatele online identity (IdP) nebo na samostatném serveru, které podporuje DHIS2.
+
+V současné době jsou podporováni a testováni následující IdP:
+
+* Google
+* Azure AD
+* WSO2
+* Okta (Viz samostatný návod: [zde](#configure-openid-connect-with-okta))
+
+K dispozici je také **obecná konfigurace poskytovatele**, která může podporovat „jakéhokoli“ poskytovatele kompatibilního s OIDC.
+
+#### DHIS2 user account { #dhis2-user-account } 
+
+Musíte explicitně vytvořit uživatele na serveru DHIS2, než se budou moci přihlásit k poskytovateli identity. Jejich import z externího adresáře, jako je například Active Directory, není v současné době podporován. Standard OIDC nepodporuje zajišťování a správu uživatelů s externím úložištěm identit.
+
+#### Nároky IdP a mapování uživatelů { #idp-claims-and-mapping-of-users } 
+
+Chcete-li se přihlásit k DHIS2 pomocí OIDC, musí být daný uživatel zřízen v IdP a poté namapován na předem vytvořený uživatelský účet v DHIS2. OIDC používá metodu, která se opírá o nároky na sdílení atributů uživatelských účtů s jinými aplikacemi. Nároky zahrnují atributy uživatelských účtů, jako je e-mail, telefonní číslo, jméno atd. DHIS2 se spoléhá na nárok IdP k mapování uživatelských účtů z IdP na ty na serveru DHIS2. Ve výchozím nastavení DHIS2 očekává, že IdP předá požadavek _email_. V závislosti na vašem IdP možná budete muset nakonfigurovat DHIS2 tak, aby používal jiný nárok IdP.
+
+Pokud jako IdP používáte Google nebo Azure AD, výchozím chováním je použití nároku _email_ k mapování identit IdP na uživatelské účty DHIS2.
+
+> **Note**
+>
+> In order for a DHIS2 user to be able to log in with an IdP, the user profile checkbox: *External authentication only OpenID or LDAP* must be checked and *OpenID* field must match the claim (mapping claim) returned by the IdP. Email is the default claim used by both Google and Azure AD.
+
+### Nakonfigurujte poskytovatele identity pro OIDC { #configure-the-identity-provider-for-oidc } 
+
+Toto téma poskytuje obecné informace o konfiguraci poskytovatele identity (IdP) pro použití OIDC s DHIS2. Toto je jeden krok ve vícekrokovém procesu. Každý IdP má mírně odlišné způsoby konfigurace. Podívejte se do vlastní dokumentace vašeho IdP, jak vytvořit a nakonfigurovat aplikaci OIDC. Zde označujeme server DHIS2 jako "aplikaci" OIDC.
+
+#### URL přesměrování { #redirect-url } 
+
+All IdPs will require a redirect URL to your DHIS2 server. 
+You can construct it using the following pattern:
+
+```
+(protocol):/(your DHIS2 host)/oauth2/code/PROVIDER_KEY
+```
+
+Příklad při použití Google IdP:
+
+```
+https://mydhis2-server.org/oauth2/code/google
+```
+
+Externí odkazy na pokyny pro konfiguraci vašeho poskytovatele identity:
+
+* [Google](https://developers.google.com/identity/protocols/oauth2/openid-connect)
+* [Výukový program Azure AD](https://medium.com/xebia-engineering/authentication-and-authorization-using-azure-active-directory-266980586ab8)
+
+
+### Example setup for Google { #example-setup-for-google } 
+
+1. Zaregistrujte si účet a přihlaste se. Například pro Google můžete přejít do Google [konzole pro vývojáře](https://console.developers.google.com).
+2. Na panelu vývojáře Google klikněte na „vytvořit nový projekt“.
+3. Postupujte podle pokynů pro vytvoření ID klienta OAuth 2.0 a tajného klíče klienta.
+4. Nastavte svou adresu URL pro autorizované přesměrování na: `https://mydhis2-server.org/oauth2/code/google`
+5. Zkopírujte a uschovejte „ID klienta“ a „tajemství klienta“ na bezpečném místě.
+
+> **Tip**
+>
+> When testing on a local DHIS2 instance running for example on your laptop, you can use localhost as the redirect URL, like this: `https://localhost:8080/oauth2/code/google`
+> *Remember to also add the redirect URL in the Google developer console*
+
+#### Google dhis.conf example: { #google-dhisconf-example } 
+```properties
+
+# Enables OIDC login
+oidc.oauth2.login.enabled = on
+
+# Client id, given to you in the Google developer console
+oidc.provider.google.client_id = my client id
+
+# Client secret, given to you in the Google developer console
+oidc.provider.google.client_secret = my client secret
+
+# [Optional] Authorized redirect URI, the same as set in the Google developer console 
+# If your public hostname is different from what the server sees internally, 
+# you need to provide your full public url, like the example below.
+oidc.provider.google.redirect_url = https://mydhis2-server.org/oauth2/code/google
+
+# [Optional] Where to redirect after logging out.
+# If your public hostname is different from what the server sees internally, 
+# you need to provide your full public url, like the example below. 
+oidc.logout.redirect_url = https://mydhis2-server.org
+
+```
+
+### Example setup for Azure AD { #example-setup-for-azure-ad } 
+
+Make sure your Azure AD account in the Azure portal is configured with a redirect URL like: `(protocol):/(host)/oauth2/code/PROVIDER_KEY`. 
+To register your DHIS2 server as an "application" in the Azure portal, follow these steps:
+
+> **Note**
+>
+> PROVIDER_KEY is the "name" part of the configuration key, example: "oidc.provider.PROVIDER_KEY.tenant = My Azure SSO"
+> If you have multiple Azure providers you want to configure, you can use this name form: (azure.0), (azure.1) etc.
+> Redirect URL example: https://mydhis2-server.org/oauth2/code/azure.0
+
+1. Vyhledejte a vyberte *Registrace aplikací*.
+2. Klikněte na *Nová registrace*.
+3. In the *Name* field, enter a descriptive name for your DHIS2 instance.
+4. Do pole *URI přesměrování* zadejte adresu URL přesměrování, jak je uvedeno výše.
+5. Klikněte na *Registrovat*.
+
+#### Azure AD dhis.conf example: { #azure-ad-dhisconf-example } 
+```properties
+
+# Enables OIDC login
+oidc.oauth2.login.enabled = on
+
+# First provider (azure.0):
+
+# Alias, or name that will show on the login button in the DHIS2 login screen.
+oidc.provider.azure.0.tenant = organization name
+
+# Client id, given to you in the Azure portal
+oidc.provider.azure.0.client_id = my client id
+
+# Client secret, given to you in the Azure portal
+oidc.provider.azure.0.client_secret = my client secret
+
+# [Optional] Authorized redirect URI, the as set in Azure portal 
+# If your public hostname is different from what the server sees internally, 
+# you need to provide your full public url, like the example below.
+oidc.provider.azure.0.redirect_url = https://mydhis2-server.org/oauth2/code/azure.0
+
+# [Optional] Where to redirect after logging out.
+# If your public hostname is different from what the server sees internally, 
+# you need to provide your full public URL, like the example below.
+oidc.logout.redirect_url = https://mydhis2-server.org
+
+# [Optional], defaults to 'email'
+oidc.provider.azure.0.mapping_claim = email
+
+# [Optional], defaults to 'on'
+oidc.provider.azure.0.support_logout = on
+
+
+# Second provider (azure.1):
+
+oidc.provider.azure.1.tenant = other organization name
+...
+```
+
+### Generic providers { #generic-providers } 
+
+Generického poskytovatele lze použít ke konfiguraci „jakéhokoli“ standardního poskytovatele OIDC, který je kompatibilní s „Spring Security“.
+
+V níže uvedeném příkladu nakonfigurujeme norského vládního poskytovatele _HelseID_ OIDC pomocí klíče poskytovatele `helseid`.
+
+The defined provider will appear as a button on the login page with the provider key as the default name, 
+or the value of the `display_alias` if defined. The provider key is arbitrary and can be any alphanumeric string, 
+except for the reserved names used by the specific providers (`google`, `azure.0,azure.1...`, `wso2`).
+
+> **Note**
+> The generic provider uses the following hardcoded configuration defaults:
+> **(These are not possible to change)**
+> * Client Authentication, `ClientAuthenticationMethod.BASIC`: [rfc](https://tools.ietf.org/html/rfc6749#section-2.3)
+> * Authenticated Requests, `AuthenticationMethod.HEADER`: [rfc](https://tools.ietf.org/html/rfc6750#section-2) 
+
+#### Generic (helseid) dhis.conf example: { #generic-helseid-dhisconf-example } 
+
+```properties
+
+# Enables OIDC login
+oidc.oauth2.login.enabled = on
+
+# Required variables:
+oidc.provider.helseid.client_id = CLIENT_ID
+oidc.provider.helseid.client_secret = CLIENT_SECRET
+oidc.provider.helseid.mapping_claim = helseid://claims/identity/email
+oidc.provider.helseid.authorization_uri = https://helseid.no/connect/authorize
+oidc.provider.helseid.token_uri = https://helseid.no/connect/token
+oidc.provider.helseid.user_info_uri = https://helseid.no/connect/userinfo
+oidc.provider.helseid.jwk_uri = https://helseid.no/.well-known/openid-configuration/jwks
+oidc.provider.helseid.end_session_endpoint = https://helseid.no/connect/endsession
+oidc.provider.helseid.scopes = helseid://scopes/identity/email
+
+# [Optional] Authorized redirect URI, the as set in Azure portal 
+# If your public hostname is different from what the server sees internally, 
+# you need to provide your full public url, like the example below.
+oidc.provider.helseid.redirect_url = https://mydhis2-server.org/oauth2/code/helseid
+
+# [Optional], defaults to 'on'
+oidc.provider.helseid.enable_logout = on
+
+# [Optional] Where to redirect after logging out.
+# If your public hostname is different from what the server sees internally, 
+# you need to provide your full public URL, like the example below.
+oidc.logout.redirect_url = https://mydhis2-server.org
+
+# [Optional] PKCE support, see: https://oauth.net/2/pkce/), default is 'false'
+oidc.provider.helseid.enable_pkce = on
+
+# [Optional] Extra variables appended to the request. 
+# Must be key/value pairs like: "KEY1 VALUE1,KEY2 VALUE2,..."
+oidc.provider.helseid.extra_request_parameters = acr_values lvl4,other_key value2
+
+# [Optional] This is the alias/name displayed on the login button in the DHIS2 login page
+oidc.provider.helseid.display_alias = HelseID
+
+# [Optional] Link to an url for a logo. (Can use absolute or relative URLs)
+oidc.provider.helseid.logo_image = ../security/btn_helseid.svg
+# [Optional] CSS padding for the logo image
+oidc.provider.helseid.logo_image_padding = 0px 1px
+```
+
+### JWT bearer token authentication { #jwt-bearer-token-authentication } 
+
+Authentication with *JWT bearer tokens* can be enabled for clients which API-based when OIDC is configured. 
+The DHIS2 Android client is such a type of client and have to use JWT authentication if OIDC login is enabled.
+
+> **Note**
+>
+> DHIS2 currently only supports the OAuth2 authorization code grant flow for authentication with JWT, (also known as "three-legged OAuth")
+> DHIS2 currently only supports using Google as an OIDC provider when using JWT tokens
+
+
+### Požadavky { #requirements } 
+* Configure your Google OIDC provider as described above 
+* Disable the config parameter ```oauth2.authorization.server.enabled``` by setting it to 'off'
+* Enable the config parameter ```oidc.jwt.token.authentication.enabled``` by setting it to 'on'
+* Vygenerujte Android OAuth2 client_id, jak je popsáno [zde](https://developers.google.com/identity/protocols/oauth2/native-app#creatingcred)
+
+### JWT authentication example { #jwt-authentication-example } 
+
+Následující část `dhis.conf` ukazuje příklad, jak povolit ověřování JWT pro klienta založeného na rozhraní API.
+
+```properties
+
+# Umožňuje přihlášení OIDC
+oidc.oauth2.login.enabled = on
+
+# Minimální požadované konfigurační proměnné:
+oidc.provider.google.client_id = my_client_id
+oidc.provider.google.client_secret = my_client_secret
+
+# Povolte podporu JWT
+oauth2.authorization.server.enabled = off
+oidc.jwt.token.authentication.enabled = on
+
+# Definujte klienta 1 pomocí tokenů JWT
+oidc.provider.google.ext_client.0.client_id = JWT_CLIENT_ID
+
+# Definujte klienta 2 pomocí tokenů JWT
+oidc.provider.google.ext_client.1.client_id = JWT_CLIENT_ID
+
+```
+
+> **Note**
+>
+> See link for a separate tutorial for setting up Okta as a generic OIDC provider. 
+> [link](../tutorials/configure-oidc-with-okta.md)
+
+## Konfigurace LDAP { #install_ldap_configuration } 
+
+Systém DHIS2 umí pro ověřování uživatelů používat server LDAP. Pro ověřování LDAP je nutné mít v databázi DHIS2 odpovídajícího uživatele pro každou položku LDAP. Uživatel DHIS2 bude použit pro zastupování autorit / uživatelských rolí.
+
+To set up LDAP authentication you need to configure the LDAP server URL,
+a manager user and an LDAP search base and search filter. This
+configuration should be done in the DHIS 2 configuration file `dhis.conf`. 
+LDAP users, or entries, are identified by distinguished names 
+(DN from now on). An example configuration looks like this:
+
+```properties
+# LDAP server URL
+ldap.url = ldaps://domain.org:636
+
+# LDAP manager entry distinguished name
+ldap.manager.dn = cn=johndoe,dc=domain,dc=org
+
+# LDAP manager entry password
+ldap.manager.password = xxxx
+
+# LDAP base search
+ldap.search.base = dc=domain,dc=org
+
+# LDAP search filter
+ldap.search.filter = (cn={0})
+```
+
+Vlastnosti konfigurace LDAP jsou vysvětleny níže:
+
+- *ldap.url:* Adresa URL serveru LDAP, pro který se má ověřovat
+  naproti. Důrazně doporučujeme používat SSL / šifrování
+  make authentication secure. As example URL is
+  *ldaps://domain.org:636*, kde ldaps odkazuje na protokol,
+  *domain.org* odkazuje na název domény nebo IP adresu a *636*
+  odkazuje na port (636 je výchozí pro LDAPS).
+- *ldap.manager.dn:* Pro připojení je vyžadován uživatel správce LDAP
+  server LDAP pro proces ověřování uživatele. Tato vlastnost
+  odkazuje na DN tohoto záznamu. Tj. toto není uživatel, který to udělá
+  be authenticated when logging into DHIS2, rather the user which
+  binds to the LDAP server in order to do the authentication.
+- *ldap.manager.password:* Heslo pro uživatele správce LDAP.
+- *ldap.search.base:* Základ hledání nebo rozlišující název
+  the search base object, which defines the location in the directory
+  from which the LDAP search begins.
+- *ldap.search.filter:* Filtr pro odpovídající DN záznamů v
+  LDAP directory. The {0} variable will be substituted by the DHIS2
+  username, or alternatively, the LDAP identifier defined for the user
+  with the supplied username.
+
+DHIS2 will use the supplied username / password and try to authenticate
+against an LDAP server entry, then look up user roles / authorities from
+a corresponding DHIS2 user. This implies that a user must have a
+matching entry in the LDAP directory as well as a DHIS2 user in order to
+log in.
+
+During authentication, DHIS2 will try to bind to the LDAP server using
+the configured LDAP server URL and the manager DN and password. Once the
+binding is done, it will search for an entry in the directory using the
+configured LDAP search base and search filter.
+
+The {0} variable in the configured filter will be substituted before
+applying the filter. By default, it will be substituted by the supplied
+username. You can also set a custom LDAP identifier on the relevant
+DHIS2 user account. This can be done through the DHIS2 user module user
+interface in the add or edit screen by setting the "LDAP identifier"
+property. When set, the LDAP identifier will be substituted for the {0}
+variable in the filter. This feature is useful when the LDAP common name
+is not suitable or cannot for some reason be used as a DHIS2 username.
+
+## Konfigurace šifrování { #install_encryption_configuration } 
+
+DHIS2 allows for encryption of data. Enabling it requires some extra
+setup. To provide security to the encryption algorithm you will have to set a
+password (key) in the `dhis.conf` configuration file through the
+*encryption.password* property:
+
+```properties
+encryption.password = xxxx
+```
+
+The *encryption.password* property is the password (key) used when encrypting
+and decrypting data in the database.
+
+If an encryption password is not defined in `dhis.conf`, a default password will be
+used. Note that using the default password does not offer any added security due to 
+the open source nature of DHIS 2.
+
+Note that the password must not be changed once it has been set and data has been encrypted, as the data can then no longer be decrypted by the application.
+
+The password must be at least **24 characters long**. A mix of numbers 
+and lower- and uppercase letters is recommended. The encryption password 
+must be kept secret.
+
+> **Important**
+>
+> It is not possible to recover encrypted data if the encryption password is lost or changed. If the password is lost, so is the encrypted data. Conversely, the encryption provides no security if 
+> the password is compromised. Hence, great consideration should be given to storing the password in a safe place.
+
+Note that since the encryption key is stored in the `dhis.conf` configuration file and not
+within the database, when moving a database between server environments thorugh a dump and restore, the encryption key must be the same across environments to allow DHIS 2 to
+decrypt database content.
+
+Note that encryption support depends on the *Java Cryptography Extension* (JCE) policy files to be available. These are included in all versions of OpenJDK and Oracle JDK 8 Update 144 or later.
+
+## Přečtěte si konfiguraci replikace databáze { #install_read_replica_configuration } 
+
+DHIS 2 allows for utilizing read only replicas of the master database
+(the main DHIS 2 database). The purpose of read replicas is to enhance
+the performance of database read queries and scale out the capacity
+beyond the constraints of a single database. Read-heavy operations such
+as analytics and event queries will benefit from this.
+
+The configuration requires that you have created one or more replicated
+instances of the master DHIS 2 database. PostgreSQL achieves this
+through a concept referred to as *streaming replication*. Configuring
+read replicas for PostgreSQL is not covered in this guide.
+
+Read replicas can be defined in the `dhis.conf` configuration file. You
+can specify up to 5 read replicas per DHIS 2 instance. Each read replica
+is denoted with a number between 1 and 5. The JDBC connection URL must
+be defined per replica. The username and password can be specified; if
+not, the username and password for the master database will be used
+instead.
+
+The configuration for read replicas in `dhis.conf` looks like the below.
+Each replica is specified with the configuration key *readN* prefix,
+where N refers to the replica number.
+
+```properties
+# Read replica 1 configuration
+
+# Database connection URL, username and password
+read1.connection.url = jdbc:postgresql://127.0.0.11/dbread1
+read1.connection.username = dhis
+read1.connection.password = xxxx
+
+# Read replica 2 configuration
+
+# Database connection URL, username and password
+read2.connection.url = jdbc:postgresql://127.0.0.12/dbread2
+read2.connection.username = dhis
+read2.connection.password = xxxx
+
+# Read replica 3 configuration
+
+# Database connection URL, fallback to master for username and password
+read3.connection.url = jdbc:postgresql://127.0.0.13/dbread3
+```
+
+Note that you must restart your servlet container for the changes to
+take effect. DHIS 2 will automatically distribute the load across the
+read replicas. The ordering of replicas has no significance.
+
+## Konfigurace clusteru webového serveru { #install_web_server_cluster_configuration } 
+
+This section describes how to set up the DHIS 2 application to run in a
+cluster.
+
+### Přehled clusterování { #install_cluster_configuration_introduction } 
+
+Clustering is a common technique for improving system scalability and
+availability. Clustering refers to setting up multiple web servers such
+as Tomcat instances and have them serve a single application. Clustering
+allows for *scaling out* an application in the sense that new servers
+can be added to improve performance. It also allows for *high
+availability* as the system can tolerate instances going down without
+making the system inaccessible to users.
+
+Aby bylo možné spustit DHIS 2, je třeba nakonfigurovat několik aspektů
+v clusteru.
+
+* Musí být nainstalováno úložiště dat Redis a informace o připojení
+be provided for each DHIS 2 application instance in`dhis.conf`.
+
+* Instance a servery DHIS 2 musí sdílet stejnou složku *files*, pro kterou se používá
+aplikace a nahrávání souborů, a to buď prostřednictvím *cloudového úložiště souborů AWS S3*
+nebo sdílený síťový disk.
+
+* DHIS 2 instance cache invalidation must be enabled.
+
+* A load balancer such as nginx should be configured to distribute Web requests
+napříč instancemi clusteru.
+
+### DHIS 2 instance cache invalidation with Redis { #install_cluster_cache_invalidation_redis }
+
+DHIS 2 can invalidate the various instance's caches by listening for events sent and emitted from a Redis server, when configured to do so.
+
+This is considered the easiest and preferred way to enable cache invalidation, if you already plan to use [Redis for
+shared data store cluster configuration](#install_cluster_configuration_redis), it will share this Redis server for both purposes.
+
+#### Prerequisites { #prerequisites } 
+
+* Redis server
+
+#### Redis configuration { #redis-configuration } 
+
+No specific configuration in Redis is needed for DHIS 2 cache invalidation to work.
+
+When you chose to enable shared data store cluster configuration with Redis, you will share the Redis host/port
+configuration with the cache invalidation system. In other words you can only have **one** shared Redis server configured.
+
+#### DHIS 2 configuration { #dhis-2-configuration } 
+
+V konfiguračním souboru DHIS 2 `dhis.conf` musí být specifikovány následující vlastnosti:
+
+```properties
+# Cache invalidation config
+
+redis.cache.invalidation.enabled = on
+
+# Shared Redis configuration
+redis.host = REDIS_HOST
+redis.port = REDIS_PORT
+redis.password = PASSWORD (Optional, only if enabled on Redis server)
+redis.use.ssl = true (Optional, only if enabled on Redis server) 
+```
+
+### Znovu zadejte konfiguraci clusteru sdíleného úložiště dat { #install_cluster_configuration_redis } 
+
+In a cluster setup, a Redis server is required and will handle
+shared user sessions, application cache and cluster node leadership.
+
+For optimum performance, *Redis Keyspace events* for _generic commands_ 
+and _expired events_ need to be enabled in the Redis Server. If you are 
+using a cloud platform-managed Redis server (like *AWS ElastiCache for Redis* 
+or *Azure Cache for Redis*), you will have to enable keyspace event notifications 
+using the respective cloud console interfaces. If you are setting up a standalone 
+Redis server, enabling keyspace event notifications can be done in the 
+*redis.conf* file by adding or uncommenting the following line:
+
+```
+notify-keyspace-events Egx
+```
+
+DHIS2 will connect to Redis if the *redis.enabled* configuration
+property in `dhis.conf` is set to *on* along with the following properties:
+
+- *redis.host*: Určuje, kde je spuštěn server redis. Výchozí nastavení je *localhost *. Povinné.
+
+- *redis.port*: Určuje port, ve kterém server redis naslouchá. Výchozí hodnota je *6379 *. Volitelný.
+
+- *redis.password*: Určuje ověřovací heslo. Pokud heslo není vyžadováno, může být ponecháno prázdné.
+
+- *redis.use.ssl*: Určuje, zda má server Redis povoleno SSL. Výchozí hodnota je false. Volitelný. Výchozí hodnota je *false *.
+
+When Redis is enabled, DHIS2 will automatically assign one of the
+running instances as the leader of the cluster. The leader instance will
+be used to execute jobs or scheduled tasks that should be run
+exclusively by one instance. Optionally you can configure the
+*leader.time.to.live.minutes* property in `dhis.conf` to set up how
+frequently the leader election needs to occur. It also gives an
+indication of how long it would take for another instance to take over
+as the leader after the previous leader has become unavailable. The
+default value is 2 minutes. Note that assigning a leader in the cluster
+is only done if Redis is enabled. An example snippet of the `dhis.conf`
+configuration file with Redis enabled and leader election time
+configured is shown below.
+
+```properties
+# Redis Configuration
+
+redis.enabled = on
+
+# Shared Redis configuration
+redis.host = REDIS_HOST
+redis.port = REDIS_PORT
+redis.password = PASSWORD (Optional, only if enabled on Redis server)
+redis.use.ssl = true (Optional, only if enabled on Redis server)
+
+# Optional, defaults to 2 minutes
+leader.time.to.live.minutes=4 
+```
+
+### Konfigurace složky souborů { #files-folder-configuration } 
+
+DHIS 2 will store several types of files outside the application itself,
+such as apps, files saved in data entry and user avatars. When deployed
+in a cluster, the location of these files must be shared across all instances.
+On the local filesystem, the location is:
+
+```
+{DHIS2_HOME}/files
+```
+
+Here, `DHIS2_HOME` refers to the location of the DHIS 2 configuration file
+as specified by the DHIS 2 environment variable, and `files` is the file
+folder immediately below.
+
+Existují dva způsoby, jak dosáhnout sdíleného umístění:
+
+* Použijte možnost * AWS S3 cloud filestorage *. Soubory budou uloženy ve formátu
+S3 bucket, které je automaticky sdíleno všemi instancemi DHIS 2 v klastru.
+Pokyny najdete v části *Konfigurace úložiště souborů*.
+* Set up a shared folder which is shared among all DHIS 2 instances and
+servery v klastru. Na Linuxu toho lze dosáhnout pomocí * NFS * (Network File System)
+což je protokol distribuovaného systému souborů. Všimněte si, že pouze podsložka `soubory`
+by měla by být sdílena pod `DHIS2_HOME`, nikoli nadřazená složka.
+
+### Konfigurace nástroje pro vyrovnávání zatížení { #install_load_balancing } 
+
+With a cluster of Tomcat instances set up, a common approach for routing
+incoming web requests to the backend instances participating in the
+cluster is using a *load balancer*. A load balancer will make sure that
+load is distributed evenly across the cluster instances. It will also
+detect whether an instance becomes unavailable, and if so, stop routine
+requests to that instance and instead use other available instances.
+
+Load balancing can be achieved in multiple ways. A simple approach is
+using *nginx*, in which case you will define an *upstream* element which
+enumerates the location of the backend instances and later use that
+element in the *proxy* location block.
+
+```text
+http {
+
+  # Upstream element with sticky sessions
+
+  upstream dhis_cluster {
+    ip_hash;
+    server 193.157.199.131:8080;
+    server 193.157.199.132:8080;
+  }
+
+  # Proxy pass to backend servers in cluster
+
+  server {
+    listen 80;
+
+    location / {
+      proxy_pass   http://dhis_cluster/;
+    }
+  }
+}  
+```
+
+DHIS 2 keeps server-side state for user sessions to a limited degree.
+Using "sticky sessions" is a simple approach to avoid replicating the
+server session state by routing requests from the same client to the
+same server. The *ip\_hash* directive in the upstream element ensures
+this.
+
+Note that several instructions have been omitted for brevity in the
+above example. Consult the reverse proxy section for a detailed guide.
+
+## ActiveMQ Artemis configuration { #webapi_artemis_configuration } 
+
+Ve výchozím nastavení DHIS2 spustí při spouštění vestavěnou instanci ActiveMQ Artemis. Pro většinu případů použití nemusíte dělat nic. Pokud máte existující službu ActiveMQ Artemis, kterou chcete použít místo vestavěné instance, můžete změnit výchozí konfiguraci v souboru `dhis.conf` pomocí konfiguračních vlastností v následující tabulce.
+
+| Vlastnictví                  | Hodnota (výchozí první) | Popis                                                  |
+| ------------------------- | --------------------- | ------------------------------------------------------------ |
+| artemis.mode                 | EMBEDDED \| NATIVE    | Výchozí režim `EMBEDDED` spouští interní službu AMQP při spouštění instance DHIS2. Pokud se chcete připojit k externí službě AMQP, nastavte režim na `NATIVE`. |
+| artemis.host                 | 127.0.0.1             | Hostitel, ke kterému se chcete vázat.                                             |
+| artemis.port                 | 15672                 | Pokud je režim `EMBEDDED`, vestavěný server se naváže na tento port. Pokud je režim `NATIVE`, klient použije k připojení tento port. |
+| artemis.username             | host                 | Uživatelské jméno, ke kterému se chcete připojit, pokud používáte režim `NATIVE`.               |
+| artemis.password             | host                 | Heslo pro připojení, pokud používáte režim `NATIVE`.               |
+| artemis.embedded.persistence | vypnuto \| zapnuto         | Pokud je režim `EMBEDDED`, tato vlastnost řídí perzistenci vnitřní fronty. |
+
+
+## Monitoring { #monitoring } 
+
+DHIS 2 může exportovat metriky kompatibilní s Prometheus pro monitorování instancí DHIS2. Monitorovací infrastruktura DHIS2 je navržena k vystavení metrik souvisejících s běhovým modulem aplikace a dalších informací souvisejících s aplikací.
+
+Metriky související s infrastrukturou (například metriky hostitele, Tomcat nebo Postgres) nejsou přímo vystaveny monitorovacím modulem aplikace a je třeba je shromažďovat samostatně. Metriky aktuálně vystavené aplikací jsou:
+
+- DHIS 2 API (doba odezvy, počet hovorů atd.)
+- JVM (Heap size, Garbage collection, etc.)
+- Hibernate (Queries, cache, etc)
+- C3P0 Database pool
+- Doba provozu aplikace
+- CPU
+
+Monitorování lze povolit v souboru `dhis.conf` s následujícími vlastnostmi (výchozí nastavení je u všech vlastností `off` ):
+
+```properties
+monitoring.api.enabled = on
+monitoring.jvm.enabled = on
+monitoring.dbpool.enabled = on
+monitoring.hibernate.enabled = off
+monitoring.uptime.enabled = on
+monitoring.cpu.enabled = on
+```
+
+Doporučený přístup ke shromažďování a vizualizaci těchto metrik je prostřednictvím Prometheus a Grafana.
+
+For more information, see the [monitoring infrastructure](https://github.com/dhis2/wow-backend/blob/master/guides/monitoring.md) page and the [Prometheus and Grafana install](#monitoring) chapter.
+
+## Konfigurace systému { #install_system_configuration } 
+
+Tato část popisuje různé vlastnosti konfigurace systému.
+
+```properties
+system.read_only_mode = on | off
+```
+
+Nastaví systém v režimu jen pro čtení. To je užitečné, když spustíte DHIS 2 v replice databáze jen pro čtení, abyste zabránili DHIS 2 v provádění operací zápisu do databáze. Může být `on` nebo `off`. Výchozí hodnota je `off`.
+
+```properties
+system.session.timeout = (seconds)
+```
+
+Nastaví časový limit relace uživatele v sekundách. Výchozí hodnota je 3600 sekund (1 hodina).
+
+```properties
+system.sql_view_table_protection = on | off
+```
+
+Povolí nebo zakáže ochranu citlivé tabulky databáze pro zobrazení SQL. Tím se zakáže dotazování databázových tabulek s citlivými daty prostřednictvím zobrazení SQL. Zakázání se nedoporučuje. Může být `on` nebo `off`. Výchozí hodnota je `on`.
+
+```properties
+system.system.sql_view_write_enabled = on | off
+```
+
+Enables or disables write permissions for SQL views. This will prohibit SQL view performing underlying writes (query can be a select which requires write permission). Enabling is not recommended. Can be `on` or `off`. Default is `off`.
+
+```properties
+system.program_rule.server_execution = on | off
+```
+
+Povolí nebo zakáže provádění pravidel programu na straně serveru. To se týká pravidel programu, která mají akce pro přiřazování hodnot, odesílání zpráv nebo plánování zpráv, které mají být odeslány. Může být `on` nebo `off`. Výchozí hodnota je `on`.
+
+## Konfigurace reverzní proxy { #install_reverse_proxy_configuration } 
+
+A reverse proxy is a proxy server that acts on behalf of a server. Using
+a reverse proxy in combination with a servlet container is optional but
+has many advantages:
+
+  - Requests can be mapped and passed on to multiple servlet containers.
+    This improves flexibility and makes it easier to run multiple
+    instance DHIS2 na stejném serveru. To také umožňuje
+    change the internal server setup without affecting clients.
+
+  - The DHIS2 application can be run as a non-root user on a port
+    jiné než 80, což snižuje následky relace
+    únos.
+
+  - The reverse proxy can act as a single SSL server and be configured
+    to inspect requests for malicious content, log requests and
+    responses and provide non-sensitive error messages which will
+    improve security.
+
+### Základní nastavení nginx { #install_basic_nginx_setup } 
+
+We recommend using [nginx](http://www.nginx.org) as a reverse proxy due to
+its low memory footprint and ease of use. To install invoke the
+following:
+
+    sudo apt-get install -y nginx
+
+nginx lze nyní spustit, znovu načíst a zastavit s následujícími
+příkazy:
+
+    sudo /etc/init.d/nginx start
+    sudo /etc/init.d/nginx reload
+    sudo /etc/init.d/nginx stop
+
+Now that we have installed nginx we will now continue to configure
+regular proxying of requests to our Tomcat instance, which we assume
+runs at `http://localhost:8080`. To configure nginx you can open the
+configuration file by invoking:
+
+    sudo nano /etc/nginx/nginx.conf
+
+nginx configuration is built around a hierarchy of blocks representing
+http, server and location, where each block inherits settings from parent
+blocks. The following snippet will configure nginx to proxy pass
+(redirect) requests from port 80 (which is the port nginx will listen on
+by default) to our Tomcat instance. Include the following configuration
+in nginx.conf:
+
+```text
+http {
+  gzip on; # Enables compression, incl Web API content-types
+  gzip_types
+    "application/json;charset=utf-8" application/json
+    "application/javascript;charset=utf-8" application/javascript text/javascript
+    "application/xml;charset=utf-8" application/xml text/xml
+    "text/css;charset=utf-8" text/css
+    "text/plain;charset=utf-8" text/plain;
+
+  server {
+    listen               80;
+    client_max_body_size 10M;
+
+    # Proxy pass to servlet container
+
+    location / {
+      proxy_pass                http://localhost:8080/;
+      proxy_redirect            off;
+      proxy_set_header          Host               $host;
+      proxy_set_header          X-Real-IP          $remote_addr;
+      proxy_set_header          X-Forwarded-For    $proxy_add_x_forwarded_for;
+      proxy_set_header          X-Forwarded-Proto  http;
+      proxy_buffer_size         128k;
+      proxy_buffers             8 128k;
+      proxy_busy_buffers_size   256k;
+      proxy_cookie_path         ~*^/(.*) "/$1; SameSite=Lax";
+    }
+  }
+}
+```
+
+You can now access your DHIS2 instance at *http://localhost*. Since the
+reverse proxy has been set up we can improve security by making Tomcat
+only listen for local connections. In */conf/server.xml* you can add an
+*address* attribute with the value *localhost* to the Connector element
+for HTTP 1.1 like this:
+
+```xml
+<Connector address="localhost" protocol="HTTP/1.1" />
+```
+
+### Povolení SSL s nginx { #install_enabling_ssl_on_nginx } 
+
+In order to improve security it is recommended to configure the server
+running DHIS2 to communicate with clients over an encrypted connection
+and to identify itself to clients using a trusted certificate. This can
+be achieved through SSL which is a cryptographic communication protocol
+running on top of TCP/IP. First, install the required *openssl* library:
+
+    sudo apt-get install -y openssl
+
+To configure nginx to use SSL you will need a proper SSL certificate
+from an SSL provider. The cost of a certificate varies a lot depending
+on encryption strength. An affordable certificate from [Rapid SSL
+Online](http://www.rapidsslonline.com) should serve most purposes. To
+generate the CSR (certificate signing request) you can invoke the
+command below. When you are prompted for the *Common Name*, enter the
+fully qualified domain name for the site you are
+    securing.
+
+    openssl req -new -newkey rsa:2048 -nodes -keyout server.key -out server.csr
+
+When you have received your certificate files (.pem or .crt) you will
+need to place it together with the generated server.key file in a
+location which is reachable by nginx. A good location for this can be
+the same directory as where your nginx.conf file is located.
+
+Below is an nginx server block where the certificate files are named
+server.crt and server.key. Since SSL connections usually occur on port
+443 (HTTPS) we pass requests on that port (443) on to the DHIS2 instance
+running on `http://localhost:8080`. The first server block will rewrite
+all requests connecting to port 80 and force the use of HTTPS/SSL. This
+is also necessary because DHIS2 is using a lot of redirects internally
+which must be passed on to use HTTPS. Remember to replace
+*\<server-ip\>* with the IP of your server. These blocks should replace
+the one from the previous section.
+
+```text
+http {
+  gzip on; # Enables compression, incl Web API content-types
+  gzip_types
+    "application/json;charset=utf-8" application/json
+    "application/javascript;charset=utf-8" application/javascript text/javascript
+    "application/xml;charset=utf-8" application/xml text/xml
+    "text/css;charset=utf-8" text/css
+    "text/plain;charset=utf-8" text/plain;
+
+  # HTTP server - rewrite to force use of SSL
+
+  server {
+    listen     80;
+    rewrite    ^ https://<server-url>$request_uri? permanent;
+  }
+
+  # HTTPS server
+
+  server {
+    listen               443 ssl;
+    client_max_body_size 10M;
+
+    ssl                  on;
+    ssl_certificate      server.crt;
+    ssl_certificate_key  server.key;
+
+    ssl_session_cache    shared:SSL:20m;
+    ssl_session_timeout  10m;
+
+    ssl_protocols              TLSv1 TLSv1.1 TLSv1.2;
+    ssl_ciphers                RC4:HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers  on;
+
+    # Proxy pass to servlet container
+
+    location / {
+      proxy_pass                http://localhost:8080/;
+      proxy_redirect            off;
+      proxy_set_header          Host               $host;
+      proxy_set_header          X-Real-IP          $remote_addr;
+      proxy_set_header          X-Forwarded-For    $proxy_add_x_forwarded_for;
+      proxy_set_header          X-Forwarded-Proto  https;
+      proxy_buffer_size         128k;
+      proxy_buffers             8 128k;
+      proxy_busy_buffers_size   256k;
+      proxy_cookie_path         ~*^/(.*) "/$1; SameSite=Lax";
+    }
+  }
+}
+```
+
+Note the last `https` header value which is required to inform the
+servlet container that the request is coming over HTTPS. In order for
+Tomcat to properly produce `Location` URL headers using HTTPS you also need
+to add two other parameters to the Connector in the Tomcat `server.xml` file:
+
+```xml
+<Connector scheme="https" proxyPort="443" />
+```
+
+### Povolení ukládání do mezipaměti pomocí nginx { #install_enabling_caching_ssl_nginx } 
+
+Requests for reports, charts, maps and other analysis-related resources
+will often take some time to respond and might utilize a lot of server
+resources. In order to improve response times, reduce the load on the
+server and hide potential server downtime we can introduce a cache proxy
+in our server setup. The cached content will be stored in directory
+/var/cache/nginx, and up to 250 MB of storage will be allocated. Nginx
+will create this directory automatically.
+
+```text
+http {
+  ..
+  proxy_cache_path  /var/cache/nginx  levels=1:2  keys_zone=dhis:250m  inactive=1d;
+
+
+  server {
+    ..
+
+    # Proxy pass to servlet container and potentially cache response
+
+    location / {
+      proxy_pass                http://localhost:8080/;
+      proxy_redirect            off;
+      proxy_set_header          Host               $host;
+      proxy_set_header          X-Real-IP          $remote_addr;
+      proxy_set_header          X-Forwarded-For    $proxy_add_x_forwarded_for;
+      proxy_set_header          X-Forwarded-Proto  https;
+      proxy_buffer_size         128k;
+      proxy_buffers             8 128k;
+      proxy_busy_buffers_size   256k;
+      proxy_cookie_path         ~*^/(.*) "/$1; SameSite=Lax";
+      proxy_cache               dhis;
+    }
+  }
+}
+```
+
+> **Important**
+> 
+> Be aware that a server side cache shortcuts the DHIS2 security
+> features in the sense that requests which hit the server side cache
+> will be served directly from the cache outside the control of DHIS2
+> and the servlet container. This implies that request URLs can be
+> guessed and reports retrieved from the cache by unauthorized users.
+> Hence, if you capture sensitive information, setting up a server side
+> cache is not recommended.
+
+### Omezení rychlosti pomocí nginx { #install_rate_limiting } 
+
+Některá volání webového rozhraní API v DHIS 2, jako jsou rozhraní API pro `analytics`, jsou náročná na výpočet. Ve výsledku je výhodné hodnotit omezení těchto API, aby všichni uživatelé systému mohli využívat spravedlivý podíl prostředků serveru. Omezení rychlosti lze dosáhnout pomocí `nginx`. Existuje mnoho přístupů k dosažení omezení rychlosti a toto je určeno k dokumentaci přístupu založeného na nginx.
+
+Níže uvedená konfigurace nginx omezí rychlost webového rozhraní `analytics` a má následující prvky na úrovni bloku *http* a *location* (konfigurace je kvůli stručnosti zkrácena):
+
+```text
+http {
+  ..
+  limit_req_zone $binary_remote_addr zone=limit_analytics:10m rate=5r/s;
+
+  server {
+    ..
+
+    location ~ ^/api/(\d+/)?analytics(.*)$ {
+      limit_req    zone=limit_analytics burst=20;
+      proxy_pass   http://localhost:8080/api/$1analytics$2$is_args$args;
+      ..
+    }
+  }
+}
+```
+
+Různé prvky konfigurace lze popsat jako:
+
+- *limit_req_zone $binary_remote_addr*: Omezení rychlosti se provádí podle IP požadavku.
+- *zone=limit_analytics:20m*: Zóna s omezením rychlosti pro analytické API, která pojme až 10 MB IP adres požadavků.
+- *rate=20r/s*: Každé IP je přiděleno 5 požadavků za sekundu.
+- *location ~ ^/api/(\d+/)?analytics(.\*)$*: Requests for the analytics API endpoint are rate limited.
+- *burst=20*: Bursts of up to 20 requests will be queued and serviced at a later point; additional requests will lead to a `503`.
+
+Úplné vysvětlení najdete v [dokumentaci nginx](https://www.nginx.com/blog/rate-limiting-nginx/).
+
+### Zpřístupnění zdrojů pomocí nginx { #install_making_resources_available_with_nginx } 
+
+In some scenarios it is desirable to make certain resources publicly
+available on the Web without requiring authentication. One example is
+when you want to make data analysis related resources in the web API
+available in a Web portal. The following example will allow access to
+charts, maps, reports, report table and document resources through basic
+authentication by injecting an *Authorization* HTTP header into the
+request. It will remove the Cookie header from the request and the
+Set-Cookie header from the response in order to avoid changing the
+currently logged in user. It is recommended to create a user for this
+purpose given only the minimum authorities required. The Authorization
+value can be constructed by Base64-encoding the username appended with a
+colon and the password and prefix it "Basic ", more precisely "Basic
+base64\_encode(username:password)". It will check the HTTP method used
+for requests and return *405 Method Not Allowed* if anything but GET is
+detected.
+
+It can be favorable to set up a separate domain for such public users
+when using this approach. This is because we don't want to change the
+credentials for already logged in users when they access the public
+resources. For instance, when your server is deployed at somedomain.com,
+you can set a dedicated subdomain at api.somedomain.com, and point URLs
+from your portal to this subdomain.
+
+```text
+http {
+  ..
+
+  server {
+    listen       80;
+    server_name  api.somedomain.com;
+
+    location ~ ^/(api/(charts|chartValues|reports|reportTables|documents|maps|organisationUnits)|dhis-web-commons/javascripts|images|dhis-web-commons-ajax-json|dhis-web-mapping|dhis-web-visualizer) {
+    if ($request_method != GET) {
+        return 405;
+      }
+
+      proxy_pass         http://localhost:8080;
+      proxy_redirect     off;
+      proxy_set_header   Host               $host;
+      proxy_set_header   X-Real-IP          $remote_addr;
+      proxy_set_header   X-Forwarded-For    $proxy_add_x_forwarded_for;
+      proxy_set_header   X-Forwarded-Proto  http;
+      proxy_set_header   Authorization      "Basic YWRtaW46ZGlzdHJpY3Q=";
+      proxy_set_header   Cookie             "";
+      proxy_hide_header  Set-Cookie;
+    }
+  }
+}
+```
+
+
+### Blokujte konkrétní verze aplikace pro Android pomocí nginx { #install_block_android_versions } 
+
+In some scenarios the system administrator might want to block certain Android clients based on its DHIS2 App version. For example, if the users on the field have not updated their Android App version to a specific one and the system administrator wants to block their access to force an update; or completely the opposite scenario when the system administrator wants to block new versions of the App as they have not been yet tested. This can be easily implemented by using specific *User-Agent* rules in the `nginx` configuration file.
+
+```text
+http {
+
+  server {
+    listen    80;
+    server_name api.somedomain.com;
+
+    # Blokujte nejnovější aplikaci pro Android, protože nebyla testována
+    if ( $http_user_agent ~ 'com\.dhis2/1\.2\.1/2\.2\.1/' ) {
+        return 403;
+    }
+
+    # Blokujte Android 4.4 (API je 19), protože všichni uživatelé měli obdržet nové tablety
+    if ( $http_user_agent ~ 'com\.dhis2/.*/.*/Android_19' ) {
+        return 403;
+    }
+  }
+}
+```
+
+> **Note**
+> For the implementation of the method described above note the following: 
+> * Before version 1.1.0 the *User-Agent* string was not being sent.
+> * From version 1.1.0 to 1.3.2 the *User-Agent* followed the pattern Dhis2/AppVersion/AppVersion/Android_XX
+> * From version 2.0.0 and above the *User-Agent* follows the pattern com.dhis2/SdkVersion/AppVersion/Android_XX
+> * Android_XX refers to the Android API level i.e. the Android version as listed [here](https://developer.android.com/studio/releases/platforms).
+> * nginx uses [PCRE](http://www.pcre.org/) for Regular Expression matching .
+
+## DHIS2 configuration reference (dhis.conf) { #install_dhis2_configuration_reference } 
+
+The following describes the full set of configuration options for the `dhis.conf` configuration file. The configuration file should be placed in a directory which is pointed to by a `DHIS2_HOME` environment variable.
+
+> **Poznámka**
+>
+> Tento konfigurační soubor byste se neměli pokoušet použít přímo, ale použijte jej jako referenci pro dostupné možnosti konfigurace. Mnoho vlastností je volitelných.
+
+```properties
+# ----------------------------------------------------------------------
+# Database connection for PostgreSQL [Mandatory]
+# ----------------------------------------------------------------------
+
+# Hibernate SQL dialect
+connection.dialect = org.hibernate.dialect.PostgreSQLDialect
+
+# JDBC driver class
+connection.driver_class = org.postgresql.Driver
+
+# Database connection URL
+connection.url = jdbc:postgresql:dhis2
+
+# Database username
+connection.username = dhis
+
+# Database password (sensitive)
+connection.password = xxxx
+
+# Max size of connection pool (default: 40)
+connection.pool.max_size = 40
+
+# ----------------------------------------------------------------------
+# Database connection for PostgreSQL [Optional]
+# ----------------------------------------------------------------------
+
+# Minimum number of Connections a pool will maintain at any given time (default: 5).
+connection.pool.min_size=5
+
+# Initial size of connection pool (default : 5)
+#Number of Connections a pool will try to acquire upon startup. Should be between minPoolSize and maxPoolSize
+connection.pool.initial_size=5
+
+#Determines how many connections at a time will try to acquire when the pool is exhausted.
+connection.pool.acquire_incr=5
+
+#Seconds a Connection can remain pooled but unused before being discarded. Zero means idle connections never expire. (default: 7200)
+connection.pool.max_idle_time=7200
+
+#Number of seconds that Connections in excess of minPoolSize should be permitted to remain idle in the pool before being culled (default: 0)
+connection.pool.max_idle_time_excess_con=0
+
+#If this is a number greater than 0, dhis2 will test all idle, pooled but unchecked-out connections, every this number of seconds. (default: 0)
+connection.pool.idle.con.test.period=0
+
+#If on, an operation will be performed at every connection checkout to verify that the connection is valid. (default: false)
+connection.pool.test.on.checkout=false
+
+#If on, an operation will be performed asynchronously at every connection checkin to verify that the connection is valid. (default: on)
+connection.pool.test.on.checkin=on
+
+#Defines the query that will be executed for all connection tests. Ideally this config is not needed as postgresql driver already provides an efficient test query. The config is exposed simply for evaluation, do not use it unless there is a reason to.
+connection.pool.preferred.test.query=select 1
+
+#Configure the number of helper threads used by dhis2 for jdbc operations. (default: 3)
+connection.pool.num.helper.threads=3
+
+# ----------------------------------------------------------------------
+# Server [Mandatory]
+# ----------------------------------------------------------------------
+
+# Base URL to the DHIS 2 instance
+server.base.url = https://play.dhis2.org/dev 
+
+# Enable secure settings if system is deployed on HTTPS, can be 'off', 'on'
+server.https = off
+
+# ----------------------------------------------------------------------
+# System [Optional]
+# ----------------------------------------------------------------------
+
+# System mode for database read operations only, can be 'off', 'on'
+system.read_only_mode = off
+
+# Session timeout in seconds, default is 3600
+system.session.timeout = 3600
+
+# SQL view protected tables, can be 'on', 'off'
+system.sql_view_table_protection = on
+
+# SQL view write enabled, can be 'on', 'off'
+system.sql_view_write_enabled = off
+
+# Disable server-side program rule execution, can be 'on', 'off'
+system.program_rule.server_execution = on
+
+# ----------------------------------------------------------------------
+# Encryption [Optional]
+# ----------------------------------------------------------------------
+
+# Encryption password (sensitive)
+encryption.password = xxxx
+
+# ----------------------------------------------------------------------
+# File store [Optional]
+# ----------------------------------------------------------------------
+
+# File store provider, currently 'filesystem' and 'aws-s3' are supported
+filestore.provider = filesystem
+
+# Directory / bucket name, folder below DHIS2_HOME on file system, 'bucket' on AWS S3
+filestore.container = files
+
+# Datacenter location (not required)
+filestore.location = eu-west-1
+
+# Public identity / username
+filestore.identity = dhis2-id
+
+# Secret key / password (sensitive)
+filestore.secret = xxxx
+
+# ----------------------------------------------------------------------
+# LDAP [Optional]
+# ----------------------------------------------------------------------
+
+# LDAP server URL
+ldap.url = ldaps://300.20.300.20:636
+
+# LDAP manager user distinguished name
+ldap.manager.dn = cn=JohnDoe,ou=Country,ou=Admin,dc=hisp,dc=org
+
+# LDAP manager user password (sensitive)
+ldap.manager.password = xxxx
+
+# LDAP entry distinguished name search base
+ldap.search.base = dc=hisp,dc=org
+
+# LDAP entry distinguished name filter
+ldap.search.filter = (cn={0})
+
+# ----------------------------------------------------------------------
+# Node [Optional]
+# ----------------------------------------------------------------------
+
+# Node identifier, optional, useful in clusters
+node.id = 'node-1'
+
+# ----------------------------------------------------------------------
+# Monitoring [Optional]
+# ----------------------------------------------------------------------
+
+# DHIS2 API monitoring
+monitoring.api.enabled = on
+
+# JVM monitoring
+monitoring.jvm.enabled = on
+
+# Database connection pool monitoring
+monitoring.dbpool.enabled = on
+
+# Hibernate monitoring, do not use in production
+monitoring.hibernate.enabled = off
+
+# Uptime monitoring
+monitoring.uptime.enabled = on
+
+# CPU monitoring
+monitoring.cpu.enabled = on
+
+# ----------------------------------------------------------------------
+# Analytics [Optional]
+# ----------------------------------------------------------------------
+
+# Analytics server-side cache expiration in seconds
+analytics.cache.expiration = 3600
+
+# ----------------------------------------------------------------------
+# System telemetry [Optional]
+# ----------------------------------------------------------------------
+
+# System monitoring URL
+system.monitoring.url = 
+
+# System monitoring username
+system.monitoring.username = 
+
+# System monitoring password (sensitive)
+system.monitoring.password = xxxx
+
+# ----------------------------------------------------------------------
+# System update notifications [Optional]
+# ----------------------------------------------------------------------
+
+system.update_notifications_enabled = on
+
+# ----------------------------------------------------------------------
+# App Hub [Optional]
+# ----------------------------------------------------------------------
+
+# Base URL to the DHIS2 App Hub service
+apphub.base.url = https://apps.dhis2.org"
+# Base API URL to the DHIS2 App Hub service, used for app updates
+apphub.api.url = https://apps.dhis2.org/api
+
+
+# Number of possible concurrent sessions on different computers or browsers for each user. If configured to 1, the
+# user will be logged out from any other session when a new session is started.
+max.sessions.per_user = 10
+```
+
+## Seznam změn { #install_changelog } 
+
+DHIS2 zapisuje položky do protokolů změn, když byly v systému změněny určité entity. Entity spadají do dvou kategorií: _aggregate_ a _tracker_. Kategorie _aggregate_  zahrnuje změny agregovaných datových hodnot. Kategorie _tracker_ zahrnuje změny instancí programu, položek dočasného vlastnictví programu, hodnot atributů trasovaných entit a hodnot dat trasovaných entit.
+
+Seznam změn pro obě kategorie je ve výchozím nastavení povolen. Pomocí níže popsaných vlastností můžete určit, zda chcete povolit nebo zakázat seznam změn podle kategorie prostřednictvím konfiguračního souboru `dhis.conf`. Možnosti vlastností jsou  `on` (výchozí) a  `off`.
+
+Výhodou protokolu změn je schopnost vidět změny, které byly provedeny v datech. Výhodami deaktivace protokolu změn je malé zlepšení výkonu tím, že se vyhnete nákladům na zápis položek protokolu změn do databáze a méně použitého úložiště databáze. Doporučuje se povolit seznam změn a jeho deaktivaci byste měli věnovat velkou pozornost.
+
+```properties
+# Aggregate changelog, can be 'on', 'off'
+changelog.aggregate = on
+
+# Tracker changelog, can be 'on', 'off'
+changelog.tracker = on
+```
+
+## Protokolování aplikací { #install_application_logging } 
+
+Tato část popisuje protokolování aplikací v DHIS 2.
+
+### soubory protokolů { #log-files } 
+
+Výstup protokolu aplikace DHIS2 je směrován do více souborů a umístění. Nejprve je výstup protokolu odeslán na standardní výstup. Kontejner servletu Tomcat obvykle vydává standardní výstup do souboru pod položkou „logs“:
+
+    <tomcat-dir>/logs/catalina.out
+
+Second, log output is written to a "logs" directory under the DHIS2 home directory as defined by the `DHIS2_HOME` environment variables. There is a main log file for all output, and separate log files for various
+background processes. The main file includes the background process logs as well. The log files are capped at 50 Mb and log content is continuously appended.
+
+    <DHIS2_HOME>/logs/dhis.log
+    <DHIS2_HOME>/logs/dhis-analytics-table.log
+    <DHIS2_HOME>/logs/dhis-data-exchange.log
+    <DHIS2_HOME>/logs/dhis-data-sync.log
+
+### Konfigurace protokolu { #log-configuration } 
+
+To override the default log configuration you can specify a Java system
+property with the name `log4j2.configurationFile` and a value pointing to the
+[Log4j version 2](https://logging.apache.org/log4j/2.x/manual/configuration.html)
+configuration file at the file system like this:
+
+```properties
+-Dlog4j2.configurationFile=/home/dhis/config/log4j2.properties
+```
+
+Vlastnosti systému Java lze nastavit např. prostřednictvím proměnné prostředí *JAVA\_OPTS* nebo ve spouštěcím skriptu tomcat.
+
+A second approach to overriding the log configuration is to specify logging properties in the `dhis.conf` configuration file. The supported properties are:
+
+```properties
+# Max size for log files, default is '100MB'
+logging.file.max_size = 250MB
+
+# Max number of rolling log archive files, default is 0
+logging.file.max_archives = 2
+```
+
+DHIS2 will eventually phase out logging to standard out / catalina.out and as a result it is recommended to rely on the logs under `DHIS2_HOME`.
+
+DHIS2 poskytne následující kontextové hodnoty:
+
+* `sessionId`: ID relace aktuálního uživatele
+* `xRequestID`: Alfanumerické ID odeslané hlavičkou HTTP `X-Request-ID` pro aktuálně zpracovávaný požadavek; prázdný, pokud není poskytnut
+
+Chcete-li použít kontextové proměnné v protokolu, přidejte je pomocí `-X{<name>}` do vzoru protokolu jako v tomto příkladu:
+
+    * %-5p %d{ISO8601} %m (%F [%t]) %X{sessionId} %X{xRequestID}%n
+
+### Log level configuration { #log-level-configuration } 
+
+To set the log level of individual packages you can specify properties on the format  `logging.level.{package-names}` in `dhis.conf`. For example, to set the the log level for the entire Spring Framework to DEBUG and up, you can specify:
+
+```
+logging.level.org.springframework = DEBUG
+```
+Chcete-li nastavit úroveň protokolu na DEBUG pro služby DHIS2, můžete zadat:
+
+```
+logging.level.org.hisp.dhis = DEBUG
+```
+
+Běžné úrovně protokolu jsou `DEBUG`, `INFO`, `WARN` a `ERROR`.
+
+> **Note**
+> 
+> Log level configuration is not supported for the embedded DHIS2 Jetty version.
+
+## Práce s databází PostgreSQL { #install_working_with_the_postgresql_database } 
+
+Common operations when managing a DHIS2 instance are dumping and restoring databases. Note that when making backups of the DHIS 2 database, it is good practise to exclude tables which are generated by the system, such as the resource and analytics tables. To make a dump (copy) of your database to a file,  you can invoke the following command.
+
+```bash
+pg_dump {database} -U {user} -T "_*" -T "analytics*"  -f {filename}
+```
+V následujícím příkladu je název databáze `dhis2`, uživatel je `dhis` a výstupní název souboru je `dhis2.sql`:
+
+```bash
+pg_dump dhis2 -U dhis -T "analytics*" -T "_*" -f dhis2.sql
+```
+
+It is good practice to compress the If you want to compress the output file with `gzip`, which can be done like this:
+
+```bash
+pg_dump dhis2 -U dhis -T "analytics*" -T "_*" | gzip > dhis2.sql.gz
+```
+
+To restore the database copy on another system, you first need to create an empty database as described in the installation section. You also need to `gunzip` the copy if you created a compressed version. To restore the copy you can invoke the following command:
+
+```bash
+psql -d dhis2 -U dhis -f dhis2.sql
+```
+

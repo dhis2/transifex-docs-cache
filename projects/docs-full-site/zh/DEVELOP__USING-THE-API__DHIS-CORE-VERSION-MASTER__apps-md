@@ -1,0 +1,159 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/apps.md"
+revision_date: '2021-06-14'
+tags:
+- DHIS核心 主版
+- Develop
+---
+
+# 应用 { #apps } 
+
+## 应用 { #webapi_apps } 
+
+`/api/apps` 端点可用于安装、删除和
+列出应用程序。应用程序密钥基于应用程序名称，但与所有
+删除了非字母数字字符，并用破折号替换了空格。
+*My app!* 将返回密钥 *My-app*。
+
+> **注意**
+>
+> 在 2.28 之前，应用密钥是从 ZIP 的名称派生的
+> 存档，不包括文件扩展名。使用旧格式的 URL
+> 仍应在 api 中返回正确的应用程序。
+
+    / api / 33 / apps
+
+### 获取应用 { #webapi_get_apps } 
+
+> **注意**
+>
+> 2.28之前的app属性folderName指的是实际
+> 已安装应用程序的路径。能够在云上存储应用程序
+> 服务，folderName 的用途已更改，现在将引用应用程序
+> 键。
+
+您可以通过列出应用程序中的所有应用程序来读取应用程序的密钥
+资源并查找 *key* 属性。列出所有已安装的应用程序
+JSON：
+
+```bash
+curl -u user:pass -H "Accept: application/json" "http://server.com/api/33/apps"
+```
+
+您也可以简单地将Web浏览器指向资源URL：
+
+    http://server.com/api/33/apps
+
+应用列表也可以按应用类型和名称过滤，通过附加
+URL 的一个或多个 *filter* 参数：
+
+    http://server.com/api/33/apps?filter=appType:eq:DASHBOARD_APP&filter=name:ilike:youtube
+
+应用程序名称支持 *eq* 和 *ilike* 过滤器运算符，而 *appType*
+仅支持 *eq*。
+
+### 安装应用 { #webapi_install_app } 
+
+要安装应用程序，可以发出以下命令：
+
+```bash
+curl -X POST -u user:pass -F file=@app.zip "http://server.com/api/33/apps"
+```
+
+### 删除应用 { #webapi_delete_app } 
+
+要删除一个应用程序，您可以发出以下命令：
+
+```bash
+curl -X DELETE -u user:pass "http://server.com/api/33/apps/<app-key>"
+```
+
+### 重新加载应用 { #webapi_reload_apps } 
+
+要强制重新加载当前安装的应用程序，您可以发出
+以下命令。如果您直接手动添加文件，这很有用
+到文件系统，而不是通过 DHIS2 用户上传
+界面。
+
+```bash
+curl -X PUT -u user:pass "http://server.com/api/33/apps"
+```
+
+### 在实例之间共享应用 { #webapi_share_apps_between_instances } 
+
+如果 DHIS2 实例已配置为使用云存储，应用程序
+现在将安装并存储在云服务上。这将启用
+多个实例在已安装的应用程序上共享相同的版本，而不是
+在每个单独的实例上安装相同的应用程序。
+
+> **注意**
+>
+> 在 2.28 之前，安装的应用程序只会存储在实例的
+> 本地文件系统。 2.28 之前安装的应用程序仍可在
+> 实例已安装，但不会与其他人共享
+> 实例，因为它仍然位于实例本地文件系统上。
+
+## 应用商店 { #webapi_app_store } 
+
+The Web API exposes the content of the DHIS2 App Store as a JSON
+representation which can found at the `/api/appHub` resource.
+
+    /api/33/appHub
+
+### 获取应用 { #webapi_get_app_store_apps } 
+
+您可以使用GET请求检索应用程序：
+
+    GET /api/33/appHub
+
+JSON响应示例如下所述。
+
+```json
+{
+  [
+    {
+      "name": "Tabular Tracker Capture",
+      "description": "Tabular Tracker Capture is an app that makes you more effective.",
+      "sourceUrl": "https://github.com/dhis2/App-repository",
+      "appType": "DASHBOARD_WIDGET",
+      "status": "PENDING",
+      "id": "NSD06BVoV21",
+      "developer": {
+        "name": "DHIS",
+        "organisation": "Uio",
+        "address": "Oslo",
+        "email": "dhis@abc.com",
+      },
+      "versions": [
+        {
+          "id": "upAPqrVgwK6",
+          "version": "1.2",
+          "minDhisVersion": "2.17",
+          "maxDhisVersion": "2.20",
+          "downloadUrl": "https://dhis2.org/download/appstore/tabular-capture-12.zip",
+          "demoUrl": "http://play.dhis2.org/demo"
+        }
+      ],
+      "images": [
+        {
+          "id": "upAPqrVgwK6",
+          "logo": "true",
+          "imageUrl": "https://dhis2.org/download/appstore/tabular-capture-12.png",
+          "description": "added feature snapshot",
+          "caption": "dialog",
+        }
+      ]
+    }
+  ]
+}
+```
+
+### 安装应用 { #webapi_install_app_store_apps } 
+
+您可以在 DHIS2 实例上安装应用程序，前提是您拥有
+适当的权限。使用 `id` 属性引用应用程序
+应用程序的相关版本。使用 POST 安装应用程序
+使用版本 ID 请求以下资源：
+
+    POST /api/33/appHub/{app-version-id}
+

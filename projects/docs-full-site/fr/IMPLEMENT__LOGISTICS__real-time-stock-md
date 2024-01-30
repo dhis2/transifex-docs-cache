@@ -1,0 +1,2609 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs-implementation/blob/lmis_init/content/lmis/real-time-stock-management.md"
+revision_date: '2024-01-14'
+tags:
+- Implémentation
+---
+
+# DHIS2-RTS Real-Time Stock Management Tool / Tracker program { #dhis2-rts-real-time-stock-management-tool-tracker-program } 
+
+## Introduction { #introduction } 
+
+This document describes the use case, configuration and management of the DHIS2-RTS application for the real-time management of medical stocks at healthcare facilities using mobile devices.
+
+### Use case overview { #use-case-overview } 
+
+DHIS2-RTS fournit une solution numérique en temps réel pour la gestion des stocks, basée sur un outil web et une application mobile (avec une capacité hors ligne), qui peut être intégrée aux systèmes nationaux eLMIS pour gérer le réapprovisionnement des stocks ainsi que l'analyse de la chaîne d'approvisionnement de bout en bout.
+
+Le système offre une visibilité globale en temps réel des stocks et des données des établissements de santé au personnel des pharmacies ainsi qu'au personnel de santé et de logistique à tous les niveaux de la chaîne d'approvisionnement, quel que soit leur emplacement physique.
+
+Le personnel des établissements de santé remplace la collecte de données sur papier ou à l'aide de tableurs par l'enregistrement des données directement sur des appareils mobiles en ligne (avec possibilité de mise hors ligne) à l'aide d'une application dédiée aux appareils mobiles. Le personnel des établissements de santé ou du district n'a plus à ressaisir les données fournies par les pharmacies dans des fichiers Excel (ou toute autre application) pour calculer les commandes de réapprovisionnement mensuelles.
+
+Le processus actuel de réapprovisionnement des pharmacies des établissements de santé assistés, basé sur des documents papier (ou des feuilles de calcul), est remplacé par un processus entièrement numérique, intégré et systématique, qui est normalisé dans tous les établissements de santé.
+
+L'enregistrement des transactions de stock individuelles au lieu de l'enregistrement et de la communication des données de stock une fois par mois est un changement de procédure important qui présente de nombreux avantages :
+
+- Les stocks sont (re)calculés en temps réel lors de chaque transaction de stock et les utilisateurs à tous les niveaux ont une visibilité en temps réel des niveaux de stock ainsi que de la demande des clients ("consommation").
+
+- Toutes les transactions sont enregistrées numériquement sur un serveur central DHIS2 et éliminent la nécessité d'enregistrer chaque transaction sur une carte de stock, ce qui est lourd, ennuyeux, fastidieux et pénible.
+
+- En principe, le système élimine la nécessité de compter tous les stocks à la fin du mois, ce qui prend (au moins) 2-5 jours par mois au cours desquels la pharmacie est fermée.
+
+- Le système élimine la nécessité de calculer manuellement les distributions pour chaque article à la fin du mois à partir des fiches de stock, ce qui est une activité tout aussi lourde, ennuyeuse, fastidieuse et laborieuse.
+
+- Le système élimine les redondances dans la collecte des données avec les systèmes nationaux d'information sur le marché du travail (même sur papier ou dans Excel), car une seule valeur est enregistrée, à savoir la quantité de transaction de chaque article.
+
+### Structures and preconditions { #structures-and-preconditions } 
+
+L'application est basée sur l'adhésion à des structures et des processus spécifiques qui influencent la conception et la fonctionnalité du système.
+
+- Tous les approvisionnements médicaux sont stockés et gérés dans une seule pharmacie centrale dans chaque établissement de soins de santé.
+
+- Bien que le système et l'application soient principalement conçus pour la gestion des biens de santé, tous les autres types de biens tels que les aliments, les produits de nettoyage, les articles de papeterie, etc. peuvent également être gérés.
+
+- Une seule pharmacie (centrale) approvisionne tous les départements et services d'un établissement de santé.
+
+- Le système remplacera et facilitera certains processus actuels, mais les établissements de soins de santé sont bien entendu libres de continuer à utiliser d'autres systèmes manuels ou électroniques d'enregistrement et de traitement des données (tels que les fiches de lot, les fiches de stock, les registres de livraison, les feuilles de décompte, etc.)
+
+- Toutes les pharmacies ont au moins un accès quotidien à un réseau de téléphonie mobile 2G pour la transmission des données. Toutefois, il est fortement recommandé d'utiliser une connexion internet stable, faute de quoi il existe un risque élevé de perdre toutes les données qui n'ont pas encore été synchronisées en cas de défaillance de l'appareil mobile.
+
+- En cas de défaillance du système, les pharmacies sont en mesure de revenir à un système manuel (de secours), par exemple en reprenant l'utilisation des cartes de stock, à tout moment, sans compromettre en aucune manière l'approvisionnement de la pharmacie.
+
+- Les autorités nationales, les autorités sanitaires (au niveau national, provincial et du district), la direction des établissements de santé et le personnel des pharmacies sont d'accord pour utiliser des appareils mobiles pour l'enregistrement, le stockage, la gestion et la transmission des données relatives aux stocks des pharmacies.
+
+- Les appareils mobiles sont disponibles et entretenus de manière fiable.
+- Le personnel de l'établissement de santé est familier à l'utilisation des dispositifs mobiles ou peut être formé (dans un délai raisonnable).
+
+### System components { #system-components } 
+
+Le système est composé des éléments distincts suivants :
+
+- Le serveur central et la base de données DHIS2
+- Le portail web DHIS2 (interface utilisateur)
+- Le programme Tracker de DHIS2
+- Formulaire de saisie des données DHIS2 pour les " aperçus " mensuels ainsi qu'une solution de rechange ouverte en cas de défaillance de DHIS2-RTS.
+
+- Application mobile DHIS2 pour enregistrer les transactions en scannant les codes-barres
+- Application mobile DHIS2 analytique dans DHIS2-RTS, en particulier les cartes de stock électroniques et le rapport de stock mensuel
+
+- En complément ( !!!) des analyses d'applications mobiles dans un formulaire de saisie de données par défaut pour des rapports et analyses mensuels.
+
+- Optionnel (mais fortement recommandé) : un eLMIS national intégré au DHIS2.
+
+Le principe directeur du concept DHIS2-RTS consiste à utiliser principalement la fonctionnalité nationale eLMIS pour gérer tous les processus logistiques et à ne collecter que les données générées dans l'établissement de santé à l'aide de l'application DHIS2-RTS. Cette approche respecte strictement le principe de développement logiciel DRY (" Ne vous répétez pas ") : " Chaque élément de connaissance doit avoir une représentation unique, non ambiguë et influent au sein d'un système ".
+
+### Overview of business processes and workflows { #overview-of-business-processes-and-workflows } 
+
+L'application mobile DHIS2-RTS est utilisée par les responsables des pharmacies et des magasins médicaux des établissements de santé, appelés "utilisateurs finaux".
+
+Le terme "département et service" désigne tout établissement ou service au sein d'un établissement de santé qui détient et gère des stocks de toute nature qui sont régulièrement réapprovisionnés, tels que les salles de soins, les dispensaires (OPD), les salles d'opération, les services de stérilisation, les services de laboratoire et de transfusion sanguine, l'imagerie diagnostique, la blanchisserie, les services d'entretien ou d'autres services.
+
+- Réception et mise en stock des produits reçus des centres de distribution médicale en amont
+
+- Gestion des stocks de médicaments
+- Réception, enregistrement et gestion des commandes périodiques des unités de soins et des services (ne fait pas partie de l'application mobile DHIS2-RTS mais est un élément indispensable du flux de travail).
+
+- Préparation, emballage et livraison des marchandises commandées aux départements et services
+
+- Visualisation du stock disponible
+- Diverses analyses telles que l'analyse de la demande mensuelle (agrégée)
+
+L'application pour appareil mobile est principalement destinée à collecter, stocker temporairement et transmettre au serveur uniquement les données essentielles qui ne pourraient pas être collectées autrement.
+
+Cette approche permet notamment de minimiser la fréquence, la quantité de données et la taille des ensembles de données qui doivent être transmis à partir de l'appareil mobile, ce qui réduit le temps de transmission des données, les coûts et augmente la résilience de la transmission des données en cas de mauvaises connexions Internet mobiles.
+
+Environ 50 articles en stock (centre de soins de santé primaires) à 500 articles en stock (hôpitaux) seront et pourront être gérés par cette application mobile. Bien qu'en principe le système ne soit pas limité, la facilité d'utilisation diminue avec l'augmentation du nombre d'articles en stock. À titre de comparaison, une pharmacie d'hôpital dans un pays industrialisé gère environ 3 000 médicaments et environ 20 000 autres accessoires de soins de santé.
+
+Le portail web DHIS2 peut être utilisé par les responsables des établissements de santé, mais il est plus probable qu'il soit utilisé par les responsables de la santé ou de la logistique, presque exclusivement pour consulter des rapports d'analyse.
+
+### Stock calculations { #stock-calculations } 
+
+Le "stock disponible" est (re)calculé en temps réel après chaque transaction qui est principalement enregistrée sur l'appareil mobile, mais qui peut également être affectée par des transactions effectuées grâce au programme Tracker sur le portail web ou par des intégrations avec un système national eLMIS en amont.
+
+Le calcul du "stock disponible" est toujours itératif, les règles du programme traitant chaque transaction une à la fois. Cela signifie que le calcul est basé sur le "stock disponible" actuel (qui résulte de la transaction la plus récente) ainsi que sur la transaction la plus récente pour calculer à nouveau le "stock disponible" actuel. Par conséquent, le système ne conserve à aucun moment l'historique du "stock disponible", à l'exception de la valeur actuelle. En principe, le "stock disponible" actuel pourrait être calculé en additionnant toutes les transactions relatives à un article et à une unité d'organisation spécifiques depuis la création de la base de données. Toutefois, cela nécessiterait des calculs de plus en plus complexes, redondants et inutiles.
+
+Il est important de noter qu'à l'exception de la " Correction ", toutes les " Quantités " des transactions représentent les quantités de la transaction alors que pour la " Correction ", l'utilisateur doit saisir le résultat de l'inventaire physique réel tandis que le système calculera la différence entre les deux valeurs comme étant la quantité (virtuelle) de la transaction qui est nécessaire pour l'analyse.
+
+La deuxième donnée logistique importante saisie par le système est la quantité de la transaction. Elle est essentielle pour calculer la demande mensuelle qui, à son tour, est indispensable pour l'analyse de la demande, les prévisions, la planification de la demande et les calculs de réapprovisionnement des stocks.
+
+En principe, seules les transactions qui augmentent le "stock disponible" (entrées, corrections "positives", sorties) devraient être assorties de signes positifs, tandis que toutes les transactions qui réduisent le "stock disponible" (distribution, corrections "négatives", rejet et transfert) devraient, en principe, être assorties de signes négatifs. Toutefois, exiger des commerçants qu'ils utilisent le signe "-" constituerait non seulement une source de tracas et de retards inutiles, mais aussi une source importante d'erreurs. C'est pourquoi les signes "+" ou "-" doivent être "codés en dur" dans les métadonnées, en particulier dans les règles du programme.
+
+Toutes les transactions ainsi que le "stock disponible" réel ont toujours des valeurs entières positives et ne peuvent jamais être égales à zéro (puisque, par définition, il ne s'agit pas d'une transaction).
+
+Les transactions ont des limites différentes et affectent les données logistiques calculées, de différentes manières :
+
+| Transaction type | Effect on "Stock on hand" | Effect on total monthly demand |
+| :--- | :--- | :--- |
+| Distribution | Decrease | Increase |
+| Discard | Decrease | Not affected |
+| Correction: SoH > calculated value | Increase | Not affected |
+| Correction: SoH < calculated value | Decrease | Not affected |
+| Return | Increase | Decrease |
+| Transfer | Decrease | Not affected |
+| Receipt | Increase | Not affected |
+
+### Mobile device management { #mobile-device-management } 
+
+L'entité ou l'organisation, telle que le Ministère de la Santé, doit fournir et assurer la maintenance des appareils mobiles et régir leur utilisation. Pour des raisons de protection des données, de durabilité et de gestion des abonnements aux données, l'utilisation d'appareils privés ne doit pas être encouragée.
+
+Afin d'éviter de dépendre d'un seul appareil et d'être interrompu en cas de défaillance, de perte ou de vol de cet appareil, l'application DHIS2-RTS ne doit être utilisée que si au moins un appareil de secours est disponible dans chaque établissement de soins de santé.
+
+L'application mobile DHIS2-RTS repose sur le concept et l'hypothèse que les transactions sont exclusivement enregistrées sur des appareils mobiles. En principe, l'application web pourrait être utilisée sur un ordinateur de bureau ou un ordinateur portable équipé d'un lecteur de codes-barres externe. Toutefois, ces derniers ne permettraient pas de scanner les codes-barres directement sur le lieu de stockage (étagère ou palette) à l'intérieur des entrepôts. Il faudrait d'abord prélever les articles, puis les traiter sur une table dans la salle d'expédition. Or, il ne serait absolument pas pratique de conserver les codes-barres à cet endroit pour traiter les transactions à l'aide d'un lecteur de codes-barres.
+
+Si des appareils mobiles sont achetés spécifiquement pour la mise en œuvre de DHIS2-RTS, les recommandations de DHIS2 doivent être suivies et les points suivants doivent être pris en compte :
+
+- Dans tous les cas, ils doivent être équipés de cartes SIM permettant de se connecter à un réseau mobile comme moyen principal ou secondaire de transmission et de synchronisation des données et de se connecter à un réseau local sans fil (WLAN).
+
+- Les terminaux mobiles doivent être équipés d'une caméra arrière permettant de scanner les codes-barres.
+- Les terminaux mobiles doivent être équipés d'un microphone intégré (pour l'enregistrement optionnel en mode "parole vers texte").
+
+- Pour effectuer des transactions, il convient de privilégier un petit appareil léger.
+
+- Pour étudier les données analytiques, l'idéal est d'utiliser une tablette électronique de plus grande taille.
+
+- L'appareil doit résister aux conditions climatiques difficiles du pays en termes de température, d'humidité et de poussière, ainsi qu'aux chutes et autres dommages physiques.
+
+The DHIS2 documentation lists the following mobile device specification requirements: [DHIS2 Mobile Device Specifications](https://docs.dhis2.org/en/implement/android-implementation/mobile-device-specifications.html)
+
+### Contingency plan in case of device failure { #contingency-plan-in-case-of-device-failure } 
+
+En cas de panne ou de dysfonctionnement de l'appareil mobile pour quelque raison que ce soit (appareil déchargé, endommagé, introuvable, volé, oubli d'authentification) ou si l'accès à l'internet n'est pas disponible pendant plus d'une journée, les établissements de santé doivent envisager d'utiliser un autre appareil mobile ou un autre accès à l'internet.
+
+#### In case the Internet is unavailable for less than one day { #in-case-the-internet-is-unavailable-for-less-than-one-day } 
+
+- Attendre le rétablissement de la connexion Internet si aucune commande urgente ne doit être traitée.
+
+- Conserver les demandes des départements et services et enregistrer soigneusement les quantités réelles distribuées.
+
+- Saisir rétrospectivement la transaction en faisant défiler la liste des articles en stock et en enregistrant les quantités.
+
+#### In case of Internet is unavailable for more than one day { #in-case-of-internet-is-unavailable-for-more-than-one-day } 
+
+- Reprise de l'enregistrement manuel des transactions sur les cartes de stock
+- Use a DHIS2 Default Data Entry Form at the end of the month (which is much less work than retrospectively entering many transactions in the correct chronological order)
+
+#### In case all systems fail { #in-case-all-systems-fail } 
+
+À tout moment, les utilisateurs peuvent recourir à la méthode manuelle, sur papier ou sur tableur, qui était utilisée avant l'introduction de l'application DHIS2-RTS :
+
+- Procéder à l'inventaire physique des stocks
+- Enregistrez le stock disponible et la consommation mensuelle sur une feuille de calcul ou sur un autre support papier.
+
+- Calculer la commande de réapprovisionnement mensuelle à l'aide d'un registre papier ou d'un tableur.
+
+## Maintenance Web App - DHIS2 metadata configuration { #maintenance-web-app-dhis2-metadata-configuration } 
+
+This chapters provides a complete overview all metadata elements and their settings which are required specifically for configuring the DHIS2-RTS Tracker Program as well as the "aggregate" Data Entry form for recording daily and monthly "snapshots". Most of the settings can be modified and adapted to the specific context of an implementation while some settings, such as the Program rule or Use-case-configuration app, must not be modified as the function of the mobile application may be impaired.
+
+### Metadata overview { #metadata-overview } 
+The required metadata settings seetings are presented in the order in which it is presented in the DHIS2 Maintenance Web App.
+
+>**1 CATEGORY**  
+>>1.1 Category option  
+>>1.2 Category  
+>>1.3 Category combination 
+> 
+>**2 DATA ELEMENT**  
+>>2.1 Data element - "Aggregate"  
+>>2.2 Data element - "Tracker"  
+>>2.2 Data element group  
+> 
+>**3 DATA SET**  
+>>3.1 Data set  
+> 
+>**4 INDICATOR**  
+>>4.1 Indicator  
+>>4.2 Indicator type  
+>>4.3 Program indicator  
+> 
+>**5 ORGANISATION UNIT**  
+>>5.1 Organisation unit  
+>>5.1 Organisation unit group  
+> 
+>**6 PROGRAM**  
+>>6.1 Program  
+>>6.2 Tracked entity attribute  
+>>6.3 Tracked entity type  
+>>6.4 Program rule  
+>>6.5 Program rule variable  
+> 
+>**7 OTHER**  
+>>7.1 Option set  
+>>7.2 Legend  
+>>7.3 Predictor  
+>>7.4 Predictor group  
+
+### 1 CATEGORY { #1-category } 
+This metadata is needed (only) for configuring an "aggregate" default Data entry form for "hosting" the daily and monthly aggregated Tracker data and making it available for various analytics visualizations and dashboards. In case the DHIS2-RTS mobile app (temporarily) falls, the aggregate Data Entry form can also be used for collecting monthly stock data.
+
+#### 1.1 Category option { #11-category-option } 
+Note that the Category option names are intentionally kept short to reduce the overall width of the Data Entry form and ease visualizing and navigating the form. The "Stock distribution" corresponds to the total quantity of all the "DIS - [Deliver to] Category options and can be removed/added or be hidden/unhidden as and if needed.
+
+>**1 DIS - (Other)**  
+>>**Name \(*)**: "DIS - (Other)"  
+>>**Short name \(*)**: "DIS - (Other)"  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**2 DIS - Diagn. imaging**  
+>>**Name \(*)**: "DIS - Diagn. imaging"  
+>>**Short name \(*)**: "DIS - Diagn. imaging"  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**3 DIS - Emergency Room**  
+>>**Name \(*)**: "DIS - Emergency Room"  
+>>**Short name \(*)**: "DIS - Emergency Room"  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**4 DIS - High Depend. Unit**  
+>>**Name \(*)**: "DIS - High Depend. Unit"  
+>>**Short name \(*)**: "DIS - High Depend. Unit"  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**5 DIS - Housekeeping**  
+>>**Name \(*)**: "DIS - Housekeeping"  
+>>**Short name \(*)**: "DIS - Housekeeping"  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**6 DIS - Inp. Med. Depart.**  
+>>**Name \(*)**: "DIS - Inp. Med. Depart."  
+>>**Short name \(*)**: "DIS - Inp. Med. Depart."  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**7 DIS - Inp. Surg. Depart.**  
+>>**Name \(*)**: "DIS - Inp. Surg. Depart."  
+>>**Short name \(*)**: "DIS - Inp. Surg. Depart."  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**8 DIS - Laboratory Depart.**  
+>>**Name \(*)**: "DIS - Laboratory Depart."  
+>>**Short name \(*)**: "DIS - Laboratory Depart."  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**9 DIS - Mortuary**  
+>>**Name \(*)**: "DIS - Mortuary"  
+>>**Short name \(*)**: "DIS - Mortuary"  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**10 DIS - OPD**  
+>>**Name \(*)**: "DIS - OPD"  
+>>**Short name \(*)**: "DIS - OPD"  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**11 DIS - Obst. & Gynae.**  
+>>**Name \(*)**: "DIS - Obst. & Gynae."  
+>>**Short name \(*)**: "DIS - Obst. & Gynae."  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**12 DIS - Oper. Theatre**  
+>>**Name \(*)**: "DIS - Oper. Theatre"  
+>>**Short name \(*)**: "DIS - Oper. Theatre"  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**13 DIS - Paed. Dep.**  
+>>**Name \(*)**: "DIS - Paed. Dep."  
+>>**Short name \(*)**: "DIS - Paed. Dep."  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**14 DIS - Physioth. Dep.**  
+>>**Name \(*)**: "DIS - Physioth. Dep."  
+>>**Short name \(*)**: "DIS - Physioth. Dep."  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**15 DIS - Recovery Room**  
+>>**Name \(*)**: "DIS - Recovery Room"  
+>>**Short name \(*)**: "DIS - Recovery Room"  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**16 DIS - Steril. Dep.**  
+>>**Name \(*)**: "DIS - Steril. Dep."  
+>>**Short name \(*)**: "DIS - Steril. Dep."  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**17 DIS - Transf. services**  
+>>**Name \(*)**: "DIS - Transf. services"  
+>>**Short name \(*)**: "DIS - Transf. services"  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**18 Previous stock balance**  
+>>**Name \(*)**: "Previous stock balance"  
+>>**Short name \(*)**: "Previous stock balance"  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**19 Stock correction**  
+>>**Name \(*)**: "Stock correction"  
+>>**Short name \(*)**: "Stock correction"  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**20 Stock discard**  
+>>**Name \(*)**: "Stock discard"  
+>>**Short name \(*)**: "Stock discard"  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**21 Stock distribution**  
+>>**Name \(*)**: "Stock distribution"  
+>>**Short name \(*)**: "Stock distribution"  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**22 Stock on hand**  
+>>**Name \(*)**: "Stock on hand"  
+>>**Short name \(*)**: "Stock on hand"  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**23 Stock receipt**  
+>>**Name \(*)**: "Stock receipt"  
+>>**Short name \(*)**: "Stock receipt"  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+>**24 Stock on hand Yes/No**  
+>>**Name \(*)**: "Stock on hand Yes/No"  
+>>**Short name \(*)**: "Stock on hand Yes/No"  
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>****
+
+#### 1.2 Category { #12-category } 
+>**1 RTS - Daily stock report**  
+>>**Name \(*)**: **RTS - Daily stock report**  
+>>**Short name \(*)**: "RTS - Daily stock report"  
+>>**Data dimension type \(*)**: "Disaggregation"  
+>>**Data dimension \(*)**: check (appears as white tick in a blue square)   
+>>**Category options**: *note the order of "Category options"*:  
+>>>"Previous stock balance"
+>>>"Stock receipt"
+>>>"DIS - Diagn. imaging"
+>>>"DIS - Emergency Room"
+>>>"DIS - High Depend. Unit"
+>>>"DIS - Housekeeping"
+>>>"DIS - Inp. Med. Depart."
+>>>"DIS - Inp. Surg. Depart."
+>>>"DIS - Laboratory Depart."
+>>>"DIS - Mortuary"
+>>>"DIS - Obst. & Gynae."
+>>>"DIS - OPD"
+>>>"DIS - Oper. Theatre"
+>>>"DIS - (Other)"
+>>>"DIS - Paed. Dep."
+>>>"DIS - Physioth. Dep."
+>>>"DIS - Recovery Room"
+>>>"DIS - Steril. Dep."
+>>>"DIS - Transf. services"
+>>>Stock distribution
+>>>Stock discard
+>>>Stock correction
+>>>Stock on hand
+>>>Stock on hand Yes/No
+>
+>**2 RTS - Monthly stock report**  
+>>**Name \(*)**: **RTS - Monthly stock report**  
+>>**Short name \(*)**: "RTS - Monthly stock report"  
+>>**Data dimension type \(*)**: "Disaggregation"  
+>>**Data dimension \(*)**: check (appears as white tick in a blue square)   
+>>**Category options**: *note the order of "Category options"*  
+>>>"Previous stock balance"
+>>>"Stock receipt"
+>>>"DIS - Diagn. imaging"
+>>>"DIS - Emergency Room"
+>>>"DIS - High Depend. Unit"
+>>>"DIS - Housekeeping"
+>>>"DIS - Inp. Med. Depart."
+>>>"DIS - Inp. Surg. Depart."
+>>>"DIS - Laboratory Depart."
+>>>"DIS - Mortuary"
+>>>"DIS - Obst. & Gynae."
+>>>"DIS - OPD"
+>>>"DIS - Oper. Theatre"
+>>>"DIS - (Other)"
+>>>"DIS - Paed. Dep."
+>>>"DIS - Physioth. Dep."
+>>>"DIS - Recovery Room"
+>>>"DIS - Steril. Dep."
+>>>"DIS - Transf. services"
+>>>Stock distribution
+>>>Stock discard
+>>>Stock correction
+>>>Stock on hand
+
+#### 1.3 Category combination { #13-category-combination } 
+>**Name \(*)**: **RTS - Monthly stock report**  
+>**Short name \(*)**: "RTS - Monthly stock report"  
+>**Data dimension type \(*)**: "Disaggregation"  
+>**Skip category total in report \(*)**: check (appears as white tick in a blue square)   
+>**Categories**: "RTS - Monthly stock report"
+
+### 2 DATA ELEMENT { #2-data-element } 
+Les éléments de données représentent les articles (produits de santé) pour lesquels les données logistiques sont enregistrées et gérées.
+
+Tous les produits de soins de santé enregistrés dans DHIS2-RTS en tant que " Instance d'Entité Suivie " (IES) doivent être " reflétés " en tant qu'éléments de données identiques pour configurer les ensembles de données qui sont nécessaires pour chaque unité d'organisation en tant que système de sauvegarde.
+
+Il convient de noter que les éléments de données et les IES ne peuvent pas être automatiquement "liés", mais que de nouveaux IES peuvent être exportés, par exemple une fois par mois, et "rechargés" en tant qu'éléments de données.
+
+Un élément de données distinct est créé pour chaque produit de soins de santé utilisé et la dénomination suit les conventions nationales, idéalement en fonction d'un catalogue principal d'articles national. Si DHIS2 est intégré à un eLMIS national, les codes et les descriptions des articles dans DHIS2 doivent correspondre exactement aux codes et aux descriptions des articles dans l'eLMIS national.
+
+Si des codes d'articles sont utilisés, ils peuvent être concaténés dans le champ "Nom" avec la description de l'article. Toutefois, il convient de noter que si le code d'article est suivi de la description de l'article, tous les éléments de données seront automatiquement et invariablement triés en fonction du code d'article, ce qui peut s'avérer inutile pour le stockage des produits de soins de santé en fonction de leurs groupes.
+
+Le " Type de domaine " doit être réglé sur " Agrégé ", le " Type de valeur " sur " Entier positif ou zéro " et le " Type d'agrégation " sur " Aucun ". Le champ " Stocker les valeurs de données nulles " doit être coché afin de permettre le stockage de la valeur zéro et la " Combinaison de catégories " doit être réglée sur " Établissement de santé - rapport mensuel des stocks ".
+
+Les éléments de données qui ont été créés et utilisés ne peuvent plus être supprimés de la base de données, car les données historiques doivent être conservées. En revanche, les éléments de données qui ne sont plus nécessaires peuvent simplement être supprimés des ensembles de données correspondants.
+
+#### 2.1 Data element - "Aggregate" { #21-data-element-aggregate } 
+Below the configuration for a single Data Element is presented which needs to be applied to each item in the required item catalogue.
+>**Name \(*)**: "DORAALBE4T - ALBENDAZOLE, 400 mg, tab. MTH"  
+>**Short name \(*)**: "DORAALBE4T - ALBENDAZOLE, 400 mg, tab. MTH"
+>**Code \(*)**:  "DORAALBE4T - MTH"
+>**Domain Type \(*)**: "Aggregate"  
+>**Value type \(*)**: "Positive or Zero Integer"  
+>**Aggregation type (*)**: "Sum"  
+>**Store zero data values**: tag (appears as white tick in a blue square) 
+>**Category combination \(*)**: "RTS - Monthly stock report"  
+>**Aggregation levels**: "Facility"  
+
+### 2.2 Data element - "Tracker" { #22-data-element-tracker } 
+These Data elements are required for configuring the Program stages of the DHIS2-RTS Tracker Program. Note that the Data element names must not have any prefixes or suffixes as these are redundant and will appear in the Line Listing.
+>**1 Deliver to**  
+>>**Name \(*)**: "Deliver to"  
+>>**Short name \(*)**: "Deliver to"
+>>**Domain Type \(*)**: "Tracker"  
+>>**Value type \(*)**: "Text"  
+>>**Aggregation type (*)**: "None"  
+>>**Store zero data values**: do not tag (appears as white square) 
+>>**Option set \(*)**: "Deliver to"  
+>****
+>**2 Previous Stock Balance**
+>>**Name \(*)**: "Previous Stock Balance"  
+>>**Short name \(*)**: "Previous Stock Balance"
+>>**Domain Type \(*)**: "Tracker"  
+>>**Value type \(*)**: "Positive Integer"  
+>>**Aggregation type (*)**: "None"  
+>>**Store zero data values**: tag (appears as white tick in a blue square) 
+>****
+>**3 Stock correction**  
+>>**Name \(*)**: ""  
+>>**Short name \(*)**: ""
+>>**Domain Type \(*)**: "Tracker"  
+>>**Value type \(*)**: "Number"  
+>>**Aggregation type (*)**: "None"  
+>>**Store zero data values**: tag (appears as white tick in a blue square)  
+>****
+>**4 Stock count**  
+>>**Name \(*)**: "Stock count"  
+>>**Short name \(*)**: "Stock count"
+>>**Domain Type \(*)**: "Tracker"  
+>>**Value type \(*)**: "Positive Integer"  
+>>**Aggregation type (*)**: "None"  
+>>**Store zero data values**: tag (appears as white tick in a blue square)   
+>****
+>**5 Stock discard**  
+>>**Name \(*)**: "Stock discard"  
+>>**Short name \(*)**: "Stock discard"
+>>**Domain Type \(*)**: "Tracker"  
+>>**Value type \(*)**: "Positive Integer"  
+>>**Aggregation type (*)**: "None"  
+>>**Store zero data values**: do not tag (appears as white square) 
+>****
+>**6 Stock distribution**  
+>>**Name \(*)**: "Stock distribution"  
+>>**Short name \(*)**: "Stock distribution"
+>>**Domain Type \(*)**: "Tracker"  
+>>**Value type \(*)**: "Positive Integer"  
+>>**Aggregation type (*)**: "None"  
+>>**Store zero data values**: do not tag (appears as white square) 
+>****
+>**7 Stock on hand**  
+>>**Name \(*)**: "Stock on hand"  
+>>**Short name \(*)**: "Stock on hand"
+>>**Domain Type \(*)**: "Tracker"  
+>>**Value type \(*)**: "Positive Integer"  
+>>**Aggregation type (*)**: "None"  
+>>**Store zero data values**: tag (appears as white tick in a blue square) 
+>****
+>**8 Stock receipt**  
+>>**Name \(*)**: "Stock receipt"  
+>>**Short name \(*)**: "Stock receipt"
+>>**Domain Type \(*)**: "Tracker"  
+>>**Value type \(*)**: "Positive Integer"  
+>>**Aggregation type (*)**: "None"  
+>>**Store zero data values**: do not tag (appears as white square) 
+
+#### 2.3 Data element group { #23-data-element-group } 
+
+The creation of Data element groups is a DHIS2 best practice but also a precondition for using the "Group Predictor" functionality which allows using a placeholder and the Data element group ID for creating a single Predictor which is automatically applied to all Data elements in the respective Data element group. For example for calculating the stock coverage time.
+
+>**1 Stock item list - DAY**  
+>**Name \(*)**: "Stock item list - DAY"  
+>**Short name \(*)**: "Stock item list - DAY"
+>**Data elements \(*)**: *select all Data elements with the "DAY" suffix"*    
+>****
+>**2 Stock item list - MTH**  
+>**Name \(*)**: "Stock item list - MTH"  
+>**Short name \(*)**: "Stock item list - MTH"
+>**Data elements \(*)**: *select all Data elements with the "MTH" suffix"*    
+
+### 3 Data set { #3-data-set } 
+
+#### 3.1 Data set { #31-data-set } 
+Data sets for each Organisation unit are required both for recording daily and monthly "snapshots" of Tracker Program data as well as a fallback system in case the DHIS2-RTS fails.
+
+>**1 RTS Monthly report**  
+>>**Name \(*)**: "RTS Monthly report"  
+>>**Short name \(*)**: "RTS Monthly report"  
+>>**Expiry days**: "5"  
+>>**Open future periods for data entry**: "1"  
+>>**Days after period to qualify for timely submission**: "5"  
+>>**Period type**: "Monthly"  
+>>**Category combination**: "None"  
+>>**Data elements**
+>>>"Data elements: add all Data elements with the suffix "MTH" required for the respective health facility.
+>>
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>
+>**2 RTS Daily report**  
+>>**Name \(*)**: "RTS Daily report"  
+>>**Short name \(*)**: "RTS Daily report"  
+>>**Expiry days**: "5"  
+>>**Open future periods for data entry**: "1"  
+>>**Days after period to qualify for timely submission**: "5"  
+>>**Period type**: "Daily"  
+>>**Category combination**: "None"  
+>>**Data elements**
+>>>"Data elements: add all Data elements with the suffix "DAY" required for the respective health facility.
+>>
+>>**Organisation units selected**: (select as for the Tracker Program) 
+>
+
+### 4 Indicator { #4-indicator } 
+
+La fonctionnalité Indicateur est utilisée pour configurer le "Délai de couverture du stock". En principe, il serait préférable de configurer le "Délai de couverture du stock" en tant que prédicteur (car cela permettrait d'utiliser la fonction "Prédicteur de groupe"), mais comme le "Délai de couverture du stock" nécessite l'affichage de décimales et que le formulaire de saisie des données n'autorise qu'un seul format de nombre pour toutes les options de catégorie, c'est un indicateur qui est utilisé à la place. Cette approche permet de définir librement le nombre de décimales dans les paramètres de l'indicateur.
+
+Il convient de noter que l'utilisation de l'indicateur pour calculer les délais de couverture du stock ne permet d'utiliser que la distribution du mois en cours (ce qui est très imprécis et entraîne des fluctuations importantes) et ne permet pas de calculer une moyenne, par exemple sur les trois à six derniers mois.
+
+#### 4.1 Indicator { #41-indicator } 
+
+The "Stockout days" indicator returns the value "1" for any day where the stock on hand is zero otherwise a "0" and allows automatically calculating the number of stockout days in a month.
+
+For both Indicators, a separate Indicator is required for every Data element and the configuration below provides only one example.
+
+>**1 Coverage time**  
+>>**Name \(*)**: "[Data element name] - Coverage time"  
+>>**Short Name \(*)**: "[Item code] - Coverage time"  
+>>**Description**: "[Data element name] - Coverage time"  
+>>**Decimals in data output**: "1"  
+>>**Indicator type \(*)**: "Number (Factor 1)"  
+>>**Legends**: "Stock coverage time"  
+>>**Edit numerator**:
+>>>**Description**: "[Data element name] - Coverage time - Numerator"
+>>>**Calculation**: "#{XsOfl0jZU8S.dOkDb0N10Aw}/#{XsOfl0jZU8S.X57v4Hidl3C}"  
+[Data element.Stock on hand] / [Data element.Stock distribution] /  
+>>
+>>**Edit denominator**:
+>>>**Description**: "[Data element name] - Coverage time - Denominator"
+>>>**Calculation**: "1"
+>
+>**2 Stockout days**  
+>>**Name \(*)**: "[Data element name] - Stockout days"  
+>>**Short Name \(*)**: "[Item code] - Stockout days"  
+>>**Description**: "[Data element name] - Stockout days"  
+>>**Indicator type \(*)**: "Number (Factor 1)"  
+>>**Edit numerator**:
+>>>**Description**: "[Data element name] - Stockout days - Numerator"
+>>>**Calculation**: "#{GdVh0GGFZh1.t4Exdgy3kDb}"  
+[Data element] T2A DAY Stock on hand Yes/No
+>>
+>>**Edit denominator**:
+>>>**Description**: "[Data element name] - Coverage time - Denominator"
+>>>**Calculation**: "1"
+
+#### Indicator type { #indicator-type } 
+
+Le "type d'indicateur" est une condition préalable à la configuration de tout "indicateur".
+>**1 Number (Factor 2)**  
+>>**Name \(*)**: "Number (Factor 1)"  
+>>**Factor \(*)**: "1"  
+
+#### 4.3 Program indicator { #43-program-indicator } 
+
+Program indicators in conjunction with Predictors allow automatically aggregating Tracker Program data and recording daily and monthly aggregate values in the respective Data Entry forms for analysis and reporting.
+
+A separate Program indicator has to be created for every "pair" of item description and transaction type and one example is given below for each of the transactions for one item:
+
+[Data element] - Distribution
+
+[Data element] - Discard
+
+[Data element] - Correction
+
+[Data element] - Receipt
+
+[Data element] - Stock on hand
+
+L'article est déterminé en définissant un "filtre" correspondant et le type de transaction en sélectionnant l'élément de données correspondant à partir de l'étape du programme "Stock disponible".
+
+Un exemple de configuration des quantités journalières agrégées de "distribution" est détaillé ci-après pour un article.
+
+Il est essentiel que le "Type d'agrégation (\*)" de l'élément de données (par exemple pour "Distribution de stock") soit défini sur "Somme" dans les paramètres de l'élément de données, sinon les quantités de la transaction ne seront pas agrégées.
+
+Note that the same "Program Indicator" can be used for the Predictor for the "MTH" (monthly period) as well as the "DAY" (daily period).
+
+>**1 [Data element] - Distribution**  
+>>**1 Program indicator details**
+>>>**Program \(*)**: "Real-Time Stock Management"  
+>>>**Name \(*)**: "[Data element] - Distribution"  
+>>>**Short Name \(*)**: "[Item code] - Distribution"  
+>>>**Aggregation type \(*)**: "Sum"  
+>>>**Analytics type**: "Event"  
+>>>**Organisation unit field**: "Event organisation unit (default)  
+>>>**Analytics period boundaries**  
+>>>>**Boundary target**: "Event date"  
+>>>>**Analytics period boundary target**: "Before end of reporting period"  
+>>>>**Offset period by amount**: "0"  
+>>>>**Boundary target**: "Event date"  
+>>>>**Analytics period boundary target**: "After start of reporting period"  
+>>>>**Offset period by amount**: "0"  
+>>>
+>>>**Display in form**: tag (appears as white tick in blue square)  
+>>
+>>**2 Edit expression**
+>>>**Expression**: "#{RghnAkDBDI4.lpGYJoVUudr}"  
+>>>Stock on hand\\.Stock distribution  
+>>
+>>**3 Edit filter**
+>>>**Expression**: "A{hGtASyAiaZz} == '[Item code]'"  
+>>>Item code == '[Item code]'
+>
+>**2 [Data element] - Discard**  
+>>**1 Program indicator details**
+>>>**Program \(*)**: "Real-Time Stock Management"  
+>>>**Name \(*)**: "[Data element] - Discard"  
+>>>**Short Name \(*)**: "[Item code] - Discard"  
+>>>**Aggregation type \(*)**: "Sum"  
+>>>**Analytics type**: "Event"  
+>>>**Organisation unit field**: "Event organisation unit (default)  
+>>>**Analytics period boundaries**  
+>>>>**Boundary target**: "Event date"  
+>>>>**Analytics period boundary target**: "Before end of reporting period"  
+>>>>**Offset period by amount**: "0"  
+>>>>**Boundary target**: "Event date"  
+>>>>**Analytics period boundary target**: "After start of reporting period"  
+>>>>**Offset period by amount**: "0"  
+>>>
+>>>**Display in form**: tag (appears as white tick in blue square)  
+>>
+>>**2 Edit expression**
+>>>**Expression**: "#{RghnAkDBDI4.I7cmT3iXT0y}"  
+>>>Stock on hand\\.Stock discard  
+>>
+>>**3 Edit filter**
+>>>**Expression**: "A{hGtASyAiaZz} == '[Item code]'"  
+>>>Item code == '[Item code]'
+>
+>**3 [Data element] - Correction**  
+>>**1 Program indicator details**
+>>>**Program \(*)**: "Real-Time Stock Management"  
+>>>**Name \(*)**: "[Data element] - Correction"  
+>>>**Short Name \(*)**: "[Item code] - Correction"  
+>>>**Aggregation type \(*)**: "Sum"  
+>>>**Analytics type**: "Event"  
+>>>**Organisation unit field**: "Event organisation unit (default)  
+>>>**Analytics period boundaries**  
+>>>>**Boundary target**: "Event date"  
+>>>>**Analytics period boundary target**: "Before end of reporting period"  
+>>>>**Offset period by amount**: "0"  
+>>>>**Boundary target**: "Event date"  
+>>>>**Analytics period boundary target**: "After start of reporting period"  
+>>>>**Offset period by amount**: "0"  
+>>>
+>>>**Display in form**: tag (appears as white tick in blue square)  
+>>
+>>**2 Edit expression**
+>>>**Expression**: "#{RghnAkDBDI4.ej1YwWaYGmm}"  
+>>>Stock on hand\\.Stock correction  
+>>
+>>**3 Edit filter**
+>>>**Expression**: "A{hGtASyAiaZz} == '[Item code]'"  
+>>>Item code == '[Item code]'
+>
+>**4 [Data element] - Receipt**  
+>>**1 Program indicator details**
+>>>**Program \(*)**: "Real-Time Stock Management"  
+>>>**Name \(*)**: "[Data element] - Receipt"  
+>>>**Short Name \(*)**: "[Item code] - Receipt"  
+>>>**Aggregation type \(*)**: "Sum"  
+>>>**Analytics type**: "Event"  
+>>>**Organisation unit field**: "Event organisation unit (default)  
+>>>**Analytics period boundaries**  
+>>>>**Boundary target**: "Event date"  
+>>>>**Analytics period boundary target**: "Before end of reporting period"  
+>>>>**Offset period by amount**: "0"  
+>>>>**Boundary target**: "Event date"  
+>>>>**Analytics period boundary target**: "After start of reporting period"  
+>>>>**Offset period by amount**: "0"  
+>>>
+>>>**Display in form**: tag (appears as white tick in blue square)  
+>>
+>>**2 Edit expression**
+>>>**Expression**: "#{RghnAkDBDI4.j3ydinp6Qp8}"  
+>>>Stock on hand\\.Stock receipt  
+>>
+>>**3 Edit filter**
+>>>**Expression**: "A{hGtASyAiaZz} == '[Item code]'"  
+>>>Item code == '[Item code]'
+>
+>**5 [Data element] - Stock on hand**  
+>>**1 Program indicator details**
+>>>**Program \(*)**: "Real-Time Stock Management"  
+>>>**Name \(*)**: "[Data element] - Stock on hand"  
+>>>**Short Name \(*)**: "[Item code] - Stock on hand"  
+>>>**Aggregation type \(*)**: "Sum"  
+>>>**Analytics type**: "Event"  
+>>>**Organisation unit field**: "Event organisation unit (default)  
+>>>**Analytics period boundaries**  
+>>>>**Boundary target**: "Event date"  
+>>>>**Analytics period boundary target**: "Before end of reporting period"  
+>>>>**Offset period by amount**: "0"  
+>>>>**Boundary target**: "Event date"  
+>>>>**Analytics period boundary target**: "After start of reporting period"  
+>>>>**Offset period by amount**: "0"  
+>>>
+>>>**Display in form**: tag (appears as white tick in blue square)  
+>>
+>>**2 Edit expression**
+>>>**Expression**: "#{RghnAkDBDI4.ypCQAFr1a5l}"  
+>>>Stock on hand\\.Stock on hand  
+>>
+>>**3 Edit filter**
+>>>**Expression**: "A{hGtASyAiaZz} == '[Item code]'"  
+>>>Item code == '[Item code]'
+>
+
+### 5 Organisation Unit { #5-organisation-unit } 
+
+### 5.1 Organisation Unit { #51-organisation-unit } 
+The Organisation Unit, Organisation Unit group and Organisation Unit level are created and added according to national protocols and policies and/or existing DHIS2 configuration and there are no specific requirements for using the DHIS2-RTS.
+
+### 6 Program { #6-program } 
+The DHIS2 Tracker Program, which lies at the core of the DHIS2-RTS application, is very simple to configure, uses only native DHIS2 functionality and governs the customized user interface on the mobile device.
+
+#### 6.1 Program { #61-program } 
+>**1 Program details**
+>>**Name \(*)**: "Real-Time Stock Management"  
+>>**Short name (*)**: "Real-Time Stock Management"  
+>>**Color**: "#64DD17"  
+>>**Icon**: "rural post outline"  
+>>**Icon**: (automatically numbered by the system)
+>>**Tracked entity type (*)**: select "Item"  
+>>**Category combination (*)**: select "None"  
+>>**Display front page list**: tag (appears as a white tick in a blue square) 
+>>**Access level**: "Open"  
+>>**Completed events expiry days**: "0"  
+>>**Expiry days**: "0"  
+>>**Minimum number of attributes required to search**: "1"  
+>>**Maximum number of treacked entity instances to return in search**: "0"  
+>
+>**2 Enrollment details**  
+>>**Allow future enrollment dates**: do not tag  
+>>**Allow future incident dates**: do not tag  
+>>**Only enrol once (per tracked entity instance lifetime)**: do not tag  
+>>**Show incident date**: tag (appears as a white tick in a blue square)   
+>>**Description of incident date**: "Stock transaction"  
+>>**Ignore overdue events**: do not tag  
+>>**Feature type**: (blank)
+>>
+>**3 Attributes**
+>>**1 Assign attributes**
+>>>**Program tracked entity attributes**: select and arrange in the following order:
+>>>>"Item code"  
+>>>>"Item description"  
+>>>*Note that the item code is separate as it is needed as a distinct field for scanning the barcode*.  
+>>>**Display in list**: tag all  
+>>>**Searchable**: tag "Item description" ("Item code tagged by the system)  
+>>>**Mobile render type**: "Default"
+>>>**Desktop render type**: "Default"
+![](media/image11.png)
+>>
+>>**2 Create registration form**
+>>>(leave blank, no configuration needed)
+>>
+>**4 Program stages**
+>>**1 Stage details**
+>>>**Name \(*)**: "Stock on Hand"  
+>>>**Scheduled days from start (*)**: "0"  
+>>>**Repeatable**: tag (appears as white tig in a blue square)  
+>>
+>>**2 Assign data elements**  
+>>>**Search available/selected items**:  
+>>>>"Stock distribution"  
+>>>>"Stock discard"  
+>>>>"Stock receipt"  
+>>>>"Stock on hand"  
+>>>>"Deliver to"  
+>>>>"Previous stock balance"  
+>>>>"Stock count"  
+>>>>"Stock correction"  
+>>>>![](media/image36.png)
+>>>
+>>>**Display in report**: make visible for all items  
+>>>**Mobile render type**: "Default"  
+>>>**Desktop render type**: "Default"
+>>
+>>**3 Create data entry form**
+>>>**"BASIC"** (configured by the system by default, no configuration is needed).
+>
+>**5 Access**
+>>**Organisation units**: tag the health care facilities where the Tracker Program is used  
+>>**Roles and access**: "Stock on Hand" appears by default  
+>>**SELECT ALL**: tag (a white tick appears in the blue square)
+>
+>**6 Notifications**
+>(not applicable)
+
+#### 6.2 Tracked entity attribute { #62-tracked-entity-attribute } 
+The DHIS2-RTS uses the "Item code" and "Item descriptions" as the two Tracked entity attributes of the Trached entity type "Item".
+Note that the "Item code" is unique only for any specific Organisation Unit but the same "Item code" can be used in any number of different Organisation Units.
+
+>**1 Item code**  
+>>**Name \(*)**: "Item code"  
+>>**Short name (*)**: "Item code"  
+>>**Value type**: "Text"  
+>>**Aggregation type**: "None"  
+>>**Unique**: tag (appears as a blue tag with a white tick) 
+>>**Option (from drop-down menu)**: "Organisation unit"
+>>**Inherit**: do not tag  
+>
+>**2 Item description**  
+>>**Name \(*)**: "Item description"  
+>>**Short name \(*)**: "Item description"  
+>>**Value type**: "Text"  
+>>**Aggregation type**: "None"  
+>>**Unique**: do not tag
+>>**Inherit**: do not tag  
+
+#### 6.3 Tracked entity type { #63-tracked-entity-type } 
+>**1 Item**:  
+>>**Name \(*)**: "Item"  
+>>**Enable tracked entity instance audit log**: not checked
+>>**Minimum number of attributes required to search**: 1  
+>>**Maximum number of tracked entity instances to return in search**: 0  
+>>**Feature type**: "None"  
+>>**Tracked entity type attributes**: assign the following Tracked entity attributes in this order
+>>>"Item code"  
+>>>"Item description"  
+>>
+>>**Display in list**: tag all  
+>>**Searchable**: tag all
+
+#### 6.4 Program rule { #64-program-rule } 
+
+Au total, quatre règles de programme sont configurées pour effectuer tous les calculs requis :
+
+- "Affecter le solde du stock précédent"
+- "Affecter le stock disponible"
+
+Les deux autres règles de programme gèrent l'opération de "correction des stocks" :
+
+- "Affecter une correction de stock"
+- "Affecter la correction du stock disponible".
+
+Two Program rules together provide the real-time stock on hand update.
+
+In principle, the transaction quantities from the current event are added to the current Stock on Hand.
+
+Si le "stock disponible" a fait l'objet d'un événement antérieur, la valeur du "stock disponible" de l'événement antérieur est inscrite dans l'élément de données "solde du stock antérieur". Cette règle de programme "enregistre" la valeur actuelle du "stock disponible" qui est utilisée comme base pour le (re)calcul du "stock disponible" actuel. L'utilisation d'un seul champ conduirait à une récursion infinie et à une erreur car, par exemple, le "stock disponible" ne peut pas être égal au "stock disponible" + l'"entrée" au même moment. Au lieu de cela, il faut deux champs différents qui interagissent l'un avec l'autre :
+
+- "Stock disponible" : la valeur la plus récente avant qu'une transaction ne soit effectuée
+
+- " Solde du stock précédent " : la valeur la plus récente du stock disponible est inscrite dans ce champ dès qu'une nouvelle transaction est lancée.
+
+- Le calcul de la transaction en cours est effectué en ajoutant toutes les quantités de la transaction au " solde du stock précédent "
+
+- Une fois la transaction terminée, le résultat du calcul "écrase" le champ "Stock disponible"
+
+- Le processus recommence à zéro
+
+La capture d'écran ci-dessous montre un exemple de transaction. Avant le début de la transaction, le "stock disponible" était de 1. Cette valeur est inscrite dans le "stock précédent". Lorsque l'"entrée de stock" de 1 est introduite, le "stock disponible" passe à 2, mais le "solde du stock précédent" reste à 1, ce qui permet de conserver la "mémoire" du "stock disponible" avant le début de la transaction.
+
+Les deux éléments de données "Stock précédent" et "Stock disponible" sont grisés car ils sont automatiquement mis à jour par les règles du programme.
+
+![](media/image94.png)
+
+Il convient de noter que le (re)calcul du stock disponible est itératif, basé uniquement sur la transaction la plus récente et n'est en aucun cas affecté par l'édition rétrospective d'autres transactions que celles en cours. Par conséquent, toute modification des données antérieures doit être catégoriquement évitée. Toute erreur ne peut être corrigée qu'au moyen de la transaction "Correction".
+
+Deux règles de programme gèrent le calcul de la "correction de stock". La saisie d'une quantité correspondant à la différence entre le "stock disponible" actuellement stocké dans le système et le "stock disponible" résultant de l'inventaire physique nécessiterait de déterminer si la correction est une valeur positive ou négative et un calcul par l'utilisateur susceptible d'être erroné. Au lieu de cela, les magasiniers saisissent le résultat de l'inventaire physique et les deux règles du programme mettent à jour le "stock disponible" et calculent la différence (qui peut être positive ou négative) pour l'utilisateur :
+
+- " Affecter le stock disponible " : si une valeur est saisie dans le champ " Inventaire ", cette valeur " écrase " (remplace) le " Stock disponible " qui est actuellement enregistré dans le système.
+
+- "Affecter la correction de stock" : si le champ "Inventaire" contient une valeur, la différence entre le "Stock précédent" et l'"Inventaire" est "inscrite" dans le champ "Correction du stock".
+
+##### Calculations { #calculations } 
+
+Stock disponible = "Solde du stock précédent" + "Stock reçu" - "Distribution du stock" - "Stock écarté".
+
+Correction du stock = "Comptage" - " Solde du stock précédent", remplace le "Stock disponible".
+
+"Stock reçu" (nombre entier positif) : augmente le "stock disponible"
+
+"Distribution du stock" (nombre entier positif) : diminue le "stock disponible".
+
+"Stock écarté" (nombre entier positif) : réduit le "Stock disponible".
+
+"Correction du stock":
+
+- nombre entier négatif si l'inventaire physique du stock est inférieur à la valeur calculée
+
+- nombre entier positif si l'inventaire physique du stock est supérieur à la valeur calculée
+
+>**1 Assign stock correction**  
+>>**1 Enter program rule details**  
+>>>**Program \(*)**: "Real-Time Stock Management"  
+>>>**Trigger rule only for program stage**: appears by default
+>>>**Name \(*)**: "Assign Stock correction"  
+>>>**Description**: "Xx"  
+>>>**Priority**:  "Xx"
+>>
+>>**2 Enter program rule expression**  
+>>>**Condition**: "d2:hasValue(#{Stock count})"  
+>>
+>>**3 Define program rule actions**  
+>>>**Action details**   
+>>>>**Action \(*)**: "Assign value"
+>>>>**Data element to assign to**: "Stock correction"
+>>>>**Expression to evaluate and assign**: "#{Stock count}-#{Previous stock balance}"
+>
+>**2 Assign Stock on Hand**  
+>>**1 Enter program rule details**  
+>>>**Program \(*)**: "Real-Time Stock Management"  
+>>>**Trigger rule only for program stage**: appears by default
+>>>**Name \(*)**: "Assign Stock on Hand"  
+>>>**Description**: "Xx"  
+>>>**Priority**:  "Xx"
+>>
+>>**2 Enter program rule expression**  
+>>>**Condition**: "true"  
+>>
+>>**3 Define program rule actions**  
+>>>**Action details**   
+>>>>**Action \(*)**: "Assign value"
+>>>>**Data element to assign to**: "Stock on hand"
+>>>>**Expression to evaluate and assign**: ""#{Previous stock balance} + #{Stock received} - #{Stock distributed} - #{Stock discarded} ""
+>
+>**3 Assign Stock on hand correction**  
+>>**1 Enter program rule details**  
+>>>**Program \(*)**: "Real-Time Stock Management"  
+>>>**Trigger rule only for program stage**: appears by default
+>>>**Name \(*)**: "Assign Stock on hand correction"  
+>>>**Description**: "Xx"  
+>>>**Priority**:  "Xx"
+>>
+>>**2 Enter program rule expression**  
+>>>**Condition**: "d2:hasValue(#{Stock count})"  
+>>
+>>**3 Define program rule actions**  
+>>>**Action details**   
+>>>>**Action \(*)**: "Assign value"
+>>>>**Data element to assign to**: "Stock on hand"
+>>>>**Expression to evaluate and assign**: "#{Stock count}"
+>
+>**4 Assign previous stock balance**  
+>>**1 Enter program rule details**  
+>>>**Program \(*)**: "Real-Time Stock Management"  
+>>>**Trigger rule only for program stage**: appears by default
+>>>**Name \(*)**: "Assign Stock on hand correction"  
+>>>**Description**: "Xx"  
+>>>**Priority**:  "Xx"
+>>
+>>**2 Enter program rule expression**  
+>>>**Condition**: "Condition: "d2:hasValue(#{Initial stock on hand - Previous event})"  
+>>
+>>**3 Define program rule actions**  
+>>>**Action details**   
+>>>>**Action \(*)**: "Assign value"
+>>>>**Data element to assign to**: "Previous stock balance"
+>>>>**Expression to evaluate and assign**: "#{Initial stock on hand - Previous event}"
+
+#### 6.5 Program rule variable { #65-program-rule-variable } 
+>**1 Initial stock on hand - Previous event**
+>>**Program \(*)**: "Real-Time Stock Management"  
+>>**Name \(*)**: "Initial stock on hand - Previous event"  
+>>**Source type \(*)**: "Data element from previous event"  
+>>**Data element**: "Data element from previous event"  
+>
+>**2 Previous stock balance**
+>>**Program \(*)**: "Real-Time Stock Management"  
+>>**Name \(*)**: "Previous stock balance"  
+>>**Source type \(*)**: "Data element in current event"  
+>>**Data element**: "Previous stock balance"  
+>
+>**3 Stock correction**
+>>**Program \(*)**: "Real-Time Stock Management"  
+>>**Name \(*)**: "Stock correction"  
+>>**Source type \(*)**: "Data element in current event"  
+>>**Data element**: "Stock on hand"  
+>
+>**4 Stock count**
+>>**Program \(*)**: "Real-Time Stock Management"  
+>>**Name \(*)**: "Stock count"  
+>>**Source type \(*)**: "Data element in current event"  
+>>**Data element**: "Stock count"  
+>
+>**5 Stock discarded**
+>>**Program \(*)**: "Real-Time Stock Management"  
+>>**Name \(*)**: "Stock discarded"  
+>>**Source type \(*)**: "Data element in current event"  
+>>**Data element**: "Stock discard"  
+>
+>**6 Stock distribution**
+>>**Program \(*)**: "Real-Time Stock Management"  
+>>**Name \(*)**: "Stock distribution"  
+>>**Source type \(*)**: "Data element in current event"  
+>>**Data element**: "Stock distribution"  
+>
+>**7 Stock on hand**
+>>**Program \(*)**: "Real-Time Stock Management"  
+>>**Name \(*)**: "Stock on hand"  
+>>**Source type \(*)**: "Data element in current event"  
+>>**Data element**: "Stock on hand"  
+>
+>**8 Stock received**
+>>**Program \(*)**: "Real-Time Stock Management"  
+>>**Name \(*)**: "Stock received"  
+>>**Source type \(*)**: "Data element in current event"  
+>>**Data element**: "Stock receipt"  
+
+### 7 Other { #7-other } 
+
+#### 7.1 Option set { #71-option-set } 
+
+Option sets are used for listing, managing and editing the "Deliver to" places. The use of options provides a great deal of flexibility to the customization by individual countries, which are indispensable, without having to modify the DHIS2-RTS app code itself. However, please note that if the "Deliver to" options are modified, the Program Indicators, Predictors as well as the "aggregate" Data entry form have to be adapted accordingly.
+
+The following options are configured by default which can be customized by removing, changing or adding to national needs as required. It is important to always include the "(Other)" option to avoid that other departments or services are "polluted" with transaction data which actually does not apply to them.
+
+>**1 Deliver to**  
+>>**PRIMARY DETAILS**  
+>>>**Name \(*)**: "Deliver to"  
+>>>**Code**: "deliver_to"  
+>>>**Value type \(*)**: "Text" 
+>>
+>>**OPTIONS**  
+>>>**1 Diagnostic Imaging (X-ray)**
+>>>>**Name \(*)**: "Diagnostic Imaging (X-ray)"  
+>>>>**Code \(*)**: "diagn_imag"  
+>>>
+>>>**2 Emergency Room**
+>>>>**Name \(*)**: "Emergency Room"  
+>>>>**Code \(*)**: "emerg_room"  
+>>>
+>>>**3 High Dependency Unit**
+>>>>**Name \(*)**: "High Dependency Unit"  
+>>>>**Code \(*)**: "hi_dep_unit"  
+>>>
+>>>**4 Inpatient Medical Department**
+>>>>**Name \(*)**: "Inpatient Medical Department"  
+>>>>**Code \(*)**: "inp_med_dep"  
+>>>
+>>>**5 Inpatient Surgical Department**
+>>>>**Name \(*)**: "Inpatient Surgical Department"  
+>>>>**Code \(*)**: "inp_surg_dep"  
+>>>
+>>>**6 Laboratory Department**
+>>>>**Name \(*)**: "Laboratory Department"  
+>>>>**Code \(*)**: "lab_dep"  
+>>>
+>>>**7 Mortuary**
+>>>>**Name \(*)**: "Mortuary"  
+>>>>**Code \(*)**: "mortuary"  
+>>>
+>>>**8 Obstetrics & Gynaecology services**
+>>>>**Name \(*)**: "Obstetrics & Gynaecology services"  
+>>>>**Code \(*)**: "obs_gyn"  
+>>>
+>>>**9 Operating Theatre**
+>>>>**Name \(*)**: "Operating Theatre"  
+>>>>**Code \(*)**: "op_theatre"  
+>>>
+>>>**10 Out-Patient Department**
+>>>>**Name \(*)**: "Out-Patient Department"  
+>>>>**Code \(*)**: "outp_dep"  
+>>>
+>>>**11 Paediatric Department**
+>>>>**Name \(*)**: "paed_dep"  
+>>>>**Code \(*)**: "paed_dep"  
+>>>
+>>>**12 Physiotherapy Department**
+>>>>**Name \(*)**: "pt_dep"  
+>>>>**Code \(*)**: "pt_dep"  
+>>>
+>>>**13 Recovery Room**
+>>>>**Name \(*)**: "Recovery Room"  
+>>>>**Code \(*)**: "rec_room"  
+>>>
+>>>**14 Sanitation / Housekeeping**
+>>>>**Name \(*)**: "Sanitation / Housekeeping"  
+>>>>**Code \(*)**: "san_housek"  
+>>>
+>>>**15 Sterilization Department**
+>>>>**Name \(*)**: "Sterilization Department"  
+>>>>**Code \(*)**: "steriliz_dep"  
+>>>
+>>>**16 Transfusion services**
+>>>>**Name \(*)**: "Transfusion services"  
+>>>>**Code \(*)**: "transf_serv"  
+>>>
+>>>**17 (Other)**
+>>>>**Name \(*)**: "(Other)"  
+>>>>**Code \(*)**: "other"  
+
+#### 7.2 Legend { #72-legend } 
+
+Une légende conventionnelle pour les ruptures de stock est appliquée au rapport "DHIS2-RTS Stock disponible" pour indiquer les ruptures de stock sur un fond rouge :
+
+- Stock disponible = 0 : fond rouge
+- Stock disponible \>=1 : fond jaune pâle
+- Nom (\*): "Rupture de stock"
+
+>**1 Stockout**
+>>**1 Stockout**
+>>>**Name**: "Stockout"  
+>>>**Start value**: "0"  
+>>>**End value**: "1"  
+>>>**Color code**: "#F74432" (red)  
+>>
+>>**1 Stock**
+>>>**Name**: "Stock"  
+>>>**Start value**: "1"  
+>>>**End value**: "999999"  
+>>>**Color code**: "#F9E6BB" (cream-coloure)  
+>>
+>>![](media/image8.png)
+
+#### 7.3 Predictor { #73-predictor } 
+
+Predictors are used in two different ways:
+- for "transferring" aggregate Program indicator values to the daily/monthly Data entry form
+- "copying" the "Stock on hand" at the end of the previous month to the "Opening SoH" of the current month
+- calculating the "Closing SoH" from the data values of the current month  
+
+*Note that only transactional quantities (stock distributed, discarded and corrections) can be aggregated from the Tracker Program data. But as the stock balances are calculated after every transaction, aggregating them does not yield any meaningful results*.
+
+The Predictors which "transfer" the Program indicators to the respective Category option of the Data Entry form provide users with daily or monthly "snapshots" of all transactions. Note that in principle the same Program indicator can be used for daily and monthly aggregations ("snapshots") but separate Predictors, one with the "Period type (\*)" daily is needed for daily "snapshots" and a second Predictor with "Period type (\*)" monthly is needed for monthly "snapshots".
+
+One Predictor is needed for each item (Data element = Tracked Entity Instance), for each transaction type as well as for each "Deliver to" (Category option) and one each for the daily report and the monthly report as the "Group Predictor" function is not available for Program Indicators. List of Predictors required for every Data element:
+
+- [Nom de l'élément de données] - écarter
+
+- [Nom de l'élément de données] - Distribution - Imagerie médicale (radiographie)
+
+- [Nom de l'élément de données] - Distribution - Distribution - total (pour toutes les unités/services)
+
+- [Nom de l'élément de données] - Distribution - Salle d'urgence
+
+- [Nom de l'élément de données] - Distribution - Unité de soins à haute dépendance
+
+- [Nom de l'élément de données] - Distribution - Service médical des patients hospitalisés
+
+- [Nom de l'élément de données] - Distribution - Service de chirurgie interne
+
+- [Nom de l'élément de données] - Distribution - Service de laboratoire
+
+- [Nom de l'élément de données] - Distribution - Morgue
+
+- [Nom de l'élément de données] - Distribution - Services d'obstétrique et de gynécologie
+
+- [Nom de l'élément de données] - Distribution - Bilan d'ouverture (stock disponible)
+
+- [Nom de l'élément de données] - Distribution - Bloc opératoire
+
+- [Nom de l'élément de données] - Distribution - Service de Médecine externe
+
+- [Nom de l'élément de données] - Distribution - Service de pédiatrie
+
+- [Nom de l'élément de données] - Distribution - Service de physiothérapie
+
+- [Nom de l'élément de données] - Distribution - Réception
+
+- [Nom de l'élément de données] - Distribution - Salle de réveil
+
+- [Nom de l'élément de données] - Distribution - Hygiène Entretien ménager
+
+- [Nom de l'élément de données] - Distribution - Service de stérilisation
+
+- [Nom de l'élément de données] - Distribution - Stock disponible (solde de clôture)
+
+- [Nom de l'élément de données] - Distribution - Services de transfusion
+
+- [Nom de l'élément de données] - Distribution (autre)
+
+- [Nom de l'élément de données] - Correction du stock
+
+Below the configuration for a single Predictor is given as an example while all other Predictors are created analogously:  
+T2A - DORACEFI4T - CEFIXIME, 400 mg, tab. - DIST - Inpatient Medical Department - PR - MTH
+
+>**1 T2A - [Item] - DIST - Diagnostic imaging (X-Ray) - PR - MTH**  
+*This Predictor aggregates all "Distribution" transaction for the respective item and month*
+>>
+>>**Name \(*)**: "T2A - [Item] - DIST - Diagnostic imaging (X-Ray) - PR - MTH"  
+>>**Short name \(*)**: "T2A - [Item code] - DIST - X-Ray - PR - MTH"
+>>**Output data element \(*)**: "[Item] T2A MTH"  
+>>**Output category option combo** "DIS - Diagn. imaging"  
+>>**Period type \(*)**: "Monthly"  
+>>**Organisation unit levels** "Facility"  
+>>**Organisation units providing data \(*)** "At selected level(s) only"  
+*THIS IS ABSOLUTELY CRITICAL and the lowest level in the hierarchy must be selected (and not "Country") otherwise Predictors are generated but the values are blank*  
+>>**Generator \(*)**
+>>>**Description**: "T2A - [Item code] - DIST - X-Ray - PR - MTH"
+>>>**Expression**: "I{xwiNF9EsUHx}"  
+*[Item code] - Distribution - Diagnostic imaging (X-Ray)*
+>>
+>>**Sequential sample count \(*)**: "0"  
+>>**Annual sample count \(*)**: "0"  
+>
+>*Note: the Predictor "copies" the Program indicator without any aggregation (such as sum) as the aggregation is already achieved by the Program indicator. The "Sequential sample count" of 0 ensures that the transaction quantities of the current day or month are aggregated.*
+>
+>**2 T2A -  [Item] - SOH opening - PR - DAY**  
+*This Predictor "copies" data values within the Data entry form*
+>>
+>>**Name \(*)**: "T2A -  [Item] - SOH opening - PR - DAY"  
+>>**Short name \(*)**: "T2A -  [Item code] - SOH opening - PR - DAY"
+>>**Output data element \(*)**: "[Item]"  
+>>**Output category option combo** "Opening SoH"  
+>>**Period type \(*)**: "Daily"  
+>>**Organisation unit levels** "Facility"  
+>>**Organisation units providing data \(*)** "At selected level(s) only"  
+*THIS IS ABSOLUTELY CRITICAL and the lowest level in the hierarchy must be selected (and not "Country") otherwise Predictors are generated but the values are blank*  
+>>**Generator \(*)**
+>>>**Description**: "T2A - [Item code] - SOH opening - PR - DAY"
+>>>**Expression**: "avg(#{ZNi9SCtVA83.rZ5LF3cNuPb})"  
+*avg([Item code])*
+>>
+>>**Sequential sample count \(*)**: "0"  
+>>**Annual sample count \(*)**: "0"  
+>
+>**3 T2A -  [Item] - SOH closing - PR - DAY**  
+*This Predictor "copies" data values within the Data entry form*
+>>
+>>**Name \(*)**: "T2A -  [Item] - SOH closing - PR - DAY"  
+>>**Short name \(*)**: "T2A -  [Item code] - SOH opening - PR - DAY"
+>>**Output data element \(*)**: "[Item]"  
+>>**Output category option combo** "Stock on hand"  
+>>**Period type \(*)**: "Daily"  
+>>**Organisation unit levels** "Facility"  
+>>**Organisation units providing data \(*)** "At selected level(s) only"  
+*THIS IS ABSOLUTELY CRITICAL and the lowest level in the hierarchy must be selected (and not "Country") otherwise Predictors are generated but the values are blank*  
+>>**Generator \(*)**
+>>>**Description**: "T2A - [Item code] - SOH closing - PR - DAY"  
+>>>**Expression**: 
+#{ZNi9SCtVA83.srqJsVxtLdA}+
+#{ZNi9SCtVA83.iHrG3AK8XxK}-
+#{ZNi9SCtVA83.QjLESy7VVB6}-
+#{ZNi9SCtVA83.Hy0b1skIzyR}+
+#{ZNi9SCtVA83.tb7HW13vK6X}"  
+*[Item] Opening SoH+[Item] Stock receipt-[Item] Stock distribution-[Item] Stock discard+[Item] Stock correction*  
+*Please note that the "Stock correction" has to be added (and not be subtracted).*
+>>
+>>**Sequential sample count \(*)**: "0"  
+>>**Annual sample count \(*)**: "0"  
+
+#### 7.4 Predictor group { #74-predictor-group } 
+
+The "Predictor group" is required in order to allow running all Predictors periodically and together by the "Scheduler" rather than having to prompt them one by one. All Predictors required for the DHIS2-RTS can be grouped together and be run together in the Scheduler App
+
+>**1 DHIS2-RTS - T2A - Predictorr - DAY**  
+>**Name \(*)**: "DHIS2-RTS - T2A - Predictors DAY"  
+>**Predictors**
+>>"T2A - [Item] - [Deliver to] - PR - DAY"  
+>>
+>**2 DHIS2-RTS - T2A - Predictorr - DAY**  
+>**Name \(*)**: "DHIS2-RTS - T2A - Predictors MTH"  
+>**Predictors**
+>>"T2A - [Item] - [Deliver to] - PR - MTH"  
+
+## Scheduler Web App - Predictor Scheduling { #scheduler-web-app-predictor-scheduling } 
+"Scheduler" app allows configuring the automatic and periodic execution of Predictors by Predictor group for the daily and monthly Data entry forms.
+
+>**1 DHIS2-RTS - T2A - Predictors - DAY**  
+>>**Configuration**
+>>>**Name \(*)**: "DHIS2-RTS - T2A - Predictors - DAY"  
+>>>**Job type \(*)**: "Predictor"  
+>>>**CRON Expression \(*)**: "00 05 00 * * *" ("At 12:05:00 AM)
+>>
+>>**Parameters**
+>>>**Relative start**: "-1"  
+>>>**Relative end**: "1"  
+>>>**Predictor groups**: "DHIS2-RTS - T2A - Predictors DAY"  
+This CRON job is automatically executed every day at 00:05. If required, the Scheduler can also be set to run more frequently, for example twice a day, every four hours or every hour.  
+>
+>**2 DHIS2-RTS - T2A - Predictors - MTH**  
+>>**Configuration**
+>>>**Name \(*)**: "DHIS2-RTS - T2A - Predictors - MTH"  
+>>>**Job type \(*)**: "Predictor"  
+>>>**CRON Expression \(*)**: "00 05 00 1 * *" ("At 12:05:00 AM, on day 1 of the month)
+>>
+>>**Parameters**
+>>>**Relative start**: "-32"  
+>>>**Relative end**: "1"  
+>>>**Predictor groups**: "DHIS2-RTS - T2A - Predictors MTH"  
+This CRON job is automatically executed on the first day of every month at 00:05. If required, the Scheduler can also be set to run more frequently, for example once a week or once a day.
+
+## Users Web App - User management { #users-web-app-user-management } 
+
+The configuration of user roles, user groups and individual users will follow national policies and protocols and the majority of users will already have a DHIS2 user profile before starting the use of DHIS2-RTS. Nevertheless, all users need to have access to the Android Capture app for using the DHIS2-RTS application. If the daily or monthly Data entry form is used as a fallback in case the mobile application fails, users also require the respective user authorities for entering and editing data. Finally, all users should have access to the DHIS2 analytics.
+
+### Utilisateur { #user } 
+Existing users can be assigned additional user roles while a user profile needs to be created for all new users.
+
+### User role { #user-role } 
+All users which are recording transactions must be (also) asssigned to the User role "DHIS2-RTS Android Capture app" while other users might not record any transaction but still need to access (only) the DHIS2 analytics.
+
+>**1 DHIS2-RTS - Android Capture App**  
+>>**Name \(*)**: "DHIS2-RTS - Android Capture App"  
+>>**Description**: "Android Capture App data entry"  
+>>**Metadata authorities**  
+>>>"Data Value": "Add/Update Public" and "Delete"  
+>>
+>>**Other authorities / Selected tracker authorities**  
+>>>"Search Tracked Entity Instance in All Org Units"  
+>>>"View event analytics"  
+>>>"Update tracked entities"  
+>>>"Uncomplete events"
+>
+>**2 DHIS2-RTS - Analytics access**  
+>>**Name \(*)**: "DHIS2-RTS - Analytics access"  
+>>**Description**: "Dashboard and analytic apps access"  
+>>**Other authorities / Selected app authorities**
+>>>"Browser Cache Cleaner app"  
+>>>"Menu Management app"  
+>>>"Data Visualizer app"  
+>>>"linelisting app"  
+>>>"Dashboard app"  
+>>
+>>**Other authorities / Selected tracker authorities**  
+>>>"View event analytics"  
+
+### User group { #user-group } 
+
+L'objectif principal des groupes d'utilisateurs est de faciliter la configuration des paramètres de "partage" (qui déterminent les droits d'affichage et d'édition) par des groupes plutôt que de devoir les gérer au niveau de centaines d'utilisateurs individuels.
+
+User groups may be configured according to the User roles into the same two groups:
+- DHIS2-RTS - Android Capture App
+- DHIS2-RTS - Analytics access
+
+## Android Settings Web App - Synchronization and Offline Analytics { #android-settings-web-app-synchronization-and-offline-analytics } 
+The "Android settings Web App" allows customizing synchronization settings as well as configuring offline analytics.
+
+>**Synchronization**  
+>>**Global sync settings**
+>>>**How often should metadata sync**: "Manual"  
+>>>**How often should data sync**: "Manual"  
+>>>*Note: it is critical that users can control the synchronization settings so that they can synchronize mobile devices whenever Tracked Entity Instances (TEIs) are added or removed and that they can (ideally) synchronize the mobile device after every transaction.*
+>>
+>>**Programs**
+>>>**Programs specific download sync settings**
+>>>>**Setting level**: "All Org Units"
+>>>>**Maximum Tracked Entity Instance (TEI) download per program**: [to be confirmed]
+>>>>**Download TEI with status**: "Only Active"
+>>>>**Download TEI with enrollment date within**: "Any period"
+>>>>**Download TEI that have been updated within**: "Any time period"
+>
+>**Analytics**  
+>>**Program**  
+>>>**1 Visualization A**  
+>>>>**Program**: "Real-Time Stock Management"  
+>>>>**Visualization item**: [to be added]  
+>>>>**Visualization title**: [to be added]  
+>>>
+>>>**2 Visualization BA**  
+>>>>**Program**: "Real-Time Stock Management"  
+>>>>**Visualization item**: [to be added]  
+>>>>**Visualization title**: [to be added]  
+
+## Use Case Configuration Web App - Program Configuration { #use-case-configuration-web-app-program-configuration } 
+The Use Case Configuration Web app assigns the "Real-Time Stock Management" Tracker Program and some of its metadata to the customized mobile app. While the Tracker Program will have the appearance of any other Tracker Program on the Android Capture App home screen, selecting a Tracker Program which is assigned to the "Real-Time Stock Management" app will invoke the customized app instead of opening the conventional TEI dashboard.
+Note that only programs which meeting certain configuration criteria can be selected and only those will appear for selection in the respective drop-down menu:  
+- Tracker Program
+- One repeatable Program Stage
+- Program rules which update the stock on hand
+- Event which is not autogenerated
+- Data elements and Tracked Entity Attributes assigned to the Tracker program
+- Value type of Data elements in Program stages: "Number" for "Stock correction" and "Positive integer" for all others
+
+>**Configure Program**  
+>*Note: when setting up the DHIS2-RTS for the first time, please use "Add Program" for configuring a new program.*
+>>**Program name**: "Real-Time Stock Management"  
+>>>**General**  
+>>>>**Program Types**: "Logistics"  
+>>>>**Description**: "DHIS2-RTS Real-Time Stock management system"
+>>>>**Program \(*)**: "Real-Time Stock Management"  
+>>>**Details**  
+>>>>**Item Code \(*)**: "Item code"  
+>>>>**Item Description \(*)**: "Item description"
+>>>>**Stock on Hand \(*)**: "Stock on hand"  
+>>>**Transactions**  
+>>>>**Distributed**
+>>>>>**Distributed to \(*)**: "Deliver to"  
+>>>>>**Distributed Stock \(*)**: "Stock distribution"  
+>>>>**Corrected**
+>>>>>**Corrected Stock \(*)**: "Stock correction"  
+>>>>>**Stock Count \(*)**: "Stock count"  
+>>>>**Discarded**
+>>>>>**Discarded Stock \(*)**: "Stock discard"  
+
+## Data Entry (Beta) Web App - "Snapshots" and fallback data entry { #data-entry-beta-web-app-snapshots-and-fallback-data-entry } 
+Although the DHIS2-RTS mobile application is based solely on a Tracker program, a concurrent Data entry form is recommended for two purposes:
+- Storing aggregate daily/monthly data for analysis and reporting
+- Use as a fallback in the DHIS2-RTS mobile application is (temporarily) not available
+- Aggregate data repository for aggregate analytics and visualizations
+Consequently the list of Tracked Entity Instances (TEIs) for each Organsation Unit must always be aligned with corresponding Data set.
+As Custom Data Entry Forms do not render (correctly/completely) on mobile devices, the Data sets must be configured as "Default" Data entry form to allow use on mobile devices.
+Both Data entry forms (as configured according to the settings above) are configured to display all available data fields. However, the layout can be customized in the Data Visualizer Web App. Examples of monthly and daily Data entry forms:
+
+![Alt text](image.png)
+
+![Alt text](image-2.png)
+
+## Capture Web App - Tracked Entity Instance Management { #capture-web-app-tracked-entity-instance-management } 
+
+The Capture Web app must not be used for recording or editing transactions as the lack of a time stamp displays them in an arbitrary order and consequently the "Previous stock balance" used for the next transaction is also selected arbitrarily among previous transactions and incorrect (but this issue does not apply to the DHIS2-RTS mobile application).
+However, the Capture Web App is required for registering, enrolling, "completing" and "activating" Tracked Entity Instances.
+
+
+xxx
+
+Notez que la "date du rapport" peut être ajoutée à partir du menu à roue dentée une fois que le "FILTRE D'ÉTAPE" a été ajouté.
+
+Notez que l'ordre des colonnes peut être modifié par "glisser-déposer" dans le menu de la roue dentée.
+
+**Liste de travail de déclaration de stock DHIS2-RTS**
+
+- Ouvrez l'application de " Saisie " et " Enregistrer sous " : " Rapport de stock DHIS2-RTS " ( il est impossible de créer un nouveau nom par la suite).
+
+**Autres filtres**
+
+- " Étape du programme " : "Stock disponible"
+- Ajoutez tous les filtres disponibles pour les colonnes affichées ci-dessous.
+
+**Sélectionner les colonnes** - "Colonnes à afficher dans le tableau" (icône de la roue dentée)
+
+- "Date du rapport"
+- "Livrer à"
+- "Code de l'article"
+- "Description de l'article"
+- "Solde du stock précédent"
+- "Entrée de stock"
+- "Distribution des stocks"
+- "Rejet de stock"
+- "Correction du stock"
+- "Stock disponible"
+- "Inventaire du stock"
+
+[Question : apparemment, le filtre "Étape du programme" n'est pas sauvegardé et disparaît lorsque l'on quitte l'écran sans aucune possibilité de "mettre à jour" ou de "sauvegarder" la vue].![](media/image37.png)
+
+xxx
+In principle, this application will not be used as transactions will be exclusively managed in the customized app and a dashboard will be available for analysis of all transactions. However, the Capture app may be used for registering and enrolling (additional) items in an Organisation unit (health facility) and possibly for managing "manual" stock receipts for a small number of items.
+
+**Listes de travail**
+
+Enregistré en tant que " Liste d'articles en stock DHIS2-RTS " après personnalisation :
+
+![](media/image65.png)
+
+**Tableau de bord d'inscription**
+
+Ce tableau de bord présente le "profil de l'article" ainsi qu'un enregistrement de toutes les transactions par ordre chronologique :
+
+![](media/image40.png)
+
+Notez que les transactions ayant la même date ne sont pas placées dans l'ordre chronologique. Par conséquent, toute saisie de données via le portail web ne doit être effectuée que sur les toutes dernières transactions, faute de quoi les règles du programme donneront lieu à des valeurs incorrectes pour le stock disponible actuel.
+
+
+## Bulk Load Web App - Uploading Stock Receipts { #bulk-load-web-app-uploading-stock-receipts } 
+Xx
+
+## Data Visualizer Web App - "Aggregate" Analytics and Visualizations { #data-visualizer-web-app-aggregate-analytics-and-visualizations } 
+Xx
+xxx
+The DHIS2-RTS analytics are a critical and indispensable component of the DHIS2-RTS concept. The DHIS2-RTS app allows managing all transactions without the need for keeping paper records. However, recording transactions as such is nearly useless unless a record of all transactions is instantly and available to the storekeeper. Despite the availability of detailed transactional reports, compliance with monthly reporting requirements must be maintained.
+
+Le système d'analyse DHIS2 fournit des rapports sur les transactions individuelles ainsi que des " aperçus " de la valeur des stocks le dernier jour de chaque mois.
+
+Reports are accessible to all users with the respective authorities on mobile device (with limitations) as well as in the web portal.
+xxx
+These group of reports is generated from Data elements and the category options from the Data Entry form for visualizing daily and monthly totals of transactions.
+
+##### DHIS2-RTS Monthly report - Summary { #dhis2-rts-monthly-report-summary } 
+
+Ce rapport fournit les totaux mensuels de toutes les transactions, mais uniquement la quantité totale de "distribution", sans détails sur les transactions de "livraison à" ou de "distribution".
+
+##### Name { #name } 
+
+"Rapport mensuel RTS - Détaillé"
+
+##### Columns  { #columns } 
+
+"RTS - Rapport mensuel sur les stocks" (extrait de " Vos dimensions"):
+
+- Solde du stock précédent
+- Entrée de stock
+- Distribution de stock
+- Rejet de stock
+- Correction de stock
+- Stock disponible
+
+##### Rows { #rows } 
+
+- Données : "Type de données" = "Éléments de données", puis sélectionner tous les éléments de données.
+
+- Période : "Périodes fixes" et "Mensuelle", puis sélectionner les trois derniers mois (ou plus si nécessaire).
+
+##### Filter { #filter } 
+
+- Unité d'organisation : "0001 SM Mahosot"
+
+##### Options { #options } 
+
+- Données vides : "Masquer les colonnes vides" et "Masquer les lignes vides" : cocher les deux cases.
+
+![](media/image53.png)
+
+#### DHIS2-RTS Monthly report - Details { #dhis2-rts-monthly-report-details } 
+
+Ce rapport fournit les totaux mensuels de toutes les transactions, y compris les détails des transactions "Livrer à" et " Distribution ".
+
+##### Name { #name } 
+
+"Rapport mensuel RTS - Détaillé"
+
+##### Columns { #columns } 
+
+"RTS - Rapport mensuel sur les stocks" (extrait de " Vos dimensions"):
+
+- Solde du stock précédent
+- Entrée de stock
+- "DIS - Imagerie diagnostique"
+- "DIS - Salle des urgences"
+- "DIS - Unité de soins à haute dépendance"
+- "DIS - Entretien ménager"
+- "DIS - Service de médecine interne"
+- "DIS - Service de chirurgie interne"
+- "DIS - Service de laboratoire."
+- "DIS - Morgue"
+- "DIS - gynécologie. & obstétrique."
+- "DIS - Médecine externe"
+- "DIS - Bloc opératoire"
+- "DIS - (Autres)"
+- "DIS - Service de pédiatrie"
+- "DIS - Service de physiothérapie"
+- "DIS - Salle de réveil"
+- "DIS - Service de stérilisation"
+- "DIS - Services de transfusion "
+- Distribution de stock
+- Rejet de stock
+- Correction de stock
+- Stock disponible
+
+##### Rows { #rows } 
+
+- Données : "Type de données" = "Éléments de données", puis sélectionner tous les éléments de données.
+
+- Période : "Périodes fixes" et "Mensuelles", puis sélectionner janvier à décembre 2023
+
+##### Filter { #filter } 
+
+- Unité d'organisation : "0001 SM Mahosot"
+
+##### Options { #options } 
+
+- Données vides : "Masquer les colonnes vides" et "Masquer les lignes vides" : cocher les deux cases.
+
+![](media/image64.png)
+
+#### DHIS2-RTS Monthly stockout days count report { #dhis2-rts-monthly-stockout-days-count-report } 
+
+Ce rapport fournit automatiquement le nombre mensuel de jours de rupture de stock pour chaque article géré avec l'application mobile DHIS2-RTS.
+
+##### Name { #name } 
+
+"Nombre de jours de rupture de stock dans DHIS2-RTS - Mensuel"
+
+##### Columns { #columns } 
+
+- Période : "Périodes fixes" et "Mensuelle", puis sélectionner tous les mois pour 2023
+
+##### Rows { #rows } 
+
+- Données : "Type de données" = "Indicateurs", puis sélectionnez tous les indicateurs "Jours de rupture de stock".
+
+##### Filter { #filter } 
+
+- Unité d'organisation : "0001 SM Mahosot"
+
+##### Options { #options } 
+
+- Données : "totaux des colonnes" et "totaux des lignes"
+- Données vides : "Masquer les colonnes vides" et "Masquer les lignes vides" : cocher les deux cases.
+
+![](media/image75.png)
+
+#### DHIS2-RTS Daily report - Summary { #dhis2-rts-daily-report-summary } 
+
+Ce rapport fournit les totaux quotidiens de toutes les transactions, mais sans les détails des transactions "Livrer à" ou " Distribution ".
+
+##### Name { #name } 
+
+"Rapport mensuel RTS - Détaillé"
+
+##### Columns { #columns } 
+
+"RTS - Rapport mensuel sur les stocks" (extrait de " Vos dimensions"):
+
+- Solde du stock précédent
+- Entrée de stock
+- Distribution de stock
+- Rejet de stock
+- Correction de stock
+- Stock disponible
+- Période : "Périodes fixes" et "Mensuelle", puis sélectionner les trois derniers mois (ou plus si nécessaire).
+
+##### Rows { #rows } 
+
+Notez que l'ordre de ces deux champs peut être modifié pour afficher les articles dans l'ordre chronologique de leurs transactions ou pour afficher les jours dans l'ordre chronologique avec les transactions quotidiennes dans l'ordre alphabétique des articles.
+
+- Données : "Type de données" = "Éléments de données", puis sélectionner tous les éléments de données.
+
+##### Filter { #filter } 
+
+- Unité d'organisation : "0001 SM Mahosot"
+
+##### Options { #options } 
+
+- Données vides : "Masquer les colonnes vides" et "Masquer les lignes vides" : cocher les deux cases.
+
+![](media/image38.png)
+
+#### DHISDaily report - Details { #dhisdaily-report-details } 
+
+Ce rapport fournit les totaux quotidiens de toutes les transactions, y compris les détails des transactions "Livrer à" et " Distribution ".
+
+##### Name { #name } 
+
+"Rapport quotidien RTS - Détaillé"
+
+##### Columns { #columns } 
+
+"RTS - Rapport mensuel sur les stocks" (extrait de " Vos dimensions"):
+
+- Solde du stock précédent
+- Entrée de stock
+- "DIS - Imagerie diagnostique"
+- "DIS - Salle des urgences"
+- "DIS - Unité de soins à haute dépendance"
+- "DIS - Entretien ménager"
+- "DIS - Service de médecine interne"
+- "DIS - Service de chirurgie interne"
+- "DIS - Service de laboratoire."
+- "DIS - Morgue"
+- "DIS - gynécologie. & obstétrique."
+- "DIS - Médecine externe"
+- "DIS - Bloc opératoire"
+- "DIS - (Autres)"
+- "DIS - Service de pédiatrie"
+- "DIS - Service de physiothérapie"
+- "DIS - Salle de réveil"
+- "DIS - Service de stérilisation"
+- "DIS - Services de transfusion "
+- Distribution de stock
+- Rejet de stock
+- Correction de stock
+- Stock disponible
+
+##### Rows { #rows } 
+
+- Données : "Type de données" = "Éléments de données", puis sélectionner tous les éléments de données.
+
+- Période : "Périodes fixes" et " Quotidienne", puis sélectionner tous les jours pour 2023
+
+##### Filter { #filter } 
+
+- Unité d'organisation : "0001 SM Mahosot"
+
+##### Options { #options } 
+
+- Données vides : "Masquer les colonnes vides" et "Masquer les lignes vides" : cocher les deux cases.
+
+![](media/image10.png)
+
+##### DHIS2-RTS Daily stockout days count report { #dhis2-rts-daily-stockout-days-count-report } 
+
+Ce rapport fournit automatiquement le nombre d'articles en rupture de stock chaque jour pour chaque article géré avec l'application mobile DHIS2-RTS.
+
+##### Name { #name } 
+
+"Nombre de jours de rupture de stock dans DHIS2-RTS - Quotidien"
+
+##### Columns { #columns } 
+
+- Période : "Périodes fixes" et " Quotidienne", puis sélectionner tous les jours pour 2023
+
+##### Rows { #rows } 
+
+- Données : "Type de données" = "Indicateurs", puis sélectionnez tous les indicateurs "Jours de rupture de stock".
+
+##### Filter { #filter } 
+
+- Unité d'organisation : "0001 SM Mahosot"
+
+##### Options { #options } 
+
+- Données : "totaux des colonnes" et "totaux des lignes"
+- Données vides : "Masquer les colonnes vides" et "Masquer les lignes vides" : cocher les deux cases.
+
+![](media/image48.png)
+
+
+
+
+## Line Listing Web App - Transaction Analytics and Visualizations { #line-listing-web-app-transaction-analytics-and-visualizations } 
+Xx
+The Line Listing reports provide details of individual transactions but are not able to provide any type of aggregation.
+
+Remarque importante : la date et l'heure de la "dernière mise à jour le" indiquent les données réelles de la transaction effectuée sur l'appareil mobile (et non la date et l'heure de la synchronisation). L'heure indiquée dans la liste des lignes correspond à l'heure réglée sur l'appareil mobile.
+
+Pour les entrées de stock saisies via le portail web, la "Dernière mise à jour le" reflète l'heure du serveur de l'instance DHIS2. Par conséquent, l'heure du serveur et l'heure des appareils mobiles doivent être réglées sur la même date et la même heure et correspondre au fuseau horaire utilisé dans le pays concerné. Si les heures réglées sur les appareils mobiles et l'instance du serveur DHIS2 diffèrent, la liste des lignes n'affichera plus toutes les transactions effectuées sur les appareils mobiles et le portail web dans l'ordre chronologique.
+
+##### DHIS2-RTS Digital stock card { #dhis2-rts-digital-stock-card } 
+
+Ce rapport remplace la fiche de stock manuelle (écrite à la main) et affiche la chronologie précise de toutes les transactions avec le "solde du stock précédent" et le "stock disponible" (après la transaction).
+
+##### Entrée { #input } 
+
+- Événement
+
+##### Program dimensions { #program-dimensions } 
+
+- Programme : "Gestion des stocks en temps réel"
+- Étape : "Stock disponible"
+
+##### Columns { #columns } 
+
+- Dernière mise à jour le : "Aujourd'hui", "90 derniers jours"
+- Livrer à: (sans condition)
+- Code de l'article (sans condition)
+- Description de l'article (sans condition)
+- Solde du stock précédent (sans condition)
+- Reçu de stock (sans condition)
+- Distribution du stock (sans condition)
+- Mise à l'écart du stock (sans condition)
+- Correction du stock (sans condition)
+- Stock disponible (sans condition)
+
+##### Filter { #filter } 
+
+- Unité d'organisation / "Unité d'organisation de l'utilisateur"
+
+##### Options { #options } 
+
+- Style / Séparateur de groupes de chiffres : "Virgule"![](media/image76.png)
+
+##### DHIS2-RTS Stock distribution report { #dhis2-rts-stock-distribution-report } 
+
+Ce rapport présente (de manière sélective) toutes les transactions de "Distribution".
+
+##### Entrée { #input } 
+
+- Événement
+
+##### Program dimensions { #program-dimensions } 
+
+- Programme : Gestion des stocks en temps réel
+- Étape : Stock disponible
+
+##### Columns { #columns } 
+
+- Dernière mise à jour le : "Aujourd'hui", "90 derniers jours"
+- Livrer à (sans condition)
+- Code de l'article (sans condition)
+- Description de l'article (sans condition)
+- Distribution du stock : "supérieure à (\>)" 0
+
+##### Filter { #filter } 
+
+- Unité d'organisation / "Unité d'organisation de l'utilisateur"
+
+##### Options { #options } 
+
+- Style / Séparateur de groupes de chiffres : "Virgule"
+
+![](media/image16.png)
+
+#### Current Stock on hand report { #current-stock-on-hand-report } 
+
+Ce rapport est identique à l'affichage de la liste des articles en stock avec les stocks disponibles dans DHIS2-RTS et peut être considéré comme redondant. L'avantage d'avoir un rapport séparé est la possibilité de donner aux utilisateurs (tels que le personnel de santé dans les unités et les services) un accès en lecture uniquement et de ne pas avoir à les former sur le système DHIS2-RTS. En outre, il n'est pas nécessaire de sélectionner un "Type de transaction" et une "Livraison à" simplement pour visualiser la position actuelle du stock.
+
+Exceptionnellement et intentionnellement, l'"événement" (et non l'"inscription") doit être sélectionné comme une "Entrée".
+
+##### Entrée { #input } 
+
+- Inscription (!)
+
+##### Program dimensions { #program-dimensions } 
+
+- Programme : Gestion des stocks en temps réel
+
+##### Columns { #columns } 
+
+- Code de l'article (sans condition)
+- Description de l'article (sans condition)
+- Stock disponible :
+- "Conditions" : aucune
+- "Événements répétés" : "Événements les plus récents" = "1", "Événements les plus anciens" = "0"
+
+- Date d'inscription : "Périodes relatives" et "Mois" : "Ce mois" et les "12 derniers mois"
+
+##### Filter { #filter } 
+
+- Unité d'organisation / "Unité d'organisation de l'utilisateur"
+
+##### Options { #options } 
+
+- Style / Séparateur de groupes de chiffres : "Virgule"
+- Légende : "Choisissez une légende unique pour l'ensemble de la visualisation" : " Rupture de stock "
+
+[Question : La légende n'apparaît pas sous les styles]
+
+![](media/image43.png)
+
+#### DHIS2-RTS Discard report { #dhis2-rts-discard-report } 
+
+Ce rapport présente (de manière sélective) toutes les transactions de type " écarté ".
+
+##### Entrée { #input } 
+
+- Événement
+
+##### Program dimensions { #program-dimensions } 
+
+- Programme : Gestion des stocks en temps réel
+- Étape : Stock disponible
+
+##### Columns { #columns } 
+
+- Dernière mise à jour le : "Aujourd'hui", "90 derniers jours"
+- Livrer à (sans condition)
+- Code de l'article (sans condition)
+- Description de l'article (sans condition)
+- Mise à l'écart du stock : "supérieur à (\>)" 0
+
+##### Filter { #filter } 
+
+- Unité d'organisation / "Unité d'organisation de l'utilisateur"
+
+##### Options { #options } 
+
+- **Style / Séparateur de groupes de chiffres : "Virgule"**
+
+![](media/image21.png)
+
+#### DHIS2-RTS Stock correction report { #dhis2-rts-stock-correction-report } 
+
+Ce rapport présente (de manière sélective) toutes les transactions de la catégorie "Correction de stock".
+
+##### Entrée { #input } 
+
+- Événement
+
+##### Program dimensions { #program-dimensions } 
+
+- Programme : Gestion des stocks en temps réel
+- Étape : Stock disponible
+
+##### Columns { #columns } 
+
+- Dernière mise à jour le : "Aujourd'hui", "90 derniers jours"
+- Livrer à (sans condition)
+- Code de l'article (sans condition)
+- Description de l'article (sans condition)
+- Correction du stock : "supérieur à (\>)" 0
+
+##### Filter { #filter } 
+
+- Unité d'organisation / "Unité d'organisation de l'utilisateur"
+
+##### Options { #options } 
+
+- **Style / Séparateur de groupes de chiffres : "Virgule"**
+
+![](media/image18.png)
+
+
+
+
+
+## Maps Web App - Analytics and Visualizations { #maps-web-app-analytics-and-visualizations } 
+Xx
+
+
+
+## Dashboard Web App - DHIS2-RTS Dashboard { #dashboard-web-app-dhis2-rts-dashboard } 
+
+Chacun des tableaux de bord DHIS2-RTS présente un seul rapport ou visualisation de type Liste de lignes ou Visualiseur de données afin de maximiser leur taille lorsqu'ils sont visualisés sur un (petit) appareil mobile.
+
+Tous les tableaux de bord doivent être configurés en mode " Rendre disponible hors ligne " afin qu'ils puissent être consultés sur un appareil mobile lorsqu'il est hors ligne.
+
+
+
+
+
+## Android Capture App - DHIS2-RTS mobile application { #android-capture-app-dhis2-rts-mobile-application } 
+Xx
+The mobile device application (front-end, user interface) consists of a login screen, a single screen for entering and editing data by pharmacy staff, a third (and last) screen for viewing and correcting the summary and a final screen for the analytics.
+
+Toute autre fonctionnalité est placée dans le menu des paramètres natifs de DHIS2.
+
+### General use case { #general-use-case } 
+
+Les stocks médicaux comprennent les produits pharmaceutiques (comprimés, injections, tests de diagnostic, etc.) ainsi que les dispositifs médicaux à usage unique tels que les seringues, les bandages, les cathéters, les drains, les films radiographiques, etc.
+
+Les réserves médicales sont généralement réapprovisionnées une fois par mois par des magasins de district, de province ou nationaux. Lors de la livraison, ils reçoivent un emballage détaillé pour chaque lot, qui indique les codes et les noms des articles, les quantités, les numéros de lot et les dates de péremption. Après avoir compté la quantité de chaque article, les produits sont rangés et placés dans l'ordre du groupe d'articles, dans l'ordre alphabétique et dans l'ordre de la date de péremption dans l'entrepôt médical.
+
+Selon l'organisation de l'établissement de santé, chaque unité ou service présente à la pharmacie centrale, une fois par jour, plusieurs fois par semaine selon un calendrier convenu, chaque semaine ou une fois par mois, un formulaire de demande accompagné d'une liste d'articles et de quantités nécessaires. Le magasinier prélève alors les quantités nécessaires des articles demandés et les prépare pour les livrer au demandeur.
+
+Traditionnellement, les magasins de produits médicaux sont gérés en enregistrant chaque transaction dans une fiche de lot qui est placée sur les étagères à côté de chaque article. À la fin du mois, le stock de chaque article est compté, le solde réel est comparé au solde courant indiqué dans la fiche de lot et, si nécessaire, le solde est corrigé. Toutes les transactions de chaque fiche de lot sont résumées dans une fiche de stock qui est également conservée pour chaque article et qui calcule le solde du stock à partir de toutes les entrées et sorties de stock. Les données relatives aux sorties de stock mensuelles ainsi que le stock disponible à la fin du mois sont ensuite utilisés pour calculer les commandes de réapprovisionnement mensuelles, ce qui clôt le cycle de réapprovisionnement.
+
+Ce processus est laborieux, ennuyeux, sujet à des erreurs et prend beaucoup de temps. L'inventaire mensuel prend à lui seul entre deux et cinq jours de travail par mois.
+
+L'amélioration fondamentale de DHIS2-RTS consiste à enregistrer uniquement les transactions de stock en scannant un code-barres, en ajoutant le stock reçu à partir de listes d'emballage électroniques et en calculant le solde restant en temps réel. La carte de stock est alors automatiquement fournie par l'application DHIS2-RTS, ce qui élimine le besoin de documents papier. Le processus d'inventaire mensuel est éliminé et remplacé par un comptage résiduel et (éventuellement) par des contrôles ponctuels.
+
+Le DHIS2-RTS sera utilisé par
+
+- les pharmaciens
+- les magasiniers
+- les agents de santé
+- les agents de vaccination
+- les superviseurs et les directeurs de pharmacie
+- les agents de santé communautaires
+
+pour la gestion des stocks médicaux dans les hôpitaux, les établissements de soins de santé primaires (cliniques), les services de vaccination et ceux gérés par les agents de santé communautaires.
+
+L'une des principales tâches des magasiniers consiste à enregistrer toutes les transactions relatives aux articles qu'ils gèrent et à fournir des rapports détaillés à la fin du mois. Ces registres contiennent pour chaque transaction les informations suivantes :
+
+- le lieu de la transaction ( Unité d'Organisation)
+- date et heure de la transaction
+- la personne qui a effectué la transaction (utilisateur)
+- demander une unité de soins ou un service
+- code et nom de l'article (nom du médicament ou du matériel à usage unique)
+- quantité de la transaction
+
+Les commerçants doivent différencier et enregistrer la transaction suivante :
+
+- les entrées de stock (en provenance des magasins en amont)
+- Distributions de stock
+- Mise à l'écart du stock
+- Corrections de stock
+
+Les entrées de stock sont gérées "manuellement" par le magasinier via l'application DHIS2-RTS, par "téléchargement" dans le programme Tracker sur le portail web DHIS2 à l'aide d'un modèle ou par l'intégration avec le système national eLMIS.
+
+Presque toutes les transactions sont des "distributions" de produits de santé aux unités et aux services. Il arrive que des produits périmés ou endommagés soient écartés et retirés du stock, mais sans être pris en compte dans la quantité "distribuée", faute de quoi les quantités de réapprovisionnement seraient faussement calculées à un niveau trop élevé. Enfin, tout écart causé par des erreurs, des égarements ou des vols doit être corrigé afin de garantir l'exactitude des calculs de réapprovisionnement des stocks.
+
+[Question : inclure les retours aux magasins en amont et les redistributions à d'autres établissements de santé. L'alternative est de les gérer comme des "livraisons négatives" du magasin en amont].
+
+Les données et analyses de DHIS2-RTS fournissent au commerçant des informations sur :
+
+- le stock actuel disponible pour chaque article
+- le total des transactions mensuelles (réceptions, distributions, écarts et corrections) pour chaque article
+
+- les distributions par unité de soins ou service fourni
+
+### General design principles and business requirements { #general-design-principles-and-business-requirements } 
+
+Le principe de "frugalité numérique", qui consiste à garder l'application mobile aussi simple, "légère" et "allégée" que possible, est un objectif explicite du projet. L'application mobile ne comporte qu'une fenêtre de connexion pour l'authentification, une fenêtre pour la préparation de la commande et une troisième fenêtre pour la révision et la confirmation. Toute information affichée sur une interface utilisateur doit être essentielle et indispensable aux processus commerciaux et aux flux de travail.
+
+La possibilité de travailler hors ligne est absolument essentielle dans le contexte des PRFM où la connectivité du réseau est intermittente ou peu fiable.
+
+Cette application mobile sera principalement utilisée par des agents de santé qui n'ont reçu aucune formation en logistique et en gestion de la chaîne d'approvisionnement et qui ont très probablement acquis les principes de la gestion des stocks par "l'apprentissage par la pratique". Par conséquent, les processus, les flux de travail, les interfaces utilisateur et les interactions avec l'appareil mobile doivent être:
+
+- dans la mesure du possible, la fonctionnalité native du DHIS2 sera utilisée
+- le développement personnalisé ne s'applique qu'aux fonctionnalités qui ne sont pas disponibles à l'origine mais qui sont nécessaires à l'application DHIS2-RTS
+
+- Le développement personnalisé doit être réduit au minimum afin de minimiser le travail de maintenance future, par exemple pour assurer la compatibilité avec les futures versions de DHIS2
+
+- en particulier, la fonctionnalité du menu "Paramètres" (barre latérale) est maintenue pour que l'application DHIS2-RTS
+
+- soit aussi simple que possible
+- soit aussi intuitive que possible
+- soit, dans la mesure du possible, évidente et ne nécessite qu'une formation minimale
+- offre aux utilisateurs le moins d'options possible
+- guide l'utilisateur à l'étape suivante avec une faible possibilité d'erreur
+
+- évite les erreurs (graves) en exigeant une confirmation supplémentaire
+- puisse offrir une bonne ergonomie sur les téléphones mobiles (écran de 6 pouces) ainsi que sur les tablettes
+
+- soit conçu pour une tâche hautement répétitive
+- ne puisse comprendre que les éléments textuels et visuels qui sont absolument indispensables
+
+- Préparation au paramétrage : il est inévitable que l'utilisateur veuille modifier le programme Tracker. Par exemple, pour modifier la liste des options "Livrer à". Une autre demande très fréquente est que les utilisateurs souhaitent différencier le "stock écarté" en stock périmé, endommagé et volé. Dans la mesure du possible, les menus déroulants (comme pour le type de transaction et les options "Livrer à") doivent être configurés de manière à pouvoir être facilement modifiés dans le programme Tracker sans devoir changer l'application. Par exemple, en utilisant des ensembles d'options pour les options "Livrer à" ou des éléments de données pour les types de transaction. Ce système permet de maintenir DHIS2-RTS aussi simple que possible (plutôt que d'intégrer toutes les exigences possibles des utilisateurs) tout en permettant un paramétrage aisé.
+
+- Langue : Anglais par défaut avec les options de langue maternelle de DHIS2
+
+**Exigences commerciales en matière d'interface utilisateur**
+
+- Toutes les quantités de tous les produits de santé sont exclusivement indiquées en unités de mesure (UdM) de "EA" (Chaque) et jamais en quantités d'emballage. "CHAQUE" désigne la plus petite unité utilisable d'un produit de santé, comme un comprimé, une seringue, un gant jetable ou une paire ( !) de gants stérélisés (ceux-ci devant toujours être utilisés par paires). Dans les cas exceptionnels où la quantité d'emballage (telle que "kit de 100 tests") est indiquée dans la description de l'article, "CHAQUE" fait référence à un kit (et non à un test), car ces produits ne contiennent pas de tests de diagnostic séparés, mais constituent un véritable kit avec des flacons de liquides et d'autres composants suffisants pour le nombre de tests indiqué.
+- Dans les tableaux, tous les champs de texte sont alignés à gauche
+- Dans les tableaux, tous les champs de valeur sont alignés à droite.
+- Toutes les dates sont affichées au format jj/mm/aaaa (jour/mois/année)
+- Toutes les heures sont affichées au format hh:mm (heure/minute) en format 24 heures.
+- Hormis les analyses, aucune décimale n'est utilisée pour les valeurs (inutile, source d'erreurs, risque de confusion avec les séparateurs de milliers et manque de lisibilité).
+- Tous les nombres supérieurs à 999 sont affichés avec une virgule (" , ") comme séparateur de groupe de mille (par exemple 1,200).
+- Les champs numériques autorisent des valeurs de 7 chiffres au maximum (la plus grande valeur autorisée est 9 999 999)
+- Tous les champs de texte (y compris le champ du code article) sont alphanumériques (alphabet anglais de A à Z et chiffres de 0-9, aucun autre caractère n'est nécessaire).
+- Tous les articles sont triés par ordre alphabétique selon leur "nom"
+- Champ unique pour la concaténation du code et de la description de l'article (ce n'est pas l'idéal, mais c'est une contrainte dans DHIS2)
+- Toutes les valeurs de données saisies sur l'appareil mobile à l'aide de l'application de saisie Android DHIS2 sont stockées instantanément dès la saisie et ne nécessitent pas d'être "sauvegardées"
+- L'application pour appareil mobile ne permet pas aux utilisateurs d'exporter ou de télécharger des données à partir de l'appareil mobile, et cela n'est pas nécessaire. Les données précédemment enregistrées peuvent être consultées dans des tableaux de bord sur l'appareil mobile ou sur le portail web DHIS2.
+
+### DHIS2 mobile device application installation { #dhis2-mobile-device-application-installation } 
+
+Avant d'utiliser l'application pour la première fois, ainsi qu'en cas d'erreur dans l'appareil mobile, l'application pour appareil mobile doit être installée individuellement sur chaque appareil mobile.
+
+Étant donné que DHIS2-RTS est un module natif de l'application de saisie Android DHIS2, l'installation de l'application de saisie Android DHIS2 inclut automatiquement l'installation de l'application de saisie Android DHIS2-RTS.
+
+L'utilisateur télécharge l'application native de saisie Android DHIS2 à partir de Google Play Store en recherchant "DHIS2" et en installant l'application mobile comme toute autre application.
+
+### DHIS2 mobile device application user access (login and logout) { #dhis2-mobile-device-application-user-access-login-and-logout } 
+
+Ce processus permet aux utilisateurs de se connecter et d'accéder à l'application mobile.
+
+Étant donné que DHIS2-RTS est un module natif de l'application de saisie Android DHIS2, la connexion (et la déconnexion) est également une fonctionnalité native qui est valable pour l'application de Stock DHIS2-RTS.
+
+Les utilisateurs peuvent se connecter en fonction de leur profil d'utilisateur et des paramètres de leur compte, tels qu'ils sont configurés dans le portail web DHIS2. L'accès à la fonctionnalité DHIS2-RTS est contrôlé par les paramètres de l'utilisateur, les paramètres du programme Tracker et l'application Paramètres Android [à confirmer].
+
+### "Distribution" transaction { #distribution-transaction } 
+
+Plus de 99 % de toutes les transactions seront des transactions de "distribution" dans le cadre desquelles les commerçants préparent et emballent les produits de santé demandés par un département, un service, un agent de santé communautaire ou un agent de vaccination, qui sont ensuite soit récupérés par le demandeur, soit livrés par la pharmacie.
+
+DHIS2-RTS est conçu pour l'enregistrement numérique instantané et n'est explicitement pas destiné à l'enregistrement des transactions sur des documents papier et à leur réintroduction ultérieure sur un appareil mobile, car cela entraînerait une duplication inutile de l'effort de travail. En outre, la saisie "rétrospective" ne permet pas d'atteindre l'objectif principal, qui est de fournir des mises à jour des stocks en temps réel aux magasiniers et aux autres parties prenantes.
+
+- Les utilisateurs saisissent les transactions article par article au fur et à mesure qu'elles ont lieu et non de manière rétrospective.
+
+- Un paramètre permet de différencier les distributions effectives (distribution aux patients, aux unités, aux services et aux agents de santé communautaires) des pertes causées par la péremption, la détérioration, le vol ou toute autre utilisation du stock qui n'est pas une distribution effective du stock.
+
+- Le stock disponible étant calculé automatiquement, les utilisateurs ont la possibilité de corriger manuellement tout écart en enregistrant la correction du stock réel actuellement disponible.
+
+#### "Distribution" transaction workflow { #distribution-transaction-workflow } 
+
+Pour chaque transaction de "distribution", le flux de travail suivant est nécessaire. L'utilisateur
+
+- reçoit une demande écrite de la part de départements, de services ou d'agents de santé communautaires indiquant une liste de produits de santé et leurs quantités qui sont demandés et doivent être préparés par la pharmacie
+
+- démarre l'appareil mobile
+- ouvre l'application mobile DHIS2-RTS
+- sélectionne le type de transaction "Distribution"
+- sélectionne l'"unité d'organisation" (nom de l'établissement de santé) s'il a accès à plusieurs établissements.
+
+- sélectionne l'unité/service, etc. qui demande les marchandises et pour lequel la commande est préparée
+
+- sélectionne le premier élément par défilement, recherche ou utilisation du lecteur de code-barres
+
+- saisit manuellement la quantité en appuyant sur le clavier à l'écran
+- répète le processus pour chaque article demandé
+- procède à un examen final de tous les articles prélevés et, si nécessaire, corrige, confirme (ou écarte) la transaction
+
+- informe le demandeur qu'il doit venir chercher les marchandises et les livre au département/service demandeur
+
+#### "Distribution" transaction use case { #distribution-transaction-use-case } 
+
+1.  L'utilisateur s'authentifie et accède à l'application de saisie Android DHIS2.
+2.  L'écran d'accueil de l'application de saisie Android DHIS2 apparaît et affiche tous les ensembles de données et programmes DHIS2 auxquels l'utilisateur est affecté et a accès.![](media/image25.png)
+3.  L'utilisateur accède au programme DHIS2-RTS Tracker correspondant à partir de l'écran d'accueil en cliquant dessus.
+4.  L'écran d'accueil de DHIS2-RTS s'ouvre et, dans la barre supérieure, le type de transaction "Distribution" apparaît par défaut sur fond bleu. Si l'utilisateur est affecté à une seule unité d'organisation, celle-ci apparaît par défaut sous "De". Par défaut, le champ "Livrer à" est vide afin d'obliger l'utilisateur à sélectionner délibérément l'une des options. Notez que le champ "Recherche" n'est pas actif aussi longtemps que les champs "De" et "Livrer à" n'ont pas été remplis.![](media/image9.png)
+5.  Optionnellement (ce devrait être une très rare exception) : l'utilisateur ouvre le menu déroulant "De".
+6.  La liste des unités d'organisation disponibles s'affiche dans le menu déroulant. Si l'utilisateur est affecté à une seule unité d'organisation, le champ est "statique" et aucun menu déroulant ne s'affiche.![](media/image56.png)
+7.  L'utilisateur sélectionne l'unité d'organisation requise en cochant la case et en sélectionnant " TERMINÉ ".
+8.  La page d'accueil de DHIS2-RTS s'affiche à nouveau et indique maintenant l'unité d'organisation sélectionnée.![](media/image68.png)
+9.  L'utilisateur ouvre la fenêtre déroulante "Livrer \..." pour sélectionner le département ou le service qui a demandé les produits et à qui les produits sont livrés. Notez que cette fenêtre déroulante ne concerne que la "Distribution" (mais pas le "Rejet" ni la "Correction"). Par défaut, la fenêtre déroulante est délibérément laissée vide afin d'obliger l'utilisateur à effectuer une sélection et l'utilisation ne peut pas se poursuivre avant d'avoir terminé cette sélection.
+10. Les options "Livrer à" disponibles sont affichées dans une fenêtre déroulante. Notez que les détails peuvent différer d'un programme Tracker à un autre, car ces options peuvent être configurées librement dans l'"ensemble d'options" correspondant.![](media/image70.png)
+11. Dans le menu déroulant, l'utilisateur sélectionne l'unité ou le service auquel il souhaite "livrer".
+12. Le menu déroulant se réduit et n'affiche que le choix "Livrer à" sélectionné. Notez que dès que les trois éléments (type de transaction, unité d'organisation et "livrer à") ont été sélectionnés, la liste des articles en stock avec le stock actuel est immédiatement et automatiquement affichée.![](media/image87.png)
+13. Ceci termine la sélection du type de transaction, de l'unité d'organisation et de l'option "Livrer à" à partir de l'écran d'accueil de DHIS2-RTS. L'utilisateur sélectionne l'icône " Paramètres " ou l'icône " \^ " pour " réduire " l'en-tête.
+14. Les informations d'en-tête relatives au type de transaction, à l'unité d'organisation et à la sélection "Livrer à" sont compilées dans l'en-tête de l'écran et affichées pendant toute la durée de la transaction.![](media/image49.png)
+15. Si l'utilisateur tente de modifier le type de transaction après avoir saisi une (ou plusieurs) quantité(s) dans les champs "De" et "Livrer à", un avertissement apparaît, indiquant que toutes les données saisies jusqu'à présent seront perdues, ne pourront pas être récupérées et devront être saisies à nouveau.
+16. Une fenêtre de dialogue contenant l'avertissement s'affiche au bas de l'écran :![](media/image83.png)
+17. L'utilisateur peut soit sélectionner "Rejeter les modifications" et renoncer aux données saisies, soit sélectionner "Maintenir l'édition" et poursuivre la transaction avec l'unité d'organisation et la sélection "Livrer à" précédemment sélectionnées.
+18. Selon le choix effectué, la page d'accueil s'affiche à nouveau ou l'utilisateur reprend l'édition des données là où il en était.
+19. L'utilisateur est maintenant prêt à préparer la demande d'achat. L'utilisateur dispose de trois possibilités pour rechercher des articles dans la liste :
+
+
+    -   Faire défiler manuellement la liste jusqu'à ce que l'article
+    recherché soit trouvé.
+    -   Saisir un terme de recherche dans la fenêtre "Recherche"
+    -   en scannant le code-barres de l'article sur l'étagère
+    La première option consiste à faire défiler la liste et à appuyer
+   dans le champ "Quantité".
+
+20. Le champ "Quantité" devient modifiable et le nom de l'article ainsi que la valeur saisie apparaissent entre la liste et le clavier à l'écran dans un champ séparé.![](media/image61.png)
+21. La deuxième option consiste à saisir du texte dans le champ "Recherche".
+22. La liste n'affiche que les articles que contient le texte saisi dans le champ "Recherche". Notez que cette fenêtre ne fait que "filtrer" l'ensemble de la liste en fonction de la recherche la plus récente, mais avec l'ensemble de la liste "en arrière-plan" et qu'aucun article n'est réellement supprimé de la liste. Notez également que ce filtre est "contextuel" et qu'au fur et à mesure que des caractères sont ajoutés, la liste des résultats est automatiquement adaptée et raccourcie en fonction de la chaîne de texte saisie. Le texte de la fenêtre de recherche peut être modifié ou effacé en appuyant sur l'icône "X". Comme ci-dessus, l'utilisateur tapote dans le champ "Quantité" et saisit une valeur. Dès que l'utilisateur tapote sur l'icône bleue ✓ ou tape dans un autre champ "Quantité", le "Stock" est recalculé en temps réel.![](media/image24.png)
+23. La troisième et dernière option consiste à appuyer sur le symbole du code-barres qui se trouve à l'extrême droite de la fenêtre "Recherche".
+24. La fenêtre du viseur de code-barres s'ouvre et affiche un champ blanc avec une ligne rouge horizontale représentant la caméra de l'appareil mobile :![](media/image97.png)
+25. L'utilisateur place la fenêtre du viseur devant le code-barres fixé sur l'étiquette de l'étagère et positionne la ligne rouge au centre du code-barres :![](media/image50.png)
+26. L'application de saisie Android DHIS2 émet un signal sonore ("bip") dès que l'appareil mobile a capté le code-barres, ferme la fenêtre du viseur et n'affiche que l'article sélectionné dans la fenêtre. Le champ "Recherche" affiche l'article sélectionné comme résultat de la recherche. La fenêtre affiche le "stock" actuel (stock disponible, qui devrait correspondre au stock réel restant sur l'étagère) à côté de l'article et réimprime le nom de l'article avec un champ de quantité au bas de l'écran pour l'éditer. Notez que cette fenêtre ne fait que "filtrer" l'ensemble de la liste en fonction de la recherche la plus récente, mais avec l'ensemble de la liste "en arrière-plan"![](media/image89.png)
+27. L'utilisateur tape dans le champ "Quantité" pour ouvrir le clavier à l'écran et saisir la quantité sélectionnée. Les utilisateurs ne peuvent pas saisir de valeurs négatives, de zéro ou de valeurs positives non entières.
+28. La "quantité" saisie est affichée sur la ligne correspondante ainsi que dans la fenêtre de dialogue séparée située au-dessus du clavier à l'écran. L'utilisateur peut modifier la quantité ou l'effacer en supprimant tous les chiffres à l'aide du bouton "retour".![](media/image42.png)
+29. L'utilisateur confirme la quantité (finale) en appuyant sur l'icône bleue ✓.
+30. Le clavier à l'écran et la ligne d'édition sont fermés et la quantité saisie est instantanément et automatiquement déduite du "Stock" et affiche immédiatement le solde final du stock (après que la quantité correspondante a été retirée de l'étagère).![](media/image52.png)
+31. L'utilisateur effectue une autre entrée en tapant sur l'icône du code-barres ou en sélectionnant l'élément suivant. Notez que la liste n'affichera que les éléments correspondant à l'entrée dans la fenêtre "Recherche" et pour afficher tous les éléments sélectionnés ( jusqu'ici), le champ "Recherche" doit être annulé en tapant sur l'icône "X".
+32. L'enregistrement du premier article prélevé est ainsi terminé et l'utilisateur continue à prélever les articles restants pour le même département ou service. L'utilisateur peut continuer à utiliser le lecteur de codes-barres, ce qui ne nécessite pas de "développer" la liste entière. Si l'utilisateur n'utilise pas le lecteur de codes-barres, il doit sélectionner le "x" dans la fenêtre de recherche pour revenir à la liste complète. Notez que si la liste des articles en stock est "développée", toutes les valeurs saisies pour les articles sélectionnés sont conservées.![](media/image57.png)
+33. Une fois que le dernier élément requis a été sélectionné, l'utilisateur sélectionne le bouton " Révision" en bas à droite de l'écran.
+34. L'utilisateur est renvoyé à l'écran " Révision " qui affiche uniquement les articles précédemment sélectionnés (et non l'ensemble de la liste des articles en stock) avec la " Quantité " saisie dans l'ordre alphabétique de la liste des articles en stock. Notez que la mention "En cours de révision" est affichée sous la liste des articles, le bouton "Révision" n'est plus affiché et c'est le bouton "Confirmer" qui l'est. Cette page permet de comparer les articles sélectionnés avec la demande originale du département ou du service et, le cas échéant, d'apporter des corrections.![](media/image78.png)
+35. Facultativement : l'utilisateur peut passer de l'interface "Révision" à l'interface de saisie précédente (par exemple parce que des éléments demandés ont été oubliés) sans qu'aucune des informations saisies précédemment ne soit perdue.
+36. Facultativement : après avoir effectué les corrections, l'utilisateur passe à nouveau à l'écran "Révision".
+37. En appuyant dans le champ "Quantité", l'utilisateur peut réouvrir le clavier à l'écran et modifier ou supprimer toute quantité.
+38. Le clavier à l'écran s'ouvre et le champ "Quantité" est à nouveau modifiable. Notez qu'à cette étape finale, les éléments ne peuvent plus être ajoutés à la liste et que les icônes "Rechercher un élément" et "Scanner" ne peuvent être utilisées que pour rechercher des éléments dans la liste (au cas où la liste est longue et que l'utilisateur n'est pas sûr qu'un certain élément a été correctement sélectionné). Si des articles sont effectivement manquants, l'utilisateur peut soit ignorer toutes les données saisies et repartir à zéro, soit simplement terminer la transaction, puis lancer une deuxième transaction pour le même article ou service, pour les articles qui ont été manqués. Si l'utilisateur a saisi un type de transaction ou une option "Livrer à" incorrects, il peut annuler la transaction en sélectionnant le bouton retour (flèche), mais tous les champs "Quantité" saisis seront perdus.![](media/image19.png)
+39. Une fois la révision et l'édition terminées, l'utilisateur clique sur le bouton "Confirmer". **_Notez que cette étape est irréversible_** et ne peut être inversée ou annulée en aucun cas.
+40. L'écran d'accueil s'affiche à nouveau avec toutes les options de l'en-tête réinitialisées à leurs valeurs par défaut. Une fenêtre de dialogue affichant "La transaction a été effectuée avec succès" apparaît en bas de l'écran.![](media/image93.png)
+41. L'utilisateur sélectionne l'icône de synchronisation en haut à droite de l'écran. La synchronisation de la base de données locale avec le serveur central peut être effectuée à tout moment, mais une transaction particulière ne peut être synchronisée qu'une fois qu'elle est terminée.
+42. Une fenêtre de dialogue s'ouvre en bas de l'écran avec des informations sur la synchronisation.![](media/image77.png)
+43. L'utilisateur sélectionne le bouton "Envoyer".
+44. La synchronisation réussie est confirmée par la légende "Synced" et par le changement de couleur de l'icône de synchronisation, qui passe du gris au vert. Notez que l'utilisateur se voit proposer l'option "Rafraîchir" même si la synchronisation a été effectuée avec succès afin de se conformer au comportement natif de DHIS2.![](media/image23.png)
+45. L'utilisateur sélectionne "Pas maintenant" pour fermer le message de confirmation.
+46. Le message de confirmation se ferme, l'écran d'accueil réapparaît et l'utilisateur est prêt à saisir la transaction suivante.![](media/image34.png)
+
+### "Discard" transaction { #discard-transaction } 
+
+Le stock est rejeté lorsque les produits de santé sont périmés, endommagés ou ne sont plus utilisables pour d'autres raisons. Ces produits doivent être retirés du stock "actif" et mis à l'écart dans une armoire ou une pièce fermée à clé afin d'éviter toute utilisation involontaire jusqu'à ce que les produits soient détruits.
+
+Il existe plusieurs raisons de différencier les transactions de "distribution" et d'" écart" :
+
+- En ce qui concerne le réapprovisionnement du stock, le stock écarté est retiré du stock mais ne doit pas être inclus dans la demande (mensuelle). Dans la plupart des cas, le stock écarté doit être remplacé, mais seulement une fois ( !), alors que l'inclusion de la quantité en tant que transaction de "distribution" impliquerait à tort que ces quantités ont été distribuées et utilisées et que la demande a augmenté.
+
+- La quantité et la valeur des stocks écartés est un indicateur important de la qualité de la gestion des stocks
+
+Le flux de travail et le cas d'utilisation sont presque identiques à ceux de la transaction "Distribution", à la seule différence que l'option "Livrer à" n'est pas requise et n'est donc pas affichée.
+
+#### "Discard" transaction workflow { #discard-transaction-workflow } 
+
+Pour chaque transaction "écarté", le flux de travail suivant est nécessaire: l'utilisateur 
+
+- identifie les lots de produits de santé qui ne sont plus utilisables
+
+- démarre l'appareil mobile
+- ouvre l'application mobile DHIS2-RTS
+- sélectionne " écarter " dans le menu déroulant des transactions
+- sélectionne l'établissement de soins ("unité d'organisation") s'il a accès à plus d'un établissement de soins.
+
+- scanne le code-barre du premier produit de santé
+- enregistre la quantité qui est écartée
+- répète le processus pour chaque lot de tous les articles
+- procède à un examen final de tous les articles prélevés et confirme (ou écarte) la transaction
+
+- place les produits sélectionnés en quarantaine afin d'éviter toute utilisation accidentelle
+
+#### "Discard" transaction use case { #discard-transaction-use-case } 
+
+Ce cas d'utilisation ne montre que les étapes qui diffèrent du cas d'utilisation "Distribution".
+
+1.  L'utilisateur se connecte à l'application mobile DHIS2-RTS.
+2.  L'écran d'accueil de DHIS2-RTS s'ouvre.![](media/image7.png)
+3.  L'utilisateur appuie sur le bouton "Distribution" de l'écran d'accueil de DHIS2-RTS.
+4.  Un menu déroulant s'ouvre avec toutes les transactions disponibles.![](media/image60.png)
+5.  L'utilisateur sélectionne "Écarté" dans le menu déroulant.
+6.  Le mot "Discard" est affiché à la place de "Distribution" dans l'en-tête, la couleur de fond devient rouge et la couleur du texte devient rouge pour signaler qu'il ne s'agit pas d'une transaction de "Distribution" et pour s'assurer que les utilisateurs sont conscients qu'il s'agit d'une transaction de "Discard". Notez que le champ "Livrer à" n'est plus disponible.![](media/image74.png)
+7.  L'utilisateur sélectionne l'unité d'organisation dans le menu déroulant "De" (voir la transaction "Distribution").
+8.  L'en-tête affiche "Discard"(écarté) comme type de transaction et l'unité d'organisation comme "From" (de). L'utilisateur est prêt à sélectionner les articles et les quantités qui doivent être écartés de la même manière que pour le flux de travail "Distribution".![](media/image91.png)
+
+### "Correction" transaction { #correction-transaction } 
+
+Les corrections de stock ne doivent être effectuées que si l'erreur commise dans les transactions précédentes ne peut être corrigée par l'enregistrement de transactions supplémentaires et peuvent être nécessaires pour diverses raisons :
+
+- La quantité reçue physiquement est supérieure ou inférieure à celle reçue dans le système
+
+- Le stock est perdu
+- Le stock est déplacé (placé à un autre endroit et non retrouvé lors du comptage).
+
+- Vol
+- La quantité enregistrée lors d'une opération antérieure est supérieure ou inférieure à la quantité réelle de l'opération et l'erreur n'a pas été constatée lors de l'opération.
+
+Dans la plupart des cas, l'erreur ne sera jamais découverte et il est important de différencier ces transactions des autres car elles ne doivent pas être prises en compte pour le calcul de la demande et des commandes de réapprovisionnement des stocks.
+
+Le flux de travail pour les transactions de "correction" est presque identique à celui de la "distribution", à la différence près que, contrairement à toutes les autres transactions, l'utilisateur ne saisit pas la quantité de la transaction, mais la quantité résultant d'un inventaire physique, et le système DHIS2-RTS calcule alors l'écart. En outre, la transaction "Correction" est la seule transaction où les valeurs "0" (zéro) ont un sens.
+
+#### "Correction" transaction workflow { #correction-transaction-workflow } 
+
+Pour chaque transaction de "correction", le flux de travail suivant est nécessaire, l'utilisateur :
+
+- identifie un article pour lequel il existe une différence entre le stock disponible actuel dans DHIS2-RTS et le résultat de l'inventaire physique.
+
+- démarre l'appareil mobile
+- ouvre l'application mobile DHIS2-RTS
+- sélectionne la transaction "Correction" dans le menu déroulant
+- sélectionne l'établissement de soins ("unité d'organisation") s'il a accès à plus d'un établissement de soins.
+
+- scanne le code-barre du premier produit de santé
+- inscrit la quantité résultant du stock physique
+- répète le processus pour chaque article
+- procède à un examen final de tous les articles pour lesquels une correction de stock a été saisie
+
+#### "Correction" transaction use case { #correction-transaction-use-case } 
+
+Ce cas d'utilisation ne montre que les étapes qui diffèrent du cas d'utilisation "Distribution".
+
+1.  L'utilisateur se connecte à l'application mobile DHIS2-RTS.
+2.  L'écran d'accueil de DHIS2-RTS s'ouvre.![](media/image7.png)
+3.  L'utilisateur appuie sur le bouton "Distribution" de l'écran d'accueil de DHIS2-RTS.
+4.  Un menu déroulant s'ouvre avec les transactions disponibles.![](media/image99.png)
+5.  L'utilisateur sélectionne "Correction" dans le menu déroulant.
+6.  "La correction" est affichée comme type de transaction au lieu de la "distribution" dans l'en-tête, la couleur d'arrière-plan devient orange et la couleur du texte devient également orange pour signaler qu'il ne s'agit pas d'une transaction de "distribution" et pour s'assurer que les utilisateurs savent qu'il s'agit d'une transaction de "correction". Notez que l'option "Livraison à" n'est plus disponible et **_au lieu de la colonne "Quantité", c'est la colonne "Nombre" qui est affichée_**.![](media/image81.png)
+7.  L'utilisateur sélectionne l'unité d'organisation dans le menu déroulant "De" (voir la transaction "Distribution").
+8.  L'utilisateur sélectionne le premier article (voir les instructions pour la transaction "Distribution") en faisant défiler, en recherchant ou en utilisant le lecteur de codes-barres.
+9.  Seul l'élément sélectionné apparaît à l'écran.
+10. L'utilisateur compte la quantité réelle en stock, la compare à la quantité calculée affichée par l'application DHIS2-RTS et, si une différence est confirmée, **_inscrit la quantité réelle en stock_**. Notez que DHIS2 "réinitialisera" le stock disponible à la quantité saisie et calculera automatiquement la différence avec la valeur précédente en tant que "correction de stock".
+11. L'interface utilisateur affiche le stock disponible correct dans la colonne "Stock".
+12. L'utilisateur répète le processus ci-dessus pour chaque article à prélever, passe à l'étape "Révision" et termine la transaction comme décrit dans le sous-chapitre précédent.
+
+### Mobile device analytics { #mobile-device-analytics } 
+
+DHIS2 fournit automatiquement aux utilisateurs des analyses en ligne et hors ligne.
+
+Les analyses de DHIS2-RTS remplacent la "lecture" des fiches de stock dont le magasinier peut avoir besoin à tout moment pour:
+
+- Consultation ou vérification du stock disponible
+- Visualisation de toute transaction (récente) par "Livrer à", article et/ou date
+- Analyse de la demande d'un article donné
+
+Il est important de noter qu'en dehors du personnel de la pharmacie, qui est le principal utilisateur, tout autre professionnel de la santé travaillant dans le même établissement de soins bénéficierait grandement de l'accès à l'outil d'analyse :
+
+- Vérifier la disponibilité de certains produits de soins de santé, par exemple avant qu'un médecin ne prescrive un médicament, et confirmer la disponibilité ou prescrire un autre médicament.
+
+- Vérification de la disponibilité des stocks par les superviseurs des départements/des services avant de préparer leurs commandes quotidiennes/hebdomadaires et, le cas échéant, commande de produits de soins alternatifs (en plus grande quantité).
+
+#### Analytics through progressive web app (PWA) { #analytics-through-progressive-web-app-pwa } 
+
+La fonctionnalité native de l'application web progressive DHIS2 permet de visualiser tous les tableaux de bord DHIS2 qui sont configurés comme étant "disponibles hors ligne" sur un appareil mobile par le biais de tout navigateur web installé.
+
+Toutes les visualisations de l'application Liste des lignes et de l'application Visualiseur de données indiquées au chapitre 2.7.3 "Tableaux de bord DHIS2-RTS" sont accessibles via tout navigateur web sur un appareil mobile par tout utilisateur auquel a été accordé l'accès correspondant.
+
+Les données analytiques de DHIS2 ( à compter de la dernière connexion de l'appareil mobile à l'internet ) peuvent être consultées à tout moment lorsque l'appareil mobile n'est pas connecté. Toute modification apportée aux données et aux analyses lorsque l'appareil mobile est connecté ne sera pas visible, mais la dernière mise à jour des données sera visible sans interruption lorsque l'appareil mobile est déconnecté.
+
+Pour afficher les visualisations sans les en-têtes des tableaux de bord, sélectionnez "Afficher en plein écran" dans le menu à trois points situé dans le coin supérieur droit de chaque visualisation.
+
+### Mobile device synchronization { #mobile-device-synchronization } 
+
+L'application mobile DHIS2-RTS utilise la fonctionnalité de synchronisation native qui est incluse dans la documentation détaillée de DHIS2. La manière la plus simple de synchroniser l'application mobile après chaque transaction est d'utiliser l'icône de synchronisation (double flèche inversée) dans la barre d'en-tête sans avoir à quitter l'interface utilisateur DHIS2-RTS. Cependant, il y a quelques considérations opérationnelles importantes qui sont spécifiques au cas d'utilisation de la gestion des stocks en temps réel.
+
+Notez qu'il est logiquement impossible, et non pas techniquement impossible, de conserver un enregistrement correct en temps réel du stock disponible sur les deux appareils si l'un d'entre eux ou les deux fonctionnent hors ligne. Il serait en principe possible de recalculer et de corriger le solde du stock après la synchronisation des deux appareils, mais DHIS2-RTS ne dispose pas de cette capacité.
+
+Étant donné que les règles du programme peuvent être exécutées sur le portail web ainsi que sur un certain nombre d'appareils mobiles différents, il est essentiel que, pour tout article spécifique (produit de santé), les transactions soient effectuées sur un seul appareil à la fois. Un seul appareil doit à tout moment recalculer le stock disponible et, une fois ce calcul effectué, il doit être synchronisé avec l'appareil suivant qui effectue une transaction pour le même article.
+
+Une fois les transactions terminées, toutes les données devront être synchronisées avec le serveur central DHIS2 dès que possible. Mais dans tous les cas, une synchronisation réussie doit être effectuée avant qu'un autre appareil (utilisant le portail web ou l'application mobile) n'effectue une transaction pour le même article.
+
+Si deux appareils, par exemple deux appareils mobiles ou un appareil mobile et un ordinateur de bureau, effectuent chacun une transaction pour le même article "en parallèle", les règles du programme sur l'un ou l'autre appareil calculeront des niveaux de stock en main différents pour le même article. Même si tous les appareils sont ensuite synchronisés, le stock disponible du dernier appareil qui se synchronise avec le serveur "annulera" tout calcul de stock disponible effectué "en parallèle", l'enregistrement global du stock sera incorrect et ne sera pas corrigé tant qu'une transaction manuelle de "correction" du stock n'aura pas été effectuée.
+
+En général, l'accès au DHIS2 Web sera utilisé exclusivement pour effectuer des entrées de stock et il est fortement recommandé de ne pas utiliser le portail Web pour effectuer des transactions de "distribution", de "rejet" ou de "correction", car les événements du programme Tracker n'ont qu'un horodatage et ne peuvent donc pas suivre correctement l'ordre chronologique de la transaction. En revanche, l'application mobile DHIS2-RTS utilise un horodateur avec l'heure, les minutes, les secondes et les secondes intermédiaires et conserve donc un enregistrement précis de l'heure exacte à laquelle la transaction a été effectuée sur l'appareil mobile. Par conséquent, toutes les transactions de "distribution", de "rejet" ou de "correction" doivent être effectuées uniquement sur des appareils mobiles.
+
+Pour l'utilisation opérationnelle du système de gestion des stocks en temps réel, cela signifie en pratique :
+
+- à tout moment, les transactions pour un article spécifique doivent être effectuées sur un seul appareil (appareil mobile ou sur le portail web) qui doit être synchronisé avant qu'une autre transaction ne soit effectuée pour le même article
+
+- si plusieurs dispositifs mobiles sont utilisés dans la même unité d'organisation, un seul d'entre eux doit être utilisé pour effectuer des transactions pour un article donné à tout moment et doit être synchronisé avec le serveur central DHIS2 avant que l'autre dispositif mobile n'effectue une transaction pour le même article
+
+- les transactions relatives aux entrées de stock ne doivent être effectuées sur le portail web qu'après que tous les appareils mobiles aient synchronisé l'ensemble de leurs données avec le portail web
+
+- l'appareil mobile ne doit recommencer à effectuer des transactions que si la réception du stock sur le portail web a été effectuée et si la synchronisation a été effectuée avec succès.
+
+Dans la plupart des établissements de santé, un seul appareil mobile sera nécessaire et la coordination avec les entrées de stock qui n'ont lieu qu'une ou deux fois par mois ne posera aucun problème.
+
+Dans le cas où un établissement de santé utilise plus d'un appareil mobile en même temps, ces contraintes ne nécessitent qu'une simple règle de processus de travail pour éviter toute discordance de données ou de stock disponible: si les magasiniers reçoivent plusieurs demandes de différents services pour la fourniture du même article, ces demandes sont "réparties" entre les magasiniers en fonction du groupe d'articles. Par exemple, un magasinier prélèvera tous les médicaments oraux pour le service de chirurgie, le service de pédiatrie et le service des consultations externes, tandis qu'un autre magasinier (utilisant le deuxième appareil mobile) prélèvera tout le matériel de pansement. De cette manière, chacun des appareils conserve un enregistrement précis en temps réel des articles prélevés et, une fois que les deux appareils mobiles ont synchronisé leurs données, toutes les transactions ainsi que le stock disponible sont correctement retranscrits sur le serveur central DHIS2.
+
+En principe, les transactions peuvent être enregistrées indéfiniment sur un appareil mobile avant d'être synchronisées. Toutefois, il est fortement recommandé de synchroniser tous les appareils mobiles après chaque transaction ou au moins une fois par jour pour les raisons suivantes :
+
+- la visibilité des données sur les stocks en temps réel ne sera accessible à d'autres utilisateurs, par exemple au niveau du district, qu'après synchronisation
+
+- en cas de panne de l'appareil ou d'échec de la synchronisation qui ne peut être résolu qu'en supprimant toutes les données locales de l'appareil, toutes les données qui n'ont pas encore été synchronisées seront perdues sans aucun moyen de récupération
+
+Si la connectivité du réseau ne permet pas de synchroniser les appareils mobiles avec le serveur central (au moins) une fois par jour, l'application mobile DHIS2-RTS n'est pas une solution adaptée à la gestion des stocks dans l'établissement de santé.
+
+Notez que, par conception, l'application de saisie Android DHIS2 ne synchronise pas automatiquement les données avec le serveur central DHIS2 lors de la connexion et si des données n'ont pas encore été synchronisées avant la déconnexion, la synchronisation devra être déclenchée "manuellement".
+
+## Medical Stock Management with the DHIS2-RTS application { #medical-stock-management-with-the-dhis2-rts-application } 
+Xx
+
+xxx
+Adding and removing TEIs.
+TEIs are registered once in a specific DHIS2 database and the same TEI (with the same ID) is used for different OUs as well as possibly in other Tracker programs or Event programs.
+
+
+
+
+## Integration with national eLMIS { #integration-with-national-elmis } 
+Xx
+
+
+xxxxxxxxxx
+
+
+
+
+
+
+
+#### Summary of data model { #summary-of-data-model } 
+
+La logique suivante est utilisée pour configurer les métadonnées utilisées pour le programme Tracker :
+
+L'élément de données représente les différentes transactions qui affectent les calculs du stock disponible (entrées, distributions, corrections, etc.).
+
+Ensemble d'options L'élément de données "Livrer à" utilise l'ensemble d'options "Livrer à" qui énumère les noms des différents départements Attribut de l'entité suivie. Les attributs de l'article sont le code de l'article, la description et le code-barres (champ pour la lecture optique) Type d'entité suivie. L'article (produit de soins de santé) est suivi.
+
+> L'élément de données " Solde du stock précédent " est nécessaire pour que les règles du programme sauvegardent temporairement les valeurs du stock disponible.
+>
+> Le programme Tracker utilise une seule étape de programme reproductible appelée "Stock disponible":
+
+![](media/image88.png)
+
+
+
+PARKING LOT xxxxxxxxxxxxxxxxxxxxxx
+
+
+
+## DHIS2 REAL-TIME STOCK WEB PORTAL MANAGEMENT { #dhis2-real-time-stock-web-portal-management } 
+
+Alors que l'utilisation du système DHIS2-RTS au niveau des établissements de santé est conçue pour une utilisation exclusive sur des appareils mobiles, l'installation et la configuration initiales, l'administration de routine ainsi que les entrées de stock régulières ne peuvent être effectuées qu'à travers le portail web de DHIS2.
+
+### Creating stock item list { #creating-stock-item-list } 
+
+Avant de pouvoir utiliser l'application mobile DHIS2-RTS, tous les produits de santé (articles) utilisés dans un établissement de santé spécifique (unité d'organisation) doivent être "enregistrés" et "inscrits" avec leur propre et unique ID (identification) dans chacun des établissements de santé où ces produits sont utilisés. Par exemple, un comprimé de paracétamol de 500 mg doit être enregistré dans chaque unité d'organisation (UO) séparément, car le produit doit être attribué de manière unique à son unité d'organisation afin d'enregistrer correctement les transactions et de fournir des analyses correctes. Il convient de noter qu'un article, tel que les comprimés de paracétamol, dont les spécifications sont identiques dans de nombreux établissements à travers le pays, doit avoir son propre et unique identifiant pour chacun de ces établissements de santé.
+
+Les articles peuvent être "enregistrés" et "enrôlés" manuellement via la fonctionnalité native de l'application Saisie en enregistrant le "code de l'article" ainsi que la "description de l'article" pour chaque produit de soins de santé.
+
+Il est également possible de télécharger une liste d'éléments en utilisant la fonction "importation IES" de l'application native DHIS2 Import/Export ou de l'application tierce "Bulk Load".
+
+### Adding items to and removing from the DHIS2-RTS app { #adding-items-to-and-removing-from-the-dhis2-rts-app } 
+
+Tout comme les articles sont créés et ajoutés initialement à la liste des articles en stock, les articles peuvent être ajoutés à tout moment à tout établissement de santé.
+
+[Question : comment supprimer (ou "cacher") les éléments qui ne sont plus utilisés. S'ils sont supprimés, les analyses seront-elles toujours disponibles ?]
+
+### Stock receipts { #stock-receipts } 
+
+Lorsque les envois sont reçus dans l'établissement de santé, l'utilisateur confirme la réception au niveau du district où les stocks sont téléchargés à partir d'un registre électronique.
+
+La conception de DHIS2-RTS ne prévoit intentionnellement aucune possibilité pour les utilisateurs de recevoir des stocks par l'intermédiaire de l'application DHIS2-RTS elle-même, car l'enregistrement d'un grand nombre d'articles un par un serait très lourd, prendrait beaucoup de temps et serait sujet à des erreurs.
+
+Les entrées de stock peuvent être effectuées à l'aide de l'application native Import/Export ou de l'application tierce Bulk Load. Mais dans l'idéal, toutes les entrées de stock devraient être effectuées directement et automatiquement grâce à une intégration en temps réel avec le LMIS national en amont. Dans ce système, les articles et les quantités figurant sur la liste de colisage correspondante sont "chargés" dans DHIS2 directement via ses points d'accès API à partir du LMIS national en amont, dès que le commerçant confirme la réception.
+
+### Adding items to and removing from the Default Data Entry Form { #adding-items-to-and-removing-from-the-default-data-entry-form } 
+
+Lorsque des articles (produits de soins de santé) sont ajoutés au programme Tracker de DHIS2, les éléments de données correspondants doivent être configurés et ajoutés à tous les formulaires de saisie de données de DHIS2-RTS.
+
+À tout moment, la liste des IES (Instances d'entités suivies) de toute unité d'organisation doit correspondre complètement et exactement à la liste des éléments de données dans tous les ensembles de données DHIS2-RTS afin de garantir la disponibilité du formulaire de saisie des données pour les rapports mensuels en tant que sauvegarde ainsi que pour garantir la précision des rapports analytiques.
+
+### Web portal analytics { #web-portal-analytics } 
+
+Toutes les analyses indiquées au chapitre 2.7 "Configuration des analyses" sont disponibles dans le portail web DHIS2.
+
+
+## MEDICAL STOCK MANAGEMENT WITH THE DHIS2-RTS APP { #medical-stock-management-with-the-dhis2-rts-app } 
+
+Dans toute implémentation, les réglementations et lignes directrices nationales doivent être respectées. Ce chapitre se concentre sur les aspects techniques et pratiques et ne doit être considéré que comme des recommandations qui peuvent être utiles ou non.
+
+### Preparations for implementing the mobile application { #preparations-for-implementing-the-mobile-application } 
+
+L'utilisation de l'application mobile DHIS2-RTS nécessite la disponibilité et la gestion durable d'une instance de serveur central DHIS2 existante avec un support technique.
+
+La plupart des pharmacies utilisent des documents papier tels que des fiches de stock, des fiches de lot et divers registres pour gérer les stocks et les données relatives aux stocks. Tout établissement de santé et toute personne souhaitant mettre en œuvre l'utilisation du système DHIS2-RTS a tout intérêt à consulter et à obtenir des conseils auprès des groupes et des collègues de HISP qui ont déjà mis en œuvre le système et l'utilisent efficacement.
+
+Toute implémentation doit être approuvée et planifiée par les autorités sanitaires nationales ainsi que par les établissements de santé concernés.
+
+Les appareils mobiles doivent être fournis et entretenus, une véritable connexion réseau doit être disponible et financée et les utilisateurs compétents doivent être identifiés et formés au fonctionnement de l'application.
+
+#### Providing and setting up mobile devices { #providing-and-setting-up-mobile-devices } 
+
+Chaque établissement de santé devrait disposer d'au moins un PC tablette réservé à l'usage des magasiniers et, idéalement, d'un deuxième appareil de secours qui pourrait être partagé avec d'autres utilisateurs de l'établissement de santé.
+
+Les appareils privés ne doivent pas être utilisés, car ils présentent des risques pour la sécurité des données et donnent lieu à des litiges concernant le paiement de la connexion à l'internet. Les spécifications des dispositifs recommandés sont détaillées au chapitre 1.6.
+
+#### Obtaining user access { #obtaining-user-access } 
+
+Dans chaque établissement de santé, au moins le pharmacien ou le magasinier (principal) et une autre personne qui le remplace en cas d'absence doivent avoir un accès complet à l'appareil mobile et à l'application. Les autres membres du personnel qui supervisent les pharmaciens ou les magasiniers doivent également y avoir accès afin de pouvoir fournir des conseils et des formations et de comprendre les problèmes qui peuvent survenir.
+
+Chaque utilisateur doit être configuré dans la base de données centrale DHIS2 avec un nom d'utilisateur, un mot de passe, un profil d'utilisateur et les droits d'accès et d'utilisation correspondants.
+
+#### Adding health facilities to DHIS2 { #adding-health-facilities-to-dhis2 } 
+
+Seuls les établissements de soins de santé qui utilisent DHIS2-RTS doivent être configurés dans le Programme Tracker DHIS2-RTS et, par conséquent, tout établissement de soins de santé supplémentaire qui a l'intention de mettre en œuvre le système doit être configuré par l'administrateur du système DHIS2.
+
+Toute unité d'organisation déjà configurée dans la base de données DHIS2 et utilisée pour d'autres applications DHIS2 doit être utilisée afin d'éviter la duplication des installations et des noms d'installations.
+
+#### Setting up stock item list in DHIS2 { #setting-up-stock-item-list-in-dhis2 } 
+
+Une liste unique et centralisée des articles en stock pour chaque établissement de soins de santé est indispensable pour l'utilisation de DHIS2-RTS ainsi que pour la gestion des commandes et des stocks. Dans la plupart des cas, une telle liste d'articles en stock, détaillant tous les articles conservés en permanence dans la pharmacie et régulièrement réapprovisionnés, est déjà disponible.
+
+La liste des articles en stock peut être différente pour chaque établissement de santé ou être uniformisée pour chaque type d'établissement de santé.
+
+Toutes les listes d'articles en stock doivent utiliser les mêmes codes et descriptions d'articles, qui doivent être basés sur la liste nationale des médicaments essentiels gérée par le ministère de la santé du pays.
+
+L'utilisation cohérente d'un code d'article unique et d'une description d'article dans tous les établissements est particulièrement importante si le système DHIS2-RTS est intégré à un système LMIS national en amont pour la gestion des stocks médicaux au niveau du district, de la région et au niveau central.
+
+Il est fortement recommandé de n'utiliser que "Chaque" comme unité de mesure (et jamais d'emballages), ce qui signifie que tous les produits de santé sont gérés en nombre de comprimés, d'ampoules, de canules, de compresses, etc. L'utilisation d'emballages n'est pas pratique car les quantités d'emballage secondaire sont susceptibles de varier d'un fabricant à l'autre et les fabricants peuvent modifier les quantités d'emballage secondaire au fil du temps, ce qui rend impossible la comparaison des quantités dans le temps ainsi que les calculs corrects de réapprovisionnement des stocks.
+
+L'utilisation de codes d'articles est facultative mais recommandée. Il est important de noter que l'application mobile DHIS2-RTS affichera toujours (et ne peut qu'afficher) tous les articles dans l'ordre alphabétique et qu'il n'est pas possible de regrouper les articles en produits pharmaceutiques, matériel de pansement, drains, canules, etc. Par conséquent, tous les articles apparaîtraient " désordonnés " en fonction de leur nom alphabétique. C'est pourquoi il est utile d'utiliser des systèmes de codification des articles qui regroupent les produits de soins de santé dans leur catégorie.
+
+Si aucun système de codification n'est utilisé ou si le système de codification (comme les numéros) ne permet pas de regrouper les articles, le regroupement peut être réalisé en faisant précéder la description des articles d'abréviations correspondant à des groupes de produits tels que DORA (médicaments oraux), DVAS (vaccins), MDRE (matériel de pansement), etc.
+
+To integrate **Stock item list management**
+
+La liste des articles en stock (liste des éléments de données) devra être harmonisée manuellement et alignée sur les IES enregistrées pour l'unité d'organisation concernée.
+
+Chaque ensemble de données est attribué à l'unité d'organisation pour laquelle il a été configuré. Il est également possible que toutes les unités d'organisation utilisent le même ensemble de données.
+
+Les "jours d'expiration" indiquent le nombre de jours après la fin de la période de déclaration mensuelle jusqu'à laquelle les données pour cette période de déclaration peuvent encore être saisies. Afin de pouvoir effectuer les inventaires physiques dans les jours qui suivent la fin du mois si celle-ci tombe un jour férié, le paramètre par défaut est 5 (jours).
+
+L'option "Ouvrir les périodes futures pour la saisie des données" est réglée par défaut sur 1, ce qui permet d'enregistrer des données à tout moment au cours du mois de la période de déclaration en cours. Par exemple, les données sur les stocks pour le mois de janvier peuvent être saisies et modifiées tout au long du mois, du premier au dernier jour de janvier.
+
+" Les jours suivant la période pour être considéré comme soumis dans les délais " est également fixé à 5 jours par souci de cohérence, ce qui signifie que les rapports terminés dans les cinq premiers jours du mois suivant sont considérés comme ayant été soumis dans les délais.
+
+Le "Type de période" est défini par défaut sur "Mensuel", car tous les établissements de santé sont tenus de soumettre des rapports chaque mois.
+
+#### Uploading initial stock { #uploading-initial-stock } 
+
+Avant d'utiliser l'application mobile DHIS2-RTS, il convient de procéder à un inventaire complet du stock physique afin de confirmer le stock disponible. Le résultat de cet inventaire est ensuite simplement téléchargé comme l'entrée de stock initiale expliquée au chapitre 4.3.
+
+
+
+
+## Medical stores management { #medical-stores-management } 
+
+Là encore, ce chapitre doit être considéré comme une recommandation et une solution possible qui a été testée et expérimentée sur le terrain, mais qui est remplacée par les réglementations et les politiques nationales.
+
+L'utilisation du système de gestion des stocks DHIS2 Reat-Time exige un niveau élevé de discipline et de précision, car l'application recalcule automatiquement le solde du stock après chaque transaction et toute erreur est perpétuée.
+
+#### Storage equipment and health care good storage { #storage-equipment-and-health-care-good-storage } 
+
+Tous les stocks doivent être classés par ordre alphabétique de leurs groupes d'articles et par codes et descriptions d'articles. Le premier lot de chaque article doit être placé dans une poubelle ("poubelle active") en fonction du FEFO/FIFO. Tous les autres lots qui ne sont pas reçus dans l'emballage du fournisseur tertiaire doivent également être placés dans des bacs séparés, tandis que les produits de santé livrés dans l'emballage du fournisseur tertiaire ne doivent pas être ouverts, mais placés sur l'étagère dans l'ordre des dates de péremption. Lorsque la "poubelle active" est vidée, le stock du lot suivant peut être placé dans cette poubelle en vue de la prochaine distribution.
+
+Afin d'identifier rapidement le lot suivant pour chaque article disponible pour la préparation de commandes, tous les bacs "actifs" (le premier bac de chaque article uniquement) doivent être équipés de codes-barres qui sont attachés au bac à l'aide d'un trombone solide. Les étiquettes ne doivent pas être collées sur les bacs, sinon un grand nombre de bacs sans stock s'accumuleront, ce qui nécessitera beaucoup d'espace de stockage, alors qu'il est beaucoup plus facile d'échanger les étiquettes à code-barres. Les étiquettes ne doivent pas non plus être collées sur les étagères, car les volumes de stockage fluctuent et il est beaucoup plus facile de changer l'emplacement des bacs avec leurs étiquettes.
+
+Vous trouverez ci-dessous un exemple de bonne pratique tirée d'une implémentation réelle dans une pharmacie d'hôpital :
+
+![](media/image17.png)![](media/image79.png)
+
+Notez que la lecture des codes-barres nécessite de bonnes conditions d'éclairage et que les codes-barres ne doivent pas être placés trop près les uns des autres, car un seul code-barre doit être visible en permanence dans le viseur du lecteur de codes-barres pour que ce code-barre soit rapidement et correctement reconnu par l'application logicielle.
+
+#### Generating barcode labels for stock { #generating-barcode-labels-for-stock } 
+
+Les codes-barres linéaires et les codes QR sont tous deux reconnus de la même manière par l'application mobile DHIS2-RTS. Les codes-barres linéaires offrent l'avantage d'être facilement générés à partir d'une simple feuille de calcul Excel, mais ils présentent l'inconvénient d'être assez longs, même pour des codes ne comportant que quelques caractères, et l'appareil mobile doit être tenu exactement à l'horizontale pendant la lecture (la ligne rouge dans la fenêtre du lecteur de codes-barres doit couvrir l'ensemble du code-barre de gauche à droite) pour que le code-barre puisse être reconnu.
+
+Bien que les codes QR puissent être générés gratuitement à partir de nombreux sites web, ils ne peuvent être générés que l'un après l'autre et ne peuvent pas être générés à l'aide d'une feuille de calcul. Mais ils ont le grand avantage d'être beaucoup plus petits, de pouvoir stocker des codes plus longs et d'être lisibles sous n'importe quel angle, même si l'appareil mobile est incliné (tourné) vers la gauche ou vers la droite, et à une plus grande distance.
+
+Les étiquettes de code-barres peuvent être imprimées très simplement à partir d'Excel sur tout ordinateur, à condition que la police "LibreBarcode39" soit installée :
+
+- fermez tous les fichiers Microsoft Excel
+- copiez le fichier LibreBarcode39-Regular.ttf sur votre ordinateur
+- dans l'explorateur Windows, faites un clic droit sur le fichier : une fenêtre contextuelle  s'ouvre
+
+- sélectionnez "installer" : une fenêtre contextuelle s'ouvre
+- sélectionnez : "Oui" : la police s'installe sur l'ordinateur
+- ouvrez le fichier Excel pour l'impression des étiquettes à code-barres : tout fichier Excel copié dont la police est réglée sur codes-barres affichera désormais des codes-barres
+
+- surlignez les champs (supplémentaires) qui doivent afficher des codes-barres
+- cliquez dans la fenêtre déroulante contenant les polices
+- faire défiler la liste des polices disponibles jusqu'à la lettre L qui apparaîtra comme un code-barres et affichera " Code-barre libre 39 " lorsque vous pointerez la souris dessus
+
+![](media/image47.png)
+
+- Sélectionnez " Code barre libre 39 " : la fenêtre déroulante se ferme et le texte apparaît sous forme de codes-barres.
+
+Le fichier Excel "Modèle d'étiquette à code-barres PSM" contient trois feuilles de calcul
+
+"A Catalogue d'articles" : cette feuille de calcul contient une liste de tous les articles en stock utilisés dans la pharmacie concernée. L'utilisateur marque les articles pour lesquels une étiquette est nécessaire en tapant "X" près de l'article dans la colonne B.
+
+"B Sélection d'étiquette" : cette feuille de calcul utilise une fonction de recherche pour afficher uniquement les éléments sélectionnés dans la feuille de calcul.
+
+"C Impression d'étiquette" : cette feuille de calcul formate correctement le code de l'article, le code-barres et la description de l'article sur quatre étiquettes par page si elles sont imprimées en format paysage, ce qui permet de les imprimer sur toute type d'imprimante.
+
+#### Stock receipts { #stock-receipts } 
+
+La réception des envois doit faire l'objet d'un accusé de réception au centre de distribution médicale qui les expédie, idéalement à l'aide d'une simple application DHIS2. Une fois que le centre médical (du district) a reçu cette notification, l'équipe logistique télécharge les articles et les quantités indiqués dans la liste de conditionnement vers l'unité d'organisation (établissement de santé) concernée, où ces quantités sont automatiquement ajoutées au "stock disponible". Idéalement, ce processus sera entièrement automatisé par l'intégration du système national d'information sur la santé (LMIS) en amont avec le serveur DHIS2.
+
+Il est important que les appareils mobiles de l'établissement de santé recevant les envois synchronisent leurs données après l'entrée en stock afin de mettre à jour et d'afficher le stock correct disponible sur les appareils mobiles avant de prendre d'autres commandes.
+
+En cas de divergence entre la liste de conditionnement et les envois physiquement reçus, l'équipe logistique doit être contactée pour organiser la livraison des articles et des quantités expédiés à découvert ou pour corriger les enregistrements dans le système national LMIS. Si un stock excédentaire a été livré, les services logistiques peuvent simplement émettre une liste de conditionnement pour les quantités manquantes, qui sont à nouveau confirmées par l'application "Confirmation des marchandises" d'IRIS, ce qui permettra de corriger l'enregistrement. Quoi qu'il en soit, les quantités corrigées des entrées de stock seront finalement mises à jour dans la base de données DHIS2.
+
+#### Recording distributions { #recording-distributions } 
+
+Les magasiniers reçoivent généralement une liste des articles et des quantités nécessaires pour chaque unité ou service, une fois par jour, par semaine ou selon un autre calendrier établi.
+
+Le magasinier localise le premier article de la liste dans la pharmacie, scanne le code-barres pour sélectionner le bon article dans la liste des articles en stock, ainsi que la quantité prélevée, puis procède au choix de l'article suivant. Cette méthode est la plus rapide et comme une seule ligne est affichée après avoir scanné un code-barres, le magasinier ne peut pas saisir accidentellement la valeur dans la mauvaise ligne (pour le mauvais article). Le magasinier peut également faire défiler la liste jusqu'à ce qu'il trouve l'article ou saisir l'article requis dans la fenêtre de recherche.
+
+Lorsque tous les articles de la quantité requise ont été prélevés, le magasinier confirme la transaction et livre les marchandises au client avant d'entamer le traitement de la commande suivante.
+
+Les soldes négatifs sont délibérément bloqués par l'application mobile DHIS2-RTS pour obliger les magasiniers à effectuer des corrections immédiatement, car s'il était permis de les retarder, les écarts de stock résultant de corrections "reportées" s'accumuleraient inévitablement. Par conséquent, si la quantité restante en rayon est supérieure à celle indiquée comme stock disponible sur l'appareil mobile, le magasinier ne peut prélever que la quantité disponible indiquée dans l'application mobile. Une fois la transaction terminée, une correction de stock doit être effectuée, puis les quantités désormais disponibles peuvent être prélevées lors d'une seconde transaction. La création de deux transactions distinctes pour le même article ou service ne changera rien à la gestion globale des stocks et aux calculs. Le magasinier peut aussi interrompre la transaction, mais il perdra toutes les données enregistrées, puis procéder à la transaction de stock et recommencer à zéro la transaction initialement prévue.
+
+Si des erreurs ont été commises lors de la préparation de la commande, elles ne peuvent pas être corrigées après la confirmation de la transaction. Si la quantité enregistrée est inférieure à la quantité réellement prélevée, l'erreur peut être simplement corrigée en effectuant une autre transaction. Si la quantité enregistrée est supérieure à la quantité prélevée (et nécessaire), la quantité "excédentaire" est livrée à l'unité de soins ou au service, mise de côté pour être incluse dans la prochaine distribution (sans enregistrement) ou une transaction de "correction" est créée. Toutefois, si seule une transaction de "correction" est effectuée, la quantité totale enregistrée comme expédiée au service reste enregistrée dans le système et ces valeurs incorrectes ne pourront pas être corrigées.
+
+La quantité "excédentaire" peut également être donnée à une autre unité de soins ou à un autre service sans être enregistrée. Si le stock total disponible est ainsi corrigé, les statistiques sur les distributions à chaque unité ou service ne sont plus correctes (et ne pourront plus être corrigées).
+
+#### Recording discarded stocks { #recording-discarded-stocks } 
+
+Les stocks périmés, endommagés ou inutilisables pour d'autres raisons doivent être retirés du stock et stockés dans une armoire ou une pièce fermée à clé, réservée uniquement aux stocks en attente d'élimination. Afin de tenir compte de la réduction du stock disponible sans affecter les stocks en tant que distribution à un service ou à une unité spécifique, le magasinier effectue une opération de " jetage " de la même manière que pour l'opération de " distribution ".
+
+#### Recording stock corrections { #recording-stock-corrections } 
+
+Des divergences entre le stock physiquement disponible en rayon et le solde du stock disponible calculé dans l'application mobile DHIS2-RTS peuvent survenir pour diverses raisons.
+
+• les quantités physiquement livrées à l'établissement de santé sont supérieures ou inférieures à celles figurant dans le dossier électronique (et non notées au moment des réceptions)
+
+• lors de la préparation des commandes, des quantités supérieures ou inférieures à celles indiquées dans la transaction sont prélevées et livrées aux unités de soins et aux services (sans que cela soit noté)
+
+• le stock a été perdu, placé au mauvais endroit, égaré ou volé
+
+Dans tous ces cas, les commerçants doivent effectuer une transaction de "correction" dans l'application mobile DHIS2-RTS qui corrigera le stock disponible calculé. Le nombre de transactions de "correction" et les quantités sont un très bon indicateur de la qualité globale de la gestion des stocks.
+
+Si des "prêts" sont accordés à d'autres organisations ou établissements de santé ou reçus de ceux-ci, les options consistent à ne pas créer de transaction (car le prêt sera finalement "remboursé") ou à effectuer deux corrections d'actions qui s'annulent l'une l'autre.
+
+#### Residual balance counting for stock on hand { #residual-balance-counting-for-stock-on-hand } 
+
+Étant donné que le stock disponible et les quantités de transactions sont instantanément mis à jour dans l'application mobile DHIS2-RTS, un enregistrement complet et actualisé du stock actuel est disponible dans le système à tout moment et, en principe, aucun inventaire physique (mensuel) n'est nécessaire. Toutefois, si les stocks ne sont jamais comptés, les écarts ne deviendront apparents que si des stocks négatifs apparaissent au cours d'une transaction.
+
+Il existe des méthodes simples et rapides pour compter et vérifier le stock restant dans certaines situations, ce qui permet de détecter d'éventuelles divergences. Ce "comptage par lots résiduels" présente le grand avantage que les articles faisant l'objet du plus grand nombre de transactions en stock soient comptés plus souvent et que les écarts puissent, en principe, être détectés immédiatement plutôt qu'à la fin du mois, où il est souvent difficile de retracer l'erreur.
+
+Les méthodes de comptage des soldes résiduels sont les suivantes:
+
+- le comptage du stock restant lorsqu'un lot est épuisé et que le lot suivant d'un article est placé dans la "poubelle active" (l'emballage tertiaire est souvent fourni en quantités "rondes" telles que des multiples de milliers, les quantités étant indiquées sur l'emballage tertiaire)
+
+- Vérifier, juste avant l'ouverture d'un emballage tertiaire, si le stock disponible est une quantité "ronde" (même sans compter tout le stock restant.
+
+- le comptage physique du stock disponible pour les petites quantités d'articles qui peuvent être traitées rapidement
+
+### Backup plan in case of system failure { #backup-plan-in-case-of-system-failure } 
+
+Tout système numérique peut connaître une défaillance à n'importe quel niveau : l'appareil mobile dans l'établissement de santé, la connexion Internet peut être interrompue pendant de longues périodes et les serveurs centraux et les bases de données peuvent connaître une défaillance.
+
+Afin d'assurer la continuité des services tout en conservant un enregistrement précis de toutes les transactions qui n'ont pas pu être déclarées dans DHIS2, un système de secours doit être mis en place dès le début.
+
+Le moyen le plus simple est de continuer ou de reprendre l'utilisation des cartes à souche pour toutes les transactions qui ne peuvent pas être déclarées dans DHIS2.
+
+Pour le "mode avancé", les quantités distribuées à chaque unité ou service peuvent être totalisées et saisies avec une seule transaction pour chaque unité ou service une fois que le système est restauré. Cela permet de falsifier les dates de transaction tout en conservant un enregistrement précis des quantités totales distribuées à chaque unité ou service. En cas de panne prolongée du système, le formulaire d'entrée de données "agrégées" avec une période de rapport mensuelle peut être utilisé pour documenter le stock disponible à la fin du mois ainsi que les quantités totales au cours du mois. Les détails de ces transactions seront définitivement absents du système mais, après avoir effectué une "correction" du stock, l'utilisation de l'application mobile DHIS2-RTS pourra reprendre une fois que tous les systèmes seront rétablis.
+
+
+## DHIS2 REAL-TIME STOCK INTEGRATION WITH NATIONAL eLMIS { #dhis2-real-time-stock-integration-with-national-elmis } 
+
+L'intégration de DHIS2 avec un eLMIS national en amont nécessite une cartographie détaillée des données et un projet spécifique, ce chapitre ne peut fournir qu'un aperçu général d'une telle intégration.
+
+Le concept DHIS2-RTS repose sur l'hypothèse que l'application mobile DHIS2-RTS n'est utilisée que pour enregistrer les transactions de stock et que toutes les prévisions, la planification de la demande et le calcul des commandes de réapprovisionnement des stocks sont uniquement effectués par le système national d'information sur la gestion des stocks (eLMIS).
+
+Par ailleurs, dès que les magasiniers d'un établissement de santé confirment la réception des envois par le biais d'un programme d'événement DHIS2 dédié, les articles et les quantités correspondants sont synchronisés avec le serveur DHIS2 et enregistrés comme entrée de stock dans le Programme Tracker de DHIS2.
+
+L'intégration de DHIS2 utilisé (uniquement) au niveau des établissements de santé avec un eLMIS national utilisé pour tous les processus et flux de travail logistiques à tous les niveaux en amont (district, province et central) permet une visibilité en temps réel et de bout en bout de toutes les données logistiques ainsi qu'un système de réapprovisionnement des stocks intégré de bout en bout et sans faille.
+
+La synchronisation des données DHIS2 au niveau de l'établissement avec le serveur central DHIS2 est entièrement gérée par la fonctionnalité native de DHIS2. L'intégration de DHIS2 avec le système national eLMIS nécessite la synchronisation des données du serveur central DHIS2 avec le serveur national eLMIS ainsi que la synchronisation de (certaines) données du serveur national eLMIS avec le serveur central DHIS2. Comme chaque entité DHIS2 dispose d'un identifiant unique, l'intégration est mieux réalisée en utilisant (uniquement) ces identifiants plutôt que les noms de champs réels apparaissant pour les utilisateurs, qui sont nativement disponibles à partir de n'importe quelle instance DHIS2 par le biais de l'API Web.
+
+### Data synchronization from DHIS2 to national eLMIS from { #data-synchronization-from-dhis2-to-national-elmis-from } 
+
+Les champs de données suivants du Programme Tracker de DHIS2 doivent être synchronisés avec le serveur national eLMIS, idéalement en temps réel.
+
+**Données des établissements de santé**
+
+- Nom de l'unité d’organisation
+- Code de l'article (la description de l'article est redondante et inutile)
+- Nom d'utilisateur (pour les notifications)
+
+**Données de transaction**
+
+- Stock disponible actuel
+- "Distribution" du stock : Cachet des quantités et de la date/heure, facultatif : "Livrer à"
+
+- Facultatif : "Rejet" du stock  : cachet des quantités et de la date / heure.
+- Facultatif : "Correction" du stock : cachet des quantités et de la date / heure.
+
+**Réception de stock**
+
+- Expédition : cache de l'identifiant et de la date/heure, optionnel : nom de l'utilisateur
+
+### Data synchronization from DHIS2 to national eLMIS from { #data-synchronization-from-dhis2-to-national-elmis-from } 
+
+Les champs de données suivants doivent être synchronisés entre le système national eLMIS et le serveur central DHIS2, qui gère à son tour la synchronisation des données avec les dispositifs mobiles respectifs des établissements de santé.
+
+**Données d'expédition**
+
+- Nom de l'unité d’organisation
+- Code de l'article (la description de l'article est redondante et inutile)
+- " Réception " du stock : cachet des quantités et de la date / heure.
+
+Last edit: GMc on 14-01-2024 at 12:51
+

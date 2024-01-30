@@ -1,0 +1,3361 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.40/src/developer/web-api/metadata.md"
+revision_date: '2023-08-03'
+tags:
+- DHIS core version 2.40
+- Develop
+---
+
+# 元数据 { #metadata } 
+
+## 标识符方案 { #webapi_identifier_schemes } 
+
+This section provides an explanation of the identifier scheme concept.
+Identifier schemes are used to map metadata objects to other metadata
+during import, and to render metadata as part of exports. Note
+that not all schemes work for all API calls, and not all
+schemes can be used for both input and output. This is outlined in the
+sections explaining the various API endpoints.
+
+列出了可用的全套标识符方案对象类型
+下面，使用在查询中使用的属性名称：
+
+  - 方案
+
+  - 数据元素标识方案
+
+  - categoryOptionComboIdScheme
+
+  - orgUnitIdScheme
+
+  - 程序标识方案
+
+  - 程序阶段标识方案
+
+  - 跟踪实体 ID 方案
+
+  - trackedEntityAttributeIdScheme
+
+通用 idScheme 适用于所有类型的对象。有可能
+被特定的对象类型覆盖。
+
+所有参数的默认方案是 UID（稳定的 DHIS2
+身份标识）。支持的标识符方案在
+下表。
+
+Table: Scheme Values
+
+| Scheme | 描述 |
+|---|---|
+| ID, UID | Match on DHIS2 stable Identifier, this is the default id scheme. |
+| CODE | Match on DHIS2 Code, mainly used to exchange data with an external system. |
+| 名称 | Match on DHIS2 Name, please note that this uses what is available as *object.name*, and not the translated name. Also note that names are not always unique, and in that case, they can not be used. |
+| ATTRIBUTE:ID | Match on metadata attribute, this attribute needs to be assigned to the type you are matching on, and also that the unique property is set to *true*. The main usage of this is also to exchange data with external systems, it has some advantages over *CODE* since multiple attributes can be added, so it can be used to synchronize with more than one system. |
+
+Note that identifier schemes is not an independent feature but needs to
+be used in combination with resources such as data value import, metadata import and
+GeoJson import.
+
+例如，指定 CODE 作为通用 id 方案并覆盖
+使用 UID 作为组织单位 ID 方案，您可以使用这些查询
+参数：
+
+    ？idScheme = CODE＆orgUnitIdScheme = UID
+
+再举一个例子，为组织单位 id 指定一个属性
+方案，数据元素 id 方案的代码并使用默认 UID id
+您可以使用这些参数的所有其他对象的方案：
+
+    ？orgUnitIdScheme =属性：j38fk2dKFsG＆dataElementIdScheme = CODE
+
+## 浏览Web API { #webapi_browsing_the_web_api } 
+
+浏览 Web API 的入口点是 `/api`。这个资源
+提供所有可用资源的链接。四种资源表示
+格式始终适用于所有资源：HTML、XML、JSON、
+和 JSONP。某些资源将具有其他可用格式，例如 MS
+Excel、PDF、CSV 和 PNG。要从 Web 浏览器探索 API，请导航
+到 `/api` 入口点并按照链接到您想要的
+资源，例如`/api/dataElements`。对于所有资源
+返回元素列表，某些查询参数可用于修改
+响应：
+
+Table: Query parameters
+
+| Parameter | Option values | Default option | 描述 |
+|---|---|---|---|
+| paging | true &#124; false | 真正 | Indicates whether to return lists of elements in pages. |
+| page | number | 1 | Defines which page number to return. |
+| pageSize | number | 50 | Defines the number of elements to return for each page. |
+| order | property:asc/iasc/desc/idesc || Order the output using a specified order, only properties that are both persisted and simple (no collections, idObjects etc) are supported. iasc and idesc are case insensitive sorting. |
+
+如何使用这些参数获取完整列表的示例
+XML 响应格式的数据元素组是：
+
+    /api/dataElementGroups.xml?links=false&paging=false
+
+您可以在 name 属性上查询元素而不是返回
+使用 *query* 查询变量的完整元素列表。在这个例子中
+我们查询名称中带有“贫血”一词的所有数据元素：
+
+    / api / dataElements？query =贫血
+
+您可以像这样获取特定页面和对象的页面大小：
+
+    /api/dataElements.json?page=2&pageSize=20
+
+您可以像这样完全禁用分页：
+
+    /api/indicatorGroups.json?paging=false
+
+要基于特定属性对结果进行排序：
+
+    /api/indicators.json?order=shortName:desc
+
+您可以通过以下方式在所有对象类型中根据对象的 ID 查找对象
+*identifiableObjects* 资源：
+
+    / api / identifiableObjects / <id>
+
+### 翻译 { #webapi_translation } 
+
+DHIS2 supports translations of database content, such as data elements,
+indicators, and programs. All metadata objects in the Web API have
+properties meant to be used for display / UI purposes, which include
+*displayName*, *displayShortName*, *displayDescription* and
+*displayFormName* (for data elements and tracked entity attributes).
+
+Table: Translate options
+
+| Parameter | Values | 描述 |
+|---|---|---|
+| translate | true &#124; false | Translate display\* properties in metadata output (displayName, displayShortName, displayDescription, and displayFormName for data elements and tracked entity attributes). Default value is true. |
+| locale | Locale to use | Translate metadata output using a specified locale (requires translate=true). |
+
+### 翻译API { #webapi_translation_api } 
+
+对象的翻译呈现为对象本身的一部分
+在* translation *数组中。请注意，
+JSON / XML有效负载的*翻译*数组通常为您预先过滤，这意味着它们不能直接用于导入/导出翻译（因为那样会
+通常会覆盖当前用户以外的语言环境）。
+
+在用户语言环境中过滤了转换数组的数据元素示例：
+
+```json
+{
+  "id": "FTRrcoaog83",
+  "displayName": "Accute French",
+  "translations": [
+    {
+      "property": "SHORT_NAME",
+      "locale": "fr",
+      "value": "Accute French"
+    },
+    {
+      "property": "NAME",
+      "locale": "fr",
+      "value": "Accute French"
+    }
+  ]
+}
+```
+
+转换关闭的数据元素示例：
+
+```json
+{
+  "id": "FTRrcoaog83",
+  "displayName": "Accute Flaccid Paralysis (Deaths < 5 yrs)",
+  "translations": [
+    {
+      "property": "FORM_NAME",
+      "locale": "en_FK",
+      "value": "aa"
+    },
+    {
+      "property": "SHORT_NAME",
+      "locale": "en_GB",
+      "value": "Accute Flaccid Paral"
+    },
+    {
+      "property": "SHORT_NAME",
+      "locale": "fr",
+      "value": "Accute French"
+    },
+    {
+      "property": "NAME",
+      "locale": "fr",
+      "value": "Accute French"
+    },
+    {
+      "property": "NAME",
+      "locale": "en_FK",
+      "value": "aa"
+    },
+    {
+      "property": "DESCRIPTION",
+      "locale": "en_FK",
+      "value": "aa"
+    }
+  ]
+}
+```
+
+请注意，即使您得到未过滤的结果，并且正在使用
+适当的类型端点，即我们不允许的 `/api/dataElements` 
+更新，因为这样做很容易犯错误并覆盖
+其他可用的语言环境。
+
+要阅读和更新翻译，您可以使用特殊翻译
+每个对象资源的端点。可以通过*GET*或访问
+在适当的`/ api / <object-type> / <object-id> / translations `端点上* PUT *。
+
+As an example, for a data element with identifier `FTRrcoaog83`, you could use
+`/api/dataElements/FTRrcoaog83/translations` to get and update
+translations. The fields available are `property` with options *NAME*,
+*SHORT_NAME*, *FORM_NAME*, *DESCRIPTION*, `locale` which supports any valid
+locale ID and the translated property `value`.
+
+法语语言环境的NAME属性示例：
+
+```json
+{
+  "property": "NAME",
+  "locale": "fr",
+  "value": "Paralysie Flasque Aiguë (Décès <5 ans)"
+}
+```
+
+然后将此有效负载添加到翻译数组中，并发回
+到适当的端点：
+
+```json
+{
+  "translations": [
+    {
+      "property": "NAME",
+      "locale": "fr",
+      "value": "Paralysie Flasque Aiguë (Décès <5 ans)"
+    }
+  ]
+}
+```
+
+对于ID为* FTRrcoaog83 *的数据元素，您可以* PUT *此代码为
+`/ api / dataElements / FTRrcoaog83 / translations`。确保发送全部
+特定对象的翻译，而不仅仅是单个语言环境的翻译
+（否则，您可能会覆盖其他区域的现有语言环境
+语言环境）。
+
+如果数据值已成功保存或更新，则状态代码将为`204 No Content`，如果存在验证错误（例如，同一`语言环境`有多个`SHORT_NAME`），则状态代码将为`404 Not Found`。
+
+
+### Web API版本 { #webapi_api_versions } 
+
+Web API的版本从DHIS 2.25开始。 API版本
+遵循DHIS2主版本号。例如，API
+DHIS 2.33的版本是`33`。
+
+您可以通过包含版本号来访问特定的 API 版本
+在`/api` 组件之后，作为这样的例子：
+
+    / api / 33 / dataElements
+
+如果省略 URL 的 version 部分，系统将使用当前的
+API 版本。例如，对于 DHIS 2.25，在省略 API 部分时，
+系统将使用 API 版本 25。在开发 API 客户端时，它是
+建议使用显式 API 版本（而不是省略 API
+版本），因为这将保护客户端免受不可预见的 API 更改。
+
+将支持最后三个 API 版本。例如，DHIS
+2.27 版本将支持 API 版本 27、26 和 25。
+
+请注意，元数据模型没有版本控制，您可能
+体验变化，例如在对象之间的关联中。这些变化
+将记录在 DHIS2 主要版本发行说明中。
+
+## 元数据对象过滤器 { #webapi_metadata_object_filter } 
+
+To filter the metadata there are several filter operations that can be
+applied to the returned list of metadata. The format of the filter
+itself is straight-forward and follows the pattern
+*property:operator:value*, where *property* is the property on the
+metadata you want to filter on, *operator* is the comparison operator
+you want to perform and *value* is the value to check against (not all
+operators require value). 
+
+Please see the *schema* section to discover which properties are available. 
+In addition to the listed properties filters can apply to custom attribute 
+values by using the attribute's ID as property name.
+
+Recursive filtering, ie. filtering on associated objects or collection of 
+objects, is supported as well.
+
+Table: Available Operators
+
+| Operator | Types | Value required | 描述 |
+|---|---|---|---|
+| eq | string &#124; boolean &#124; integer &#124; float &#124; enum &#124; collection (checks for size) &#124; date | 真正 | Equality |
+| !eq | string &#124; boolean &#124; integer &#124; float &#124; enum &#124; collection (checks for size) &#124; date | 真正 | Inequality |
+| ne | string &#124; boolean &#124; integer &#124; float &#124; enum &#124; collection (checks for size) &#124; date | 真正 | Inequality |
+| like | string | 真正 | Case sensitive string, match anywhere |
+| !like | string | 真正 | Case sensitive string, not match anywhere |
+| $like | string | 真正 | Case sensitive string, match start |
+| !$like | string | 真正 | Case sensitive string, not match start |
+| like$ | string | 真正 | Case sensitive string, match end |
+| !like$ | string | 真正 | Case sensitive string, not match end |
+| ilike | string | 真正 | Case insensitive string, match anywhere |
+| !ilike | string | 真正 | Case insensitive string, not match anywhere |
+| $ilike | string | 真正 | Case insensitive string, match start |
+| !$ilike | string | 真正 | Case insensitive string, not match start |
+| ilike$ | string | 真正 | Case insensitive string, match end |
+| !ilike$ | string | 真正 | Case insensitive string, not match end |
+| gt | string &#124; boolean &#124; integer &#124; float &#124; collection (checks for size) &#124; date | 真正 | Greater than |
+| ge | string &#124; boolean &#124; integer &#124; float &#124; collection (checks for size) &#124; date | 真正 | Greater than or equal |
+| lt | string &#124; boolean &#124; integer &#124; float &#124; collection (checks for size) &#124; date | 真正 | Less than |
+| le | string &#124; boolean &#124; integer &#124; float &#124; collection (checks for size) &#124; date | 真正 | Less than or equal |
+| null | all | 假 | Property is null |
+| !null | all | 假 | Property is not null |
+| empty | collection | 假 | Collection is empty |
+| token | string | 真正 | Match on multiple tokens in search property |
+| !token | string | 真正 | Not match on multiple tokens in search property |
+| 在 | string &#124; boolean &#124; integer &#124; float &#124; date | 真正 | Find objects matching 1 or more values |
+| !in | string &#124; boolean &#124; integer &#124; float &#124; date | 真正 | Find objects not matching 1 or more values |
+
+Operators will be applied as logical *and* query. If you need a *or*
+query, you can have a look at the *in* filter and the section below.
+The filtering mechanism allows for recursion. See below for some examples.
+
+获取ID属性为ID1或ID2的数据元素：
+
+    / api / dataElements？filter = id：eq：ID1＆filter = id：eq：ID2
+
+Get all data elements which have a data set with id ID1:
+
+    /api/dataElements?filter=dataSetElements.dataSet.id:eq:ID1
+
+Get all data elements with aggregation operator *sum* and value type
+*int*:
+
+    /api/dataElements.json?filter=aggregationOperator:eq:sum&filter=type:eq:int
+
+You can do filtering within collections, e.g. to get data elements which
+are members of the *ANC* data element group you can use the following
+query using the id property of the associated data element groups:
+
+    /api/dataElements.json?filter=dataElementGroups.id:eq:qfxEYY9xAl6
+
+To get data elements with a particular attribute value for a metadata 
+attribute, a filter for the attribute ID and the attribute value can be 
+specified using the same collection query syntax:
+
+    /api/dataElements.json?filter=attributeValues.attribute.id:eq:n2xYlNbsfko&filter=attributeValues.value:eq:AFP
+
+Get data elements which have any option set:
+
+    /api/dataElements?filter=optionSet:!null
+
+由于默认情况下所有运算符都是 *and*，因此您无法找到数据
+匹配多个 id 的元素，为此您可以使用 *in*
+操作员。
+
+    /api/dataElements.json?filter=id:in:[fbfJHSPpUQD,cYeuwXTCPkU]
+
+### 逻辑运算符 { #webapi_metadata_logical_operator } 
+
+如前一节所述，应用了默认逻辑运算符
+过滤器是 *AND* 这意味着所有对象过滤器必须是
+匹配。但是，在某些情况下，您希望匹配其中之一
+几个过滤器（可能是 id 和 code 字段），在这些情况下，它是
+可以将根逻辑运算符从 *AND* 切换为 *OR*
+使用 *rootJunction* 参数。
+
+示例：正常过滤，其中 id 和 code 必须匹配才能具有
+结果返回
+
+    /api/dataElements.json?filter=id:in:[id1,id2]&filter=code:eq:code1
+
+示例：过滤逻辑运算符已切换为 OR 的位置
+现在只有一个过滤器必须匹配才能产生结果
+    回
+
+    /api/dataElements.json?filter=id:in:[id1,id2]&filter=code:eq:code1&rootJunction=OR
+
+### 可识别的令牌过滤器 { #identifiable-token-filter } 
+
+除了上述基于特定属性的过滤之外，
+我们还通过* token *基于* AND *过滤了一组
+属性：ID，代码和名称（如果可用，还包括shortName）。这些
+属性通常称为*可识别*。这个想法是为了
+过滤ID，名称，代码或简称中包含某些内容的元数据。
+
+示例：过滤所有包含 *2nd* 的数据元素
+如下： id,name,code,shortName
+
+    /api/dataElements.json?filter=identifiable:token:2nd
+
+也可以指定多个过滤值。
+
+示例：获取在任何 *identifiable* 属性中找到 *ANC visit* 的所有数据元素。系统返回所有数据元素，其中在可识别属性中的任何地方都可以找到令牌（ANC 和访问）。
+
+    /api/dataElements.json?filter=identifiable:token:ANC访问
+
+也可以将可识别过滤器与基于属性的过滤器结合起来，并期望应用 *rootJunction*。
+
+    /api/dataElements.json?filter=identifiable:token:ANC visit＆filter = displayName：ilike：tt1
+
+    /api/dataElements.json?filter=identifiable:token:ANC访问
+      ＆filter = displayName：ilike：tt1＆rootJunction = OR
+
+### Indexable only filter for tracked entity attributes { #indexable-only-filter-for-tracked-entity-attributes } 
+
+For tracked entity attributes, there is a special filter in addition to the previous mentioned filtering capabilities. 
+Some of the tracked entity attributes are candidates for creating a trigram index for better lookup performance. 
+Using the *indexableOnly* parameter set to true, the results can be filtered to include only the attributes that are trigram indexable.
+
+Example: Get all tracked entity attributes that are indexable.
+
+    /api/trackedEntityAttributtes.json?indexableOnly=true
+
+Additional filters along with the `indexableOnly` parameter can be specified.
+
+Example: Get all tracked entity attributes where *ANC* is found in any of the *name* property. The system returns the tracked entity attributes where the name matches the provided keyword as well as if the attribute is indexable.
+
+    /api/trackedEntityAttributtes.json?filter=name:like:ANC&indexableOnly=true
+
+## 元数据字段过滤器 { #webapi_metadata_field_filter } 
+
+In many situations, the default views of the metadata can be too
+verbose. A client might only need a few fields from each object and want
+to remove unnecessary fields from the response. To discover which fields
+are available for each object please see the *schema* section.
+In addition to the listed properties custom attributes can be included
+for top level objects by using the attribute's ID as property name.
+
+The format for include/exclude allows for infinite recursion. To filter
+at the "root" level you can just use the name of the field,
+i.e. `?fields=id,name` which would only display the `id` and
+`name` fields for every object. For objects that are either collections or
+complex objects with properties on their own, you can use the format
+`?fields=id,name,dataSets[id,name]` which would return `id`, `name` of
+the root, and the `id` and `name` of every data set on that object.
+Negation can be done with the exclamation operator, and we have a set of
+presets of field select. Both XML and JSON formats are supported.
+
+**示例**：在指标资源上获取`id`和`name`：
+
+    / api / indicators？fields = id，名称
+
+**Example**: Get `id` and `name` from data elements, and `id` and `name`
+from the associated data sets:
+
+    / api / dataElements？fields = id，name，dataSets [id，name]
+
+**Example**: Get `id`, `name` and the value of a user defined attribute 
+with ID `DnrLSdo4hMl` for organisation units:
+
+    /api/organisationUnits?fields=id,name,DnrLSdo4hMl
+
+The attribute is then included as property `DnrLSdo4hMl` of each
+matching object in the response. This can be renamed using the `rename` 
+transformer as shown in the next section.
+
+要从输出中排除字段，可以使用感叹号`!`。
+操作符。这是在查询中的任何地方都允许的，而根本不会
+包括该属性，因为它可能已经插入了某些
+预设。
+
+一些预设（选定的字段组）可用并且可以应用
+使用`:` 运算符。
+
+Table: Property operators
+
+| Operator | 描述 |
+|---|---|
+| <field-name\> | Include property with name, if it exists. |
+| <object\>[<field-name\>, ...] | Includes a field within either a collection (will be applied to every object in that collection), or just on a single object. |
+| !<field-name\>, <object\>[!<field-name\> | Do not include this field name, it also works inside objects/collections. Useful when you use a preset to include fields. |
+| \*, <object\>[\*] | Include all fields on a certain object, if applied to a collection, it will include all fields on all objects on that collection. |
+| :<preset\> | Alias to select multiple fields. Three presets are currently available, see the table below for descriptions. |
+
+Table: Field presets
+
+| Preset | 描述 |
+|---|---|
+| all | All fields of the object |
+| \* | Alias for all |
+| identifiable | Includes id, name, code, created and lastUpdated fields |
+| nameable | Includes id, name, shortName, code, description, created and lastUpdated fields |
+| persisted | Returns all persisted property on an object, does not take into consideration if the object is the owner of the relation. |
+| owner | Returns all persisted property on an object where the object is the owner of all properties, this payload can be used to update through the API. |
+
+**Example**: Include all fields from data sets except organisation units:
+
+    / api / dataSets？fields =：all，！organizationUnits
+
+**示例**：仅包含ID，名称和数据集中的组织单位集合，但不包含组织单位中的ID：
+
+    / api / dataSets / BfMAe6Itzgt？fields = id，name，organisationUnits [：all，！id]
+
+**示例**：包括所有指标的可命名属性：
+
+    /api/indicators.json?fields=:nameable
+
+### 现场变压器 { #webapi_field_transformers } 
+
+Field transforms can be used to transform properties. The syntax is described below.
+
+    /api/dataElements/ID?fields=id~rename(i),name~rename(n)
+
+这会将 *id* 属性重命名为 *i*，将 *name* 属性重命名为 *n*。
+
+Multiple transformers can be applied to a single property by repeating the transformer operator:
+
+    /api/dataElementGroups.json?fields=id,displayName,dataElements~isNotEmpty~rename(haveDataElements）
+
+The supported transformer operators are described in the table below.
+
+Table: Available Transformers
+
+| 名称 | Arguments | 描述 |
+|---|---|---|
+| size || Gives sizes of strings (length) and collections |
+| isEmpty || Is string or collection empty |
+| isNotEmpty || Is string or collection not empty |
+| rename | Arg1: name | Renames the property name |
+| paging | Arg1: page,Arg2: pageSize | Pages a collection, default pageSize is 50. |
+| pluck | Optional Arg1: fieldName | Converts an array of objects to an array of a selected field of that object. By default, the first field that is returned by the collection is used (normally the ID). |
+| keyBy | Optional Arg1: fieldName | Converts an array of objects to an object where the fieldName (default id) is used as the key. This can be useful for quick lookups in JavaScript for example |
+
+#### 例子 { #webapi_field_transformers_examples } 
+
+Examples of transformer usage are found below.
+
+Get the size of a collection:
+
+    /api/dataElements?fields=dataSets~size
+
+Test if a collection is empty:
+
+    /api/dataElements?fields=dataSets~isEmpty
+
+Test if a collection is not empty:
+
+    /api/dataElements?fields=dataSets~isNotEmpty
+
+Rename properties:
+
+    /api/dataElements/ID?fields=id~rename(i),name~rename(n)
+
+Apply paging to a collection:
+
+    /api/dataElementGroups?fields=id,displayName,dataElements~paging(1;20)
+
+Get array with IDs of organisation units:
+
+    /api/categoryOptions.json?fields=id,organisationUnits~pluck
+
+Get array with names of organisation units:
+
+    /api/categoryOptions.json?fields=id,organisationUnits~pluck[name]
+
+通过`d`字段键入 dataElements 数组：
+
+    /api/dataElementGroups.json?fields=id,name,dataElements~keyBy[id,name,valueType]
+
+通过`valueType`字段键入 dataElements 数组，因为多次点击这将生成（数据元素的）数组：
+
+    /api/dataElementGroups.json?fields=id,name,dataElements~keyBy(valueType)[id,name,valueType]
+
+## 元数据创建，读取，更新，删除，验证 { #webapi_metadata_crud } 
+
+DHIS2 中的所有元数据实体都有自己的 API 端点，支持
+*CRUD* 操作（创建、读取、更新和删除）。端点 URL
+遵循以下格式：
+
+    / api / <entityName>
+
+_entityName_ 使用驼峰命名法。例如，端点
+对于_数据元素_是：
+
+    / api / dataElements
+
+### 创建/更新参数 { #webapi_metadata_create_update } 
+
+以下请求查询参数可用于所有元数据端点。
+
+Table: Available Query Filters
+
+| Param | 类型 | 需要 | 选项（默认为默认） | 描述 |
+|---|---|---|---|---|
+| preheatCache | boolean | 假 | true &#124; false | Turn cache-map preheating on/off. This is on by default, turning this off will make initial load time for importer much shorter (but will make the import itself slower). This is mostly used for cases where you have a small XML/JSON file you want to import, and don't want to wait for cache-map preheating. |
+| importStrategy | enum | 假 | CREATE_AND_UPDATE &#124; CREATE &#124; UPDATE &#124; DELETE | Import strategy to use, see below for more information. |
+| mergeMode | enum | 假 | REPLACE, MERGE | Strategy for merging of objects when doing updates. REPLACE will just overwrite the property with the new value provided, MERGE will only set the property if it is not null (only if the property was provided). |
+
+### 创建和更新对象 { #webapi_creating_updating_objects } 
+
+要创建新对象，您需要知道端点、类型
+格式，并确保您拥有所需的权限。作为
+例如，我们将创建和更新一个*常量*。为了弄清楚
+格式，我们可以使用新的 *schema* 端点来获取格式
+描述。因此，我们将从获取该信息开始：
+
+    http：// <server> /api/schemas/constant.json
+
+从输出中，您可以看到创建所需的权限
+是`F_CONSTANT_ADD`，重要的属性是：*name* 和
+*价值*。由此，我们可以创建一个 JSON 负载并将其保存为文件
+称为constant.json：
+
+```json
+{
+  "name": "PI",
+  "value": "3.14159265359"
+}
+```
+
+与XML有效内容相同的内容：
+
+```xml
+<constant name="PI" xmlns="http://dhis2.org/schema/dxf/2.0">
+  <value>3.14159265359</value>
+</constant>
+```
+
+我们现在准备通过发送 POST 请求来创建新的*常量*
+使用curl 的带有JSON 有效负载的`constants`端点：
+
+```bash
+curl -d @constant.json "http://server/api/constants" -X POST
+  -H "Content-Type: application/json" -u user:password
+```
+
+将常量发布到演示中的具体示例
+    服务器：
+
+```bash
+curl -d @constant.json "https://play.dhis2.org/api/constants" -X POST
+  -H "Content-Type: application/json" -u admin:district
+```
+
+如果一切顺利，您应该看到类似以下的输出：
+
+```json
+{
+  "status": "SUCCESS",
+  "importCount": {
+    "imported": 1,
+    "updated": 0,
+    "ignored": 0,
+    "deleted": 0
+  },
+  "type": "Constant"
+}
+```
+
+更新过程将完全相同，您进行更改
+到 JSON/XML 负载，找出常量的 *ID*，然后
+向端点发送包含 ID 的 PUT 请求：
+
+```bash
+curl -X PUT -d @pi.json -H "Content-Type: application/json"
+  -u user:password "http://server/api/constants/ID"
+```
+
+### 删除物件 { #webapi_deleting_objects } 
+
+删除对象非常简单，您需要知道
+*ID* 和你要删除的类型的端点，让我们继续我们的
+上一节中的示例并使用*常量*。让我们假设
+id 是 *abc123*，那么你需要做的就是发送 DELETE
+对端点的请求 + id：
+
+```bash
+curl -X DELETE -u user:password "http://server/api/constants/ID"
+```
+
+成功删除应返回HTTP状态204（无内容）。
+
+### 在集合中添加和删除对象 { #webapi_adding_removing_objects_collections } 
+
+集合资源允许您修改集合
+对象。
+
+#### 添加或删除单个对象 { #webapi_collections_adding_removing_single_objects } 
+
+为了在对象集合中添加或删除对象，您
+可以使用以下
+    图案：
+
+    / api / {collection-object} / {collection-object-id} / {collection-name} / {object-id}
+
+应该使用POST方法添加，使用DELETE方法删除
+一个东西。当对象之间存在多对多关系时，
+您必须首先确定哪个对象拥有该关系。如果不是
+清除这是哪个对象，尝试两种方式调用以查看哪个有效。
+
+模式的组成部分是：
+
+  - 集合对象：拥有您的集合的对象类型
+    想修改。
+
+  - 集合对象 id：拥有该对象的对象的标识符
+    要修改的集合。
+
+  - 集合名称：您要修改的集合的名称。
+
+  - object id：要添加或删除的对象的标识符
+    从集合。
+
+例如，为了删除标识符为 IDB 的数据元素
+从具有标识符 IDA 的数据元素组中，您可以执行 DELETE
+要求：
+
+    删除/ api / dataElementGroups / IDA / dataElements / IDB
+
+将带有标识符 IDB 的类别选项添加到带有
+标识符 IDA 你可以做一个 POST
+要求：
+
+    POST / api / categories / IDA / categoryOptions / IDB
+
+#### 添加或删除多个对象 { #webapi_collections_adding_removing_multiple_objects } 
+
+您可以在一个请求中从集合中添加或删除多个对象
+具有这样的有效载荷：
+
+```json
+{
+  "identifiableObjects": [{
+      "id": "IDA"
+    }, {
+      "id": "IDB"
+    }, {
+      "id": "IDC"
+    }
+  ]
+}
+```
+
+使用此有效负载，您可以添加，替换或删除项目：
+
+*添加项目：*
+
+    POST / api / categories / IDA / categoryOptions
+
+*更换物品：*
+
+    PUT /api/categories/IDA/categoryOptions
+
+*删除
+项目：*
+
+    删除/ api / categories / IDA / categoryOptions
+
+#### 在单个请求中添加和删除对象 { #webapi_collections_adding_removing_objects_single_request } 
+
+您可以在单个 POST 中从集合中添加和删除对象
+请求到以下 URL：
+
+    POST / api / categories / IDA / categoryOptions
+
+有效负载格式为：
+
+```json
+{
+  "additions": [{
+      "id": "IDA"
+    }, {
+      "id": "IDB"
+    }, {
+      "id": "IDC"
+    }
+  ],
+  "deletions": [{
+      "id": "IDD"
+    }, {
+      "id": "IDE"
+    }, {
+      "id": "IDF"
+    }
+  ]
+}
+```
+
+### 验证有效载荷 { #webapi_validating_payloads } 
+
+DHIS 2 支持元数据有效载荷的系统范围验证，这意味着
+将检查 API 端点上的创建和更新操作
+允许进行更改之前的有效负载。找出哪些验证
+为特定端点准备好了，看看`/api/schemas`
+端点，即要找出数据元素具有哪些约束，您
+会去`/api/schemas/dataElement`。
+
+您还可以手动验证您的有效负载，方法是将其发送到适当的
+架构端点。如果您想从创建中验证常量
+之前的部分，您可以这样发送：
+
+    POST / api / schemas / constant
+
+一个简单的（非验证）示例为：
+
+```bash
+curl -X POST -d "{\"name\": \"some name\"}" -H "Content-Type: application/json"
+  -u admin:district "https://play.dhis2.org/dev/api/schemas/dataElement"
+```
+
+Which will yield the result:
+
+```json
+[
+   {
+      "message" : "Required property missing.",
+      "property" : "type"
+   },
+   {
+      "property" : "aggregationOperator",
+      "message" : "Required property missing."
+   },
+   {
+      "property" : "domainType",
+      "message" : "Required property missing."
+   },
+   {
+      "property" : "shortName",
+      "message" : "Required property missing."
+   }
+]
+```
+
+### 部分更新 { #webapi_partial_updates } 
+
+对于处理元数据的 API 端点，我们支持使用 JSON 补丁 [标准](https://tools.ietf.org/html/rfc6902) 进行部分更新 (PATCH)。有效负载基本上概述了您想要应用于现有元数据对象的一组操作。有关 JSON 补丁的详细信息和示例，请参阅 [jsonpatch.com](http://jsonpatch.com/)。支持三个运算符：`添加`、`删除`和`替换`。
+
+Below is a few examples relevant to DHIS2. Note that any update to a payload should be thought of as a HTTP PUT operation, i.e. any mutation must result in a valid PUT metadata payload.
+
+The default `importReportMode` for JSON patch is `ERRORS_NOT_OWNER` which implies that when updating any property which is not owned by that particular object (for example trying to add a indicator group directly to an indicator) you will get an error.
+
+As per the JSON patch specification you must always use the mimetype `application/json-patch+json` when sending patches.
+
+#### 例子 { #examples } 
+
+##### Update name and value type of data element { #update-name-and-value-type-of-data-element } 
+
+```
+PATCH /api/dataElements/{id}
+```
+
+```json
+[
+  {"op": "add", "path": "/name", "value": "New Name"},
+  {"op": "add", "path": "/valueType", "value": "INTEGER"}
+] 
+```
+
+##### Add new data element to a data element group { #add-new-data-element-to-a-data-element-group } 
+
+```
+PATCH /api/dataElementGroups/{id}
+```
+
+```json
+[
+  {"op": "add", "path": "/dataElements/-", "value": {"id": "data-element-id"}}
+]
+```
+
+##### Remove all data element associations from a data element group { #remove-all-data-element-associations-from-a-data-element-group } 
+
+```
+PATCH /api/dataElementGroups/{id}
+```
+
+```json
+[
+  {"op": "remove", "path": "/dataElements"}
+]
+```
+
+##### Change domain and value type of a data element { #change-domain-and-value-type-of-a-data-element } 
+
+```
+PATCH /api/dataElements/{id}
+```
+
+```json
+[
+    {"op": "add", "path": "/domainType", "value": "TRACKER"},
+    {"op": "add", "path": "/valueType", "value": "INTEGER"}
+]
+```
+
+##### Remove a specific orgUnit from an orgUnit group { #remove-a-specific-orgunit-from-an-orgunit-group } 
+
+```
+PATCH /api/organisationUnitGroups/{id}
+```
+
+```json
+[
+  {"op": "remove", "path": "/organisationUnits/1"}
+]
+```
+
+#### Blocked add dataElementGroup to dataElement { #blocked-add-dataelementgroup-to-dataelement } 
+
+```
+PATCH /api/dataElements/{id}?importReportMode=ERRORS_NOT_OWNER
+```
+
+```json
+[
+    {"op": "add", "path": "/dataElementGroups/-", "value": {"id": "data-element-group-id"}}
+]
+```
+
+#### Blocked update name of dataElementGroup in dataElement { #blocked-update-name-of-dataelementgroup-in-dataelement } 
+
+```
+PATCH /api/dataElements/{id}?importReportMode=ERRORS_NOT_OWNER
+```
+
+```json
+[
+    {"op": "add", "path": "/dataElementGroups/0", "value": {"name": "new-name"}}
+]
+```
+#### Remove collection item by id { #remove-collection-item-by-id } 
+
+```
+PATCH /api/dataSets/{id}?importReportMode=ERRORS_NOT_OWNER
+```
+
+```json
+[
+    {"op": "remove-by-id", "path": "/organisationUnits", "id": "u6CvKyF0Db5"}
+]
+```
+
+#### Patch request with invalid path { #patch-request-with-invalid-path } 
+If `path` property is invalid or does not exist the patch service will return an error as below
+
+
+```
+PATCH /api/dataSets/{id}?importReportMode=ERRORS_NOT_OWNER
+```
+
+```json
+[
+    {"op": "remove-by-id", "path": "/test", "id": "u6CvKyF0Db5"}
+]
+```
+Response
+```json
+{
+    "httpStatus": "Bad Request",
+    "httpStatusCode": 400,
+    "status": "ERROR",
+    "message": "Invalid path /test"
+}
+```
+
+### Metadata CSV export { #webapi_metadata_csv_export } 
+
+Field filtering works almost the same for CSV (please note that using CSV on the `/api/metadata` endpoint is not supported), but not that
+field fransformations are not yet supported.
+
+For endpoints that support CSV (our metadata endpoints like `/api/dataElements` `/api/organisationUnits`) you can either use the `Accept` header with
+value `text/csv` or you can use the extension `.csv`. Be aware that complex objects are not supported, and we only support id-object collections (so a list of UIDs
+will be returned).
+
+| 名称 | 选项 | 描述 |
+|---|---|---|
+| fields | Same as metadata field filter (with the caveats mentioned above) | Default filter is `id,displayName` |
+| skipHeader | false/true | Should the header (with column names) be included or not
+| separator | Default: `.` | Column separator
+| arraySeparator | Default: `;` | If one of the field is a collection of id-objects this separator will separate all the UIDs
+
+#### 例子 { #examples } 
+
+#### Get all data elements including their group associations { #get-all-data-elements-including-their-group-associations } 
+
+```
+/api/dataElements.csv?fields=id,displayName,dataElementGroups
+```
+
+#### Get all org units including geometry (which will get ignored) { #get-all-org-units-including-geometry-which-will-get-ignored } 
+
+```
+/api/organisationUnits.csv?fields=id,displayName,organisationUnitGroups,geometry
+```
+
+## 元数据导出 { #webapi_metadata_export } 
+
+本节介绍了可在以下位置获得的元数据 API
+`/api/元数据`。支持 XML 和 JSON 资源表示。
+
+    / api /元数据
+
+最常用的参数在下面的“导出参数”中描述
+桌子。您还可以使用以下方法将其应用于所有可用类型
+`type:fields=<filter>` 和 `type:filter=<filter>`。你也可以
+通过设置 `type=true|false` 启用/禁用某些类型的导出。
+
+Table: Export Parameter
+
+| 名称 | 选项 | 描述 |
+|---|---|---|
+| fields | Same as metadata field filter | Default field filter to apply for all types, default is `:owner`. |
+| filter | Same as metadata object filter | 适用于所有类型的默认对象过滤器，默认为`无`。 |
+| order | Same as metadata order | Default order to apply to all types, default is `name` if available, or `created` if not. |
+| translate | false/true | Enable translations. Be aware that this is turned off by default (in other endpoints this is on by default). |
+| locale | <locale\> | Change from user locale, to your own custom locale. |
+| defaults | INCLUDE/EXCLUDE | Should auto-generated category object be included or not in the payload. If you are moving metadata between 2 non-synced instances, it might make sense to set this to EXCLUDE to ease the handling of these generated objects. |
+| skipSharing | false/true | Enabling this will strip the sharing properties from the exported objects. This includes *user*, *publicAccess*, *userGroupAccesses*, *userAccesses*, and *externalAccess*. |
+| download | false/true | Enabling this will add HTTP header Content-Disposition that specifies that the data should be handled as an attachment and will be offered by web browsers as a download. |
+
+### 元数据导出示例 { #webapi_metadata_export_examples } 
+
+导出所有元数据。小心，因为响应可能非常大，具体取决于
+关于您的元数据配置：
+
+    / api /元数据
+
+导出由lastUpdated降序排列的所有元数据：
+
+    / api / metadata？defaultOrder = lastUpdated：desc
+
+导出仅包括指标和指标组的元数据：
+
+    / api / metadata？indicators = true＆indicatorGroups = true
+
+导出所有数据元素的id和displayName，按displayName排序：
+
+    / api / metadata？dataElements：fields = id，name＆dataElements：order = displayName：desc
+
+导出名称以“ ANC”开头的数据元素和指示符：
+
+    / api / metadata？filter = name：^ like：ANC＆dataElements = true＆indicators = true
+
+### 具有依赖项的元数据导出 { #webapi_dataset_program_export_dependencies } 
+
+When you want to exchange metadata for a data set, program, category combo,
+dashboard, option set or data element group
+from one DHIS2 instance to another instance there are six dedicated endpoints available:
+
+```
+/api/dataSets/{id}/metadata.json
+
+/api/programs/{id}/metadata.json
+
+/api/categoryCombos/{id}/metadata.json
+
+/api/dashboards/{id}/metadata.json
+
+/api/optionSets/{id}/metadata.json
+
+/api/dataElementGroups/{id}/metadata.json
+```
+
+然后可以使用`/ api / metadata`导入这些导出。
+
+这些端点还支持以下参数：
+
+Table: Export Parameter
+
+| 名称 | 选项 | 描述 |
+|---|---|---|
+| skipSharing | false/true | Enabling this will strip the sharing properties from the exported objects. This includes *user*, *publicAccess*, *userGroupAccesses*, *userAccesses*, and *externalAccess*. |
+| download | false/true | Enabling this will add HTTP header Content-Disposition that specifies that the data should be handled as an attachment and will be offered by web browsers as a download. |
+
+## 元数据导入 { #webapi_metadata_import } 
+
+本节介绍元数据导入 API。 XML 和 JSON 资源
+支持表示。可以使用 *POST* 请求导入元数据。
+
+    / api /元数据
+
+导入器允许您导入元数据有效负载，其中可能包括许多
+不同的实体和每个实体的任意数量的对象。元数据导出
+元数据导出API生成的可以直接导入。
+
+元数据导入端点支持多种参数，分别是
+下面列出。
+
+Table: Import Parameter
+
+| 名称 | Options (first is default) | 描述 |
+|---|---|---|
+| importMode | COMMIT, VALIDATE | 设置整体导入模式，决定是否仅 `VALIDATE` 或也 `COMMIT` 元数据，这与我们旧的 dryRun 标志具有相似的功能。 |
+| identifier | UID, CODE, AUTO | Sets the identifier scheme to use for reference matching. `AUTO` means try `UID` first, then `CODE`. |
+| importReportMode | ERRORS, FULL, DEBUG | Sets the `ImportReport` mode, controls how much is reported back after the import is done. `ERRORS` only includes *ObjectReports* for object which has errors. `FULL` returns an *ObjectReport* for all objects imported, and `DEBUG` returns the same plus a name for the object (if available). |
+| preheatMode | REFERENCE, ALL, NONE | Sets the preheater mode, used to signal if preheating should be done for `ALL` (as it was before with *preheatCache=true*) or do a more intelligent scan of the objects to see what to preheat (now the default), setting this to `NONE` is not recommended. |
+| importStrategy | CREATE_AND_UPDATE, CREATE, UPDATE, DELETE | Sets import strategy, `CREATE_AND_UPDATE` will try and match on identifier, if it doesn't exist, it will create the object. |
+| atomicMode | ALL, NONE | Sets atomic mode, in the old importer we always did a *best effort* import, which means that even if some references did not exist, we would still import (i.e. missing data elements on a data element group import). Default for new importer is to not allow this, and similar reject any validation errors. Setting the `NONE` mode emulated the old behavior. |
+| ~~mergeMode~~ | ~~REPLACE, MERGE~~ | ~~Sets the merge mode, when doing updates we have two ways of merging the old object with the new one, `MERGE` mode will only overwrite the old property if the new one is not-null, for `REPLACE` mode all properties are overwritten regardless of null or not.~~ (*) |
+| flushMode | AUTO, OBJECT | Sets the flush mode, which controls when to flush the internal cache. It is *strongly* recommended to keep this to `AUTO` (which is the default). Only use `OBJECT` for debugging purposes, where you are seeing hibernate exceptions and want to pinpoint the exact place where the stack happens (hibernate will only throw when flushing, so it can be hard to know which object had issues). | 
+| skipSharing | false, true | Skip sharing properties, does not merge sharing when doing updates, and does not add user group access when creating new objects. |
+| skipValidation | false, true | Skip validation for import. `NOT RECOMMENDED`. |
+| async | false, true | Asynchronous import, returns immediately with a *Location* header pointing to the location of the *importReport*. The payload also contains a json object of the job created. |
+| inclusionStrategy | NON_NULL, ALWAYS, NON_EMPTY | *NON_NULL* includes properties which are not null, *ALWAYS* include all properties, *NON_EMPTY* includes non empty properties (will not include strings of 0 length, collections of size 0, etc.) |
+| userOverrideMode | NONE, CURRENT, SELECTED | Allows you to override the user property of every object you are importing, the options are NONE (do nothing), CURRENT (use import user), SELECTED (select a specific user using overrideUser=X) |
+| overrideUser | User ID | If userOverrideMode is SELECTED, use this parameter to select the user you want override with. |
+
+> (*) Currently the `mergeMode=MERGE` option of the import service has limitations and doesn't support all objects. It doesn't work with some object types such as Embedded objects, or objects which are saved as JSONB format in database ( sharing, attributeValues, etc...). Fixing those issues are complicated and would just cause new issues. Therefore, this `mergedMode=MERGE` is deprecated and currently is not recommended to use. The update mode should always be mergedMode=REPLACE. We have developed a new [JSON Patch API](#webapi_partial_updates) which can be used as an alternative approach. This feature is introduced in 2.37 release.
+
+
+要导入的元数据负载的示例如下所示。注意如何
+每个实体类型都有自己的属性和一个对象数组：
+
+```json
+{
+  "dataElements": [
+    {
+      "name": "EPI - IPV 3 doses given",
+      "shortName": "EPI - IPV 3 doses given",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "valueType": "INTEGER_ZERO_OR_POSITIVE"
+    },
+    {
+      "name": "EPI - IPV 4 doses given",
+      "shortName": "EPI - IPV 4 doses given",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "valueType": "INTEGER_ZERO_OR_POSITIVE"
+    }
+  ],
+  "indicators": [
+    {
+      "name": "EPI - ADS stock used",
+      "shortName": "ADS stock used",
+      "numerator": "#{LTb8XeeqeqI}+#{Fs28ZQJET6V}-#{A3mHIZd2tPg}",
+      "numeratorDescription": "ADS 0.05 ml used",
+      "denominator": "1",
+      "denominatorDescription": "1",
+      "annualized": false,
+      "indicatorType": {
+        "id": "kHy61PbChXr"
+      }
+    }
+  ]
+}
+```
+
+将此有效负载发布到元数据端点时，响应将包含
+有关导入过程中使用的参数的信息和每个摘要
+实体类型，包括创建、更新、删除和
+忽略：
+
+```json
+{
+  "importParams": {
+    "userOverrideMode": "NONE",
+    "importMode": "COMMIT",
+    "identifier": "UID",
+    "preheatMode": "REFERENCE",
+    "importStrategy": "CREATE_AND_UPDATE",
+    "atomicMode": "ALL",
+    "mergeMode": "REPLACE",
+    "flushMode": "AUTO",
+    "skipSharing": false,
+    "skipTranslation": false,
+    "skipValidation": false,
+    "metadataSyncImport": false,
+    "firstRowIsHeader": true,
+    "username": "UNICEF_admin"
+  },
+  "status": "OK",
+  "typeReports": [
+    {
+      "klass": "org.hisp.dhis.dataelement.DataElement",
+      "stats": {
+        "created": 2,
+        "updated": 0,
+        "deleted": 0,
+        "ignored": 0,
+        "total": 2
+      }
+    },
+    {
+      "klass": "org.hisp.dhis.indicator.Indicator",
+      "stats": {
+        "created": 1,
+        "updated": 0,
+        "deleted": 0,
+        "ignored": 0,
+        "total": 1
+      }
+    }
+  ],
+  "stats": {
+    "created": 3,
+    "updated": 0,
+    "deleted": 0,
+    "ignored": 0,
+    "total": 3
+  }
+}
+```
+
+## GeoJSON import <!-- DHIS2-EDIT:https://github.com/dhis2/dhis2-docs/edit/2.40/src/developer/web-api/geo-json.md --> { #geojson-import } 
+
+The GeoJSON import is used to attach geometry data to organisation units.
+
+For a bulk import a GeoJSON file with a feature collection is expected.
+Each feature in the collection requires a reference to the organisation unit it
+should be linked to.
+
+By default, the geometry from the file is stored as the `geometry` property of
+an organisation unit. To store additional geometries attributes of type
+`GEOJSON` can be created. When attributes are use all geometries from a file
+are stored for the same attribute which is provided with an additional 
+parameter `attributeId`.
+
+### GeoJSON Bulk Data Import { #webapi_geojson_bulk_import }
+
+Table: Import Parameters
+
+| 名称              | 类型                           | 默认 | 描述                                                                                                                       |
+|-------------------|--------------------------------|---|-----------------------------------------------------------------------------------------------------------------------------------|
+| `geoJsonId`       | `boolean`                      | `true` | When `true` the `id` property of the GeoJSON features is expected to hold the organisation unit identifier                        |
+| `geoJsonProperty` | `String`                       | _undefined_ | If `geoJsonId` is `false` this parameter names the property in the GeoJSON feature's `properties` that holds the organisation unit identifier |
+| `orgUnitProperty` | `enum`: [`id`, `code`, `name`] | `id` | The property of the organisation unit that is referred to by the identifiers used in the GeoJSON file                             |
+| `attributeId`     | `String` | _undefined_ | When set the geometry is stored as value of the attribute referenced  by ID                                                       |
+| `dryRun`          | `boolean` | `false` | When `true` the import is processed without actually updating the organisation units |
+| `async`           | `boolean` | `false` | When `true` the import is processed asnychronously |
+
+Uasge:
+
+    POST /api/organisationUnits/geometry
+
+The post body is the GeoJSON file. Content type should be `application/json` or
+`application/geo+json`. The file may be `.zip` or `.gzip` compressed.
+
+For example, a default file where `id` is used to refer to an organisation unit 
+id has this structure:
+
+```json
+{ 
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "O6uvpzGd5pu",
+      "geometry": { ... }
+    },
+    ...
+  ]
+}
+```
+
+A file where a feature property is used to refer to the organisation unit code
+would have this structure:
+
+```json
+{ 
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "code": "OU1_CODE" },
+      "geometry": { ... }
+    },
+    ...
+  ]
+}
+```
+The `coordinates` in a `geometry` may be pairs or triplets. 
+If a third dimension is present it is stripped during the import.
+
+A `geometry` may also be `null` to effectively clear or delete the geometry 
+for specific organisation units. There is a special bulk deletion API that is
+described in the next section.
+
+When run synchronously an import report is returned directly.
+The HTTP status code is always `OK`, the `status` in the message payload
+indicates if all rows were imported successfully.
+The import counts statistics contained in the report give further information:
+
+* `imported`: number of organisation units that were successfully updated with a geometry that did not have one before for the updated property
+* `updated`: number of organisation units that were successfully updated with a geometry that did have value for the updated property already
+* `ignored`: number of organisation units that failed to update
+* `deleted`: number of organisation units that where successfully update with a _empty_ geometry
+
+When the import is run asynchronous the request returns immediately with status 
+`OK` and job configuration response that contains a relative reference to 
+the task endpoint that allows to track the status of the asynchronous import.
+For example:
+
+    /api/system/tasks/GEOJSON_IMPORT/{job-id}
+
+The summary that is returned directly for synchronous execution is available at
+
+    /api/system/taskSummaries/GEOJSON_IMPORT/{job-id}
+
+once the import is finished.
+
+### GeoJSON Bulk Data Deletion { #webapi_geojson_bulk_deletion }
+要清除或取消设置所有组织单位的`几何`数据，请使用：
+
+    DELETE /api/organisationUnits/geometry
+
+To clear or unset the geometry data for a specific `GEOJSON` attribute for
+all organisation units use:
+
+    DELETE /api/organisationUnits/geometry?attributeId={attr-id}
+
+Clearing is always synchronous and returns a similar report as the bulk import.
+It does not support any other parameters. No `dry-run` can be performed.
+Bulk clearing requires the `F_PERFORM_MAINTENANCE` authority.
+
+### GeoJSON Single Data Import { #webapi_geojson_single_import }
+The single import allows to update the geometry of a single organisation unit.
+
+    POST /api/organisationUnits/{id}/geometry
+
+The post body only contains the GeoJSON `geometry` value, for example:
+```json
+{
+  "type": "Polygon",
+  "coordinates": [...]
+}
+```
+Single import only supports `attributeId` and `dryRun` parameters.
+
+### GeoJSON Single Data Deletion { #webapi_geojson_single_deletion }
+To clear the `geometry` GeoJSON data of an individual organisation unit use:
+
+    DELETE /api/organisationUnits/{id}/geometry
+
+Similarly to clear a `GEOJSON` attribute value for an individual organisation 
+unit use:
+
+    DELETE /api/organisationUnits/{id}/geometry?attributeId={attr-id}
+
+Clearing is always synchronous returns a similar report as single import.
+The `dry-run` parameter is supported as well. 
+The performing user requires authority to modify the target organisation unit.
+
+
+
+## 架构图 { #webapi_schema } 
+
+可用于内省所有可用 DXF 2 对象的资源
+可以在`/api/schemas` 上找到。对于特定资源，您可以拥有
+查看`/api/schemas/<type>`。
+
+要获取XML中所有可用的模式：
+
+    GET /api/schemas.xml
+
+要获取JSON中所有可用的模式，请执行以下操作：
+
+    GET /api/schemas.json
+
+要获取特定类的JSON模式：
+
+    GET /api/schemas/dataElement.json
+
+
+## 图示 { #webapi_icons } 
+
+DHIS2 包括一组可用于提供视觉效果的图标
+元数据的上下文。这些图标可以通过图标访问
+资源。
+
+    GET /api/icons
+
+此端点返回有关可用图标的信息列表。
+每个条目都包含有关图标的信息，以及对图标的引用
+实际图标。
+
+```json
+{
+  key: "mosquito_outline",
+  description: "Mosquito outline",
+  keywords: [
+    "malaria",
+    "mosquito",
+    "dengue"
+  ],
+  href: "<dhis server>/api/icons/mosquito_outline/icon.svg"
+}
+```
+
+关键字可用于过滤要返回的图标。传递一个列表
+带有请求的关键字将只返回与所有匹配的图标
+关键词：
+
+    GET /api/icons?keywords=shape,small
+
+可以在关键字资源中找到所有唯一关键字的列表：
+
+    GET /api/icons/keywords
+
+## 渲染类型 { #webapi_render_type } 
+
+某些元数据类型具有名为 *renderType* 的属性。渲染类型
+属性是 *device* 和 *renderingType* 之间的映射。应用
+可以使用此信息作为有关如何呈现对象的提示
+在特定设备上。例如，移动设备可能想要渲染
+与台式计算机不同的数据元素。
+
+当前有两种不同的renderingTypes可用：
+
+1.  值类型渲染
+
+2.  程序阶段部分渲染
+
+还提供2种设备类型：
+
+1.  移动
+
+2.  桌面
+
+下表列出了可用的元数据和呈现类型。
+值类型呈现具有基于元数据的附加约束
+配置，这将显示在第二个表中。
+
+Table: Metadata and RenderingType overview
+
+| Metadata type | Available RenderingTypes |
+|---|---|
+| 程序阶段部分 | * LISTING (default)<br> * SEQUENTIAL<br> * MATRIX |
+| 数据元素 | * DEFAULT<br> * DROPDOWN<br> * VERTICAL_RADIOBUTTONS<br> * HORIZONTAL_RADIOBUTTONS<br> * VERTICAL_CHECKBOXES<br> * HORIZONTAL_CHECKBOXES<br> * SHARED_HEADER_RADIOBUTTONS<br> * ICONS_AS_BUTTONS<br> * SPINNER<br> * ICON<br> * TOGGLE<br> * VALUE<br> * SLIDER<br> * LINEAR_SCALE<br> * AUTOCOMPLETE<br> * QR_CODE<br> * BAR_CODE<br> * GS1_DATAMATRIX |
+
+由于处理数据元素和跟踪实体的默认呈现
+属性取决于对象的值类型，还有
+一个 DEFAULT 类型告诉客户端它应该被正常处理。
+程序阶段部分默认为“列表”。
+
+Table: RenderingTypes allowed based on value types
+
+| 值类型               | Is object an optionset? | RenderingTypes allowed |
+|--------------------------|---|---|
+| TRUE_ONLY                | 不 | DEFAULT, VERTICAL_RADIOBUTTONS, HORIZONTAL_RADIOBUTTONS, VERTICAL_CHECKBOXES, HORIZONTAL_CHECKBOXES, TOGGLE |
+| BOOLEAN                  | 不 ||
+| --                        | 是的 | DEFAULT, DROPDOWN, VERTICAL_RADIOBUTTONS, HORIZONTAL_RADIOBUTTONS, VERTICAL_CHECKBOXES, HORIZONTAL_CHECKBOXES, SHARED_HEADER_RADIOBUTTONS, ICONS_AS_BUTTONS, SPINNER, ICON |
+| INTEGER                  | 不 | DEFAULT, VALUE, SLIDER, LINEAR_SCALE, SPINNER |
+| TEXT                     | 不 | DEFAULT, VALUE, AUTOCOMPLETE, QR_CODE, BAR_CODE, GS1_DATAMATRIX |
+| INTEGER_POSITIVE         | 不 ||
+| INTEGER_NEGATIVE         | 不 ||
+| INTEGER_ZERO_OR_POSITIVE | 不 ||
+| NUMBER                   | 不 ||
+| UNIT_INTERVAL            | 不 ||
+| PERCENTAGE               | 不 ||
+
+上表的完整参考也可以使用
+以下端点：
+
+    GET /api/staticConfiguration/renderingOptions
+
+值类型渲染也有一些额外的属性，可以
+设置，通常在渲染某些特定类型时需要：
+
+Table: renderType object properties
+
+| Property | 描述 | 类型 |
+|---|---|---|
+| type | The RenderingType of the object, as seen in the first table. This property is the same for both value type and program stage section, but is the only property available for program stage section. | Enum (See list in the Metadata and Rendering Type table) |
+| min | Only for value type rendering. Represents the minimum value this field can have. | 整数 |
+| max | Only for value type rendering. Represents the maximum value this field can have. | 整数 |
+| step | Only for value type rendering. Represents the size of the steps the value should increase, for example for SLIDER og LINEAR_SCALE | 整数 |
+| decimalPoints | Only for value type rendering. Represents the number of decimal points the value should use. | 整数 |
+
+*renderingType* 可以在创建或更新第一个表中列出的元数据时设置。程序阶段部分的渲染类型的示例负载如下所示：
+
+```json
+{
+  "renderingType": {
+    "type": "MATRIX"
+  }
+}
+```
+
+对于数据元素和跟踪的实体属性：
+
+```json
+{
+  "renderingType": {
+    "type": "SLIDER",
+    "min": 0,
+    "max": 1000,
+    "step": 50,
+    "decimalPoints": 0
+  }
+}
+```
+
+## 对象样式 { #webapi_object_style } 
+
+大多数元数据都有一个属性名称“样式”。可以使用此属性
+由客户以某种方式表示对象。属性
+目前支持的样式如下：
+
+Table: Style properties
+
+| Property | 描述 | 类型 |
+|---|---|---|
+| color | A color, represented by a hexadecimal. | String (#000000) |
+| icon | An icon, represented by a icon-name. | 串 |
+
+目前，没有官方列表或对图标库的支持，所以
+这目前由客户提供。下面的列表显示
+所有支持样式的对象：
+
+  - 数据元素
+
+  - 数据元素类别选项
+
+  - 资料集
+
+  - 指示符
+
+  - 选项
+
+  - 程序
+
+  - 计划指标
+
+  - 计划科
+
+  - 程序阶段
+
+  - 程序阶段部分
+
+  - 关系（跟踪器）
+
+  - 跟踪实体属性
+
+  - 追踪实体类型
+
+在创建或更新任何这些对象时，您可以包括
+以下有效负载更改样式：
+
+```json
+{
+  "style": {
+    "color": "#ffffff",
+    "icon": "my-beautiful-icon"
+  }
+}
+```
+
+## 指标 { #webapi_indicators } 
+
+本节介绍指标和指标表达式。
+
+### 综合指标 { #webapi_aggregate_indicators } 
+
+要检索指标，您可以向指标发出 GET 请求
+像这样的资源：
+
+    / api /指标
+
+指标表示可以计算和呈现的表达式
+因此。指标表达式分为分子和
+分母。分子和分母是数学的
+可以包含对数据元素、其他指标、常量和
+组织单位组。变量将替换为数据
+使用时的值，例如在报告中。允许的变量
+表达式在下表中描述。
+
+Table: Indicator variables
+
+| 变量 | 目的 | 描述 |
+|---|---|---|
+| #{<data-element-id\>.<category-option-combo-id\>.<attribute-option-combo-id\>} | 数据元素操作数 | Refers to a combination of an aggregate data element and a category option combination. Both category and attribute option combo ids are optional, and a wildcard "\*" symbol can be used to indicate any value. |
+| #{<dataelement-id\>.<category-option-group-id\>.<attribute-option-combo-id\>} | Category Option Group | Refers to an aggregate data element and a category option group, containing multiple category option combinations. |
+| #{<data-element-id\>} | 汇总数据元素 | 指所有类别选项组合中的聚合数据元素的总值。 |
+| D{<program-id\>.<data-element-id\>} | 程序数据元素 | 引用程序中跟踪器数据元素的值。 |
+| A{<program-id\>.<attribute-id\>} | 程序跟踪的实体属性 | 指程序中被跟踪实体属性的值。 |
+| I{<program-indicator-id\>} | 计划指标 | 指程序指示器的值。 |
+| R{<dataset-id\>.<metric\>} | 报告率 | 指报告率指标。指标可以是REPORTING_RATE，REPORTING_RATE_ON_TIME，ACTUAL_REPORTS，ACTUAL_REPORTS_ON_TIME，EXPECTED_REPORTS。 |
+| C{<constant-id\>} | 不变 | 指恒定值。 |
+| N{<indicator-id\>} | 指示符 | Refers to an existing Indicator. |
+| OUG{<orgunitgroup-id\>} | 组织单位组 | 指组织单位组内组织单位的数量。 |
+
+Within a Data element operand or an Aggregate data element, the following substitutions may be made:
+
+| 项目 | 值 | 描述 |
+|---|---|---|
+| data-element-id | data-element-id | An aggregate data element |
+| data-element-id | deGroup:data-element-group-id | All the aggregate data elements in a data element group |
+| category-option-combo-id | category-option-combo-id | A category option combination |
+| category-option-combo-id | co:category-option-id | All the category option combinations in a category option |
+| category-option-combo-id | coGroup:category-option-group-id | All the category option combinations in a category option group |
+| category-option-combo-id | coGroup:co-group-id1&co-group-id2... | All the category option combinations that are members of multiple category option groups |
+
+语法看起来像
+    这：
+
+＃
+
+相应的示例如下所示：
+
+＃
+
+请注意，对于数据元素变量，类别选项组合
+标识符可以省略。该变量将代表总数
+对于数据元素，例如在所有类别选项组合中。例子：
+
+＃
+
+数据元素操作数可以包括任何类别选项组合和
+属性选项组合，并使用通配符表示任何
+    价值：
+
+＃
+
+An example using a data element group:
+
+    #{deGroup:oDkJh5Ddh7d} + #{deGroup:GBHN1a1Jddh.j8vBiBqGf6O}
+
+An example using a category option, data element group, and a category option group:
+
+    #{P3jJH5Tu5VC.co:FbLZS3ueWbQ} + #{deGroup:GBHN1a1Jddh.coGroup:OK2Nr4wdfrZ.j8vBiBqGf6O}
+
+An example using multiple category option groups:
+
+    #{P3jJH5Tu5VC.coGroup:OK2Nr4wdfrZ&j3C417uW6J7&ddAo6zmIHOk}
+
+An example using a program data element and a program attribute:
+
+    （D {eBAyeGv0exc.vV9UWAZohSf} * A {IpHINAT79UW.cejWyOfXge6}）/ D {eBAyeGv0exc.GieVkTxp4HH}
+
+An example combining program indicators and aggregate indicators:
+
+    I {EMOt6Fwhs1n} * 1000 /＃{WUg3MYWQ7pt}
+
+An example using a reporting rate:
+
+    R {BfMAe6Itzgt.REPORTING_RATE} *＃{P3jJH5Tu5VC.S34ULMcHMca}
+
+Another reporting rate example using actual data set reports and expected reports:
+
+    R {BfMAe6Itzgt.ACTUAL_REPORTS} / R {BfMAe6Itzgt.EXPECTED_REPORTS}
+
+An example using an existing indicator:
+
+    N {Rigf2d2Zbjp} *＃{P3jJH5Tu5VC.S34ULMcHMca}
+
+表达式可以是任何类型的有效数学表达式，作为
+例子：
+
+    （2 *＃{P3jJH5Tu5VC.S34ULMcHMca}）/（＃{FQ2o8UBlcrS.S34ULMcHMca}-200）* 25
+
+### 计划指标 { #webapi_program_indicators } 
+
+要检索程序指标，您可以向程序发出 GET 请求
+像这样的指标资源：
+
+    / api / programIndicators
+
+程序指示器可以包含在程序中收集的信息。
+指标有一个表达式，可以包含对数据的引用
+元素、属性、常量和程序变量。变量
+下表中描述了允许在表达式中使用。
+
+
+
+Table: Program indicator variables
+
+| 变量 | 描述 |
+|---|---|
+| #{<programstage-id\>.<dataelement-id\>} | Refers to a combination of program stage and data element id. |
+| A{<attribute-id\>} | Refers to a tracked entity attribute. |
+| V{<variable-id\>} | Refers to a program variable. |
+| C{<constant-id\>} | Refers to a constant. |
+
+语法看起来像
+    这：
+
+＃
+
+一个相应的例子看起来像
+    这：
+
+＃
+
+### 表达方式 { #webapi_expressions } 
+
+表达式是数学公式，可以包含对
+数据元素、常量和组织单元组。验证和
+获取表达式的文本描述，您可以发出 GET 请求
+到表达式资源：
+
+    / api / expressions / description？expression = <expression-string>
+
+响应遵循标准的 JSON Web 消息格式。 *状态*
+属性表示验证的结果，如果
+成功和“错误”如果失败。 *message* 属性将为“有效”
+如果成功并提供原因的文字描述
+如果不是，则验证失败。 *描述*提供了文字说明
+表达式的描述。
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 200,
+  "status": "OK",
+  "message": "Valid",
+  "description": "Acute Flaccid Paralysis"
+}
+```
+
+## 组织单位 { #webapi_organisation_units } 
+
+*organisationUnits* 资源遵循标准约定，如
+DHIS2 中的其他元数据资源。该资源支持一些
+附加查询参数。
+
+### 获取组织单位列表 { #webapi_list_of_organisation_units } 
+
+要获取组织单位的列表，可以使用以下资源。
+
+    / api / 33 / organisationUnits
+
+Table: Organisation units query parameters
+
+| 查询参数 | 选项 | 描述 |
+|---|---|---|
+| userOnly | false &#124; true | Data capture organisation units associated with current user only. |
+| userDataViewOnly | false &#124; true | Data view organisation units associated with current user only. |
+| userDataViewFallback | false &#124; true | Data view organisation units associated with current user only with fallback to data capture organisation units. |
+| query | string | Query against the name, code and ID properties. |
+| level | 整数 | Organisation units at the given level in the hierarchy. |
+| maxLevel | 整数 | Organisation units at the given max level or levels higher up in the hierarchy. |
+| withinUserHierarchy | false &#124; true | Limits search and retrieval to organisation units that are within the users data capture scope. |
+| withinUserSearchHierarchy | false &#124; true | Limits search and retrieval to organisation units that are within the current users search scope. Note: "withinUserHierarchy", if true, takes higher precedence. |
+| memberCollection | string | For displaying count of members within a collection, refers to the name of the collection associated with organisation units. |
+| memberObject | 用户标识 | For displaying count of members within a collection, refers to the identifier of the object member of the collection. |
+
+### Get organisation unit with sub-hierarchy { #webapi_organisation_units_with_sub_hierarchy } 
+
+To get an organisation unit including organisation units in its sub-hierarchy you can use the following resource.
+
+    / api / 33 / organisationUnits / {id}
+
+Table: Organisation unit parameters
+
+| 查询参数 | 选项 | 描述 |
+|---|---|---|
+| includeChildren | false &#124; true | Include immediate children of the specified organisation unit, i.e. the units at the immediate level below in the subhierarchy. |
+| includeDescendants | false &#124; true | Include all children of the specified organisation unit, i.e. all units in the sub-hierarchy. |
+| includeAncestors | false &#124; true | Include all parents of the specified organisation unit. |
+| level | 整数 | Include children of the specified organisation unit at the given level of the sub-hierarchy. This is relative to the organisation unit, starting on 1 for the level immediately below the org unit. |
+
+### Get organisation units by category option  { #webapi_organisation_units_by_category_options }
+
+Purpose-built endpoint to retrieve associations between category options and organisation units. This endpoint is the preferred way to retrieve program organisation unit associations.
+
+    /api/33/categoryOptions/orgUnits?categoryOptions={categoryOptionIdA},{categoryOptionIdB}
+
+responses will have the following format:
+
+```json
+{
+  "<categoryOptionIdA>": [
+    "<orgUnitUid>",
+    "<orgUnitUid>"
+  ],
+  "<categoryOptionIdB>": [
+    "<orgUnitUid>",
+    "<orgUnitUid>"
+  ],
+  "<categoryOptionIdC>": []
+}
+```
+
+Category options that are accessible by all organisation units are returned with an empty array (`[]`) of organisation units.
+
+### Get organisation units by programs { #webapi_organisation_units_by_programs } 
+
+Purpose-built endpoint to retrieve associations between programs and organisation units. This endpoint is the preferred way to retrieve program organisation unit associations.
+
+    /api/33/programs/orgUnits?programs={programIdA},{programIdB}
+
+responses will have the following format:
+
+```json
+{
+  "<programIdA>": [
+    "<orgUnitUid>",
+    "<orgUnitUid>"
+  ],
+  "<programIdB>": [
+    "<orgUnitUid>",
+    "<orgUnitUid>"
+  ],
+  "<programIdC>": []
+}
+```
+
+Programs which are accessible by all organisation units are returned with an empty array (`[]`) of organisation units.
+
+### Split organisation unit { #webapi_organisation_unit_split }
+
+The organisation unit split endpoint allows you to split organisation units into a number of target organisation units. 
+
+#### Request { #request } 
+
+Split organisation units with a POST request:
+
+```
+POST /api/organisationUnits/split
+```
+
+The payload in JSON format looks like the following:
+
+```json
+{
+  "source": "rspjJHg4WY1",
+  "targets": [
+    "HT0w9YLMLyn",
+    "rEpnzuNpRKM"
+  ],
+  "primaryTarget": "HT0w9YLMLyn",
+  "deleteSource": true
+}
+```
+
+The JSON properties are described in the following table.
+
+Table: Split payload fields
+
+| 领域         | 需要 | 值 |
+| ------------- | -------- |------ |
+| source        | 是的      | Identifier of the organisation unit to split (the source organisation unit). |
+| targets       | 是的      | Array of identifiers of the organisation units to split the source into (the target organisation units). |
+| primaryTarget | 不       | Identifier of the organisation unit to transfer the aggregate data, events and tracked entities associated with the source over to. If not specified, the first target will be used. |
+| deleteSource  | 不       | 操作后是否删除源组织单位。默认为`真`。 |
+
+The split operation will split the source org unit into the target org units. It is recommended to first create new target org units before performing the split, and at a minimum ensure that no aggregate data exists for the target org units. Any number of target org units can be specified.
+
+The split operation will transfer all of the metadata associations of the source org unit over to the target org units. This includes data sets, programs, org unit groups, category options, users, visualizations, maps and event reports.
+
+The operation will transfer all data records of the source org unit over to the org unit specified as the primary target, or if not specified, the first specified target org unit. This includes aggregate data values, data approval records, events, tracked entities and more.
+
+#### Validation { #validation } 
+
+The following constraints and error codes apply.
+
+Table: Constraints and error codes
+
+| 错误代码 | 描述                                     |
+| ---------- | ----------------------------------------------- |
+| E1510      | Source org unit must be specified               |
+| E1511      | At least two target org units must be specified |
+| E1512      | Source org unit cannot be a target org unit     |
+| E1513      | Primary target must be specified                |
+| E1514      | Primary target must be a target org unit        |
+| E1515      | Target org unit does not exist                  |
+
+### Merge organisation units { #webapi_organisation_unit_merge}
+
+The organisation unit merge endpoint allows you to merge a number of organisation units into a target organisation unit.
+
+#### Request { #request } 
+
+Merge organisation units with a POST request:
+
+```
+POST /api/organisationUnits/merge
+```
+
+The payload in JSON format looks like the following:
+
+```json
+{
+  "sources": [
+    "jNb63DIHuwU",
+    "WAjjFMDJKcx"
+  ],
+  "target": "V9rfpjwHbYg",
+  "dataValueMergeStrategy": "LAST_UPDATED",
+  "dataApprovalMergeStrategy": "LAST_UPDATED",
+  "deleteSources": true
+}
+```
+
+The JSON properties are described in the following table.
+
+Table: Merge payload fields
+
+| 领域                     | 需要 | 值 |
+| ------------------------- | -------- | ----- |
+| sources                   | 是的      | Array of identifiers of the organisation units to merge (the source organisation units). |
+| target                    | 是的      | Identifier of the organisation unit to merge the sources into (the target organisation unit). |
+| dataValueMergeStrategy    | 不       | Strategy for merging data values. Options: `LAST_UPDATED` (default), `DISCARD`. |
+| dataApprovalMergeStrategy | 不       | Strategy for merging data approval records. Options: `LAST_UPDATED` (default), `DISCARD`. |
+| deleteSources             | 不       | Whether to delete the source organisation units after the operation. Default is true. |
+
+The merge operation will merge the source org units into the target org unit. It is recommended to first create a new target org unit before performing the merge, and at a minimum ensure that no aggregate data exists for the target org unit. Any number of source org units can be specified.
+
+The merge operation will transfer all of the metadata associations of the source org units over to the target org unit. This includes data sets, programs, org unit groups, category options, users, visualizations, maps and event reports. The operation will also transfer all event and tracker data, such as events, enrollments, ownership history, program ownership and tracked entities, over to the target org unit.
+
+指定的数据值合并策略定义了如何处理数据值。对于`LAST_UPDATED`策略，所有源组织单位的数据值都将转移到目标组织单位，并且在相同参数存在数据值的情况下，将使用最后更新或创建的数据值。这样做是为了避免数据重复。对于`DISCARD`策略，数据值不会转移到目标组织单位，而是简单地删除。指定的数据审批合并策略定义了数据审批记录的处理方式，并遵循与数据值相同的逻辑。
+
+#### Validation { #validation } 
+
+The following constraints and error codes apply.
+
+Table: Constraints and error codes
+
+| 错误代码 | 描述                                     |
+| ---------- | ----------------------------------------------- |
+| E1500      | At least two source orgs unit must be specified |
+| E1501      | Target org unit must be specified               |
+| E1502      | Target org unit cannot be a source org unit     |
+| E1503      | Source org unit does not exist                  |
+
+## 数据集 { #webapi_data_sets } 
+
+*dataSets* 资源遵循标准约定作为其他
+DHIS2 中的元数据资源。此资源支持一些额外的
+查询参数。
+
+    / api / 33 / dataSets
+
+要检索数据集的版本，您可以发出GET请求：
+
+    GET /api/33/dataSets/<uid>/version
+
+要提高（增加一个）数据集的版本，您可以发出 POST
+要求：
+
+    POST / api / 33 / dataSets / <uid> / version
+
+### Data set notification template { #webapi_dataset_notifications } 
+
+*数据集通知模板*资源遵循标准
+DHIS2 中其他元数据资源的约定。
+
+    GET /api/33/dataSetNotficationTemplates
+
+要检索数据集通知模板，您可以发出GET请求：
+
+    GET /api/33/dataSetNotficationTemplates/<uid>
+
+要添加数据集通知模板，您可以发出POST请求：
+
+    POST / api / 33 / dataSetNotficationTemplates
+
+要删除数据集通知模板，您可以发出DELETE请求：
+
+    删除/ api / 33 / dataSetNotficationTemplates / <uid>
+
+JSON有效负载示例如下：
+
+```json
+{
+  "name": "dataSetNotificationTemplate1",
+  "dataSetNotificationTrigger": "DATA_SET_COMPLETION",
+  "relativeScheduledDays": 0,
+  "notificationRecipient": "ORGANISATION_UNIT_CONTACT",
+  "dataSets": [{
+    "id": "eZDhcZi6FLP"
+  }],
+  "deliveryChannels": ["SMS","EMAIL"],
+  "subjectTemplate": "V{data_set_name}",
+  "messageTemplate": "V{data_set_name}V{registration_period}",
+  "sendStrategy": "SINGLE_NOTIFICATION"
+}
+
+```
+
+`notificationRecipient` can be one of:
+- `USER_GROUP` for internal messages
+- `ORGANISATION_UNIT_CONTACT` for external messages
+
+
+## 填充的组织单位级别 { #webapi_filled_organisation_unit_levels } 
+
+*fillOrganisationUnitLevels* 资源提供了一个有序的列表
+组织单元级别，其中生成的级别被注入到
+列表以填充不存在持久级别的位置。
+
+    GET /api/33/filledOrganisationUnitLevels
+
+To set the organisation unit levels you can issue a POST request with a
+JSON payload and content type `application/json` looking like this:
+
+```json
+{
+  "organisationUnitLevels": [{
+    "name": "National",
+    "level": 1,
+    "offlineLevels": 3
+  }, {
+    "name": "District",
+    "level": 2
+  }, {
+    "name": "Chiefdom",
+    "level": 3
+  }, {
+    "name": "Facility",
+    "level": 4
+  }]
+}
+```
+
+## 预测变量 { #webapi_predictors } 
+
+预测器允许您根据表达式生成数据值。
+这可以用于例如生成目标、阈值、
+或估计值。
+
+要检索预测器，您可以向预测器发出 GET 请求
+像这样的资源：
+
+    / api / predictors
+
+### 创建预测变量 { #webapi_create_predictor } 
+
+您可以使用对预测器的 POST 请求创建预测器
+资源：
+
+    POST / api / predictors
+
+有效负载样本如下所示：
+
+```json
+{
+  "id": "AG10KUJCrRk",
+  "name": "Malaria Outbreak Threshold Predictor",
+  "shortName": "Malaria Outbreak Predictor",
+  "description": "Computes the threshold for potential malaria outbreaks based on the mean plus 1.5x the std dev",
+  "output": {
+    "id": "nXJJZNVAy0Y"
+  },
+  "generator": {
+    "expression": "AVG(#{r6nrJANOqMw})+1.5*STDDEV(#{r6nrJANOqMw})",
+    "description": "Maximum normal malaria case count",
+    "missingValueStrategy": "NEVER_SKIP",
+    "slidingWindow": false
+  },
+  "periodType": "Monthly",
+  "sequentialSampleCount": 4,
+  "sequentialSkipCount": 1,
+  "annualSampleCount": 3,
+  "organisationUnitLevels": [4]
+}
+```
+
+输出元素是指数据元素的标识符
+其中保存预测数据值。生成器元素是指
+计算预测值时使用的表达式。
+
+### 预测表达式 { #webapi_predictor_expressions } 
+
+预测器总是有一个生成器表达式来描述
+计算出预测值。预测器也可能有跳过测试
+表达式返回一个布尔值。当跳过测试表达式为
+目前，在每个采样周期中对其进行评估，以判断是否
+应该跳过那个时期的值。
+
+以下变量可用于生成器表达式
+或跳过测试表达式：
+
+| 变量    | 目的     | 描述 |
+| ----------- | ---------- | ----------- |
+| #{<dataelement-id>} | 汇总数据元素 | 指所有类别选项组合中的聚合数据元素的总值。 |
+| #{<dataelement-id>.<categoryoptcombo-id> | 数据元素操作数 | 指聚合数据元素和类别选项组合的组合。 |
+| D{<program-id>.<dataelement-id>} | 程序数据元素 | 引用程序中跟踪器数据元素的值。 |
+| A{<program-id>.<attribute-id>} | 程序跟踪的实体属性 | 指程序中被跟踪实体属性的值。 |
+| I{<program-indicator-id>} | 计划指标 | 指程序指示器的值。 |
+| R{<dataset-id>.<metric>} | 报告率 | 指报告率指标。指标可以是REPORTING_RATE，REPORTING_RATE_ON_TIME，ACTUAL_REPORTS，ACTUAL_REPORTS_ON_TIME，EXPECTED_REPORTS。 |
+| C{<constant-id>} | 不变 | 指恒定值。 |
+| OUG{<orgunitgroup-id>} | 组织单位组 | 指组织单位组内组织单位的数量。 |
+| [天] | 天数 | 当前期间的天数。 |
+
+### 生成预测值 { #webapi_generating_predicted_values } 
+
+要运行所有预测器（生成预测值），您可以进行 POST
+请求运行资源：
+
+    POST / api / predictors / run
+
+要运行单个预测器，您可以向运行发出 POST 请求
+预测器的资源：
+
+    POST / api / predictors / AG10KUJCrRk / run
+
+## 计划规则 { #webapi_program_rules } 
+
+本节是关于发送和读取程序规则，并解释
+程序规则数据模型。程序规则赋予功能
+在 DHIS2 程序中配置动态行为。
+
+### 程序规则模型 { #webapi_program_rule_model } 
+
+程序规则数据模型由 programRuleVariables、
+程序规则和程序规则操作。 programRule 包含一个
+表达式 - 当这个表达式为真时，子程序RuleActions
+被触发。 programRuleVariables 用于寻址数据元素，
+跟踪实体数据值和运行所需的其他数据值
+表达式。一个程序中的所有程序规则共享同一个程序库
+programRuleVariables，一个 programRuleVariable 可以用于多个
+程序规则的表达式。
+
+![](resources/images/program_rules/program-rule-model.jpg)
+
+#### 程序规则模型详细信息 { #program-rule-model-details } 
+
+下表给出了程序规则的详细概述
+模型。
+
+Table: programRule
+
+| 名称 | 描述 | Compulsory |
+|---|---|---|
+| program | The program of which the programRule is executed in. | Compulsory |
+| 名称 | The name with which the program rule will be displayed to dhis2 configurators. Not visible to the end user of the program. | Compulsory |
+| 描述 | The description of the program rule, can be used by configurators to describe the rule. Not visible to the end user of the program. | Compulsory |
+| programStage | If a programStage is set for a program rule, the rule will only be evaluated inside the specified program stage. | optional |
+| 健康）状况 | The expression that needs to be evaluated to true in order for the program rule to trigger its child actions. The expression is written using operators, function calls, hard coded values, constants and program rule variables. `d2:hasValue('hemoglobin') && #{hemoglobin} <= 7 `| Compulsory |
+| priority | The priority to run the rule in cases where the order of the rules matters. In most cases the rules does not depend on being run before or after other rules, and in these cases the priority can be omitted. If no priority is set, the rule will be run after any rules that has a priority defined. If a priority(integer) is set, the rule with the lowest priority will be run before rules with higher priority. | optional |
+
+#### 计划规则操作模型详细信息 { #program-rule-action-model-details } 
+
+下表给出了对 programRuleAction 的详细概述
+模型。
+
+Table: programRuleAction
+
+| 名称 | 描述 | Compulsory |
+|---|---|---|
+| programRule | The programRule that is the parent of this action. | Compulsory |
+| programRule- ActionType | The type of action that is to be performed.<br>  * `DISPLAYTEXT` - Displays a text in a given widget.<br> * `DISPLAYKEYVALUEPAIR` - Displays a key and value pair(like a program indicator) in a given widget.<br> * `HIDEFIELD` - Hide a specified dataElement or trackedEntityAttribute.<br>    -         *content* - if defined, the text in *content* will be displayed to the end user in the instance where a value is previously entered into a field that is now about to be hidden (and therefore blanked). If *content* is not defined, a standard message will be shown to the user in this instance.<br>   -         *dataElement* - if defined, the HIDEFIELD action will hide this dataElement when the rule is effective.<br>   -         *trackedEntityDataValue* - if defined, the HIDEFIELD action will hide this trackedEntityDataValue when the rule is effective.<br>  * `HIDESECTION` - Hide a specified section.<br>    -         *programStageSection* - must be defined. This is the programStageSection that will be hidden in case the parent rule is effective.<br>  * `ASSIGN` - Assign a dataElement a value(help the user calculate something or fill in an obvious value somewhere)<br>    -         *content* - if defined, the value in *data* is assigned to this variable. If content id defined, and thus a variable is assigned for use in other rules, it is important to also assign a *programRule.priority* to make sure the rule with an ASSIGN action runs before the rule that will in turn evaluate the assigned variable.<br>   -         *data* - must be defined, data forms an expression that is evaluated and assigned to either a variable(#{myVariable}), a dataElement, or both.<br>   -         *dataElement* - if defined, the value in *data* is assigned to this data element.<br>  Either the content or dataElement must be defined for the ASSIGN action to be effective.<br> * `SHOWWARNING` - Show a warning to the user, not blocking the user from completing the event or registration.<br>    -         *content* - if defined, content is a static part that is displayed at the end of the error message.<br>   -         *data* - if defined, data forms an expression that is evaluated and added to the end of the warning message.<br>   -         *dataElement* - if defined, the warning message is displayed next to this data element.<br>   -         *trackedEntityAttribute* - if defined, the warning message is displayed next to this tracked entity attribute.<br>  Either dataElement or trackedEntityAttribute must be specified.<br> * `SHOWERROR` - Show an error to the user, blocking the user from completing the event or registration.<br>    -         *content* - if defined, content is a static part that is displayed in the start of the error message.<br>   -         *data* - if defined, data forms an expression that is evaluated and added to the end of the error message.<br>   -         *dataElement* - if defined, the error message is linked to this data element.<br>   -         *trackedEntityAttribute* - if defined, the error message is linked to this tracked entity attribute.<br>  Either dataElement or trackedEntityAttribute must be specified.<br> * `WARNINGONCOMPLETE` - Show a warning to the user on the "Complete form" dialog, but allowing the user to complete the event.<br>    -         *content* - if defined, content is a static part that is displayed at the end of the error message.<br>   -         *data* - if defined, data forms an expression that is evaluated and added to the end of the warning message.<br>   -         *dataElement* - if defined, the warning message prefixed with the name/formName of the data element.<br>  * `ERRORONCOMPLETE` - Show an error to the user on in a modal window when the user tries to complete the event. The user is prevented from completing the event.<br>    -         *content* - if defined, content is a static part that is displayed in the start of the error message.<br>   -         *data* - if defined, data forms an expression that is evaluated and added to the end of the error message.<br>   -         *dataElement* - if defined, the error message is linked to this data element.<br>  * `CREATEEVENT` - Create an event within the same enrollment.<br>    -         *content*<br>   -         *data* - if defined, contains data values to assign the created event. The format is <uid\>:<data value\>. Where several values is specified, these are separated with comma.<br> AcMrnleqHqc:100,AqK1IHqCkEE:'Polyhydramnios'   -         *programStage* - must be defined, and designates the program stage that the rule shall create an event of.<br>  * `SETMANDATORYFIELD` - Set a field to be mandatory.<br>    -         *dataElement* - if defined, this data element will be set to be mandatory in the data entry form.<br>   -         *trackedEntityAttribute* - if defined, this tracked entity attribute will be set to mandatory in the registration form or profile.<br>  * `SENDMESSAGE` - To send message at completion of event/enrollment or at data value update.<br>    -         *messageTemplate* - if defined, this template will be delivered either as SMS or EMAIL depending upon DeliveryChannel value in message template.<br>  * `SCHEDULEMESSAGE` - To schedule message at completion of event/enrollment or at data value update.<br>    -         *messageTemplate* - if defined, this template will be delivered either as SMS or EMAIL depending upon DeliveryChannel value in message template.<br>   -         *Date to send message* - Expression which is going to be used for evaluation of scheduled date. This expression should result in Date, any other resultant will be discarded and notification will not get scheduled. | Compulsory |
+| location | Used for actionType DISPLAYKEYVALUEPAIR and DISPLAYTEXT to designate which widget to display the text or keyvaluepair in. Compulsory for DISPLAYKEYVALUEPAIR and DISPLAYTEXT. | See description |
+| content | Used for user messages in the different actions. See the actionType overview for a detailed explanation for how it is used in each of the action types. Compulsory for SHOWWARNING, SHOWERROR, WARNINGONCOMPLETE, ERRORONCOMPLETE, DISPLAYTEXT and DISPLAYKEYVALUEPAIR. Optional for HIDEFIELD and ASSIGN. | See description |
+| 数据 | Used for expressions in the different actions. See the actionType overview for a detailed explanation for how it is used in each of the action types. Compulsory for ASSIGN. Optional for SHOWWARNING, SHOWERROR, WARNINGONCOMPLETE, ERRORONCOMPLETE, DISPLAYTEXT, CREATEEVENT and DISPLAYKEYVALUEPAIR | See description |
+| dataElement | Used for linking rule actions to dataElements. See the actionType overview for a detailed explanation for how it is used in each of the action types. Optional for SHOWWARNING, SHOWERROR, WARNINGONCOMPLETE, ERRORONCOMPLETE, ASSIGN and HIDEFIELD | See description |
+| trackedEntity- Attribute | Used for linking rule actions to trackedEntityAttributes. See the actionType overview for a detailed explanation for how it is used in each of the action types. Optional for SHOWWARNING, SHOWERROR and HIDEFIELD. | See description |
+| option | Used for linking rule actions to options. See the actionType overview for a detailed explanation for how it is used in each of the action types. Optional for HIDEOPTION | See description |
+| optionGroup | Used for linking rule actions to optionGroups. See the actionType overview for a detailed explanation for how it is used in each of the action types. Compulsory for SHOWOPTIONGROUP, HIDEOPTIONGROUP. | See description |
+| programStage | Only used for CREATEEVENT rule actions. Compulsory for CREATEEEVENT. | See description |
+| programStage- Section | Only used for HIDESECTION rule actions. Compulsory for HIDESECTION | See description |
+
+##### ProgramRuleAction Validation { #programruleaction-validation } 
+There are certain validations added to ProgramRuleAction model in 2.37. Main purpose was to keep user from creating erroneous ProgramRules in order to keep the database consistent. These validations depends on program rule action type. Each action type has its own respective validation. 
+
+Table: ProgramRuleAction Validations
+
+| 名称 | validation check for id existence |
+|---|---|
+|SENDMESSAGE| Notification template id |
+|SCHEDULEMESSAGE| Notification template id |
+|HIDESECTION| ProgramStage section id |
+|HIDEPROGRAMSTAGE| ProgramStage id |
+|HIDEFIELD| DataElement or TrackedEntityAttribute id |
+|HIDEOPTION| Option id |
+|HIDEOPTIONGROUP| Option group id |
+|SHOWOPTIONGROUP| Option group id |
+|SETMANDATORYFIELD| DataElement or TrackedEntityAttribute id |
+|SHOWERROR| Always valid |
+|SHOWWARNING| Always valid |
+|DISPLAYTEXT| DataElement or TrackedEntityAttribute id |
+|DISPLAYKEYVALUEPAIR||
+|ASSIGN| DataElement or TrackedEntityAttribute id |
+|WARNINGONCOMPLETE| DataElement or TrackedEntityAttribute id |
+|ERRORONCOMPLETE| DataElement or TrackedEntityAttribute id |
+
+Apart from above validations, `data` field in program rule action which normally contains expression can also be evaluated using below api endpoint.
+
+    POST /api/programRuleActions/data/expression/description?programId=<uid>
+
+
+```json
+{
+  "condition": "1 + 1"
+}
+```
+
+#### 程序规则变量模型的详细信息 { #program-rule-variable-model-details } 
+
+下表详细概述了
+程序规则变量模型。
+
+Table: programRuleVariable
+
+| 名称 | 描述 | Compulsory |
+|---|---|---|
+| 名称 | the name for the programRuleVariable - this name is used in expressions. #{myVariable} \> 5 | Compulsory |
+| sourceType | Defines how this variable is populated with data from the enrollment and events. <br> * DATAELEMENT_NEWEST_EVENT_PROGRAM_STAGE - In tracker capture, gets the newest value that exists for a data element, within the events of a given program stage in the current enrollment. In event capture, gets the newest value among the 10 newest events on the organisation unit.<br> * DATAELEMENT_NEWEST_EVENT_PROGRAM - In tracker capture, get the newest value that exists for a data element across the whole enrollment. In event capture, gets the newest value among the 10 newest events on the organisation unit.<br> * DATAELEMENT_CURRENT_EVENT - Gets the value of the given data element in the current event only.<br> * DATAELEMENT_PREVIOUS_EVENT - In tracker capture, gets the newest value that exists among events in the program that precedes the current event. In event capture, gets the newvest value among the 10 preceeding events registered on the organisation unit.<br> * CALCULATED_VALUE - Used to reserve a variable name that will be assigned by a ASSIGN program rule action<br> * TEI_ATTRIBUTE - Gets the value of a given tracked entity attribute | Compulsory |
+| valueType | valueType parameter defines the type of the value that this ProgramRuleVariable can contain. Its value is dependent on sourceType parameter. If source is DataElement or TrackedEntityAttribute<br> then valueType will be derived from valueType of the source. When the sourceType is CALCULATED_VALUE, then valueType should be provided by the user otherwise it will default <br> to ValueType.TEXT| Compulsory
+| dataElement | Used for linking the programRuleVariable to a dataElement. Compulsory for all sourceTypes that starts with DATAELEMENT_. | See description |
+| trackedEntity- Attribute | Used for linking the programRuleVariable to a trackedEntityAttribute. Compulsory for sourceType TEI_ATTRIBUTE. | See description |
+| useCodeFor- OptionSet | If checked, the variable will be populated with the code - not the name - from any linked option set. Default is unchecked, meaning that the name of the option is populated. ||
+| programStage | Used for specifying a specific program stage to retreive the programRuleVariable value from. Compulsory for DATAELEMENT_NEWEST_EVENT_PROGRAM_STAGE. | See description |
+
+### 创建程序规则 { #webapi_creating_program_rules } 
+
+- To perform crud operations, `programRules` resource is available in API.
+
+要检索programRules的列表，您可以执行GET请求，如下所示：
+
+    / api / programRules
+
+要检索单个programRule，您可以执行GET请求，如下所示：
+
+    / api / programRules / <program_rule_uid>
+
+要保存/添加单个programRule，您可以执行POST请求，如下所示：
+
+    / api / programRules / <program_rule_uid>
+
+要更新单个programRule，您可以执行如下PUT请求：
+
+    / api / programRules / <program_rule_uid>
+
+要删除单个programRule，您可以执行以下DELETE请求：
+
+    / api / programRules / <program_rule_uid>
+
+要检索programRule条件的描述，可以使用POST并在POST正文中提供条件字符串。
+
+    / api / programRules / condition / description？ <program_rule_uid>
+
+## 形式 { #webapi_forms } 
+
+To retrieve information about a form (which corresponds to a data set
+and its sections) you can interact with the `form` resource. The form
+response is accessible as XML and JSON and will provide information
+about each section (group) in the form as well as each field in the
+sections, including labels and identifiers. By supplying period and
+organisation unit identifiers the form response will be populated with
+data values.
+
+Table: Form query parameters
+
+| Parameter | 选项 | 描述 |
+|---|---|---|
+| 聚乙烯 | ISO period | Period for which to populate form data values. |
+| 欧 | 用户标识 | Organisation unit for which to populate form data values. |
+| metaData | false &#124; true | Whether to include metadata about each data element of form sections. |
+
+要检索数据集的表单，您可以执行GET请求，如下所示：
+
+    / api / dataSets / <dataset-id> /form.json
+
+检索具有标识符“BfMAe6Itzgt”的数据集的表单
+XML：
+
+    / api / dataSets / BfMAe6Itzgt / form
+
+要检索包含JSON中的元数据的表单，请执行以下操作：
+
+    /api/dataSets/BfMAe6Itzgt/form.json?metaData=true
+
+检索填充了特定时期数据值的表单，并
+XML 中的组织单位：
+
+    /api/dataSets/BfMAe6Itzgt/form.xml?ou=DiszpKrYNg8&pe=201401
+
+当涉及自定义数据输入表单时，此资源还允许
+直接为数据集创建此类表单。这可以通过一个
+内容类型为 text/html 的 POST 或 PUT 请求，其中有效负载是
+自定义表单标记，例如：
+
+```bash
+curl -d @form.html "localhost/api/dataSets/BfMAe6Itzgt/form"
+  -H "Content-Type:text/html" -u admin:district -X PUT
+```
+
+## 文件资料 { #webapi_documents } 
+
+对文件的引用可以与文档资源一起存储。
+
+
+
+Table: Document fields
+
+| Field name | 描述 |
+|---|---|
+| 名称 | unique name of document |
+| external | flag identifying the location of the document. TRUE for external files, FALSE for internal ones |
+| url | the location of the file. URL for external files. File resource id for internal ones (see [File resources](#webapi_file_resources)) |
+
+对文档端点的GET请求将返回所有文档：
+
+    / api / documents
+
+对文档端点的POST请求将创建一个新文档：
+
+```bash
+curl -X POST -d @document.json -H "Content-type: application/json"
+  "http://dhis.domain/api/documents"
+```
+
+```json
+{
+  "name": "dhis home",
+  "external": true,
+  "url": "https://www.dhis2.org"
+}
+```
+
+带有附加文档 ID 的 GET 请求将返回信息
+关于文件。对同一端点的 PUT 请求将更新
+文档的字段：
+
+    / api / documents / <documentId>
+
+将 */data* 附加到 GET 请求将返回实际文件内容
+文件的：
+
+    / api / documents / <documentId> / data
+
+## CSV元数据导入 { #webapi_csv_metadata_import } 
+
+DHIS2支持以CSV格式导入元数据，例如数据元素，组织单位和验证规则。根据列顺序/列索引来标识各种元数据对象的属性（有关详细信息，请参见下文）。您可以省略不需要的对象属性/列，但是由于列顺序很重要，因此必须包括一个空列。换句话说，如果您要指定在列顺序中排在后面的属性/列，但不指定在列顺序中排在较早的位置的某些列，则可以为它们添加空白/空白列。
+
+CSV文件的第一行被视为标题，在导入期间将被忽略。 _comma_字符应用作文本定界符。包含逗号的文本必须放在_双引号_中。
+
+要上传CSV格式的元数据，您可以向元数据端点发出POST请求：
+
+    POST / api / metadata？classKey = CLASS-KEY
+
+支持以下对象类型。 `classKey` 查询参数是强制性的，可以在下表中的每个对象类型旁边找到。
+
+Table: Object types and keys
+
+| Object type | Class key |
+|---|---|
+| 资料元素 | DATA_ELEMENT |
+| 数据元素组 | DATA_ELEMENT_GROUP |
+| Category options | CATEGORY_OPTION |
+| Category option groups | CATEGORY_OPTION_GROUP |
+| 组织单位 | ORGANISATION_UNIT |
+| Organisation unit groups | ORGANISATION_UNIT_GROUP |
+| 验证规则 | VALIDATION_RULE |
+| 选项集 | OPTION_SET |
+| 翻译 | TRANSLATION |
+
+> **提示**
+>
+> 如果使用 *curl*，应该使用 `--data-binary` 选项，因为它保留了换行符和换行符，这对于 CSV 数据是必不可少的。
+
+例如，要使用`curl`上传CSV格式的数据元素文件，可以使用以下命令：
+
+```bash
+curl --data-binary @data_elements.csv "http://localhost/api/metadata?classKey=DATA_ELEMENT"
+  -H "Content-Type:application/csv" -u admin:district
+```
+
+以下各节列出了CSV导入当前支持的对象类型的格式。
+
+### 资料元素 { #webapi_csv_data_elements } 
+
+Table: Data Element CSV Format
+
+| Index | 柱 | 需要 | Value (default first) | 描述 |
+|---|---|---|---|---|
+| 1 | 名称 | 是的 || Name. Max 230 char. Unique. |
+| 2 | 用户标识 | 不 | 用户标识 | Stable identifier. Exactly 11 alpha-numeric characters, beginning with a letter. Will be generated by system if not specified. |
+| 3 | 码 | 不 || Stable code. Max 50 char. |
+| 4 | Short name | 不 | 50 first char of name | Will fall back to first 50 characters of name if unspecified. Max 50 char. Unique. |
+| 5 | 描述 | 不 || Free text description. |
+| 6 | Form name | 不 || Max 230 char. |
+| 7 | Domain type | 不 | AGGREGATE &#124; TRACKER | Domain type for data element, can be aggregate or tracker. Max 16 char. |
+| 8 | 值类型 | 不 | INTEGER &#124; NUMBER &#124; UNIT_INTERVAL &#124; PERCENTAGE &#124; INTEGER_POSITIVE &#124; INTEGER_NEGATIVE &#124; INTEGER_ZERO_OR_POSITIVE &#124; FILE_RESOURCE &#124; COORDINATE &#124;TEXT &#124; LONG_TEXT &#124; LETTER &#124; PHONE_NUMBER &#124; EMAIL &#124; BOOLEAN &#124; TRUE_ONLY &#124; DATE &#124; DATETIME | Value type. Max 16 char. |
+| 9 | 聚集类型 | 不 | SUM &#124; AVERAGE &#124; AVERAGE_SUM_ORG_UNIT &#124; COUNT &#124; STDDEV &#124; VARIANCE &#124; MIN &#124; MAX &#124; NONE | Aggregation type indicating how to aggregate data in various dimensions. Max 16 char. |
+| 10 | Category combination | 不 | 用户标识 | UID of category combination. Will default to default category combination if not specified. |
+| 11 | Url | 不 || URL to data element resource. Max 255 char. |
+| 12 | Zero is significant | 不 | false &#124; true | Indicates whether zero values will be stored for this data element. |
+| 13 | Option set | 不 | 用户标识 | UID of option set to use for data. |
+| 14 | Comment option set | 不 | 用户标识 | UID of option set to use for comments. |
+
+下面是数据元素的 CSV 文件示例。首先
+行将始终被忽略。请注意如何跳过列并依赖
+系统使用的默认值。您还可以跳过列
+你不使用出现在右边的
+
+```csv
+名称，uid，代码，简称，描述
+“妇女参加技能发展培训”，“ D0001”，“妇女参加培训”
+“妇女参与社区组织”，“ D0002”，“妇女参与组织”
+```
+
+### 组织单位 { #webapi_csv_org_units } 
+
+Table: Organisation Unit CSV Format
+
+| Index | 柱 | 需要 | Value (default first) | 描述 |
+|---|---|---|---|---|
+| 1 | 名称 | 是的 || Name. Max 230 characters. Unique. |
+| 2 | 用户标识 | 不 | 用户标识 | Stable identifier. Max 11 char. Will be generated by system if not specified. |
+| 3 | 码 | 不 || Stable code. Max 50 char. |
+| 4 | Parent | 不 | 用户标识 | UID of parent organisation unit. |
+| 5 | Short name | 不 | 50 first char of name | Will fall back to first 50 characters of name if unspecified. Max 50 characters. Unique. |
+| 6 | 描述 | 不 || Free text description. |
+| 7 | Opening date | 不 | 1970-01-01 | Opening date of organisation unit in YYYY-MM-DD format. |
+| 8 | Closed date | 不 || Closed date of organisation unit in YYYY-MM-DD format, skip if currently open. |
+| 9 | 评论 | 不 || Free text comment for organisation unit. |
+| 10 | Feature type | 不 | NONE &#124; MULTI_POLYGON &#124; POLYGON &#124; POINT &#124; SYMBOL | Geospatial feature type. |
+| 11 | Coordinates | 不 || Coordinates used for geospatial analysis in Geo JSON format. |
+| 12 | 网址 | 不 || URL to organisation unit resource. Max 255 char. |
+| 13 | 联系人 | 不 || Contact person for organisation unit. Max 255 char. |
+| 14 | 地址 | 不 || Address for organisation unit. Max 255 char. |
+| 15 | 电子邮件 | 不 || Email for organisation unit. Max 150 char. |
+| 16 | 电话号码 | 不 || Phone number for organisation unit. Max 150 char. |
+
+使用父单位导入组织单位的最小示例
+看起来像这样：
+
+```csv
+名称，uid，代码，父项
+“西部省份”，“ WESTP”，“ ImspTQPwCqd”
+“东部省”，“ EASTP”，“ ImspTQPwCqd”
+```
+
+### 验证规则 { #webapi_csv_validation_rules } 
+
+Table: Validation Rule CSV Format
+
+| Index | 柱 | 需要 | Value (default first) | 描述 |
+|---|---|---|---|---|
+| 1 | 名称 | 是的 || Name. Max 230 characters. Unique. |
+| 2 | 用户标识 | 不 | 用户标识 | Stable identifier. Max 11 char. Will be generated by system if not specified. |
+| 3 | 码 | 不 || Stable code. Max 50 |
+| 4 | 描述 | 不 || Free text description. |
+| 5 | Instruction | 不 || Free text instruction. |
+| 6 | Importance | 不 | MEDIUM &#124; HIGH &#124; LOW | Importance of validation rule. |
+| 7 | Rule type (ignored) | 不 | VALIDATION &#124; SURVEILLANCE | Type of validation rule. |
+| 8 | Operator | 不 | equal_to &#124; not_equal_to &#124; greater_than &#124; greater_than_or_equal_to &#124; less_than &#124; less_than_or_equal_to &#124; compulsory_pair &#124; exclusive_pair | Expression operator. |
+| 9 | 期间类型 | 不 | Monthly &#124; Daily &#124; Weekly &#124; Quarterly &#124; SixMontly &#124; Yearly | Period type. |
+| 10 | Left side expression | 是的 || Mathematical formula based on data element and option combo UIDs. |
+| 11 | Left side expression description | 是的 || Free text. |
+| 12 | Left side missing value strategy | 不 | SKIP_IF_ANY_VALUE_MISSING &#124; SKIP_IF_ALL_VALUES_MISSING &#124; NEVER_SKIP | Behavior in case of missing values in left side expression. |
+| 13 | Right side expression | 是的 || Mathematical formula based on data element and option combo UIDs. |
+| 14 | Right side expression description | 是的 || Free text. |
+| 15 | Right side missing value strategy | 不 | SKIP_IF_ANY_VALUE_MISSING &#124; SKIP_IF_ALL_VALUES_MISSING &#124; NEVER_SKIP | Behavior in case of missing values in right side expression. |
+
+### 选项集 { #webapi_csv_option_sets } 
+
+Table: Option Set CSV Format
+
+| Index | 柱 | 需要 | Value (default first) | 描述 |
+|---|---|---|---|---|
+| 1 | OptionSetName | 是的 || Name. Max 230 characters. Unique. Should be repeated for each option. |
+| 2 | OptionSetUID | 不 | 用户标识 | Stable identifier. Max 11 char. Will be generated by system if not specified. Should be repeated for each option. |
+| 3 | OptionSetCode | 不 || Stable code. Max 50 char. Should be repeated for each option. |
+| 4 | OptionName | 是的 || Option name. Max 230 characters. |
+| 5 | OptionUID | 不 | 用户标识 | Stable identifier. Max 11 char. Will be generated by system if not specified. |
+| 6 | OptionCode | 是的 || Stable code. Max 50 char. |
+
+选项集的格式很特殊。前三个值代表
+一个选项集。最后三个值代表一个选项。首先
+代表选项集的三个值应该对每个值重复
+选项。
+
+```csv
+optionsetname，optionsetuid，optionsetcode，optionname，optionuid，optioncode
+“颜色”，“颜色”，“蓝色”，“蓝色”
+“颜色”，“颜色”，“绿色”，“绿色”
+“颜色”，“颜色”，“黄色”，“黄色”
+“性别”，“男”，“男”
+“性别”，“女性”，“女性”
+“性别”，“未知”，“未知”
+“结果”，“高”，“高”
+“结果”，“中”，“中”
+“结果”，“低”，“低”
+“ Impact”，“ cJ82jd8sd32”，“ IMPACT”，“ Great”，“ GREAT”
+“影响”，“ cJ82jd8sd32”，“影响”，“中等”，“中等”
+“影响”，“ cJ82jd8sd32”，“影响”，“不良”，“不良”
+```
+
+### 选项组 { #option-group } 
+
+Table: Option Group CSV Format
+
+| Index | 柱 | 需要 | Value (default first) | 描述 |
+|---|---|---|---|---|
+| 1 | OptionGroupName | 是的 || Name. Max 230 characters. Unique. Should be repeated for each option. |
+| 2 | OptionGroupUid | 不 || Stable identifier. Max 11 char. Will be generated by system if not specified. Should be repeated for each option. |
+| 3 | OptionGroupCode | 不 || Stable code. Max 50 char. Should be repeated for each option. |
+| 4 | OptionGroupShortName | 是的 || Short Name. Max 50 characters. Unique. Should be repeated for each option. |
+| 5 | OptionSetUid | 是的 || Stable identifier. Max 11 char. Should be repeated for each option. |
+| 6 | OptionUid | 不 || Stable identifier. Max 11 char. |
+| 7 | OptionCode | 不 || Stable code. Max 50 char. |
+
+OptionGroup CSV有效负载样本
+
+```csv
+optionGroupName，optionGroupUid，optionGroupCode，optionGroupShortName，optionSetUid，optionUid，optionCode
+optionGroupA，groupA，xmRubJIhmaK，OptionA
+optionGroupA，groupgroup，xmRubJIhmaK，OptionB
+optionGroupB 、、 groupB，QYDAByFgTr1，OptionC
+```
+### 选项组集 { #option-group-set } 
+
+
+
+Table: Option Group Set CSV Format
+
+| Index | 柱 | 需要 | Value (default first) | 描述 |
+|---|---|---|---|---|
+| 1 | OptionGroupSetName | 是的 || Name. Max 230 characters. Unique. Should be repeated for each option. |
+| 2 | OptionGroupSetUid | 不 || Stable identifier. Max 11 char. Will be generated by system if not specified. Should be repeated for each option. |
+| 3 | OptionGroupSetCode | 不 || Stable code. Max 50 char. Should be repeated for each option. |
+| 4 | OptionGroupSetDescription | 不 || Description. Should be repeated for each option. |
+| 5 | DataDimension | 不 || TRUE, FALSE |
+| 6 | OptionSetUid | 不 || OptionSet UID. Stable identifier. Max 11 char. |
+
+OptionGroupSet CSV有效负载样本
+
+```csv
+名称，uid，代码，描述，数据维度，选项
+optiongroupsetA，...，xmRubJIhmaK
+optiongroupsetB 、、、、 false，QYDAByFgTr1
+```
+要将OptionGroups添加到导入的OptionGroupSet中，请按照导入集合成员身份的步骤进行操作
+
+### Indicators { #webapi_csv_indicators } 
+
+Table: Indicator CSV Format
+
+| Index | 柱 | 需要 | Value (default first) | 描述 |
+|---|---|---|---|---|
+| 1 | 名称 | 是的 || Name. Max 230 char. Unique. |
+| 2 | 用户标识 | 不 | 用户标识 | Stable identifier. Exactly 11 alpha-numeric characters, beginning with a letter. Will be generated by system if not specified. |
+| 3 | 码 | 不 || Stable code. Max 50 char. |
+| 4 | Short name | 是的 | 50 first char of name | Will fall back to first 50 characters of name if unspecified. Max 50 char. Unique. |
+| 5 | denominator | 是的 || Indicator expression. |
+| 6 | denominatorDescription | 不 || Max 230 char. |
+| 5 | numerator | 是的 || Indicator expression. |
+| 6 | numeratorDescription | 不 || Max 230 char. |
+| 6 | annualized | 是的 ||  TRUE, FALSE |
+| 6 | decimals | 不 || Number of decimals to use for indicator value, null implies default.
+| 6 | Indicator Type | 是的 || 用户标识 | UID of Indicator Type.
+
+An example of a CSV file for Indicators can be seen below. The first
+row will always be ignored. Note how you can skip columns and rely on
+default values to be used by the system. You can also skip columns which
+you do not use which appear to the right of the ones
+
+```csv
+Name,UID,Code,Description,shortName,denominator,denominatorDescription,numerator,numeratorDescription,annualized,decimals,indicatorType
+Indicator A,yiAKjiZVoOU,CodeA,Indicator A description,Indicator A shortname,#{fbfJHSPpUQD},denominatorDescription,#{h0xKKjijTdI},numeratorDescription,false,2,sqGRzCziswD
+Indicator B,Uvn6LCg7dVU,CodeB,Indicator B description,Indicator B shortname,#{fbfJHSPpUQD},denominatorDescription,#{h0xKKjijTdI},numeratorDescription,false,2,sqGRzCziswD
+```
+
+### 收藏会员 { #collection-membership } 
+
+除了导入对象，您还可以选择只导入对象
+对象和组之间的组成员关系。目前，该
+支持以下组和对象对
+
+  - 组织单位组-组织单位
+
+  - 数据元素组-数据元素
+
+  - 指标组-指标
+
+  - 选项组集-选项组
+
+这些导入的CSV格式相同
+
+
+
+Table: Collection membership CSV Format
+
+| Index | 柱 | 需要 | Value (default first) | 描述 |
+|---|---|---|---|---|
+| 1 | 用户标识 | 是的 | 用户标识 | The UID of the collection to add an object to |
+| 2 | 用户标识 | 是的 | 用户标识 | The UID of the object to add to the collection |
+
+### 其他物件 { #webapi_csv_other_objects } 
+
+
+
+Table: Data Element Group, Category Option, Category Option Group, Organisation Unit Group CSV Format
+
+| Index | 柱 | 需要 | Value (default first) | 描述 |
+|---|---|---|---|---|
+| 1 | 名称 | 是的 || Name. Max 230 characters. Unique. |
+| 2 | 用户标识 | 不 | 用户标识 | Stable identifier. Max 11 chars. Will be generated by system if not specified. |
+| 3 | 码 | 不 || Stable code. Max 50 char. |
+| 4 | Short name | 不 || Short name. Max 50 characters. |
+
+类别选项的示例如下所示：
+
+```csv
+名称，uid，代码，简称
+“男”，“男”
+“女性”，“女性”
+```
+
+## 删除的对象 { #webapi_deleted_objects } 
+
+删除的对象资源提供了元数据对象的日志
+删除。
+
+    / api / deletedObjects
+
+每当删除元数据类型的对象时，都会保留日志
+uid、代码、类型和删除时间。这个 API 是
+在`/api/deletedObjects` 字段过滤和对象过滤中可用
+与其他元数据资源类似。
+
+获取类型为数据元素的已删除对象：
+
+    GET /api/deletedObjects.json?klass=DataElement
+
+获取在 2015 年删除的指标类型的已删除对象和
+向前：
+
+    GET /api/deletedObjects.json?klass=Indicator&deletedAt=2015-01-01
+
+## 收藏夹 { #webapi_favorites } 
+
+某些类型的元数据对象可以标记为收藏夹
+当前登录的用户。这目前适用于仪表板。
+
+    / api / dashboards / <uid> /收藏
+
+要使仪表板成为收藏夹，您可以发出 *POST* 请求（无内容
+type required) 到这样的 URL：
+
+    / api /仪表板/ iMnYyBfSxmM /收藏
+
+要将仪表板删除为收藏夹，您可以发出 *DELETE* 请求
+使用与上面相同的 URL。
+
+收藏夹状态将显示为布尔值 *收藏夹* 字段
+元数据响应中的对象（例如仪表板）。
+
+## 订阅内容 { #webapi_subscription } 
+
+A logged user can subscribe to certain types of objects. Currently
+subscribable objects are those of type EventChart, EventReport,
+Map, Visualization and EventVisualization.
+
+> **Note**
+>
+> The EventChart and EventReport objects are deprecated. Use EventVisualization instead.
+
+要获取对象的订阅者（返回用户 ID 数组），您
+可以发出 *GET* 请求：
+
+    / api / <object-type> / <object-id> /订阅者
+
+请参见以下示例：
+
+    /api/visualizations/DkPKc1EUmC2/subscribers
+
+检查当前用户是否订阅了一个对象（返回一个
+boolean) 您可以执行 *GET* 调用：
+
+    / api / <object-type> / <object-id> /已订阅
+
+请参见以下示例：
+
+    /api/visualizations/DkPKc1EUmC2/subscribed
+
+要订阅/取消订阅对象，请执行 *POST/DELETE*
+请求（不需要内容类型）：
+
+    / api / <object-type> / <object-id> / subscriber
+
+## 文件资源 { #webapi_file_resources } 
+
+*文件资源*是用于表示和存储二进制内容的对象。
+*FileResource* 对象本身包含文件元数据（名称、
+内容类型、大小等）以及允许检索
+来自数据库外部文件存储的内容。 *FileResource* 对象
+与其他数据库一样存储在数据库中，但内容（文件）是
+存储在别处并可使用包含的引用检索
+*（存储密钥）*。
+
+    / api / fileResources
+
+文件资源的内容不能直接访问，但可以
+从其他对象（如数据值）引用来存储二进制
+几乎无限大小的内容。
+
+To create a file resource that does not require a corresponding data value,
+POST to the endpoint `/api/fileResources` with a multipart upload:
+
+```bash
+curl "https://server/api/fileResources" -X POST
+  -F "file=@/path/to/file/name-of-file.png"
+```
+文件资源的` uid `可以在创建时提供，例如：
+```bash
+curl "https://server/api/fileResources?uid=0123456789x" -X POST
+  -F "file=@/path/to/file/name-of-file.png"
+```
+
+To create both a file resource and a data value that references the file,
+POST to the `/api/dataValues/file` endpoint in DHIS 2.36 or later:
+
+```bash
+curl "https://server/api/dataValues/file?de=xPTAT98T2Jd
+  &pe=201301&ou=DiszpKrYNg8&co=Prlt0C1RF0s" -X POST
+  -F "file=@/path/to/file/name-of-file.png"
+```
+
+For the `api/fileResources` endpoint, the only form parameter required is
+*file*, which is the file to upload. For the `api/dataValues/file`
+endpoint, the parameters required are the same as for a post to
+`api/dataValues`, with the addition of *file*.
+
+The filename and content-type should also be included in the request but
+will be replaced with defaults when not supplied.
+
+成功创建文件资源后，返回的数据将包含
+一个 `response` 字段，它又包含这样的 `fileResource`：
+
+```json
+{
+  "httpStatus": "Accepted",
+  "httpStatusCode": 202,
+  "status": "OK",
+  "response": {
+    "responseType": "FileResource",
+    "fileResource": {
+      "name": "name-of-file.png",
+      "created": "2015-10-16T16:34:20.654+0000",
+      "lastUpdated": "2015-10-16T16:34:20.667+0000",
+      "externalAccess": false,
+      "publicAccess": "--------",
+      "user": { ... },
+      "displayName": "name-of-file.png",
+      "contentType": "image/png",
+      "contentLength": 512571,
+      "contentMd5": "4e1fc1c3f999e5aa3228d531e4adde58",
+      "storageStatus": "PENDING",
+      "id": "xm4JwRwke0i"
+    }
+  }
+}
+```
+
+注意响应是*202 Accepted*，表示返回的
+资源已提交后台处理（持续到
+在这种情况下是外部文件存储）。另外，请注意 `storageStatus` 字段
+指示内容是否已存储。在这
+点，到外部存储的持久化还没有完成（它是
+可能会上传到某个地方的基于云的商店）
+`PENDING` 状态。
+
+即使内容尚未完全存储，文件资源
+现在可以使用，例如作为数据值中的引用内容（参见
+[使用文件数据值](#datavalue_file))。如果我们需要检查
+更新的 *storageStatus* 或以其他方式检索
+文件，可以查询`fileResources`端点。
+
+```bash
+curl "https://server/api/fileResources/xm4JwRwke0i" -H "Accept: application/json"
+```
+
+此请求将返回 `FileResource` 对象，如
+上面例子的反应。
+
+### 文件资源限制 { #webapi_file_resources_constraints } 
+
+  - 文件资源*必须*从另一个对象引用（分配）
+    以便长期坚持。一个文件资源是
+    创建但未被其他对象（例如数据值）引用
+    被认为处于*分期*。此中的任何文件资源
+    状态并且超过*两个小时*将被标记为删除
+    并将最终从系统中清除。
+
+  - 文件资源初始创建返回的ID不是
+    可从任何其他位置检索，除非文件资源具有
+    已被引用（其中 ID 将被存储为引用），
+    所以丢失它需要重复 POST 请求和一个新的
+    要创建的对象。 *孤立*文件资源将被清理
+    自动起来。
+
+  - 文件资源对象是*不可变的*，意味着修改不是
+    允许并需要创建一个全新的资源。
+
+### 文件资源阻止列表 { #file-resource-blocklist } 
+
+出于安全原因，某些类型的文件被阻止上传。
+
+以下内容类型被阻止。
+
+| 内容类型 | 内容类型 |
+| ------------------------------------- | ---- |
+| 文字/ HTML                             | 应用程序/ x-ms-dos-可执行 |
+| 文字/ css                              | application / vnd.microsoft.portable-executable |
+| 文字/ javascript                       | application / vnd.apple.installer + xml |
+| 字体/ otf                              | application / vnd.mozilla.xul + xml |
+| 应用程序/ x-shockwave-flash         | 应用程序/ x-httpd-php  |
+| application / vnd.debian.binary-package | 应用程序/ x-sh |
+| 应用/ x-rpm                     | 应用程序/ x-csh |
+| 应用程序/ Java归档              |  |
+
+以下文件扩展名被阻止。
+
+| 文件扩展名 | 文件扩展名 | 文件扩展名 |
+| ---- | ---- | ---- |
+| html | 黛比  | ul  |
+| htm  | 转数  | 的PHP  |
+| 的CSS  | 罐  | 箱子  |
+| js   | jsp  | SH   |
+| 微信  | 可执行程序  | csh  |
+| OTF  | 微星  | 蝙蝠  |
+| 瑞士法郎  | 每公斤 |      |
+
+## 元数据版本控制 { #webapi_metadata_versioning } 
+
+This section explains the metadata versioning APIs.
+
+  - `/api/metadata/version`：这个端点将返回当前的元数据
+    调用它的系统的版本。
+
+
+
+Table: Query Parameters
+
+| 名称 | 需要 | 描述 |
+|---|---|---|
+| versionName | 假 | If this parameter is not specified, it will return the current version of the system or otherwise it will return the details of the versionName passed as parameter. (versionName is of the syntax "Version_<id\>" |
+
+### 获取元数据版本示例 { #webapi_metadata_versioning_examples } 
+
+**示例：**获取此系统的当前元数据版本
+
+请求：
+
+```
+/ api /元数据/版本
+```
+
+响应：
+
+```json
+{
+  "name": "Version_4",
+  "created": "2016-06-30T06:01:28.684+0000",
+  "lastUpdated": "2016-06-30T06:01:28.685+0000",
+  "externalAccess": false,
+  "displayName": "Version_4",
+  "type": "BEST_EFFORT",
+  "hashCode": "848bf6edbaf4faeb7d1a1169445357b0",
+  "id": "Ayz2AEMB6ry"
+}
+```
+
+**示例：**获取名称为“ Version_2”的版本的详细信息
+
+请求：
+
+```
+/ api / metadata / version？versionName = Version_2
+```
+
+响应：
+
+```json
+{
+  "name": "Version_2",
+  "created": "2016-06-30T05:59:33.238+0000",
+  "lastUpdated": "2016-06-30T05:59:33.239+0000",
+  "externalAccess": false,
+  "displayName": "Version_2",
+  "type": "BEST_EFFORT",
+  "hashCode": "8050fb1a604e29d5566675c86d02d10b",
+  "id": "SaNyhusVxBG"
+}
+```
+
+  - `/api/metadata/version/history`：这个端点将返回所有
+    调用它的系统的元数据版本。
+
+
+
+Table: Query Parameters
+
+| 名称 | 需要 | 描述 |
+|---|---|---|
+| baseline | 假 | If this parameter is not specified, it will return list of all metadata versions. Otherwise we need to pass a versionName parameter of the form "Version_<id\>". It will then return the list of versions present in the system which were created after the version name supplied as the query parameter. |
+
+### 获取所有元数据版本的列表 { #webapi_get_list_of_metadata_versions } 
+
+**示例：**获取此系统中所有版本的列表
+
+请求：
+
+```
+/ api /元数据/版本/历史记录
+```
+
+响应：
+
+```json
+{
+  "metadataversions": [{
+    "name": "Version_1",
+    "type": "BEST_EFFORT",
+    "created": "2016-06-30T05:54:41.139+0000",
+    "id": "SjnhUp6r4hG",
+    "hashCode": "fd1398ff7ec9fcfd5b59d523c8680798"
+  }, {
+    "name": "Version_2",
+    "type": "BEST_EFFORT",
+    "created": "2016-06-30T05:59:33.238+0000",
+    "id": "SaNyhusVxBG",
+    "hashCode": "8050fb1a604e29d5566675c86d02d10b"
+  }, {
+    "name": "Version_3",
+    "type": "BEST_EFFORT",
+    "created": "2016-06-30T06:01:23.680+0000",
+    "id": "FVkGzSjAAYg",
+    "hashCode": "70b779ea448b0da23d8ae0bd59af6333"
+  }]
+}
+```
+
+**示例：**获取此系统在“ Version_2”之后创建的所有版本的列表
+
+请求：
+
+```
+/ api / metadata / version / history？baseline = Version_2
+```
+
+响应：
+
+```json
+{
+  "metadataversions": [{
+    "name": "Version_3",
+    "type": "BEST_EFFORT",
+    "created": "2016-06-30T06:01:23.680+0000",
+    "id": "FVkGzSjAAYg",
+    "hashCode": "70b779ea448b0da23d8ae0bd59af6333"
+  }, {
+    "name": "Version_4",
+    "type": "BEST_EFFORT",
+    "created": "2016-06-30T06:01:28.684+0000",
+    "id": "Ayz2AEMB6ry",
+    "hashCode": "848bf6edbaf4faeb7d1a1169445357b0"
+  }]
+ }
+```
+
+  - `/api/metadata/version/create`：这个端点将创建元数据
+    version 参数中指定的版本类型。
+
+
+
+Table: Query Parameters
+
+| 名称 | 需要 | 描述 |
+|---|---|---|
+| type | 真正 | The type of metadata version which needs to be created.<br>  * BEST_EFFORT<br> * ATOMIC |
+
+用户可以选择需要创建的元数据类型。
+元数据版本类型决定了进口商应该如何对待给定的
+版本。导入元数据时将使用此类型。有
+两种类型的元数据。
+
+  - *BEST_EFFORT*：这种类型表明丢失的引用可以
+    忽略，导入器可以继续导入元数据（例如
+    数据元素组导入中缺少数据元素）。
+
+  - *ATOMIC*：这种类型确保对元数据进行严格的类型检查
+    如果有任何引用，则引用和元数据导入将失败
+    不存在。
+
+> **注意**
+>
+> 建议有一个 ATOMIC 类型的版本，以确保所有
+> 系统（中央和本地）具有相同的元数据。任何遗漏
+> 引用在验证阶段本身被捕获。请参阅
+> 进口商详细信息的完整解释。
+
+### 创建元数据版本 { #webapi_create_metadata_version } 
+
+**示例：** 创建类型为 `BEST_EFFORT` 的元数据版本
+
+请求：
+
+```bash
+curl -X POST -u admin:district "https://play.dhis2.org/dev/api/metadata/version/create?type=BEST_EFFORT"
+```
+
+响应：
+
+```json
+{
+  "name": "Version_1",
+  "created": "2016-06-30T05:54:41.139+0000",
+  "lastUpdated": "2016-06-30T05:54:41.333+0000",
+  "externalAccess": false,
+  "publicAccess": "--------",
+  "user": {
+    "name": "John Traore",
+    "created": "2013-04-18T17:15:08.407+0000",
+    "lastUpdated": "2016-04-06T00:06:06.571+0000",
+    "externalAccess": false,
+    "displayName": "John Traore",
+    "id": "xE7jOejl9FI"
+  },
+  "displayName": "Version_1",
+  "type": "BEST_EFFORT",
+  "hashCode": "fd1398ff7ec9fcfd5b59d523c8680798",
+  "id": "SjnhUp6r4hG"
+}
+```
+
+  - `/api/metadata/version/{versionName}/data`：这个端点将下载
+    特定于作为路径传递的版本名称的实际元数据
+    范围。
+
+  - `/api/metadata/version/{versionName}/data.gz`：这个端点将下载
+    特定于作为路径传递的版本名称的实际元数据
+    压缩格式（gzipped）的参数。
+
+
+
+Table: Path parameters
+
+| 名称 | 需要 | 描述 |
+|---|---|---|
+| versionName | 真正 | Path parameter of the form "Version_<id\>" so that the API downloads the specific version |
+
+### 下载版本元数据 { #webapi_download_version_metadata } 
+
+**示例：**获取“版本5”的实际元数据
+
+请求：
+
+```bash
+curl -u admin:district "https://play.dhis2.org/dev/api/metadata/version/Version_5/data"
+```
+
+响应：
+
+```json
+{
+  "date": "2016-06-30T06:10:23.120+0000",
+  "dataElements": [
+    {
+      "code": "ANC 5th Visit",
+      "created": "2016-06-30T06:10:09.870+0000",
+      "lastUpdated": "2016-06-30T06:10:09.870+0000",
+      "name": "ANC 5th Visit",
+      "id": "sCuZKDsix7Y",
+      "shortName": "ANC 5th Visit ",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "zeroIsSignificant": false,
+      "valueType": "NUMBER",
+      "categoryCombo": {
+        "id": "p0KPaWEg3cf"
+      },
+      "user": {
+        "id": "xE7jOejl9FI"
+      }
+    }
+  ]
+}
+```
+
+## Metadata synchronization { #webapi_metadata_synchronization } 
+
+本节介绍了可用的元数据同步 API
+2.24 开始
+
+  - `/api/metadata/sync`：此端点执行元数据同步
+    通过下载和在查询参数中传递的版本名称
+    从远程服务器导入指定的版本，如定义
+    设置应用程序。
+
+
+
+Table: Query parameters
+
+| 名称 | 需要 | 描述 |
+|---|---|---|
+| versionName | 真正 | versionName query parameter of the form "Version_<id\>" . The api downloads this version from the remote server and imports it in the local system. |
+
+  - 使用此 API 时应格外小心。请注意，有
+    以完全自动化的方式实现同步的另一种方法
+    利用“数据管理”中的元数据同步任务
+    应用程序。详见用户手册第 22 章 22.17 节
+    关于元数据同步任务。
+
+  - 此同步 API 也可用于同步元数据
+    从元数据同步调度程序失败的版本。由于
+    它依赖于给定的元数据版本号，应该注意
+    为调用 this 的顺序而采用。例如。如果这个api是
+    用于从中央实例同步一些更高版本，然后
+    同步可能会失败，因为元数据依赖项不存在于
+    本地实例。
+
+  - 假设本地实例在 `Version_12` 并且如果使用这个端点
+    从中央同步`Version_15`（类型`BEST_EFFORT`）
+    例如，调度程序将从以下位置开始同步元数据
+    `版本_16`。所以本地实例不会有元数据
+    `Version_12` 和 `Version_15` 之间的版本。你需要手动
+    仅使用这些端点同步丢失的版本。
+
+### 同步元数据版本 { #webapi_metadata_synchronization_version } 
+
+**示例：**将Version_6从中央系统同步到该系统
+
+请求：
+
+```bash
+curl -u admin:district "https://play.dhis2.org/dev/api/metadata/sync?versionName=Version_6"
+```
+
+## 元数据存储库 { #webapi_metadata_repository } 
+
+DHIS2 提供了一个包含元数据包的元数据存储库
+各种内容。元数据包是符合 DHIS2 的 JSON 文档
+它描述了一组元数据对象。
+
+要检索可用元数据包的索引，您可以发出
+对 *metadataRepo* 资源的 GET 请求：
+
+    GET /api/synchronization/metadataRepo
+
+元数据包条目包含有关包的信息和
+相关包的 URL。索引可能如下所示：
+
+```json
+{
+  "packages": [
+    {
+      "id": "sierre-leone-demo",
+      "name": "Sierra Leone demo",
+      "description": "Sierra Leone demo database",
+      "version": "0.1",
+      "href": "https://dhis2.org/metadata-repo/221/sierra-leone-demo/metadata.json"
+    },
+    {
+      "id": "trainingland-org-units",
+      "name": "Trainingland organisation units",
+      "description": "Trainingland organisation units with four levels",
+      "version": "0.1",
+      "href": "https://dhis2.org/metadata-repo/221/trainingland-org-units/metadata.json"
+    }
+  ]
+}
+```
+
+客户端可以通过 URL 安装元数据包
+带有元数据包的内容类型 *text/plain* 的 POST 请求
+URL 作为 *metadataPull* 资源的有效负载：
+
+    POST / api / synchronization / metadataPull
+
+curl命令示例如下所示：
+
+```bash
+curl "localhost:8080/api/synchronization/metadataPull" -X POST
+  -d "https://dhis2.org/metadata-repo/221/trainingland-org-units/metadata.json"
+  -H "Content-Type:text/plain" -u admin:district
+```
+
+## Reference to created by user { #reference-to-created-by-user } 
+
+Each object created in DHIS2 will have a property named `user` which is linked to `User` who created the object.
+
+From version 2.36 we have changed the name of this property to `createdBy` to avoid confusion.
+
+However, in order to keep the backwards compability, the legacy `user` property is still included in the payload and works normally as before.
+
+```json
+{
+  "createdBy": {
+      "displayName": "John Kamara",
+      "name": "John Kamara",
+      "id": "N3PZBUlN8vq",
+      "username": "district"
+  },
+  "user": {
+      "displayName": "John Kamara",
+      "name": "John Kamara",
+      "id": "N3PZBUlN8vq",
+      "username": "district"
+  }
+}
+```
+
+## Metadata proposal workflow { #webapi_metadata_proposal_workflow }
+
+The metadata proposal workflow endpoint allows for a workflow of proposing and accepting changes to metadata.
+
+```
+/api/metadata/proposals
+```
+
+### Propose a metadata change { #webapi_metadata_proposal_propose }
+
+A proposal always targets a single metadata object using:
+
+    POST /api/metadata/proposals
+
+Depending on the payload the proposal could:
+
+* Add a new metadata object.
+* Update an existing metadata object references by ID.
+* Remove an existing metadata object referenced by ID.
+
+To propose adding a new metadata object send a JSON payload like the following:
+
+```json
+{
+  "type": "ADD",
+  "target": "ORGANISATION_UNIT",
+  "change": {"name":"My Unit", "shortName":"MyOU", "openingDate": "2020-01-01"}
+}
+```
+The `change` property contains the same JSON object that could directly be posted to the corresponding endpoint to create the object.
+
+To propose updating an existing metadata object send a JSON payload like in the below example:
+
+```json
+{
+  "type": "UPDATE",
+  "target": "ORGANISATION_UNIT",
+  "targetId": "<id>",
+  "change": [
+    {"op": "replace", "path": "/name", "value": "New name"}
+  ]
+}
+```
+The `targetId` refers to the object by its ID which should be updated. The `change` property here contains a JSON patch payload. This is the same
+patch payload that could be posted to the corresponding endpoint to directly apply the update.
+
+To propose the removal of an existing object send a payload like in the last example:
+
+```json
+{
+  "type": "REMOVE",
+  "target": "ORGANISATION_UNIT",
+  "targetId": "<id>"
+}
+```
+The `targetId` refers to the object  by its ID which should be removed. A free text `comment` can be added to any type of comment.
+
+Only `target` type `ORGANISATION_UNIT` is supported currently.
+
+### Accept a metadata change proposal { #webapi_metadata_proposal_accept }
+要接受一个开放的提案，请在提案资源上使用`POST`
+
+    POST /api/metadata/proposals/<uid>
+
+成功后，提案的状态变为`接受`状态。一旦被接受，提案就不能再被拒绝。
+
+Should a proposal fail to apply it changes to status `NEEDS_UPDATE`. The `reason` field contains a summary of the failures when this information is 
+available.
+
+### Oppose a metadata change proposal { #webapi_metadata_proposal_oppose }
+如果提案不太正确并且需要调整，可以通过发送提案资源的`PATCH`来反对提案
+
+    PATCH /api/metadata/proposals/<uid>
+
+可选地，可以在其中添加纯文本正文，以给出提案遭到反对的`原因`。
+
+反对的提案必须处于`PROPOSED`状态，并将更改为`NEEDS_UPDATE`状态。
+
+### Adjust a metadata change proposal { #webapi_metadata_proposal_adjust }
+A proposal in state `NEEDS_UPDATE` needs to be adjusted before it can be accepted. To adjust the proposal a `PUT` request is made for the proposal's 
+resource
+
+    PUT /api/metadata/proposals/<uid>
+
+Such an adjustment can either be made without a body or with a JSON body containing an object with the updated `change` and `targetId` for the 
+adjustment:
+
+```json
+{
+  "targetId": "<id>",
+  "change": ...
+}
+```
+The JSON type of the `change` value depends on the proposal `type` analogous to when a proposal is initially made.
+
+### Reject a metadata change proposal { #webapi_metadata_proposal_reject }
+要拒绝打开的提案，请在提案资源上使用`DELETE`
+
+    DELETE /api/metadata/proposals/<uid>
+
+这最终将提案的状态更改为`拒绝`。不能对此提案进行进一步的更改。它作为事件的文档保存。
+
+### List metadata change proposals { #webapi_metadata_proposal_list }
+All proposals can be listed:
+
+    GET /api/metadata/proposals/
+
+The result list can be filtered using the `filter` parameter.
+For example, to list only accepted proposals use:
+
+    GET /api/metadata/proposals?filter=status:eq:ACCEPTED
+
+Similarly to only show open proposals use:
+
+    GET /api/metadata/proposals?filter=status:eq:PROPOSED
+
+Filters can also be applied to any field except `change`. Supported filter operators are those described in the Gist Metadata API. This also includes property transformers described for Gist API.
+
+List of available fields are:
+
+| 领域       | 描述 |
+| ----------- | -------------------------------------------------------------- |
+| id          | unique identifier of the proposal |
+| type        | `ADD` a new object, `UPDATE` an existing object, `REMOVE` an existing object |
+| status      | `PROPOSED` (open proposal), `ACCEPTED` (successful), `NEEDS_UPDATE` (accepting caused error or opposed), `REJECTED` |
+| target      | type of metadata object to add/update/remove; currently only `ORGANISATION_UNIT` |
+| targetId    | 更新或删除对象的 UID，未为`添加`定义 |
+| createdBy   | the user that created the proposal |
+| created     | the date time when the proposal was created |
+| finalisedBy | the user that accepted or rejected the proposal |
+| finalised   | the date time when the proposal changed to a conclusive state of either accepted or rejected |
+| comment     | optional plain text comment given for the initial proposal |
+| reason      | optional plain text given when the proposal was opposed or the errors occurring when accepting a proposal failed | 
+| change      | JSON object for `ADD` proposal, JSON array for `UPDATE` proposal, nothing for `REMOVE` proposal |
+
+### Viewing metadata change proposals { #webapi_metadata_proposal_show }
+Individual change proposals can be viewed using 
+
+    GET /api/metadata/proposals/<uid>
+
+The `fields` parameter can be used to narrow the fields included for the shown object. For example:
+
+    GET /api/metadata/proposals/<uid>?fields=id,type,status,change
+
+## Metadata Attribute Value Type and validations { #metadata-attribute-value-type-and-validations } 
+| 类型 | Validation
+|---| --- |
+| TEXT | 没有
+| LONG_TEXT | 没有
+| LETTER | Value length = 1 AND is a letter
+| PHONE_NUMBER  | Validation is based on this regex `^[0-9+\\(\\)#\\.\\s\\/ext-]{6,50}$`. Max length is 50.  <br /> Examples: +4733987937, (+47) 3398 7937, (47) 3398 7937.123
+| EMAIL | General email format abc@email.com
+| BOOLEAN | `true` or `false`
+| TRUE_ONLY | Only accept `true`
+| DATE | Use format `yyyy-MM-dd`
+| DATETIME | Use format `yyyy-MM-dd HH:mm:ssZ` or `yyyy-MM-dd'T'HH:mm:ss`
+| TIME | Use fornat `HH:mm`
+| NUMBER | Value must be numberic with max length = 250
+| UNIT_INTERVAL | Value is numeric and inclusive between 0 and 1
+| PERCENTAGE | Value is a number in the inclusive range of 0 to 100
+| INTEGER | Value is an integer
+| INTEGER_POSITIVE | Value is a positive integer
+| INTEGER_NEGATIVE | Value is a negative integer
+| INTEGER_ZERO_OR_POSITIVE | Value is an positive or zero integer
+| TRACKER_ASSOCIATE | 没有
+| USERNAME | Value is a username of an existing `User`
+| COORDINATE | 没有
+| ORGANISATION_UNIT | Value is a valid UID of an existing `OrganisationUnit`
+| REFERENCE | 没有
+| AGE | Value is date of birth. Use format as in DATE type.
+| 网址 | Value is a valid URL
+| FILE_RESOURCE | Value is a valid UID of existing `FileResource`
+| IMAGE | Value is a valid UID of existing `FileResource`
+| GEOJSON |Follow [GeoJson Specification](https://geojson.org)
+| MULTI_TEXT | 没有
+

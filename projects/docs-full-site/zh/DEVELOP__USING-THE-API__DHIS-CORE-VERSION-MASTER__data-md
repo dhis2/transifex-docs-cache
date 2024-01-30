@@ -1,0 +1,1094 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/data.md"
+revision_date: '2023-12-12'
+tags:
+- DHIS核心 主版
+- Develop
+---
+
+# 数据 { #data } 
+
+## 数据值 { #webapi_data_values } 
+
+本节关于发送和读取数据值。
+
+    /api/dataValueSets
+
+### 发送数据值 { #webapi_sending_data_values } 
+
+要发送数据值，您可以向以下资源发出 POST 请求。
+
+```
+POST /api/dataValueSets
+```
+
+A common use-case for system integration is the need to send a set of
+data values from a third-party system into DHIS. In this example, we will
+use the DHIS2 demo on `http://play.dhis2.org/demo` as basis. We assume
+that we have collected case-based data using a simple software client
+running on mobile phones for the *Mortality <5 years* data set in the
+community of *Ngelehun CHC* (in *Badjia* chiefdom, *Bo* district) for
+the month of January 2014. We have now aggregated our data into a
+statistical report and want to send that data to the DHIS2 instance. The
+base URL to the demo API is `http://play.dhis2.org/demo/api`. The following
+links are relative to the base URL.
+
+
+最适合我们发送数据的资源
+values 是 `/api/dataValueSets` 资源。一个数据值集代表一个
+一组具有关系的数据值，通常来自
+从相同的数据输入表单中捕获。格式看起来像
+这：
+
+```xml
+<dataValueSet xmlns="http://dhis2.org/schema/dxf/2.0" dataSet="dataSetID"
+  completeDate="date" period="period" orgUnit="orgUnitID" attributeOptionCombo="aocID">
+  <dataValue dataElement="dataElementID" 
+    categoryOptionCombo="cocID" value="1" comment="comment1"/>
+  <dataValue dataElement="dataElementID" 
+    categoryOptionCombo="cocID" value="2" comment="comment2"/>
+  <dataValue dataElement="dataElementID" 
+    categoryOptionCombo="cocID" value="3" comment="comment3"/>
+</dataValueSet>
+```
+
+JSON支持以下格式：
+
+```json
+{
+  "dataSet": "dataSetID",
+  "completeDate": "date",
+  "period": "period",
+  "orgUnit": "orgUnitID",
+  "attributeOptionCombo": "aocID",
+  "dataValues": [
+    {
+      "dataElement": "dataElementID", 
+      "categoryOptionCombo": "cocID", 
+      "value": "1", 
+      "comment": "comment1"
+    },
+    {
+      "dataElement": "dataElementID", 
+      "categoryOptionCombo": "cocID", 
+      "value": "2", 
+      "comment": "comment2"
+    },
+    {
+      "dataElement": "dataElementID", 
+      "categoryOptionCombo": "cocID", 
+      "value": "3", 
+      "comment": "comment3"
+    }
+  ]
+}
+```
+
+CSV支持以下格式：
+
+```csv
+“ dataelement”，“ period”，“ orgunit”，“ catoptcombo”，“ attroptcombo”，“ value”，“ strby”，“ lstupd”，“ cmt”
+“ dataElementID”，“ period”，“ orgUnitID”，“ cocID”，“ aocID”，“ 1”，“用户名”，“ 2015-04-01”，“ comment1”
+“ dataElementID”，“ period”，“ orgUnitID”，“ cocID”，“ aocID”，“ 2”，“用户名”，“ 2015-04-01”，“ comment2”
+“ dataElementID”，“ period”，“ orgUnitID”，“ cocID”，“ aocID”，“ 3”，“用户名”，“ 2015-04-01”，“ comment3”
+```
+
+> **注意**
+>
+> 请参阅上面的日期和时间段部分了解时间格式。
+
+> **注意**
+>
+> 任何被视为未更改的导入数据值都将被忽略，导入摘要将反映这一点。未更改的数据值被归类为以下所有 3 个属性具有相同值的数据值：
+> - 值
+> - 评论
+> - 跟进
+
+从这个例子中，我们可以看出我们需要识别周期，
+数据集、组织单位（设施）和数据元素
+报告。
+
+To obtain the identifier for the data set we make a request to the
+`/api/dataSets` resource. From there we find and follow the link to 
+the *Mortality < 5 years* data set which leads us to `/api/dataSets/pBOMPrpg1QX`. 
+The resource representation for the *Mortality < 5 years* data set conveniently
+advertises links to the data elements which are members of it. From here
+we can follow these links and obtain the identifiers of the data
+elements. For brevity we will only report on three data elements:
+*Measles* with id `f7n9E0hX8qk`, *Dysentery* with id `Ix2HsbDMLea` and
+*Cholera* with id `eY5ehpbEsB7`.
+
+剩下的就是掌握组织的标识符
+单元。 *dataSet* 表示方便地提供了到组织的链接
+报告它的单位，所以我们搜索 *Ngelehun CHC* 并按照
+链接到 `/api/organisationUnits/DiszpKrYNg8` 中的 HTML 表示，其中
+告诉我们这个组织单位的标识符是`DiszpKrYNg8`。
+
+根据我们基于病例的数据，我们假设我们有 12 例麻疹病例，14
+痢疾16例，霍乱16例。我们现在已经聚集了足够的
+能够将 XML 数据值集放在一起的信息
+信息：
+
+```xml
+<dataValueSet xmlns="http://dhis2.org/schema/dxf/2.0" dataSet="pBOMPrpg1QX"
+  completeDate="2014-02-03" period="201401" orgUnit="DiszpKrYNg8">
+  <dataValue dataElement="f7n9E0hX8qk" value="12"/>
+  <dataValue dataElement="Ix2HsbDMLea" value="14"/>
+  <dataValue dataElement="eY5ehpbEsB7" value="16"/>
+</dataValueSet>
+```
+
+JSON格式：
+
+```json
+{
+  "dataSet": "pBOMPrpg1QX",
+  "completeDate": "2014-02-03",
+  "period": "201401",
+  "orgUnit": "DiszpKrYNg8",
+  "dataValues": [
+    {
+      "dataElement": "f7n9E0hX8qk", 
+      "value": "1"
+    },
+    {
+      "dataElement": "Ix2HsbDMLea", 
+      "value": "2"
+    },
+    {
+      "dataElement": "eY5ehpbEsB7", 
+      "value": "3"
+    }
+  ]
+}
+```
+
+To perform functional testing we will use the _curl_ tool which provides
+an easy way of transferring data using HTTP. First, we save the data
+value set XML content in a file called `datavalueset.xml`. From the
+directory where this file resides we invoke the following from the
+command line:
+
+```bash
+curl -d @datavalueset.xml "https://play.dhis2.org/demo/api/dataValueSets"
+  -H "Content-Type:application/xml" -u admin:district
+```
+
+要发送 JSON 内容，您必须设置 content-type 标头
+因此：
+
+```bash
+curl -d @datavalueset.json "https://play.dhis2.org/demo/api/dataValueSets"
+  -H "Content-Type:application/json" -u admin:district
+```
+
+该命令将向演示 Web API 发送请求，设置
+`application/xml` 作为内容类型并使用
+`admin`/`district` 作为用户名/密码。如果一切顺利，这将返回一个
+`200 OK` HTTP 状态代码。您可以验证数据是否已
+通过在 DHIS2 中打开数据输入模块并选择组织来接收
+本例中使用的单位、数据集和期间。
+
+The API follows normal semantics for error handling and HTTP status
+codes. If you supply an invalid username or password, `401 Unauthorized`
+is returned. If you supply a content-type other than `application/xml`,
+`415 Unsupported Media Type` is returned. If the XML content is invalid
+according to the DXF namespace, `400 Bad Request` is returned. If you
+provide an invalid identifier in the XML content, `409 Conflict` is
+returned together with a descriptive message.
+
+### 发送大量数据值 { #webapi_sending_bulks_data_values } 
+
+前面的例子向我们展示了如何发送一组相关的数据值
+共享同一时期和组织单位。这个例子将向我们展示
+如何发送大量不一定是的数据值
+逻辑相关。
+
+我们将再次与`/api/dataValueSets` 资源交互。这次我们
+不会指定 `dataSet` 和 `completeDate` 属性。此外，我们将
+在单个数据值上指定 `period` 和 `orgUnit` 属性
+元素而不是外部数据值集元素。这会
+使我们能够发送不同时期和组织单位的数据值：
+
+```xml
+<dataValueSet xmlns="http://dhis2.org/schema/dxf/2.0">
+  <dataValue dataElement="f7n9E0hX8qk" 
+    period="201401" orgUnit="DiszpKrYNg8" value="12"/>
+  <dataValue dataElement="f7n9E0hX8qk" 
+    period="201401" orgUnit="FNnj3jKGS7i" value="14"/>
+  <dataValue dataElement="f7n9E0hX8qk" 
+    period="201402" orgUnit="DiszpKrYNg8" value="16"/>
+  <dataValue dataElement="f7n9E0hX8qk" 
+    period="201402" orgUnit="Jkhdsf8sdf4" value="18"/>
+</dataValueSet>
+```
+
+JSON格式：
+
+```json
+{
+  "dataValues": [
+    {
+      "dataElement": "f7n9E0hX8qk", 
+      "period": "201401", 
+      "orgUnit": "DiszpKrYNg8", 
+      "value": "12"
+    }, 
+    {
+      "dataElement": "f7n9E0hX8qk", 
+      "period": "201401", 
+      "orgUnit": "FNnj3jKGS7i", 
+      "value": "14"
+    }, 
+    {
+      "dataElement": "f7n9E0hX8qk", 
+      "period": "201402", 
+      "orgUnit": "DiszpKrYNg8", 
+      "value": "16"
+    }, 
+    {
+      "dataElement": "f7n9E0hX8qk", 
+      "period": "201402", 
+      "orgUnit": "Jkhdsf8sdf4", 
+      "value": "18"
+    }
+  ]
+}
+```
+
+CSV格式：
+
+```csv
+“ dataelement”，“ period”，“ orgunit”，“ categoryoptioncombo”，“ attributeoptioncombo”，“ value”
+“ f7n9E0hX8qk”，“ 201401”，“ DiszpKrYNg8”，“ bRowv6yZOF2”，“ bRowv6yZOF2”，“ 1”
+“ Ix2HsbDMLea”，“ 201401”，“ DiszpKrYNg8”，“ bRowv6yZOF2”，“ bRowv6yZOF2”，“ 2”
+“ eY5ehpbEsB7”，“ 201401”，“ DiszpKrYNg8”，“ bRowv6yZOF2”，“ bRowv6yZOF2”，“ 3”
+```
+
+我们通过使用curl以XML格式发送数据值进行测试：
+
+```bash
+curl -d @datavalueset.xml "https://play.dhis2.org/demo/api/dataValueSets"
+  -H "Content-Type:application/xml" -u admin:district
+```
+
+请注意，使用 CSV 格式时，您必须使用二进制数据选项
+保留 CSV 文件中的换行符：
+
+```bash
+curl --data-binary @datavalueset.csv "https://play.dhis2.org/demo/24/api/dataValueSets"
+  -H "Content-Type:application/csv" -u admin:district
+```
+
+数据值集资源提供有用的 XML 响应
+当您想验证您的请求所产生的影响时。我们第一次
+发送上面的数据值设置请求，服务器将响应
+以下导入摘要：
+
+```xml
+<importSummary>
+  <dataValueCount imported="2" updated="1" ignored="1"/>
+  <dataSetComplete>false</dataSetComplete>
+</importSummary>
+```
+
+此消息告诉我们导入了 3 个数据值，1 个数据值是
+在忽略零数据值时更新。单一更新来自
+我们在上一个示例中发送该数据值的结果。一个数据
+如果引用不存在的数据元素，值将被忽略，
+期间、组织单位或数据集。在我们的例子中，这个被忽略的值是
+由对组织单位的无效引用的最后一个数据值引起。
+数据集完整元素将显示数据的日期
+值集已完成，如果没有数据元素属性，则为 false
+提供。
+
+### 导入参数 { #webapi_data_values_import_parameters } 
+
+可以使用一组导入参数来自定义导入过程：
+
+表：导入参数
+
+| 范围 | 值（默认优先） | 描述 |
+|---|---|---|
+| 数据元素标识方案 | uid &#124;名字&#124;代码&#124;属性：ID | 用于映射数据值的数据元素对象的属性。 |
+| 组织单位 ID 方案 | uid &#124;名字&#124;代码&#124;属性：ID | 用于映射数据值的组织单位对象的属性。 |
+| attributeOptionComboIdScheme | uid &#124;名字&#124;代码&#124;属性：ID | 用于映射数据值的属性选项组合对象的属性。 |
+| 类别选项组合 ID 方案 | uid &#124;名字&#124;代码&#124;属性：ID | 用于映射数据值的类别选项组合对象的属性。 |
+| 数据集IdScheme | uid &#124;名字&#124;代码&#124;属性：ID | 用于映射数据值的数据集对象的属性。 |
+| 类别IdScheme | uid &#124;名字&#124;代码&#124;属性：ID | 用于映射数据值的类别对象的属性（仅限 ADX）。 |
+| 类别选项Id方案 | uid &#124;名字&#124;代码&#124;属性：ID | 用于映射数据值的类别选项对象的属性（仅限 ADX）。 |
+| 方案 | uid &#124;名字&#124;代码&#124;属性：ID | 上述任何对象的属性（如果未指定）用于映射数据值。 |
+| 预热缓存 | 假的&#124;真的 | 指示是否在开始导入数据值之前预加载元数据缓存，将加速具有高元数据基数的大型导入有效负载。 |
+| 干运行 | 假的&#124;真的 | 是否在服务器上保存更改或仅返回导入摘要。 |
+| 导入策略 | CREATE &#124; UPDATE &#124; CREATE_AND_UPDATE &#124; DELETE | 在服务器上保存所有对象、新对象或更新导入状态。 |
+| 跳过现有检查 | 假的&#124;真的 | 跳过对现有数据值的检查。提高性能。仅用于空数据库或要导入的数据值尚不存在时。 |
+| 跳过审计 | 假的&#124;真的 | 跳过审核，意味着不会生成审核值。以审计变更的能力为代价来提高性能。需要权限“F_SKIP_DATA_IMPORT_AUDIT”。 |
+| 异步 | 假的&#124;真的 | 指示导入应该异步还是同步完成。前者适用于非常大的导入，因为它确保请求不会超时，尽管它具有显着的性能开销。后者速度更快，但需要持续连接直到该过程完成。 |
+| 力量 | 假的&#124;真的 | 指示是否应强制导入。数据导入可能会因数据集锁定的各种原因而被拒绝，例如由于批准、数据输入期限、到期日等。为了覆盖此类锁定并强制数据输入，可以使用force=true 的数据导入。然而，必须是\*超级用户\*才能使该参数起作用。 |
+| 数据集 | uid | 提供用于 CSV 导入的数据集 ID（文件本身无法提供 ID） |
+
+所有参数都是可选的，可以作为查询参数提供
+请求 URL 是这样的：
+
+    /api/dataValueSets?dataElementIdScheme=代码&orgUnitIdScheme=名称
+      &dryRun=true&importStrategy=创建
+
+它们也可以作为数据值集上的 XML 属性提供
+元素如下。 XML 属性将覆盖查询字符串
+参数。
+
+```xml
+<dataValueSet xmlns="http://dhis2.org/schema/dxf/2.0" dataElementIdScheme="code"
+  orgUnitIdScheme="name" dryRun="true" importStrategy="CREATE">
+</dataValueSet>
+```
+
+请注意，`preheatCache` 参数会对
+表现。对于小的导入文件，将其设置为 false 会很快。
+对于包含大量不同数据的大型导入文件
+元素和组织单位，将其设置为 true 将是
+幅度更快。
+
+#### 数据值要求 { #webapi_data_values_import_requirement } 
+
+数据值导入支持一组值类型。对于每个值类型，
+有一个特殊要求。下表列出了边缘情况
+对于值类型。
+
+
+
+表：值类型要求
+
+| 值类型 | 要求 | 评论 |
+|---|---|---|
+| 布尔值 | 真实的&#124;真实的&#124;真实&#124;假的&#124;假的&#124;假的&#124; 1 &#124; 0 &#124; t &#124; f&#124; | 当值为布尔值、true 或 false 值时使用。导入服务不关心输入是否以大写字母或小写字母开头，或者是否全部大写。 |
+
+#### 标识符方案 { #webapi_data_values_identifier_schemes } 
+
+Regarding the id schemes, by default the identifiers used in the XML
+messages use the DHIS2 stable object identifiers referred to as `UID`.
+In certain interoperability situations we might experience that an external
+system decides the identifiers of the objects. In that case we can use
+the `code` property of the organisation units and other objects to set
+fixed identifiers. When importing data values we hence need to reference
+the code property instead of the identifier property of these metadata
+objects. Identifier schemes can be specified in the XML message as well
+as in the request as query parameters. To specify it in the XML payload
+you can do this:
+
+```xml
+<dataValueSet xmlns="http://dhis2.org/schema/dxf/2.0"
+  dataElementIdScheme="CODE" orgUnitIdScheme="UID" idScheme="CODE">
+</dataValueSet>
+```
+
+上面的参数表解释了如何指定 id 方案
+作为查询参数。以下规则适用于
+优先级：
+
+  - XML 或 JSON 负载中定义的 ID 方案优先于
+    id 方案定义为 URL 查询参数。
+
+  - 特定的 id 方案，例如 dataElementIdScheme 或
+    orgUnitIdScheme 优先于一般 idScheme。
+
+  - If no explicit id scheme is defined, the default id scheme is `code`
+    for ADX format, and `uid` for all other formats.
+
+以下标识符方案可用。
+
+  - uid
+
+  - 码
+
+  - 名称
+
+  - 属性（后跟属性的UID）
+
+属性选项是特殊的，指的是元数据属性
+已被标记为*独特*。使用此选项时，`attribute` 必须
+紧随其后的是属性的标识符，例如
+“属性：DnrLSdo4hMl”。
+
+#### 异步数据值导入 { #webapi_data_values_async_import } 
+
+可以通过以下方式以异步方式发送和导入数据值
+提供设置为 *true* 的 `async` 查询参数：
+
+    /api/dataValueSets?async=true
+
+这将启动一个异步导入作业，您可以对其进行监控
+任务摘要 API 中的状态。 API 响应表明
+作业的唯一标识符、作业类型和可用于的 URL
+监控导入作业状态。响应将类似于以下内容：
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 200,
+  "status": "OK",
+  "message": "Initiated dataValueImport",
+  "response": {
+    "name": "dataValueImport",
+    "id": "YR1UxOUXmzT",
+    "created": "2018-08-20T14:17:28.429",
+    "jobType": "DATAVALUE_IMPORT",
+    "relativeNotifierEndpoint": "/api/system/tasks/DATAVALUE_IMPORT/YR1UxOUXmzT"
+  }
+}
+```
+
+请阅读有关*异步任务状态*的部分了解更多信息
+信息。
+
+### CSV数据值格式 { #webapi_data_values_csv } 
+
+以下部分描述了 DHIS2 中使用的 CSV 格式。首先
+行被假定为标题行，在导入期间将被忽略。
+
+
+
+表：DHIS2 的 CSV 格式
+
+||||
+|---|---|---|
+| 柱 | 需要 | 描述 |
+| 数据元素 | 是的 | 默认为ID，也可以根据选择的ID方案为名称和代码 |
+| 期 | 是的 | ISO 格式 |
+| 组织单位 | 是的 | 默认为ID，也可以根据选择的ID方案为名称和代码 |
+| 类别选项组合 | 不 | 参考身份证号 |
+| 属性选项组合 | 不 | 指ID（从2.16版本开始） |
+| 值 | 不 | 资料值 |
+| 存储者 | 不 | 指输入该值的用户的用户名 |
+| 最近更新时间 | 不 | ISO 格式的日期 |
+| 评论 | 不 | 自由文字评论 |
+| 跟进 | 不 | 对或错 |
+
+可以导入DHIS2的CSV文件示例如下所示。
+
+```csv
+“ dataelement”，“ period”，“ orgunit”，“ catoptcombo”，“ attroptcombo”，“ value”，“ storedby”，“ timestamp”
+“ DUSpd8Jq3M7”，“ 201202”，“ gP6hn503KUX”，“ Prlt0C1RF0s”，“ 7”，“ bombali”，“ 2010-04-17”
+“ DUSpd8Jq3M7”，“ 201202”，“ gP6hn503KUX”，“ V6L425pT3A0”，“ 10”，“ bombali”，“ 2010-04-17”
+“ DUSpd8Jq3M7”，“ 201202”，“ OjTS752GbZE”，“ V6L425pT3A0”，“ 9”，“孟买”，“ 2010-04-06”
+```
+
+### 生成数据值集模板 { #webapi_data_values_template } 
+
+要为特定数据集生成数据值集模板，您可以使用
+`/api/dataSets/ <id> /dataValueSet` 资源。 XML 和 JSON 响应
+支持格式。例子：
+
+    /api/dataSets/BfMAe6Itzgt/dataValueSet
+
+描述了可用于进一步调整输出的参数
+以下：
+
+
+
+表：数据值查询参数
+
+| 查询参数 | 需要 | 描述 |
+|---|---|---|
+| 时期 | 不 | 使用期限，将被包括在内，无需任何检查。 |
+| orgUnit | 不 | 使用的组织单元，支持多个orgUnit，id和code都可以使用。 |
+| 评论 | 不 | 如果包含注释，默认：是。 |
+| 组织单位 ID 方案 | 不 | 使用的组织单位方案，支持 id &#124;代码。 |
+| 数据元素标识方案 | 不 | 使用的数据元素方案，支持 id &#124;代码。 |
+
+### 读取数据值 { #webapi_reading_data_values } 
+
+要读取数据值，您可以向以下资源发出 GET 请求。
+
+```
+GET /api/dataValueSets
+```
+
+Data values can be retrieved in *XML*, *JSON*, *CSV*, and *ADX* format. Since we want to read data we will use the *GET* HTTP verb. We will also specify that we are
+interested in the XML resource representation by including an `Accept` HTTP header with our request. The following query parameters are
+accepted:
+
+
+表：数据值设置查询参数
+
+| 范围 | 描述 |
+|---|---|
+| 数据集 | 数据集标识符。可以重复任意次数。 |
+| 数据元素组 | 数据元素组标识符。可以重复任意次数（ADX 不支持）。 |
+| 数据元素 | 数据元素标识符。可以重复任意次数。 |
+| 时期 | ISO 格式的周期标识符。可以重复任意次数。 |
+| 开始日期 | 要导出的值的时间跨度的开始日期。 |
+| 结束日期 | 要导出的值的时间跨度的结束日期。 |
+| orgUnit | 组织单位标识符。可以重复任意次数。 |
+| 孩子们 | 是否将子级包含在组织单位的层次结构中。 |
+| 组织单位组 | 组织单位组标识符。可以重复任意次数。 |
+| 属性选项组合 | 属性选项组合标识符。可以重复任意次数。 |
+| 包含已删除 | 是否包含已删除的数据值。 |
+| 最近更新时间 | 仅包括自给定时间戳以来更新的数据值。 |
+| 最后更新持续时间 | 仅包括在给定持续时间内更新的数据值。格式为 <value\><time-unit\>，其中支持的时间单位为“d”（天）、“h”（小时）、 “m”（分钟）和“s”（秒）。 |
+| 限制 | 响应中的最大结果数。 |
+| 数据元素标识方案 | 用于响应数据值的数据元素对象的属性。 |
+| 组织单位 ID 方案 | 用于响应数据值的组织单位对象的属性。 |
+| 类别选项组合 ID 方案 | 用于响应数据值的类别选项组合的属性。 |
+| attributeOptionComboIdScheme | 用于响应数据值的属性选项组合对象的属性。 |
+| 数据集IdScheme | 要在响应中使用的数据集对象的属性。 |
+| 类别IdScheme | 要在响应中使用的类别对象的属性（仅限 ADX）。 |
+| 类别选项Id方案 | 要在响应中使用的类别选项对象的属性（仅限 ADX）。 |
+| 方案 | 上述任何对象的属性（如果未指定）将在响应中使用。如果未指定，则 ADX 的默认 idScheme 是 code，所有其他格式的默认 idScheme 是 uid。 |
+| 输入组织单位 ID 方案 | 用于提供的`orgUnit`参数值的标识属性； `id` 或 `code` |
+| 输入数据集Id方案 | 用于提供的`dataSet`参数值的标识属性； `id` 或 `code` |
+| 输入数据元素组Id方案 | 用于提供的`dataElementGroup`参数值的标识属性； `id` 或 `code` |
+| 输入数据元素Id方案 | 用于提供的`dataElement`参数值的标识属性； `id` 或 `code` |
+| 输入IdScheme | Identification property used for any of the provided `dataSet`, `dataElementGroup`, `orgUnit`, `orgUnitGroup`, `attributeOptionCombo`  parameter values unless any of the three schemes above explicitly overrides this input default; `id` or `code` |
+
+需要上面列表中的以下参数：
+- dataSet 或 dataElementGroup（对于 ADX，这必须是 dataSet）
+- 任一时间段、startDate 和 endDate、lastUpdated 或 lastUpdatedDuration
+- orgUnit 或 orgUnitGroup
+
+支持以下响应格式：
+
+  - xml（应用程序/ xml）
+
+  - json（应用程序/ json）
+
+  - csv（应用程序/ csv）
+
+  - adx（应用程序/ adx + xml）
+
+假设我们已经根据
+上一节称为 *发送数据值* 我们现在可以放在一起
+我们对单个数据值集的请求并使用 cURL 请求它：
+
+```bash
+curl "https://play.dhis2.org/demo/api/dataValueSets?dataSet=pBOMPrpg1QX&period=201401&orgUnit=DiszpKrYNg8"
+  -H "Accept:application/xml" -u admin:district
+```
+
+我们还可以使用开始和结束日期查询参数来请求一个
+大量的数据值。 IE。您还可以请求数据值
+多个数据集和组织单位以及一个时间跨度以便导出
+更大的数据块。请注意，期间查询参数采用
+优先于开始和结束日期参数。一个例子看起来像
+这：
+
+```bash
+curl "https://play.dhis2.org/demo/api/dataValueSets?dataSet=pBOMPrpg1QX&dataSet=BfMAe6Itzgt
+  &startDate=2013-01-01&endDate=2013-01-31&orgUnit=YuQRtpLP10I&orgUnit=vWbkYPRmKyS&children=true"
+  -H "Accept:application/xml" -u admin:district
+```
+
+检索已创建或更新的数据值
+过去 10 天，您可以提出这样的请求：
+
+    / api / dataValueSets？dataSet = pBOMPrpg1QX＆orgUnit = DiszpKrYNg8＆lastUpdatedDuration = 10d
+
+响应将如下所示：
+
+```xml
+<?xml version='1.0' encoding='UTF-8'?>
+<dataValueSet xmlns="http://dhis2.org/schema/dxf/2.0" dataSet="pBOMPrpg1QX"
+  completeDate="2014-01-02" period="201401" orgUnit="DiszpKrYNg8">
+<dataValue dataElement="eY5ehpbEsB7" period="201401" orgUnit="DiszpKrYNg8"
+  categoryOptionCombo="bRowv6yZOF2" value="10003"/>
+<dataValue dataElement="Ix2HsbDMLea" period="201401" orgUnit="DiszpKrYNg8"
+  categoryOptionCombo="bRowv6yZOF2" value="10002"/>
+<dataValue dataElement="f7n9E0hX8qk" period="201401" orgUnit="DiszpKrYNg8"
+  categoryOptionCombo="bRowv6yZOF2" value="10001"/>
+</dataValueSet>
+```
+
+您可以使用JSON格式请求数据，如下所示：
+
+    /api/dataValueSets.json?dataSet=pBOMPrpg1QX&period=201401&orgUnit=DiszpKrYNg8
+
+响应如下所示：
+
+```json
+{
+  "dataSet": "pBOMPrpg1QX",
+  "completeDate": "2014-02-03",
+  "period": "201401",
+  "orgUnit": "DiszpKrYNg8",
+  "dataValues": [
+    {
+      "dataElement": "eY5ehpbEsB7", 
+      "categoryOptionCombo": "bRowv6yZOF2", 
+      "period": "201401",
+      "orgUnit": "DiszpKrYNg8", 
+      "value": "10003"
+    }, 
+    {
+      "dataElement": "Ix2HsbDMLea", 
+      "categoryOptionCombo": "bRowv6yZOF2", 
+      "period": "201401",
+      "orgUnit": "DiszpKrYNg8", 
+      "value": "10002"
+    }, 
+    {
+      "dataElement": "f7n9E0hX8qk", 
+      "categoryOptionCombo": "bRowv6yZOF2", 
+      "period": "201401",
+      "orgUnit": "DiszpKrYNg8", 
+      "value": "10001"
+    }
+  ]
+}
+```
+
+请注意，数据值是软删除的，即删除的值具有
+`deleted` 属性设置为 true 而不是被永久删除。
+这在集成多个系统以进行通信时很有用
+删除。您可以在响应中包含已删除的值，如下所示：
+
+    /api/dataValueSets.json?dataSet=pBOMPrpg1QX&period=201401
+      &orgUnit=DiszpKrYNg8&includeDeleted=true
+
+您还可以请求CSV格式的数据，如下所示：
+
+    /api/dataValueSets.csv?dataSet=pBOMPrpg1QX&period=201401
+      &orgUnit=DiszpKrYNg8
+
+响应将如下所示：
+
+```csv
+数据元素，期限，组织单位，catoptcombo，attroptcombo，值，存储于，最后更新，注释，开始
+f7n9E0hX8qk，201401，DiszpKrYNg8，bRowv6yZOF2，bRowv6yZOF2,12，system，2015-04-05T19：58：12.000，comment1，false
+Ix2HsbDMLea，201401，DiszpKrYNg8，bRowv6yZOF2，bRowv6yZOF2,14，system，2015-04-05T19：58：12.000，comment2，false
+eY5ehpbEsB7,201401，DiszpKrYNg8，bRowv6yZOF2，bRowv6yZOF2,16，系统，2015-04-05T19：58：12.000，comment3，false
+FTRrcoaog83,201401，DiszpKrYNg8，bRowv6yZOF2，bRowv6yZOF2,12，系统，2014-03-02T21：45：05.519，comment4，false
+```
+
+以下约束适用于数据值集资源：
+
+  - 必须至少指定一个数据集。
+
+  - 必须是至少一个期间或开始日期和结束日期
+    指定的。
+
+  - 必须至少指定一个组织单位。
+
+  - 组织单位必须在组织的层次结构内
+    认证用户的单位。
+
+  - 限制不能小于零。
+
+### 发送，读取和删除单个数据值 { #webapi_sending_individual_data_values } 
+
+此示例将显示如何发送要保存的单个数据值
+一个要求。这可以通过发送一个 *POST* 请求到
+`dataValues` 资源：
+
+    POST /api/dataValues
+
+此资源支持以下查询参数：
+
+表：数据值查询参数
+
+| 查询参数 | 需要 | 描述 |
+|---|---|---|
+| 德 | 是的 | 数据元素标识符 |
+| 聚乙烯 | 是的 | 期间标识符 |
+| 欧 | 是的 | 组织单位标识符 |
+| 共 | 不 | 类别选项组合标识符，如果省略则使用默认值 |
+| 抄送 | 否（必须与 cp 结合使用） | 属性类别组合标识符 |
+| CP | 否（必须与 cc 结合使用） | 属性类别选项标识符，用 ; 分隔对于多个值 |
+| ds | 不 | 数据集，检查期间和组织单位是否允许 POST 或 DELETE。如果指定，则必须将数据元素分配给该数据集。如果没有指定，将选择包含该数据元素的数据集来检查该操作是否被允许。 |
+| 价值 | 不 | 数据价值。对于布尔值，将接受以下内容： true &#124;真实的&#124;真实&#124;假的&#124;假的&#124;假的&#124; 1 &#124; 0 &#124; t &#124; f&#124; |
+| 评论 | 不 | 数据评论 |
+| 跟进 | 不 | 跟踪数据值，将切换当前布尔值 |
+
+如果给定的任何标识符无效，如果数据值或
+评论无效或如果数据被锁定，响应将包含
+*409 Conflict* 状态代码和描述性文本消息。如果
+操作导致保存或更新的值，*200 OK* 将被返回。
+请求的示例如下所示：
+
+```bash
+curl "https://play.dhis2.org/demo/api/dataValues?de=s46m5MS0hxu
+  &pe=201301&ou=DiszpKrYNg8&co=Prlt0C1RF0s&value=12"
+  -X POST -u admin:district
+```
+
+此资源还允许使用特殊语法将值关联到
+一个属性选项组合。这可以通过发送
+属性类别组合的标识符，连同标识符
+值代表的属性类别选项
+组合。类别组合由 `cc` 参数指定，而
+类别选项被指定为分号分隔的字符串，带有`cp`
+范围。有必要确保类别选项都是部分
+的类别组合。一个示例如下所示：
+
+```bash
+curl "https://play.dhis2.org/demo/api/dataValues?de=s46m5MS0hxu&ou=DiszpKrYNg8
+  &pe=201308&cc=dzjKKQq0cSO&cp=wbrDrL2aYEc;btOyqprQ9e8&value=26"
+  -X POST -u admin:district
+```
+
+您可以使用 *GET* 方法通过请求检索数据值。这
+value、comment 和 followUp 参数在这方面不适用：
+
+```bash
+curl "https://play.dhis2.org/demo/api/dataValues?de=s46m5MS0hxu
+  &pe=201301&ou=DiszpKrYNg8&co=Prlt0C1RF0s"
+  -u admin:district
+```
+
+您可以使用 *DELETE* 方法通过请求删除数据值。
+
+### 将单个数据值作为负载发送 { #webapi_sending_individual_data_values_as_payload }
+
+You can send individual data values as a JSON payload using the following resource using `Content-Type: application/json`.
+
+```
+POST /api/dataValues
+```
+
+资源将创建新的数据值或更新数据值（如果已存在）。 JSON 负载格式定义如下。
+
+```json
+{
+  "dataElement": "fbfJHSPpUQD",
+  "categoryOptionCombo": "PT59n8BQbqM",
+  "period": "202201",
+  "orgUnit": "DiszpKrYNg8",
+  "value": "10",
+  "comment": "OK"
+}
+```
+
+端点支持在嵌套结构中指定属性选项组合。
+
+```json
+{
+  "dataElement": "BOSZApCrBni",
+  "categoryOptionCombo": "TkDhg29x18A",
+  "attribute": {
+    "combo": "O4VaNks6tta",
+    "options": [
+      "C6nZpLKjEJr", "i4Nbp8S2G6A"
+    ]
+  },
+  "dataSet": "lyLU2wR22tC",
+  "period": "202201",
+  "orgUnit": "DiszpKrYNg8",
+  "value": "15",
+  "comment": "Good"
+}
+```
+
+如果数据值已成功保存或更新，则状态代码将为`201 Created`，如果存在验证错误，则状态代码将为`409 Conflict`。
+
+### 处理文件数据值 { #datavalue_file } 
+
+处理具有 *file* 类型数据元素的数据值时
+与上述方法存在一些偏差。这些数据
+值的特殊之处在于值的内容是一个 UID 引用
+到 *FileResource* 对象而不是自包含常量。这些
+数据值的行为就像其他存储文本的数据值一样
+内容，但应以不同方式处理以产生
+有意义的输入和输出。
+
+有两种存储文件资源数据值的方法。
+
+* 将文件上传到 `/api/dataValues/file` 端点，如下所示
+  文件资源部分中描述。这适用于 2.36 及更高版本。
+
+* 如果您正在编写需要兼容的代码
+  对于 2.36 之前的 DHIS2 版本，则流程为：
+
+1.  如所述将文件上传到 `/api/fileResources` 端点
+    在文件资源部分。
+
+2.  Retrieve the `id` property of the returned file resource.
+
+3.  Store the retrieved identifier using the `value` property of the data value using any
+    上面描述的方法。
+
+数据值和文件资源之间只有一对一的关系
+允许。这是在内部强制执行的，以便保存文件资源 ID
+在多个数据值中是不允许的，并且会返回错误。删除
+数据值将删除引用的文件资源。直接删除
+的文件资源是不可能的。
+
+数据值现在可以作为除返回数据以外的任何其他值进行检索
+将是文件资源的 UID。为了检索实际
+内容（意味着存储在映射的文件资源中的文件
+到数据值）必须向 `/api/dataValues/files` 发出 GET 请求
+镜像查询参数，因为它们将用于数据值
+本身。 `/api/dataValues/files` 端点仅支持 GET 请求。
+
+值得注意的是，由于底层存储机制工作
+异步文件内容可能不会立即准备好
+从`/api/dataValues/files` 端点下载。这是特别真实的
+对于可能需要耗时上传的大文件
+外部文件存储的背景（取决于系统
+配置）。从文件资源元数据中检索
+`/api/fileResources/ <id> ` 端点允许检查 `storageStatus`
+在尝试下载内容之前。
+
+## ADX数据格式 { #webapi_adx_data_format } 
+
+从 2.20 版本开始，我们加入了对国际标准的支持
+用于称为 ADX 的聚合数据交换。 ADX 的开发和维护
+由 IHE 质量研究和公共卫生委员会
+（整合医疗保健企业）。详细介绍 QRPH 的 wiki 页面
+活动可以在以下位置找到
+[wiki.ihe.net](http://wiki.ihe.net/index.php?title=Quality,_Research_and_Public_Health#Current_Domain_Activities)。
+ADX 仍在积极开发中，现已发布
+试行实施。请注意 DHIS2 当前实施的内容
+是读取和写入 ADX 格式数据的功能，即什么是
+在 ADX 中被描述为内容消费者和内容生产者参与者
+轮廓。
+
+ADX 数据消息的结构与您可能的结构非常相似
+从前面描述的 DXF 2 数据中已经熟悉了。有一个
+几个重要的区别。我们将描述这些差异
+参考一个小例子：
+
+```xml
+<adx xmlns="urn:ihe:qrph:adx:2015" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="urn:ihe:qrph:adx:2015 ../schema/adx_loose.xsd" 
+  exported="2015-02-08T19:30:00Z">
+  <group orgUnit="OU_559" period="2015-06-01/P1M" 
+    completeDate="2015-07-01" dataSet="(TB/HIV)VCCT">
+    <dataValue dataElement="VCCT_0" GENDER="FMLE" HIV_AGE="AGE0-14" value="32"/>
+    <dataValue dataElement="VCCT_1" GENDER="FMLE" HIV_AGE="AGE0-14" value="20"/>
+    <dataValue dataElement="VCCT_2" GENDER="FMLE" HIV_AGE="AGE0-14" value="10"/>
+    <dataValue dataElement="PLHIV_TB_0" GENDER="FMLE" HIV_AGE="AGE0-14" value="10"/>
+    <dataValue dataElement="PLHIV_TB_1" GENDER="FMLE" HIV_AGE="AGE0-14" value="10"/>
+
+    <dataValue dataElement="VCCT_0" GENDER="MLE" HIV_AGE="AGE0-14" value="32"/>
+    <dataValue dataElement="VCCT_1" GENDER="MLE" HIV_AGE="AGE0-14" value="20"/>
+    <dataValue dataElement="VCCT_2" GENDER="MLE" HIV_AGE="AGE0-14" value="10"/>
+    <dataValue dataElement="PLHIV_TB_0" GENDER="MLE" HIV_AGE="AGE0-14" value="10"/>
+    <dataValue dataElement="PLHIV_TB_1" GENDER="MLE" HIV_AGE="AGE0-14" value="10"/>
+
+    <dataValue dataElement="VCCT_0" GENDER="FMLE" HIV_AGE="AGE15-24" value="32"/>
+    <dataValue dataElement="VCCT_1" GENDER="FMLE" HIV_AGE="AGE15-24" value="20"/>
+    <dataValue dataElement="VCCT_2" GENDER="FMLE" HIV_AGE="AGE15-24" value="10"/>
+    <dataValue dataElement="PLHIV_TB_0" GENDER="FMLE" HIV_AGE="AGE15-24" value="10"/>
+    <dataValue dataElement="PLHIV_TB_1" GENDER="FMLE" HIV_AGE="AGE15-24" value="10"/>
+
+    <dataValue dataElement="VCCT_0" GENDER="MLE" HIV_AGE="AGE15-24" value="32"/>
+    <dataValue dataElement="VCCT_1" GENDER="MLE" HIV_AGE="AGE15-24" value="20"/>
+    <dataValue dataElement="VCCT_2" GENDER="MLE" HIV_AGE="AGE15-24" value="10"/>
+    <dataValue dataElement="PLHIV_TB_0" GENDER="MLE" HIV_AGE="AGE15-24" value="10"/>
+    <dataValue dataElement="PLHIV_TB_1" GENDER="MLE" HIV_AGE="AGE15-24" value="10"/>
+  </group>
+</adx>
+```
+
+### ADX 根元素 { #the-adx-root-element }
+
+ADX 根元素只有一个强制属性，即
+*导出*时间戳。与其他 ADX 元素一样，该架构是
+可扩展，因为它不限制其他特定于应用程序的
+属性。
+
+### ADX 组元素 { #the-adx-group-element }
+
+与 dxf2 不同，ADX 要求数据值根据以下条件进行分组
+orgUnit、期间和数据集。上面的例子显示了一个数据报告
+来自在线演示数据库的“(TB/HIV) VCCT”数据集。这个例子
+使用代码作为标识符而不是 dhis2 uids。代码是
+使用 ADX 时的首选标识符形式。
+
+orgUnit、period 和 dataSet 属性在 ADX 中是必需的。这
+group 元素可以包含附加属性。在我们的 DHIS2 中
+实现任何附加属性都简单地传递给
+底层进口商。这意味着当前的所有属性
+在dxf2中有意义（如上例中的completeDate）可以
+继续在 ADX 中使用，它们将以相同的方式进行处理。
+
+ADX 和 dxf2 之间的显着差异在于周期的方式
+被编码。 ADX严格使用ISO8601并对报告进行编码
+周期为（日期|日期时间）/（持续时间）。所以上面例子中的句点
+是从 2015 年 6 月 1 日开始的 1 个月 (P1M) 期间。所以就是数据
+2015 年 6 月。符号有点冗长，但它非常
+灵活，使我们能够支持 DHIS2 中所有现有的期间类型
+
+### ADX期间定义 { #adx-period-definitions } 
+
+期间从持续时间开始的日期开始，然后是
+“/”，然后是表中注明的持续时间符号。这
+下表详细介绍了所有 DHIS2 周期类型及其含义
+以 ADX 形式表示，并附有示例。
+
+表：ADX 周期
+
+| 期间类型 | 持续时间符号 | 例子） | 持续时间 |
+|---|---|---|---|
+| 日常 | P1D | 2017-10-01/P1M | 2017 年 10 月 1 日 |
+| 每周 | P7D | 2017-10-02/P7D | 2017年10月2日-2017年10月8日 |
+| 每周周三 | P7D | 2017-10-04/P7D | 2017年10月4日-2017年10月10日 |
+| 每周周四 | P7D | 2017-10-05/P7D | 2017年10月5日-2017年10月11日 |
+| 每周周六 | P7D | 2017-10-07/P7D | 2017年10月7日-2017年10月13日 |
+| 每周日 | P7D | 2017-10-01/P7D | 2017年10月1日-2017年10月7日 |
+| 每两周一次 | P14D | 2017-10-02/P14D | 2017年10月2日-2017年10月15日 |
+| 每月 | P1M | 2017-10-01/P1M | 2017年10月1日-2017年10月31日 |
+| 双月刊 | 点对点 | 2017-11-01/P2M | 2017年11月1日-2017年12月31日 |
+| 季刊 | P3M | 2017-09-01/P3M | 2017年9月1日-2017年12月31日 |
+| 六个月一期 | P6M | 2017-01-01/P6M<br>2017-07-01/P6M | 2017年1月1日-2017年6月30日<br>2017年7月1日-2017年12月31日 |
+| 四月六个月 | P6M | 2017-04-01/P6M<br>2017-10-01/P6M | 2017年4月1日-2017年9月30日<br>2017年10月1日-2018年3月31日 |
+| 11月每六个月一次 | P6M | 2017-10-01/P6M<br>2018-05-01/P6M | 2017年11月1日-2018年4月30日<br>2018年5月1日-2018年10月31日 |
+| 每年 | P1Y | 2017-01-01/P1Y | 2017年1月1日-2017年12月31日 |
+| 财经四月 | P1Y | 2017-04-01/P1Y | 2017年4月1日-2018年3月31日 |
+| 七月财经 | P1Y | 2017-07-01/P1Y | 2017年7月1日-2018年6月30日 |
+| 财经十月 | P1Y | 2017-10-01/P1Y | 2017年10月1日-2018年9月30日 |
+| 十一月财务 | P1Y | 2017-11-01/P1Y | 2017年11月1日-2018年10月31日 |
+
+### ADX 数据值 { #adx-data-values }
+
+ADX 中的 dataValue 元素与其在 DXF 中的等效元素非常相似。
+强制属性是*dataElement* 和*value*。 *orgUnit* 和
+*period* 属性不会出现在 dataValue 中，因为它们是必需的
+在*组*级别。
+
+The most significant difference is the way that disaggregation is
+represented. DXF uses the categoryOptionCombo to indicate the disaggregation
+of data. In ADX the disaggregations (e.g. AGE_GROUP and SEX) are
+expressed explicitly as attributes. If you use `code` as the id scheme for
+`category`, not that you must assign a code to all the categories used for
+dataElements in the dataSet, and further, that code must be of a form
+which is suitable for use as an XML attribute. The exact constraint on
+an XML attribute name is described in the W3C XML standard - in practice,
+this means no spaces, no non-alphanumeric characters other than '_' and
+it may not start with a letter. The example above shows examples of
+'good' category codes ('GENDER' and 'HIV_AGE'). The same restrictions
+apply if you use `name` or `attribute` as id schemes.
+
+在ADX中，仅使用类别标识符作为XML属性；身份标识
+对于其他元数据类型，不必用作 XML 属性。
+请注意，当您分配时，DHIS2 不强制执行此语法
+名称、代码或 DHIS2 属性，但您会收到信息性错误
+如果您尝试导入 ADX 数据且类别标识符为
+要么没有分配，要么不适合。
+
+使用分解数据的显式维度的主要好处是
+那
+
+  - 生成数据的系统不必与
+    DHIS2 中的 categoryOptionCombo。
+
+  - 生产者和消费者可以将他们的代码与第三方进行匹配
+    权威来源，例如 vterminology 服务。请注意，在
+    上面的性别和年龄组代码示例使用的是代码列表
+    来自[世卫组织全球卫生观察站](http://apps.who.int/gho/data/node.resources.api)。
+
+请注意，此功能可能非常有用，例如当
+从 EMR 系统生成分类数据，但可能存在以下情况
+其中 *categoryOptionCombo* 映射更容易或更理想。这
+ADX 的 DHIS2 实现将检查是否存在
+*categoryOptionCombo* 属性，如果存在，它将在
+优先选择分解维度属性。同样，一个
+*group* 元素上的 *attributeOptionCombo* 属性将是
+以传统方式处理。否则，attributeOptionCombo 可以是
+正如 *dataValue* 上一样，被视为分解类别。
+
+在上面的简单示例中，数据集中的每个数据元素
+具有相同的维度（类别组合），因此数据整齐
+矩形的。情况不一定如此。数据集可能包含
+具有不同类别组合的数据元素，导致
+*ragged-right* ADX 数据消息（即不同数据元素的值
+可能有不同数量的类别。）
+
+### 导入 ADX 数据{ #importing-adx-data }
+
+DHIS2 exposes an endpoint for POST ADX data at `/api/dataValueSets`
+using *application/xml+adx* as content type. So, for example, the
+following curl command can be used to POST the example data above to the
+DHIS2 demo server:
+
+```bash
+curl -u admin:district -X POST -H "Content-Type: application/adx+xml"
+  -d @data.xml "https://play.dhis2.org/demo/api/dataValueSets?dataElementIdScheme=code&orgUnitIdScheme=code"
+```
+
+请注意，查询参数与 DXF 数据使用的参数相同。这
+ADX 端点应使用以下命令解释所有现有 DXF 参数
+与 DXF 的语义相同。
+
+### 导出 ADX 数据{ #exporting-adx-data }
+
+DHIS2 exposes an endpoint to GET ADX data sets at `/api/dataValueSets`
+using *application/xml+adx* as the accepted content type. So, for
+example, the following curl command can be used to retrieve the ADX
+data:
+
+```bash
+curl -u admin:district -H "Accept: application/adx+xml"
+ "https://play.dhis2.org/demo/api/dataValueSets?dataValueSets?orgUnit=M_CLINIC&dataSet=MALARIA&period=201501"
+```
+
+请注意，查询参数与 DXF 数据使用的参数相同。一个
+重要的区别是 dataSet 和 orgUnit 的标识符可以
+可以是 uid 或代码。
+
+## 后续行动 { #webapi_follow_up } 
+
+本节介绍了后续的标记数据。
+
+### 数据值跟踪 { #data-value-follow-up } 
+
+数据值跟踪端点允许标记数据值以进行跟踪。
+
+```
+PUT / api / 36 / dataValues /跟进
+```
+
+The payload in `JSON` format looks like this:
+
+```json
+{
+  "dataElement": "s46m5MS0hxu",
+  "period": "202005",
+  "orgUnit": "DiszpKrYNg8",
+  "categoryOptionCombo": "psbwp3CQEhs",
+  "attributeOptionCombo": "HllvX50cXC0",
+  "followup": true
+}
+```
+
+The `categoryOptionCombo` and `attributeOptionCombo` fields are optional. A minimal `JSON` payload looks like this:
+
+```json
+{
+  "dataElement": "s46m5MS0hxu",
+  "period": "202005",
+  "orgUnit": "DiszpKrYNg8",
+  "followup": false
+}
+```
+
+The `followup` field should be set to `true` to mark a data value for follow-up, and `false` to remove the mark.
+
+如果操作成功，响应状态代码将为`200 OK`，如果请求出错，则响应状态代码为`409 Conflict`。
+
+批量更新数据值以供后续使用：
+
+    PUT /api/dataValues/followups
+
+with `JSON` payload:
+
+```json
+{
+  "values": [
+    {
+      "dataElement": "s46m5MS0hxu",
+      "period": "202005",
+      "orgUnit": "DiszpKrYNg8",
+      "categoryOptionCombo": "psbwp3CQEhs",
+      "attributeOptionCombo": "HllvX50cXC0",
+      "followup": true
+    }
+  ]
+}
+```
+
+批量更新的每个项目与单个项目具有相同的字段和要求
+更新端点。
+
+Bulk update equally confirms with a `200 OK` on success or returns a 
+`409 Conflict` in case of input errors.
+

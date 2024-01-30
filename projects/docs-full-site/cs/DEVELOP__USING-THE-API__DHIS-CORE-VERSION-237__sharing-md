@@ -1,0 +1,267 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.37/src/developer/web-api/sharing.md"
+revision_date: '2021-10-26'
+tags:
+- DHIS core verze 2.37
+- Vývoj
+---
+
+# Sdílení { #sharing } 
+
+## Sdílení { #webapi_sharing } 
+
+Řešení pro sdílení umožňuje sdílet většinu objektů v systému s konkrétními skupinami uživatelů a definovat, zda mají být objekty veřejně přístupné nebo soukromé. Chcete-li získat a nastavit stav sdílení pro objekty, můžete komunikovat s prostředkem *sdílení*.
+
+    /api/33/sharing
+
+### Získejte stav sdílení { #webapi_get_sharing_status } 
+
+Chcete-li požádat o stav sdílení objektu, použijte požadavek GET k:
+
+    /api/33/sharing?type=dataElement&id=fbfJHSPpUQD
+
+Odpověď vypadá jako níže.
+
+```json
+{
+  "meta": {
+    "allowPublicAccess": true,
+    "allowExternalAccess": false
+  },
+  "object": {
+    "id": "fbfJHSPpUQD",
+    "name": "ANC 1st visit",
+    "publicAccess": "rw------",
+    "externalAccess": false,
+    "user": {},
+    "userGroupAccesses": [
+      {
+        "id": "hj0nnsVsPLU",
+        "access": "rw------"
+      },
+      {
+        "id": "qMjBflJMOfB",
+        "access": "r-------"
+      }
+    ]
+  }
+}
+```
+
+### Nastavit stav sdílení { #webapi_set_sharing_status } 
+
+Stav sdílení můžete definovat pro objekt pomocí stejné adresy URL s požadavkem POST, kde datový obsah ve formátu JSON vypadá takto:
+
+```json
+{
+  "object": {
+    "publicAccess": "rw------",
+    "externalAccess": false,
+    "user": {},
+    "userGroupAccesses": [
+      {
+        "id": "hj0nnsVsPLU",
+        "access": "rw------"
+      },
+      {
+        "id": "qMjBflJMOfB",
+        "access": "r-------"
+      }
+    ]
+  }
+}
+```
+
+V tomto příkladu datový obsah definuje objekt, který má veřejný přístup pro čtení a zápis, žádný externí přístup (bez přihlášení), přístup pro čtení a zápis do jedné skupiny uživatelů a přístup pouze pro čtení k jiné skupině uživatelů. Toto můžete odeslat do zdroje sdílení pomocí výrazu curl:
+
+```bash
+curl -d @sharing.json "localhost/api/33/sharing?type=dataElement&id=fbfJHSPpUQD"
+  -H "Content-Type:application/json" -u admin:district
+```
+**Poznámka**
+> It is possible to create surprising sharing combinations. For
+> instance, if `externalAccess` is set to `true` but `publicAccess` is
+> set to `--------`, then users will have access to the object 
+> only when they are logged out.
+
+
+
+
+## New Sharing object { #new-sharing-object } 
+From 2.36 a new `sharing` property has been introduced in order to replace the old sharing properties `userAccesses`, `userGroupAccesses`, `publicAccess`, `externalAccess` in all metadata classes that have sharing enabled. This `Sharing` object is saved as a JSONB column in database. 
+However, in order make it backward compatible the old sharing objects still work normally as before, for both import and export. In backend sharing data will be saved to new  JSONb `sharing` column instead of the old `*accesses` tables.
+
+Formát vypadá takto:
+```json
+{
+  "name": "ANC 1st visit",
+  "publicAccess": "rw------",
+  "externalAccess": false,
+  "userGroupAccesses": [
+      {
+          "access": "r-r-----",
+          "userGroupUid": "Rg8wusV7QYi",
+          "displayName": "HIV Program Coordinators",
+          "id": "Rg8wusV7QYi"
+      }
+  ],
+  "userAccesses": [],
+  "user": {
+      "displayName": "Tom Wakiki",
+      "name": "Tom Wakiki",
+      "id": "GOLswS44mh8",
+      "username": "system"
+  },
+  "sharing": {
+      "owner": "GOLswS44mh8",
+      "external": false,
+      "users": {},
+      "userGroups": {
+          "Rg8wusV7QYi": {
+              "access": "r-r-----",
+              "id": "Rg8wusV7QYi"
+          }
+      },
+      "public": "rw------"
+  }
+}
+```
+
+### Set sharing status using new JSON Patch Api { #webapi_set_sharing_status_using_json_patch_api } 
+K aktualizaci sdílení objektu můžete použít [JSON Patch API](#webapi_partial_updates) k aktualizaci sdílení objektu odesláním požadavku `PATCH` tomuto koncovému bodu se záhlavím `Content-Type: application/json-patch+json`
+```
+api/dataElements/fbfJHSPpUQD
+```
+Please note that this function ***only supports*** new `sharing` format. The payload in JSON format looks like this:
+```json
+[
+  {
+    "op": "replace",
+    "path": "/sharing/users",
+    "value": {
+      "NOOF56dveaZ": {
+        "access": "rw------",
+        "id": "NOOF56dveaZ"
+      },
+      "Kh68cDMwZsg": {
+        "access": "rw------",
+        "id": "Kh68cDMwZsg"
+      }
+    }
+  }
+]
+```
+Můžete přidat uživatele do vlastnosti `sharing` objektu, jako je tento
+```json
+[
+  {
+    "op": "add",
+    "path": "/sharing/users",
+    "value": {
+      "NOOF56dveaZ": {
+        "access": "rw------",
+        "id": "NOOF56dveaZ"
+      },
+      "Kh68cDMwZsg": {
+        "access": "rw------",
+        "id": "Kh68cDMwZsg"
+      }
+    }
+  }
+]
+```
+Takto můžete přidat jednoho uživatele do `sharing`.
+```json
+[
+  {
+    "op": "add",
+    "path": "/sharing/users/NOOF56dveaZ",
+    "value": {
+      "access": "rw------",
+      "id": "NOOF56dveaZ"
+    }
+  }
+]
+```
+Tímto způsobem můžete odebrat jednoho uživatele ze `sharing`.
+```json
+[
+  { 
+    "op": "remove", 
+    "path": "/sharing/users/N3PZBUlN8vq"
+    }
+]
+```
+
+## Cascade Sharing for Dashboard { #cascade-sharing-for-dashboard } 
+
+### Přehled { #overview } 
+
+- The sharing solution supports cascade sharing for Dashboard. 
+- This function will copy `userAccesses` and `userGroupAccesses` of a Dashboard to all of its DashboardItem's objects including `Map`, `EventReport`, `EventChart`, `Visualization`. 
+- This function will ***NOT*** copy `METADATA_WRITE` access. The copied `UserAccess` and `UserGroupAccess` will **only** have `METADATA_READ` permission. 
+- The `publicAccess` setting is currently ***NOT*** handled by this function. Means the `publicAccess` of the current `Dashboard` will not be copied to its `DashboardItems`'s objects.
+- Pokud má cílový objekt povolen `publicAccess`, bude touto funkcí ignorován. Znamená to, že z `Ovládacího panelu` nebudou zkopírovány žádné `UserAccesses` nebo `UserGroupAccesses`.
+- Aktuální `Uživatel` musí mít oprávnění ke sdílení `METADATA_READ` se všemi cílovými objekty, jinak bude vyvolána chyba `E5001`. A pro aktualizaci cílových objektů je vyžadován `METADATA_WRITE`, jinak bude vyvolána chyba `E3001`.
+- Ukázkový případ použití:
+
+    - DashboardA je sdílen s uživatelemA s oprávněním `METADATA_READ_WRITE`.
+
+    - DashboardA má VisualizationA, která má DataElementA.
+
+    - VisualizationA, DataElementA have `publicAccess`  *disabled* and are *not shared* to userA.
+
+    - Po provedení kaskádového sdílení pro DashboardA bude mít uživatelA přístup `METADATA_READ` k VisualizationA a DataElementA.
+
+### API endpoint  { #api-endpoint } 
+
+- Send `POST` request to endpoint 
+```
+api/dashboards/cascadeSharing/{dashboardUID}
+```
+
+
+### API Parameters { #api-parameters } 
+
+| Název | Výchozí | Popis |
+| --- | --- | -- |
+| dryRun | false | Pokud je toto nastaveno na `true`, funkce kaskádového sdílení bude pokračovat bez aktualizace jakýchkoli objektů. </br> Odpověď bude obsahovat případné chyby a všechny objekty, které budou aktualizovány. </br> To pomáhá uživateli znát výsledek před skutečným spuštěním funkce kaskádového sdílení.
+| atomic | false | Pokud je toto nastaveno na `true`, pak se funkce kaskádového sdílení zastaví a v případě chyby nebude aktualizovat žádné objekty. </br> V opačném případě, pokud je to `false`, funkce se pokusí pokračovat v režimu maximálního úsilí.
+
+Sample response: 
+
+```json
+{
+  "errorReports": [
+    {
+      "message": "No matching object for reference. Identifier was s46m5MS0hxu, and object was DataElement.",
+      "mainKlass": "org.hisp.dhis.dataelement.DataElement",
+      "errorCode": "E5001",
+      "errorProperties": [
+        "s46m5MS0hxu",
+        "DataElement"
+      ]
+    }
+  ],
+  "countUpdatedDashBoardItems": 1,
+  "updateObjects": {
+    "dataElements": [
+      {
+        "id": "YtbsuPPo010",
+        "name": "Measles doses given"
+      },
+      {
+        "id": "l6byfWFUGaP",
+        "name": "Yellow Fever doses given"
+      }
+    ]
+  }
+}
+```
+
+### Response properties: { #response-properties } 
+
+- `errorReports`: zahrnuje všechny chyby během procesu sdílení kaskády.
+- `countUpdatedDashBoardItems`: Počet `DashboardItem` bude nebo byl aktualizován v závislosti na režimu `dryRun`.
+- `updateObjects`: Seznam všech objektů, které budou nebo byly aktualizovány, závisí na režimu `dryRun`.
+

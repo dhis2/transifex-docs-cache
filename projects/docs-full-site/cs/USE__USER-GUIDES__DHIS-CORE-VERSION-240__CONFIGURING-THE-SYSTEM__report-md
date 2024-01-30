@@ -1,0 +1,1345 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.40/src/user/configure-report-functionality.md"
+revision_date: '2021-06-14'
+tags:
+- DHIS základní verze 2.40
+- Použití
+---
+
+# Nakonfigurujte funkčnost sestavy { #setting_up_reporting } 
+
+## Zdroje dat pro hlášení { #reporting_data_sources } 
+
+### Druhy dat a agregace { #types-of-data-and-aggregation } 
+
+V širším pojetí terminologie HIS se všechna data v DHIS2 obvykle nazývají agregovaná, protože se jedná o souhrnné údaje (např. měsíční souhrny) ze zdravotnické dokumentace nebo z nějakých registrů služeb hlášených ze zdravotnických zařízení. Agregace uvnitř DHIS2, která je předmětem tohoto článku, se však zabývá tím, jak jsou surové údaje zachycené v DHIS2 (prostřednictvím zadávání nebo importu dat) dále agregovány v čase (např. z měsíčních hodnot na čtvrtletní) nebo v organizační hierarchii (např. z hodnot zařízení na hodnoty okresu).
+
+#### Terminologie { #terminology } 
+
+  - *Raw data* refers to data that is registered into the DHIS2 either
+    through data entry or data import, and has not been manipulated by
+    the DHIS2 aggregation process. All these data are stored in the
+    table (or Java object if you prefer) called DataValue.
+
+  - *Aggregated data* refers to data that has been aggregated by the
+    DHIS2, meaning it is no longer raw data, but some kind of aggregate
+    of the raw data.
+
+  - *Indicator values* can also be understood as aggregated data, but
+    these are special in the way that they are calculated based on user
+    defined formulas (factor \* numerator/denominator). Indicator values
+    are therefore processed data and not raw data, and are located in
+    the aggregatedindicatorvalue table/object. Indicators are calculated
+    at any level of the organisational hierarchy and these calculations
+    are then based on the aggregated data values available at each
+    level. A level attribute in the aggregateddatavalue table refers to
+    the organisational level of the orgunit the value has been
+    vypočteno pro.
+
+  - *Period and Period type* are used to specify the time dimension of
+    the raw or aggregated values, and data can be aggregated from one
+    period type to another, e.g. from monthly to quarterly, or daily to
+    monthly. Each data value has one period and that period has one
+    period type. E.g. data values for the periods Jan, Feb, and Mar
+    2009, all of the monthly period type can be aggregated together to
+    an aggregated data value with the period Q1 2009 and period type
+    Čtvrtletní.
+
+#### Základní pravidla agregace { #basic-rules-of-aggregation } 
+
+##### Co se sčítá { #what-is-added-together } 
+
+Údaje (nezpracované) mohou být zaznamenány na jakékoli organizační úrovni, např. v národní nemocnici na úrovni 2, ve zdravotnickém zařízení na úrovni 5 nebo ve větším zdravotnickém zařízení na úrovni 4. To se v jednotlivých zemích liší, ale systém DHIS2 je flexibilní v tom, že umožňuje vkládání nebo import dat na jakékoli úrovni. To znamená, že orgnizace, které samy mají děti, mohou registrovat údaje, někdy stejné datové prvky jako jejich dětské jednotky. Základním pravidlem agregace v DHIS2 je, že *všechny nezpracované údaje se agregují dohromady*, což znamená, že údaje registrované v zařízení na úrovni 5 se přidávají k údajům registrovaným pro ZZS na úrovni 4.
+
+Je na uživateli / správci systému / projektantovi, aby se ujistil, že nedochází k duplicitnímu zadávání údajů a že např. údaje zadané na úrovni 4 se netýkají stejných služeb / návštěv, které jsou hlášeny podřazenými z org. jednotek na úrovni 5.
+
+> **POZNÁMKA**
+>
+> V některých případech chcete mít v systému duplicitní data, ale kontrolovaně. Např. když máte dva různé zdroje dat pro odhady počtu obyvatel, a to jak údaje o počtu obyvatel spádových oblastí úrovně 5, tak další zdroj údajů o počtu obyvatel pro úroveň 4 na základě údajů ze sčítání lidu (protože součet spádových oblastí úrovně 5 není vždy stejný jako údaje ze sčítání lidu úrovně 4). Pak můžete pomocí pokročilých nastavení agregace (viz dále) určit, že systém např. nemá k údajům o obyvatelstvu úrovně 4 přidávat údaje o obyvatelstvu úrovně 5 a že agregace údajů o obyvatelstvu úrovně 3,2,1 jsou založeny pouze na údajích úrovně 4 a nezahrnují údaje úrovně 5.
+
+##### Jak se data sčítají { #how-data-gets-added-together } 
+
+Způsob agregace dat závisí na dimenzi agregace (viz níže).
+
+Na úrovni organizační jednotky se údaje vždy sčítají, tj. jednoduše sečtou. Všimněte si, že nezpracované údaje nikdy nejsou procenta, a proto je lze sčítat. S hodnotami ukazatelů, které mohou být v procentech, se zachází jinak (přepočítávají se na každé úrovni, nikdy se nesčítají).
+
+V časové dimenzi existuje několik možností, dva nejběžnější způsoby agregace jsou součet a průměr. Uživatel může pro každý datový prvek určit, který způsob se má použít, a to nastavením agregačního operátoru (viz dále). Měsíční údaje o službách se obvykle sčítají v čase, např. počet očkovacích látek podaných za rok je součtem očkovacích látek podaných za každý měsíc daného roku. Pro údaje o obyvatelstvu, vybavení, personálu a další druhy údajů, které se často nazývají polostálé, se často používá metoda průměru, protože např. údaj "počet zdravotních sester" pracujících v zařízení za rok by nebyl součtem dvou čísel uvedených v pololetní zprávě o personálu, ale spíše průměrem těchto dvou čísel. Více podrobností je uvedeno níže v části "Agregační operátoři".
+
+#### Dimenze agregace { #dimensions-of-aggregation } 
+
+##### Organizační jednotky a úrovně { #organisational-units-and-levels } 
+
+Organizační jednotky se používají k reprezentaci rozměru "kde" spojeného s hodnotami dat. V DHIS2 jsou organizační jednotky uspořádány v hierarchii, která obvykle odpovídá hierarchické povaze organizace nebo země. Úrovně organizačních jednotek odpovídají jednotlivým úrovním v rámci hierarchie. Například země může být uspořádána do provincií, pak do okresů, pak do zařízení a pak do subcenter. Tato organizační hierarchie by měla pět úrovní. V rámci každé úrovně by existovala řada organizačních jednotek. Během procesu agregace se údaje agregují z nižších úrovní organizačních jednotek na vyšší úrovně. V závislosti na agregačním operátoru mohou být údaje v rámci dané úrovně organizační jednotky "sečteny" nebo "zprůměrovány", aby se získal souhrnný součet za všechny organizační jednotky, které jsou obsaženy v rámci vyšší úrovně organizační jednotky. Například pokud je v provincii obsaženo deset okresů a agregační operátor pro daný datový prvek byl definován jako "SUM", vypočítá se souhrnný součet za provincii jako součet hodnot jednotlivých deseti okresů obsažených v této provincii.
+
+##### Období { #period } 
+
+Tečky se používají k vyjádření rozměru "kdy" spojeného s hodnotami dat. Data lze snadno agregovat z týdnů na měsíce, z měsíců na čtvrtletí a ze čtvrtletí na roky. DHIS2 využívá známá pravidla, jak jsou tyto různé intervaly obsaženy v jiných intervalech (například je známo, že 1. čtvrtletí 2010 obsahuje leden 2010, únor 2010 a březen 2010), aby bylo možné agregovat údaje z menších časových intervalů, např. týdnů, do delších časových intervalů, např. měsíců.
+
+##### Datové prvky a kategorie { #data-elements-and-categories } 
+
+Dimenze datového prvku určuje, "co" je zaznamenáváno konkrétní datovou hodnotou. Kategorie datových prvků jsou vlastně degenerované dimenze dimenze datových prvků a používají se k rozčlenění dimenze datových prvků na jemnější kategorie. Kategorie datových prvků, například "věk" a "pohlaví", se používají k záznamu konkrétního datového prvku, obvykle pro různé skupiny obyvatelstva. Tyto kategorie pak lze použít k výpočtu celkového součtu pro danou kategorii a součtu všech kategorií.
+
+#### Agregační operátory, metody agregace { #aggregation-operators-methods-for-aggregation } 
+
+##### Součet { #sum } 
+
+Operátor "sum" jednoduše vypočítá součet všech hodnot dat, které jsou obsaženy v určité agregační matici. Například pokud jsou údaje zaznamenávány měsíčně na úrovni okresů a jsou agregovány do čtvrtletních součtů provincií, sečtou se všechny údaje obsažené ve všech okresech dané provincie a ve všech týdnech daného čtvrtletí a získá se souhrnný součet.
+
+##### Průměr { #average } 
+
+Je-li zvolen operátor průměrné agregace, vypočítá se nevážený průměr všech hodnot dat v rámci dané agregační matice.
+
+Je důležité pochopit, jak DHIS2 zachází s nulovými hodnotami v kontextu operátoru průměru. Je poměrně běžné, že některé organizační jednotky nepředkládají údaje pro určité datové prvky. V kontextu operátoru průměru je průměr výsledkem počtu datových prvků, které jsou v dané agregační matici skutečně přítomny (tedy NOT NULL). Pokud je v daném kraji 12 okresů, ale pouze 10 z nich předložilo údaje, bude průměrná agregace výsledkem těchto deseti hodnot, které jsou v databázi skutečně přítomny, a nebude brát v úvahu chybějící hodnoty.
+
+#### Pokročilé nastavení agregace (úrovně agregace) { #advanced-aggregation-settings-aggregation-levels } 
+
+##### Úrovně agregace { #aggregation-levels } 
+
+Obvyklým pravidlem systému je, že při postupu na vyšší organizační úroveň se všechny nezpracované údaje sčítají a systém předpokládá, že zadávání údajů není duplicitní, když zadává stejné služby poskytnuté stejným klientům jak na úrovni zařízení, tak na vyšší úrovni zadává "agregované" číslo (součet všech zařízení). To má usnadnit agregaci v případech, kdy jsou stejné služby poskytovány, ale různým klientům / spádovým skupinám v zařízeních na úrovni 5 a PHC (nadřazeném stejnému zařízení) na úrovni 4. Zařízení na úrovni 5 a PHC na úrovni 4 tak mohou sdílet stejné datové prvky a jednoduše sečíst jejich počty, aby se zjistil celkový počet služeb poskytovaných v dané zeměpisné oblasti.
+
+Někdy není taková agregace žádoucí, protože by znamenala duplikaci údajů o stejné populaci. To je případ, kdy máte dva různé zdroje dat pro dvě různé úrovně organizačních jednotek. Např. spádová populace pro zařízení může pocházet z jiného zdroje než okresní populace, a proto se součet spádové populace zařízení neshoduje s okresní populací, kterou poskytují např. údaje ze sčítání lidu. V takovém případě bychom vlastně chtěli mít v systému duplicitní údaje, aby každá úroveň měla co nejpřesnější čísla, ale pak NECHCEME tyto zdroje údajů agregovat dohromady.
+
+V části Datový prvek můžete upravovat datové prvky a u každého z nich určit, jak se provede agregace pro jednotlivé úrovně. Ve výše popsaném případě musíme systému říci, aby údaje o počtu obyvatel zařízení NEZAHRNUL do žádné z agregací nad touto úrovní, protože úroveň nad ní, v tomto případě okresy, zaregistrovaly svůj počet obyvatel přímo jako nezpracované údaje. Údaje o obyvatelstvu okresu by pak měly být použity na všech úrovních nad úrovní okresu včetně, zatímco úroveň zařízení by měla používat své vlastní údaje.
+
+##### Jak upravit agregaci datových prvků { #how-to-edit-data-element-aggregation } 
+
+To se řídí pomocí tzv. úrovní agregace a na konci obrazovky pro úpravu datového prvku je zaškrtávací políčko s názvem Úrovně agregace. Pokud jej zaškrtnete, zobrazí se seznam dostupných a vybraných úrovní agregace. Výchozí nastavení je, že nejsou definovány žádné agregační úrovně, pak se všechna nezpracovaná data v hierarchii sečtou dohromady. Chcete-li zadat výše popsané pravidlo a zadat hierarchii Země, Province, Okres, Zařízení: jako agregační úrovně vyberte Zařízení a Okres. V podstatě vyberete, kde máte data. Výběr Zařízení znamená, že Zařízení bude používat data ze zařízení (vzhledem k tomu, že se jedná o nejnižší úroveň). Výběr možnosti Okres znamená, že při agregaci dat pro úroveň Okres budou použita nezpracovaná data z úrovně Okres (na této úrovni tedy neproběhne žádná agregace) a data ze zařízení nebudou součástí agregovaných hodnot pro úroveň Okres. Při agregaci údajů na úrovni provincie budou použity nezpracované údaje na úrovni okresu, protože se jedná o nejvyšší dostupnou zvolenou úroveň agregace. Rovněž pro agregace na úrovni země budou použita nezpracovaná data za okres. Jen zopakujme, že pokud bychom nezadali, že úroveň Okres je agregační úrovní, pak by se údaje o zařízeních a údaje o okresech sčítaly a způsobily by duplicitní (dvojí) údaje o obyvatelstvu pro okresy a všechny úrovně výše.
+
+### Zdrojové tabulky { #resource-tables } 
+
+Tabulky zdrojů poskytují další informace o rozměrech dat ve formátu, který je vhodný pro externí nástroje, jež je možné kombinovat s tabulkou hodnot dat. Spojením tabulky hodnot dat s těmito tabulkami zdrojů lze snadno agregovat podél dimenze kategorie datových prvků nebo dimenze skupin datových prvků / ukazatelů / organizačních jednotek. Např. označením všech hodnot údajů možností kategorie muž nebo žena a jejich uvedením v samostatném sloupci "pohlaví" lze získat mezisoučty mužů a žen na základě hodnot údajů, které jsou shromážděny pro kombinace možností kategorií, jako je (muž, \<5) a (muž,\>5).Další příklady použití těchto tabulek naleznete v části Pivot Tables. orgunitstructure je další důležitá tabulka v databázi, která pomáhá poskytnout hierarchii orgunit spolu s daty. Spojením tabulky orgunit structure s tabulkou datových hodnot můžete získat řádky datových hodnot s úplnou hierarchií, např. na formuláři: OU1, OU2, OU3, OU4, DataElement, Period, Value (Sierra Leone, Bo, Badija, Ngelehun CHC, BCG \<1, Jan-10, 32) Tento formát výrazně usnadňuje např. pivotním tabulkám nebo jiným nástrojům OLAP agregaci dat v hierarchii. 
+
+### Zprávy tabulky { #reportTable } 
+
+Tabulky sestav jsou definované křížové sestavy, které lze použít jako základ pro další sestavy, například tabulky Excel Pivot Tables, nebo je lze jednoduše stáhnout jako list Excelu. Tabulky sestav jsou určeny k tomu, aby poskytovaly specifický pohled na data, která jsou požadována, například "Měsíční národní ukazatele ANC". Tato tabulka sestavy může poskytovat všechny ukazatele ANC pro danou zemi, agregované podle měsíců pro celou zemi. Tyto údaje by samozřejmě bylo možné získat z hlavního datového bloku, ale tabulky sestav obecně fungují rychleji a poskytují uživatelům dobře definované pohledy na data.
+
+## Jak vytvořit tabulky zpráv { #reporting_creating_tables } 
+
+Chcete-li vytvořit novou tabulku sestavy, přejděte do části Tabulky sestav v modulu Sestavy (Sestavy -\> Tabulka sestavy). Nad seznamem standardních sestav použijte tlačítka "Přidat tabulku sestavy" nebo "Přidat tabulku rozměru datového prvku". Běžnou tabulku sestavy lze použít k uložení údajů o datových prvcích, ukazatelích nebo úplnosti datové sady, zatímco tabulky dimenzí datových prvků slouží k zařazení kategorií datových prvků do tabulek sestav. Vytváření tabulek probíhá stejným způsobem, jedinou výjimkou je však výběr dat.
+
+Vytvoření tabulky sestavy začíná obecnými volbami tabulky, z nichž nejdůležitější je dimenze křížové tabulky. Poté vyberete, které datové prvky, ukazatele, datové sady nebo dimenze datových prvků chcete zahrnout. Nakonec vyberete, které organizační jednotky a časová období chcete v tabulce sestavy použít. Každý z těchto kroků je podrobně popsán níže.
+
+### Obecné možnosti { #reporting_general_options } 
+
+
+![](resources/images/dhis2_creating_reporting/general_options.jpg)
+
+**Dimenze křížové karty**
+
+Můžete použít křížovou tabulku jedné nebo více z následujících dimenzí: datový prvek / indikátor, organizační jednotka a období, což znamená, že sloupce budou vytvořeny na základě hodnot zvolených dimenzí, např. pokud je vybrána možnost indikátory, získáte v tabulce názvy sloupců odrážející názvy vybraných indikátorů.
+
+For example, if you cross-tab on indicators and periods, the column
+headers will say "\<indicator title\> \<period\>". The organisation
+units will be listed as rows. See screenshot for clarification:
+
+![](resources/images/dhis2_creating_reporting/crosstab_ind-per.jpg)
+
+Pokud vytvoříte křížovou kartu u indikátorů a organizačních jednotek, v záhlaví sloupců tabulky bude uvedeno „\<indicator title\> \<organisation
+unit\>“. Tečky budou nyní uvedeny jako řádky. Vysvětlení viz screenshot:
+
+![](resources/images/dhis2_creating_reporting/crosstab_ind-org.jpg)
+
+Note that the options made here regarding crosstab dimensions may have
+consequences for what options are available when using the report table
+as a data source later, for example for standard reports.
+
+**Pořadí řazení**
+
+Affects the rightmost column in the table, allows you to choose to sort
+it low to high or high to low.
+
+**Horní limit**
+
+Top limit allow you to set a maximum number of rows you want to include
+in the report table.
+
+**Zahrnout regresi**
+
+This adds additional columns with regression values that can be included
+in the report design, e.g. in line charts.
+
+### Výběr dat { #reporting_selecting_data } 
+
+
+![](resources/images/dhis2_creating_reporting/select_data.jpg)
+
+**Indikátory / datové prvky**
+
+Here you select the data elements/indicators that you want to include in
+the report. Use the group filter to more easily find what you are
+looking for and double click on the items you want to include, or use
+the buttons to add/remove elements. You can have both data elements and
+indicators in the same report.
+
+**Datové sady**
+
+Here you select the data sets that you want to include in the report.
+Including a data set will give you data on the data completeness of the
+given set, not data on its data elements. Double click on the items you
+want to include, or use the buttons.
+
+### Výběr parametrů sestavy { #selecting_reporting_params } 
+
+
+![](resources/images/dhis2_creating_reporting/relative_options.jpg)
+
+There are two ways to select both what organisation units to include in
+a report, and what time periods should be included: relative, or fixed.
+Fixed organisation units and/or periods means that you select the
+units/periods to include in the report table when you create the report
+table. Using relative periods, you can select the time and/or units as
+parameters when the report table is populated, for example when running
+a standard report or creating a chart. A combination is also possible,
+for example to add some organisation units in the report permanently
+while letting the users choose additional. Report parameters is
+discussed below. In general, using fixed organisation units and/or time
+periods are an unnecessary restriction.
+
+**Pevné organizační jednotky**
+
+To add fixed organisation units, click "Toggle fixed organisation
+units". A panel will appear where you can choose orgunits to always
+include in the report. If you leave it blank, the users select orgunits
+when running the report through the use of report parameters. Use the
+drop down menu to filter organisation units by level, double click or
+use the buttons to add/remove.
+
+**Pevná období**
+
+To add fixed periods, click "Toggle fixed organisation units". A panel
+will appear where you can choose periods to always include in the
+report. If you leave it blank, the users select periods when running the
+report through the use of report parameters. Use the drop down menu to
+choose period type (week, month, etc), the Prev and Next button to
+choose year, and double click or use the buttons to add/remove.
+
+**Relativní období**
+
+Instead of using fixed/static periods like 'Jan-2010' or 'Q1-2010', more
+generic periods can be used to create reusable report tables, e.g. for
+monthly reports the period 'Reporting month' will simply pick the
+current reporting month selected by the user when running the report.
+Note that all relative periods are relative to a "reporting month". The
+reporting month is either selected by the users, otherwise the current
+month is used. Here is a description of the possible relative periods:
+
+  - *Reporting month:*
+
+    Use this for monthly reports. The month selected in the reporting
+    month parameter will be used in the report.
+
+  - *Months/Quarters this year*:
+
+    To poskytne jednu hodnotu za měsíc nebo čtvrtletí v roce. Tento
+    is well suited for standard monthly or quarterly reports where all
+    month/quarters need to be listed. Periods that still have no data
+    will be empty, but will always keep the same column name.
+
+  - *This year:*
+
+    This is the cumulative so far in the year, aggregating the periods
+    from the beginning of the year up to and including the selected
+    reporting month.
+
+  - *Months/Quarters last year*:
+
+    This will provide one value per month or quarter last year, relative
+    to the reporting month. This is well suited for standard monthly or
+    quarterly reports where all month/quarters need to be listed.
+    Periods that still have no data will be empty, but will always keep
+    the same column name.
+
+  - *Minulý rok:*
+
+    This is the cumulative last year, relative to the reporting month,
+    aggregating all the periods from last year.
+
+**Příklad - relativní období**
+
+Let's say we have chosen three indicators: A, B and C, and we have also
+chosen to use the relative periods 'Reporting month' and 'This year'
+when we created the report table. If the reporting month (selected
+automatically or by the user) is for example May 2010, the report table
+will calculate the values for the three selected indicators for May 2010
+(= the 'Reporting month') and the accumulated values for the three
+selected indicators so far in 2010 (= so far 'This year').
+
+Thus, we will end up with six values for each of the organisation units:
+"Indicator A May 2010", "Indicator B May 2010" "Indicator C May 2010",
+"Indicator A so far in 2010", "Indicator B so far in 2010" and
+"Indicator C so far in 2010".
+
+**Parametry hlášení**
+
+Report parameters make the reports more generic and reusable over time
+and for different organisation units. These parameters will pop up when
+generating the report table or running a report based on the report
+table. The users will select what they want to see in the report. There
+are four possible report parameters, and you can select none, all, or
+any combination.
+
+  - *Reporting month:*
+
+    This decides which month will be used when the system is choosing
+    the relative periods. If the box it not checked, the user will not
+    be asked for the reporting month when the report is generated - the
+    current month will then be used.
+
+  - *Grand parent organisation unit:*
+
+    Select the grand parent of all the orgunit children and grand
+    children you want listed in the report. E.g. a selected region will
+    trigger the use of the region itself, all its district, and all
+    their sub-districts.
+
+  - *Parent organisation unit:*
+
+    Select the parent of all the orgunit children you want listed in the
+    report. E.g. a selected district will trigger the use of the
+    district itself and all its children/sub-districts.
+
+  - *Organisation unit:*
+
+    This triggers the use of this orgunit in the report. No children are
+    listed.
+
+**Příklad - parametry sestavy**
+
+Continuing with the example on relative periods just above, let's say
+that in addition to 'Reporting month', we have chosen 'Parent
+organisation unit' as a report parameter when we created the report
+table. When we're running the report table, we will be asked to select
+an organisation unit. Now, let's say we choose "Region R" as the
+organisation unit. "Region R" has the children "District X" and
+"District Y".
+
+When the report is run, the system will aggregate data for both
+"District X" and "District Y". The data will be aggregated from the
+lowest level where they have been collected. The values for the
+districts will be aggregated further to give an aggregated value for
+"Region R".
+
+Thus, the report table will generate the six values presented in the
+previous example, for "District X", "District Y" and "Region R".
+
+### Tabulky dimenzí datových prvků { #reporting_de_dimension_tables } 
+
+These tables enable the use of data element categories in report tables.
+There are two differences from regular report tables. The first is that
+it is not possible to select crosstab dimensions, as the columns will
+always be the disaggregations from the category combinations. The other
+is the actual choice of data. Only one category combination can be added
+per report, and only data elements from the same category combo can be
+selected.
+
+Subtotals and the total will also be included in the table, e.g. a
+gender (male, female) + EPI age(\<1, \>1) category combo would give the
+following columns: male+\<1, male+\>1, Female+\<1, female+\>1, male,
+female,\<1, \>1, total.
+
+**Výběr dat**
+
+
+![](resources/images/dhis2_creating_reporting/catcombo.jpg)
+
+Use the drop down menu to choose category combinations. The data
+elements using this category combination will be listed. Double click to
+add to the report, or use the buttons.
+
+### Tabulka zpráv - osvědčené postupy { #reporting_best_practices } 
+
+To make the report tables reusable over time and across orgunits they
+can have parameters. Four types of parameters are allowed; orgunit,
+parent orgunit (for listing of orgunits in one area), grand parent
+orgunit and reporting month. As a side note it can be mentioned that we
+are looking into expanding this to include reporting quarter and year,
+or to make that period parameter more generic with regard to period type
+somehow. The ability to use period as a parameter makes the report table
+reusable over time and as such fits nicely with report needs such as
+monthly, quarterly or annual reports. When a report is run by the user
+in DHIS2, the user must specify the values for the report tables that
+are linked to the report. First the report table is re-generated
+(deleted and re-created with updated data), and then the report is run
+(in the background, in Jasper report engine).
+
+Report tables can consist of values related to data elements, indicators
+or data completeness, which is related to completeness of reporting
+across orgunits for a given month. Completeness reports will be covered
+in a separate section.
+
+There are three dimensions in a report table that identify the data;
+indicators or data elements, orgunits and periods. For each of these
+dimensions the user can select which metadata values to include in the
+report. The user must select one or more data elements or indicators to
+appear in the report. The orgunit selection can be substituted with a
+parameter, either one specific orgunit or an orgunit parent (making
+itself and all its children appear in the report). If one or more
+orgunits are selected and no orgunit parameter is used, then the report
+is static with regard to which orgunits to include, which in most cases
+is an unnecessary restriction to a report.
+
+**Používání relativních období**
+
+The period selection is more advanced as it can in addition to specific
+periods like Jan-09, Q1-08, 2007 also contain what is called relative
+periods. As report usually is run routinely over time a specific period
+like Jan-09 is not very useful in a report. Instead, if you want to
+design a monthly report, you should use the relative period called
+Reporting Month. Then you must also include Reporting Month as one of
+your report parameters to let the system know what exactly is the
+Reporting Month on the time of report generation. There are many other
+relative periods available, and they all relate to the report parameter
+Reporting Month. E.g. the relative period called So far this year refers
+to the accumulative value for the year incl. the Reporting Month. If you
+want a trend report with multiple periods in stead of one aggregated
+period, you can select e.g. 'Months this year', which would give you
+values for each month so far in the year. You can do a similar report
+with quarters. The idea is to support as many generic report types as
+possible using relative periods, so if you have other report needs,
+please suggest new relative periods on the mailing list, and they might
+be added to the report table options.
+
+**Dimenze křížové karty**
+
+Cross tabbing is a very powerful functionality in report design, as the
+typical DHIS2 data table with references to period, data
+element/indicator and orgunit makes more advanced report design very
+difficult, as you cannot put e.g. specific indicators, periods or
+orgunits on specific columns. E.g. by cross-tabbing on the indicator
+dimension in an indicator report table you will get the indicator names
+on the column headers in your report, in addition to a column
+referencing orgunit, and another column referencing period. With such a
+table design you could drag and drop indicator names to specific columns
+or chart positions in the iReport software. Similarly you can cross tab
+on orgunits or periods to make their names specifically available to
+report design. E.g. by cross-tabbing on periods and selecting the two
+relative periods 'Reporting month' and 'This year', you can design
+reports with both the last month and the accumulative annual value for
+given month as they will be available as column headers in your report
+table. It is also possible to combine two dimensions in cross-tabbing,
+e.g. period and indicator, which makes it possible to e.g. look at three
+selected indicators for two specific relative periods. This would e.g.
+make it possible to make a table or chart based report with BCG, DPT3
+and Measles coverage, both for the last month and the accumulative
+coverage so far in the year.
+
+All in all, by combining the functionality of cross tabbing, relative
+periods and report table parameters you should have a tool to support
+most report scenarios. If not, we would be very happy to receive
+suggestions to further improvements to report tables. As already
+mentioned, we have started to look at more fine-grained parameters for
+the period dimension as the 'Reporting month' does not cover enough, or
+at least is not intuitive enough, when it comes to e.g. quarterly
+reports.
+
+## Hlášení výsledku tabulky { #reporting_table_outcomes } 
+
+When the report table is run, the system will calculate values for
+specified indicators/data elements/data sets, orgunits and periods. The
+data will be presented in DHIS2 in a table layout. The column headers
+will correspond to the cross-tab dimension you have selected. An example
+report table showing ANC coverage for a district in The Gambia, is shown
+below. Here the indicator and the periods are cross-tabbed, as can be
+seen from the column headers.
+
+
+![](resources/images/dhis2_creating_reporting/crosstab_ind-per.jpg)
+
+Above the table there are six buttons; five download buttons and one
+Back button. Clicking the Back button will simply take you back to the
+previous screen. The function of the five download buttons, are
+presented below the screenshot:
+
+![](resources/images/dhis2_creating_reporting/report-table_output.png)
+
+**Pět tlačítek pro stahování**
+
+  - *Download as Excel:*
+
+    Stáhne vygenerovaný soubor aplikace Excel, který můžete otevřít v aplikaci Excel.
+
+  - *Download as CSV:*
+
+    Stáhne vygenerovaný soubor .csv. CSV znamená **C**omma
+    **S**eparated **V**alues. It's a text file with the file ending
+    .csv. Each line in the file corresponds to a row in the table, while
+    the columns are separated with semi colons (;). The file can be
+    opened in a text editor as well as in a spread sheet program (such
+    as Excel).
+
+  - *Stáhnout jako PDF:*
+
+    Downloads a generated PDF file. The data will be presented in a
+    similar layout as the generated table you are already viewing in
+    DHIS2.
+
+  - *Download as Report:*
+
+    Stáhne „stylovaný“ soubor PDF. Kromě prezentace údajů v a
+    table layout, this file also presents a chart, showing the
+    aggregated data from all the chosen periods and the parent
+    organisation unit chosen for the report table. The report is
+    generated using the Jasper report engine.
+
+  - *Download as JRXML:*
+
+    Downloads the design file for the generated Report described in the
+    previous bullet. The design file (with the file ending .jrxml) can
+    be opened in the Jasper iReport Designer software. If you plan to
+    konstrukční standardní zprávy, to je výchozí bod.
+
+## Standardní zprávy { #reporting_standard_reports } 
+
+### Co je standardní zpráva? { #what-is-a-standard-report } 
+
+A standard report is a manually designed report that presents data in a
+manually specified layout. Standard reports can be based either on
+report tables or SQL queries. Both approaches are described in the
+following sections. The main advantage of using report tables is that of
+simplicity - no special development skills are required. In cases where
+you have special requirements or need to utilize additional parts of the
+DHIS2 database you might want to use a SQL based standard report. In any
+case you will be able to utilize report parameters in order to create
+dynamic reports. The following guide will use the report table approach,
+while the SQL approach is covered towards the end.
+
+### Navrhování standardních zpráv v iReportu { #designing-standard-reports-in-ireport } 
+
+Jasper iReport Designer is a tool for creating reports that can be used
+as Standard Reports in DHIS2. The tool allows for the creation of
+standard report templates that can easily be exported from DHIS2 with up
+to date data. The process of creating reports involves four major steps:
+
+1.  A report table must be created in DHIS2 with the indicators/data
+    elements/datasets to be used in the report.
+
+2.  You have to run the report table and download the design file (Click
+    the "Download as JRXML" button).
+
+3.  Open the downloaded .jrxml file using the free software Jasper
+    iReport Designer to edit the layout of the report.
+
+4.  The edited report can then be uploaded to DHIS2 to be used as a
+    standard report.
+
+Chcete-li zobrazit náhled sestavy během návrhu v iReportu, musíte skutečně nahrát soubor do DHIS2, abyste viděli, jak vypadá.
+
+These four steps will be describe in detail in the coming sections. In
+general, when you are making standard reports you should have a clear
+idea of how it should look before you even make the report table, as how
+the report table is designed has implications for how the report can be
+formatted in iReport. For example, what crosstab dimensions are selected
+in the report table has consequences for what crosstabs are available
+for the standard report, and it has consequences for what types of
+charts you can make.
+
+#### Stáhněte a otevřete návrhový soubor { #download-and-open-the-design-file } 
+
+> **NOTE**
+>
+> If you have not created a report table yet, you have to do so.
+> See section "How to create report tables" to do so.*
+
+Locate your desired report table and run it by clicking the green circle
+with a white arrow inside. When the report is shown, click the "Download
+as JRXML" button to download the design file. Then open that file in the
+Jasper iReport Designer software.
+
+#### Úprava hlášení zprávy { #editing-the-report } 
+
+You are now ready to edit the layout of the report. The main iReport
+window consists of a "Report Inspector" to the left, the report document
+in the middle, a "Palette" area on the upper right hand side and a
+"Properties" area on the lower right hand side. The "Report Inspector"
+are used for selecting and examining the various properties of the
+report, and when selecting an item in the inspector, the "Properties"
+panel changes to display properties relating to the selection. The
+"Palette" is used for adding various elements, e.g. text boxes, images
+and charts to the
+document.
+
+
+![](resources/images/dhis2_creating_reporting/ireport/iReport-window.png)
+
+> **POZNÁMKA**
+>
+> Pokud nevidíte postranní panel Paleta nebo Vlastnosti, můžete
+> je povolit pomocí položky nabídky „Okno“ na panelu nabídek.
+
+The iReport document is divided into seven main bands, divided by layout
+separators (the blue lines). These lines are used to decide how big each
+of the areas should be on the report.
+
+Všechny oblasti mají různé účely:
+
+  - Nadpis - oblast názvu zprávy
+
+  - Záhlaví stránky - oblast pro záhlaví stránky
+
+  - Záhlaví sloupce - oblast pro záhlaví sloupců (pro tabulku)
+
+  - Detail 1 - oblast, kde budou umístěna data aktuální zprávy
+
+  - Zápatí sloupce - oblast pro vytvoření zápatí tabulky
+
+  - Zápatí stránky - oblast pro zápatí stránky
+
+  - Summary - elements in this area will be placed at the end of the
+    report
+
+By default you will see that only the Title, Column Header and the
+Detail 1 bands have data. For most reports this is OK. The Title band is
+suitable for a title and e.g. a chart. Data fields entered into the
+Detail 1 area will be iterated over to create a table. For example, if a
+field called "dataelementname" is placed in the Detail 1 band, all data
+elements in the report table will be listed here. We'll come back to
+data fields management just a little below.
+
+The unused bands in the report are contracted to add more space for your
+report data. You can however increase/decrease the band height as you
+like. There are two ways to do that. The first way is simply to drag the
+blue band-line as shown below.
+
+![](resources/images/dhis2_creating_reporting/ireport/17_drag.jpg)
+
+The other way to adjust the band height is to select a band in the
+"Report Inspector", and then adjust the "Band height" value in the
+"Detail 1 - properties" area in the lower right corner.
+
+![](resources/images/dhis2_creating_reporting/ireport/18_adjust.jpg)
+
+As the fields are already present on the report, you probably don't want
+to do anything than just fix the layout and drag fields around. You can
+also resize the fields by dragging the side, top or bottom lines. If you
+want to change the text in the column headers, you simply double click
+the field and change the text.
+
+To add the a field to the table, we simply drag it to the Detail 1 band
+from the "Report Inspector". The column header will be added
+automatically.
+
+By double clicking the box, the text can be edited. The format of the
+text, such as size, font and alignment, can be adjusted with the tools
+above the document.
+
+![](resources/images/dhis2_creating_reporting/ireport/21_title_edit.jpg)
+
+> **NOTE**
+>
+> Fields starting with "$F" present values that are
+> retrieved from the database every time the report is run. The values
+> here will vary, so do not change these fields unless you want a static
+> value here!
+
+#### Text { #text } 
+
+There are two types of text in iReport: «Text labels» and «Text fields»
+(data fields). They work in different ways, and should be used for
+different purposes. The main point is that text fields are just
+placeholders that will be filled with the correct text from the report
+table when the report is run, while text labels will stay the way they
+are when the report is run.
+
+##### Statický text { #static-text } 
+
+Static text are text plain text labels that can be edited normally.
+There are two ways to edit text labels:
+
+  - Poklepáním do textového pole
+
+  - By using the Static text properties in the Properties
+panel
+
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_01.jpg)
+
+##### Textová pole { #text-fields } 
+
+Text fields are formulas that will be filled from the report table when
+the report is run. Unlike static text, these can not be edited in a
+normal way. However, they can be manipulated in various ways to ensure
+that the desired output will be produced. There are three ways to edit
+the text fields:
+
+  - Klikněte pravým tlačítkem na textové pole a vyberte Upravit výraz
+
+  - By double clicking the text field (not recommended, as this will not
+    bring up the expression editor)
+
+  - By using the Text field properties in the Properties
+panel
+
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_04.jpg)
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_06.jpg)
+
+Text fields can represent either numbers or text, so that they can be
+used both for showing for example names of district or for numeric
+values. It is therefore important the Expression class, seen in the Text
+field properties matches the Text field expression. For the default text
+fields in the .jrxml file downloaded from DHIS2 this is not a problem,
+but it is important when making new text fields. The two most important
+Expression classes are java.lang.Double for numbers and java.lang.String
+for text.
+
+###### Příklad { #example } 
+
+Řekněme například, že máte čtvrtletní přehled, do kterého chcete přidat nový sloupec s ročním součtem. Proto přidáte nové statické textové pole do pásma záhlaví sloupce a textové pole do pásma podrobností. Ve výchozím nastavení jsou nová textová pole nastavena na java.lang.String (text). Sloupec ročního součtu však bude vyplněn čísly. Proto musíme změnit třídu Expression pro nové textové pole na java.lang.Double:
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_07.jpg)
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_08.jpg)
+
+Když upravujeme výraz textového pole, vidíme okno editoru výrazů se všemi dostupnými sloupci z tabulky sestavy. Vidíme zde, že každý z nich je označen tím, o jaký typ jde - text nebo číslo. Musíme se tedy ujistit, že třída výrazů, kterou zvolíme pro textové pole, odpovídá skutečnému výrazu.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_10.jpg)
+
+### Filtrování řádků tabulky { #filtering-the-table-rows } 
+
+In the default table exported from DHIS2, there are some rows that it
+might be better to leave out of the table, and some that it would be
+preferable to have at the end. For example, when making a table based on
+a report table with the «parent organisation unit» parameter, the
+default table might have a row with the national level somewhere in
+between all the regions. In iReport, this can be changed so that the
+«parent organisation unit» appears at the bottom of the table. This
+involves two steps that will be explained below. Note that this will not
+work where there is only one organisation units, and it is therefore
+most useful when using the «parent organisation unit» or «grand parent
+organisation unit» parameters in the report table.
+
+#### Skrytí «parametrické organizační jednotky» z tabulky { #hiding-the-parameter-organisation-unit-from-the-table } 
+
+We exclude the "parameter organisation unit" from the table by using a
+property in the Details band called "Print when expression". To set a
+Print when expression, start by selecting the Detail band in the Report
+inspector, then edit the Print when expression in the properties
+panel.
+
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_11.jpg)
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_12.jpg)
+
+Nyní by se mělo zobrazit okno editoru výrazů. Musíme udělat, abychom vytvořili výraz, který zkontroluje, zda generovaný řádek je řádek s organizační jednotkou zadanou jako parametr. Tabulka sestavy obsahuje sloupec, který můžeme použít pro tuto nazvanou organizace \_unit\_is\_parent. Chcete-li vyloučit řádek s organizační jednotkou parametrů, poklepejte v seznamu na organizaci \_unit\_is\_parent a zkopírujte ji do oblasti výrazu, poté přidejte na konec `.equals("No")` tak, aby kód byl:
+
+```
+$F{organisation_unit_is_parent}.equals("No")
+```
+
+This tells the report engine to only print table rows where the
+organisation unit is not the parent organisation
+unit.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_14.jpg)
+
+#### Ve spodní části tabulky je uvedena „param organizační jednotka“ { #putting-the-param-organisation-unit-at-the-bottom-of-the-table } 
+
+Instead of removing the "param organisation unit" from the table
+entirely, it is also possible to put it at the bottom (or top) of the
+table. This is done by using the sort functionality explained in the
+next section, and choosing to sort first by
+"organisation\_unit\_is\_parent". Other sorting options can be added in
+addition to this, for example to make a list where the param
+organisation unit is at the bottom of the table, with the other
+organisation units listed alphabetically above it.
+
+#### Skrytí dalších řádků { #hiding-other-rows } 
+
+Using the expression editor it is also possible to exclude other rows
+from the table, in addition to the parent organisation unit as was
+explained above. In Ghana, for example, all regions have a «fake
+district» which is the name of the region in square brackets. This can
+also be excluded from the table using the Print when expression that was
+introduced above. To to this, follow the instructions above to bring up
+the Expression editor window. Then, we use Java expressions to test
+whether or not the row should be hidden.
+
+##### Příklad - odstranění řádků s organizačními jednotkami začínajícími \[ { #example-removing-rows-with-organisation-units-starting-with } 
+
+Příklad - odstranění řádků s organizačními jednotkami začínajícími \[
+
+```
+($F{organisationunitname}.charAt( 0 ) != '[')
+```
+
+This makes the report skip any rows where the first character of the
+organisation unit name is \[.
+
+It is also possible to combine several of these expressions. To do this
+we put the expressions in a parenthesis with the two characters && in
+between. For example, to make a table that leaves both organisation
+units whose name starts with \[ and the parent organisation unit, we can
+use the following expression:
+
+```
+($F{organisationunitname}.charAt( 0 ) != '[')&&$F{organisation_unit_is_parent}.equals("No")
+```
+
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_29.jpg)
+
+### Řazení { #sorting } 
+
+Often you will be making reports where the first column is organisation
+unit names. However, it can be a problem that the list of organisation
+units are not sorted alphabetically. This can be fixed in iReport
+through a few simple steps.
+
+In the report inspector, right click on the name of the report (by
+default this is dpt) and select Edit
+query.
+
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_21.jpg)
+
+A Report query window will appear. Click on the Sort options
+button.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_22.jpg)
+
+A Sorting window as show below will appear. Here, we can add our sorting
+options. Click the Add field button. Another small window will show up,
+with a drop down menu where you can choose Sort by organisationunitname
+to have the table sorted alphabetically by
+name.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_23.jpg)
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_24.jpg)
+
+Click OK - Close - OK to close the three windows. The table should now
+be sorted.
+
+### Změna názvů indikátorů / datových prvků { #changing-indicatordata-element-names } 
+
+By default, the reports from DHIS2 uses the short names for indicators
+and data elements in reports and charts. In some cases these are not
+always very meaningful for third parties, but with some work they can be
+given custom names through iReport. This is useful for example if you
+are making a report with indicators as rows and periods as column, or
+for charts with
+indicators.
+
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_000.jpg)
+
+Chcete-li změnit názvy indikátoru nebo datového prvku, musíme upravit jeho «výraz» nebo vzorec, například kliknutím pravým tlačítkem na textové pole a výběrem možnosti Upravit výraz vyvoláte editor výrazů.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_32.jpg)
+
+Next, we have to insert some Java code. In the following example, we
+will be replacing the shortname of three indicators with their proper
+names. The code searches for the shortname, and then replaces it with a
+proper name.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_34.jpg)
+
+```
+($F{indicatorname}.equals("Bed Util All")) ? "Bed Utilisation - All Wards"
+:
+($F{indicatorname}.equals("Bed Util Mat")) ? "Bed Utilisation - Maternity"
+:
+($F{indicatorname}.equals("Bed Util Ped")) ? "Bed Utilisation - Paediatric"
+:
+$F{indicatorname}
+```
+
+Z toho vidíme vzor, který je opakovaně použitelný pro obecnější případy.
+
+  - For each indicator or data element we want to change the name for,
+    we need one line
+
+  - Každý řádek je oddělen dvojtečkou :
+
+  - Dokončíme výraz s «pravidelným» řádkem
+
+Každý řádek má stejný formát, kde červený text je zkratka, modrý text je místo toho, co chceme vložit.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/ireport_screen_0.jpg)
+
+The same expressions can be used for example when having indicator names
+along the category axis of a chart.
+
+### Sčítání vodorovných součtů { #adding-horizontal-totals } 
+
+Pomocí editoru výrazů je možné do tabulky přidat sloupec se součty pro každý řádek. V následujícím příkladu vytvoříme tabulku se třemi měsíci jako sloupce a také sloupec se součty za tři měsíce.
+
+We start by dragging a text label into the table header and changing its
+text to "Total", and dragging a text field into the details row.
+
+As was discussed in the section on "Text field", we have to change the
+properties of the new text field so that it can display numbers. To do
+this, change the "Expressions Class" in the properties panel to
+"java.lang.Double".
+
+Right click the text field and choose "Edit Expression". This will bring
+up the "Expressions editor". As the expression, we want to sum up all
+the columns. In this case we have three value expressions we want to sum
+up: "September", "October 2010", "November 2010". The name of these
+fields will vary depending on the crosstab dimension you have chosen in
+the report table. In our case, the expression we make is
+```
+$f{September}+$f{October 2010}+$f{November 2010}
+``` 
+Každý řádek tabulky bude mít sloupec součty vpravo.
+
+### Skupiny tabulek { #groups-of-tables } 
+
+V některých případech může být užitečné mít v jedné zprávě několik tabulek. To lze provést pomocí skupin sestav. Pomocí této funkce lze například vytvořit sestavu, v níž bude jedna tabulka pro každý indikátor nebo jedna tabulka každé organizační jednotky. V následujícím textu si projdeme kroky potřebné k vytvoření sestavy se třemi indikátory, z nichž každý je zastoupen v jedné tabulce. Důležité je, aby se tabulka sestavy nekřížila na indikátory, když chceme vytvořit skupiny tabulek na základě indikátorů.
+
+In our example, the .jrxml file downloaded from DHIS2 will by default
+have one column for organisation unit and on for indicators (assuming we
+have chosen periods as the only crosstab dimension). We start by
+removing the indicator column, since this in not needed in our case, and
+realign the other fields to fit the
+report.
+
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_36.jpg)
+
+Dále vytvoříme skupinu Zpráv. Přejděte na inspektora zpráv, klikněte pravým tlačítkem na název zprávy (výchozí je dpt) a zvolte Přidat skupinu zpráv.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_38.jpg)
+
+A window will appear, with a report group wizard. Select a name for the
+group, in this case we choose «Indicator». In the drop down menu, we can
+select what columns in the report table we want the groups to be based
+on. So, if we wanted one table for each organisation unit, we would
+choose organisation unit name as the report object to group according
+to. However, since we are grouping by indicators in this example, we
+choose indicatorname. Then click
+next.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_39.jpg)
+
+The next step is to select whether or not we want a separate Group
+header and Group footer band for each report group. In this case, we
+choose to include both. Click Finish, and the group bands should appear
+in the
+report.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_40.jpg)
+
+If you upload and run the report, it will now create one table for each
+indicator. However, it will not look very good as there will be no
+header row over each table - only one header at the top of each page.
+Also, there is no indication as to which table is showing which
+indicator. In the following, we will fix this.
+
+Instead of having the title row in the column header, we can instead
+move it to the Group header. This will make the heading show up above
+each individual table. Furthermore, we can add a heading to each table
+with the name of the indicator.
+
+Move the column headers from the Column header band to the Indicator
+group header
+band.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_41.jpg)
+
+Next, add a text field to the Indicator group heading band, and edit
+it’s expression to display the indicator
+name.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_42.jpg)
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_44.jpg)
+
+The report should now have three tables, one for each indicator. Each
+table will have a heading with the name of the indicator, and also a
+table header
+row.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_45.jpg)
+
+#### Třídění a seskupování { #sorting-and-grouping } 
+
+When using grouping, some precautions must be taken with regards to
+sorting. Notably, when adding sorting parameters, whatever parameter is
+used as basis for the grouping must come first. Thus if you are grouping
+the report by indicator, and want sort the organisation units
+alphabetically, you have to choose to sort first by indicator, then by
+organisation unit name as shown below. For instructions on how to add
+sorting, see the sorting section
+above.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_59.jpg)
+
+## Grafy { #charts } 
+
+By default, a 3D bar chart is included in the .jrxml file that is
+downloaded from DHIS 2. This is set up so that only data from the
+«parameter organisation unit» (often the parent or grand parent) is
+used. Usually, this is a good solution. Since it is the default, we will
+start by looking at bar charts, before looking at line
+charts.
+
+### Lištové grafy { #bar-charts } 
+
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_54.jpg)
+
+Bar charts are the default chart type in DHIS2. In this section, we will
+look at how to make a bar charts like the one above, comparing the value
+of one indicator in several districts. To edit the default chart in
+iReport, right click on it and choose Chart
+data.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_46.jpg)
+
+Objeví se okno. Ve výchozím nastavení je výraz Filtr vyplněn, takže se zobrazí pouze data pro nadřazenou organizační jednotku. Pokud to z nějakého důvodu nechcete, jednoduše odstraňte text v textovém poli. V tomto případě nechceme filtr, protože vytváříme graf znázorňující srovnání napříč okresy. Chcete-li pokračovat, klikněte na kartu podrobností.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_47.jpg)
+
+Under details, you see the list of series for the chart. By default, one
+series is created per crosstab column. In this case, we are looking at
+data for one indicator for the whole of 2010, for a number of districts.
+The indicator is along the crosstab
+dimension.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_48.jpg)
+
+Chcete-li v sérii provést změny, vyberte ji a klikněte na Upravit. Objeví se další okno, kde jsou čtyři oblasti, které lze upravit. První tři jsou povinné, ale do jedné z prvních dvou stačí přidat prázdné uvozovky («»).
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_500.jpg)
+
+The first box is a text field where the name of the series can be
+inserted or edited. This is the field that will be used to fill the text
+in the legend box (shown
+below).
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_50.jpg)
+
+However, if you want to have the name of each bar along the x-axis of
+the chart instead of using the legend, this can be done by adding
+whatever text you want to present in the Category expression field, or
+by inserting an expression to have it filled automatically when the
+report is run. In this case, we want to have one bar for each
+organisation unit. We therefore edit the category expression by clicking
+on the button to the
+right.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_49.jpg)
+
+As the expression, we chose organisationunitname, as shown
+below.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_490.jpg)
+
+When we are finished, the series editor should look like below. Click
+OK, then Close to close the Chart Details
+window.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_501.jpg)
+
+If you add a good description in the Category expression area, you can
+leave out the legend box. This is done in the Report properties panel of
+iReport, where you can also edit many other details of the
+chart.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_51.jpg)
+
+We can also add a title to the chart, for example the name of the
+indicator. This is also done in the Chart properties panel, under Title
+expression.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_55.jpg)
+
+The Expression editor window will appear, where you can enter the title.
+Note that the title must be in quotes, as shown
+below.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_56.jpg)
+
+Graf je nyní připraven.
+
+### Čárové grafy { #line-charts } 
+
+Čárové grafy mohou být užitečné za mnoha okolností. Chcete-li však vytvořit spojnicový graf, musí být pro něj vhodná data sestavy (tabulka sestavy). Pokud tedy chcete vytvořit spojnicový graf, je důležité, aby tabulka sestavy neměla v dimenzi křížové tabulky období. Příklady, kde je to užitečné, jsou situace, kdy vytváříte zprávu pro jednu organizační jednotku s jedním nebo více indikátory nebo pokud vytváříte zprávu s jedním indikátorem a jednou nebo více organizačními jednotkami.
+
+Below, we will go though the steps needed to make a report with a line
+chart showing the development of three indicators over one year, for one
+organisation unit. We start by making a report table with the choices
+shown
+below:
+
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_57.jpg)
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_60.jpg)
+
+When we open the resulting .jrxml-file in iReport, the default line
+chart is included. Since we want to make a line chart, we delete this
+chart and drag a new chart element into the report from the Palette
+panel.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_61.jpg)
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_62.jpg)
+
+As soon as we drag the Chart element into the report, a window will
+appear. We choose the Line chart, as shown
+below.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_63.jpg)
+
+A chart wizard will appear. Click next in the first step, then Finish in
+the next - we will add the data
+later.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_64.jpg)
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_65.jpg)
+
+Next, adjust the size and position of the chart in your report. Then, we
+will add one data series for each of our three indicators. Right-click
+on the chart and choose Chart data. If you are making a chart with one
+indicator and several organisation units, you probably want to make a
+filter expression so that only data from the parameter/parent
+organisation unit is used in the chart. To do this, add this line to the
+Filter expression area:
+
+`$F{organisation_unit_is_parent}.equals("Yes")`
+
+In our example, we only have on organisation unit, so this is not
+necessary. Next, click the details tab to see a list of the series in
+the chart. For now, this list is empty, but we will add one series for
+each of our three indicators. To add a series, click the Add
+button.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_66.jpg)
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_67.jpg)
+
+In the window that appears, enter the name of the first of the
+indicators in the Series expression window. Remember to put the name in
+quotes. In the category expression (along the x-axis) we want the
+months, so we use the button next to the field to open the Expression
+editor and add
+periodname.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_69.jpg)
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_68.jpg)
+
+In the value expression, we add the actual data values for our first
+indicator. Use the Expression editor again to do this. When we are
+finished, the window should look like the one below, only with different
+names according to the
+indicator.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_70.jpg)
+
+You can then Click OK to close the window. Follow the same steps to add
+a series for the other
+indicators.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_71.jpg)
+
+Close the window, and the data for the line chart should be ready.
+However, some additional adjustments might be needed - most of these can
+be found in the Line chart properties panel. For example, when making a
+month by month chart as we have in example, there is often not enough
+space for the month names along the category axis. This can be fixed by
+rotating the labels by for example -40 degrees, by using the property
+Category Axis Tick Label
+Rotation.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_72.jpg)
+
+Many other options are available to give the chart the desired
+look.
+
+![](resources/images/dhis2_creating_reporting/ireportadv/irep_screen_73.jpg)
+
+## Přidání zprávy do DHIS2 { #adding-the-report-to-dhis2 } 
+
+We can now switch to DHIS2 and import our report. Go to the Report
+Module in DHIS2, and select "Standard Report". In the "Standard Report"
+screen, click "Add new", or edit an existing one.
+
+In the following screen, there are several actions we need to take.
+First, enter a name for the new "Standard Report". Second, for design,
+click "Choose File" and find the .jrxml-file you have edited in iReport.
+Then we select the report table that we used as a basis for the report
+in iReport. Click add, and it should move to the "Selected report
+tables" area. Finally, click
+save.
+
+
+![](resources/images/dhis2_creating_reporting/ireport/27_new_std_report.jpg)
+
+Zpráva je nyní k dispozici jako „Standardní zpráva“ v DHIS2:
+
+![](resources/images/dhis2_creating_reporting/ireport/28_done.jpg)
+
+## Několik závěrečných pokynů { #some-final-guidelines } 
+
+  - Use the same version of iReport and DHIS2's version of Jasper
+    reports. See the About page in DHIS2 for the Jasper version in use.
+
+  - Jako zdroj dat použijte tabulky Zpráv s dimenzemi křížových karet
+    your report designs. This will make it a lot easier to design
+    reports where you need to put specific indicators, periods, or
+    orgunits on columns.
+
+  - Learn from others, there are many DHIS2 report designs for Jasper on
+    launchpad, see
+    http://bazaar.launchpad.net/~DHIS2-devs-core/DHIS2/trunk/files/head:/resources/
+
+
+
+## Návrh standardních zpráv založených na SQL { #designing-sql-based-standard-reports } 
+
+A standard report might be based on SQL queries. This is useful when you
+need to access multiple tables in the DHIS2 database and do custom
+selects and joins.
+
+\- This step is optional, but handy when you need to debug your reports
+and when you have direct access to the database you want to use. Click
+on the "report datasources" button, "New", "Database JDBC connection"
+and click "next". In this window you can give you connection a name and
+select the JDBC driver. PostgreSQL and MySQL should come included in
+your iReport. Then enter the JDBC connection URL, username and password.
+The last three refers to your database and can be retrieved from your
+DHIS2 configuration file (hibernate.properties). Click "save". You have
+now connected iReport to your database.
+
+\- Go to standard reports and click "add new", then "get report
+template". Open this template in iReport. This template contains a
+series of report parameters which can be used to create dynamic SQL
+statements. These parameters will be substituted based on the report
+parameters which we will later select and include in the standard
+report. The parameters are:
+
+  - periods - string of comma-separated identifiers of the relative
+    periods
+
+  - period\_name - name of the reporting period
+
+  - organisationunits - identifikátor vybraných organizačních jednotek
+
+  - organisationunit\_name - name of the reporting organisation unit
+
+  - organisationunit\_level - level of the reporting organisation unit
+
+  - organisationunit\_level\_column - name of the corresponding column
+    in the \_orgunitstructure resource table
+
+These parameters can be included in SQL statements using the
+`$P\!{periods}` syntax, where "periods" represents the parameter.
+
+\- To create a SQL query in iReport, click on the "report query" button.
+Write or paste your query into the textarea. An example SQL query using
+parameters which will create a report displaying raw data values at the
+fourth level in the org unit hierarchy is:
+```
+    select district.name as district, chiefdom.name as chiefdom, ou.name as facility,
+    bcg.value as bcg, yellowfever.value as yellowfever, measles.value as  measles
+    from organisationunit ou
+    left outer join _orgunitstructure ous
+      on (ou.organisationunitid=ous.organisationunitid)
+    left outer join organisationunit district
+      on (ous.idlevel2=district.organisationunitid)
+    left outer join organisationunit chiefdom
+      on (ous.idlevel3=chiefdom.organisationunitid)
+    left outer join (
+      select sourceid, sum(cast(value as double precision)) as value
+      from datavalue
+      where dataelementid=359706
+      and periodid=$P!{periods}
+      group by sourceid) as bcg on bcg.sourceid=ou.organisationunitid
+    left outer join (
+      select sourceid, sum(cast(value as double precision)) as value
+      from datavalue
+      where dataelementid=35
+      and periodid=$P!{periods}
+      group by sourceid) as yellowfever on yellowfever.sourceid=ou.organisationunitid
+    where ous.level=4
+    and ous.$P!{organisationunit_level_column}=$P!{organisationunits}
+    order by district.name, chiefdom.name, ou.name;
+```
+Notice how all parameters are used in the query, along with SQL joins of
+resource tables in the DHIS2 database.
+
+\- Finally, back in the add new report screen, we click on "Use JDBC
+data source". This enables you to select any relative period and report
+parameters for your report. Relative periods are relative to today's
+date. Report parameters will cause a prompt during report creation and
+makes it possible to dynamically select organisation units and periods
+to use for your report during runtime. For the example above, we must
+select "reporting month" under relative periods and both "reporting
+month" and "organisation unit" under report parameters. Click save. This
+will redirect you to the list of reports, where you can click the green
+"create" icon next to your report to render it.
+
+## Navrhování standardních zpráv založených na HTML { #designing-html-based-standard-reports } 
+
+A standard report can be designed using purely HTML and JavaScript. This
+requires a little bit of development experience in the mentioned
+subjects. The benefit of HTML based standard reports is that it allows
+for maximum flexibility. Using HTML you can design exactly the report
+you want, positioning tables, logos and values on the page according to
+your design needs. You can write and save your standard report design in
+a regular text file. To upload your HTML based standard report to DHIS2
+do the following:
+
+  - Přejděte na standardní přehledy a klikněte na „Přidat nový“.
+
+  - Pojmenujte zprávu.
+
+  - Jako typ vyberte „Zpráva HTML“.
+
+  - If you want to you can download a report template by clicking on
+    "Get HTML report template".
+
+  - Select desired relative periods - these will be available in
+    JavaScript in your report.
+
+  - Select report parameters - these will be available in JavaScript in
+    your report.
+
+Šablona Zprávy, kterou si můžete stáhnout po výběru typu Zprávy, je užitečným výchozím bodem pro vývoj standardních Zpráv založených na HTML. Poskytne vám základní strukturu a navrhne, jak můžete v sestavě použít JavaScript a CSS. JavaScript a CSS lze snadno zahrnout pomocí standardních značek skriptů a stylů.
+
+If you selected relative periods when creating the standard report you
+can access these in JavaScript like this:
+
+    var periods = dhis2.report.periods; // An array with period identifiers
+    var period = periods[0];
+
+Pokud jste při vytváření standardní zprávy vybrali parametr sestavy organizační jednotky, můžete k vybrané organizační jednotce přistupovat v JavaScriptu takto:
+
+    var orgUnit = dhis2.report.organisationUnit; // An object
+    var id = orgUnit.id;
+    var name = orgUnit.name;
+    var code = orgUnit.code;
+
+When designing these reports you can utilize the analytics Web API
+resource in order to retrieve aggregated data in JavaScript. Have a look
+in the Web API chapter in this guide for a closer description. As a
+complete, minimal example you can retrieve analytics data after the
+report has been loaded and use that data to set the inner text of an
+HTML element like this:
+
+    <script type="text/javascript">
+    $( document ).ready( function() {
+        $.get( "../api/analytics?dimension=dx:FnYCr2EAzWS;eTDtyyaSA7f&dimension=pe:THIS_YEAR&filter=ou:ImspTQPwCqd", function( json ) {
+            $( "#bcg" ).html( json.rows[0][2] );
+            $( "#fic" ).html( json.rows[1][2] );
+        } );
+    } );
+    </script>
+
+    <div>BGG coverage: <span id="bcg"></span></div>
+    <div>FIC coverage: <span id="fic"></span></div>
+
+A few other tips: To include graphics you can convert an image to SVG
+and embed that SVG content directly in the report - DHIS2 is based on
+HTML 5 where SVG tags are valid markup. To include charts and maps in
+your report you can use the charts and maps resources in the Web API.
+You can use the full capability of the Web API from JavaScript in your
+report - it may be useful to read through the Web API chapter to get an
+overview of all available resources.
+

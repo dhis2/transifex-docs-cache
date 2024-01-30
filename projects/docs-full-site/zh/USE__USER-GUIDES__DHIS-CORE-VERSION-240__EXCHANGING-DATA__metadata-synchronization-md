@@ -1,0 +1,292 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.40/src/user/configure-metadata-synchronizing.md"
+revision_date: '2021-06-14'
+tags:
+- DHIS core version 2.40
+- 使用
+---
+
+# 配置元数据同步 { #metadata_sync } 
+
+## 关于数据和元数据同步 { #about-data-and-metadata-synchronization } 
+
+您可以在不同的DHIS2实例之间同步数据和元数据。
+给定中央本地部署策略中的两个实例，元数据
+在中央系统创建的可以与本地系统同步
+并且在本地系统创建的数据可以与
+中央系统。当您有多个独立服务器时，这很有用
+DHIS2实例和全局元数据都需要创建
+本地实例。
+
+![](resources/images/metadata_synchronization/dhis2_architecture.png)
+
+元数据的创建和更新是否在中央系统进行，以及
+启用元数据同步任务，获取元数据
+向下同步到绑定到
+中央实例。这些本地实例将依次推送数据值，
+事件和跟踪程序的数据以及完整的数据注册集
+中央实例。启用或禁用元数据版本控制
+在本地实例上同步，不会阻碍元数据
+同步过程。这是因为元数据同步
+与中央实例的版本控制端点交互，而不与
+带有本地实例的端点。
+
+生成的元数据导出的每个快照都称为元数据
+版。新的元数据版本仅包含
+先前版本和当前版本之间的导出
+两个时间戳记。所有元数据版本都在DHIS2中维护
+数据库，并且可用于连接到该数据库的所有本地实例。
+您可以安排每个本地实例以下载新的元数据
+版本。建议保持元数据版本的大小较小
+和逻辑。
+
+> **警告**
+>
+> DHIS2的每个实例（无论是中央实例还是本地实例）都可以创建元数据
+>版本。本地实例用于同步来自
+>中央系统，而不是自己创建元数据。
+>
+>如果在本地实例上创建了新的元数据版本，则此
+>实例无法从中央接收新的元数据版本
+>实例，因为元数据版本的内容将不存在
+>同步。
+>
+>如果已在本地实例上创建元数据版本，则必须
+>在您可以从数据库中手动删除这些版本之前
+>与中央实例同步。
+>
+>假设中央和本地DHIS2实例具有相同的元数据
+>快照，直到版本10。然后本地实例创建一个新的快照
+>快照，称为版本11。之后，中央实例创建一个
+>名为版本11的新快照。
+>同步元数据，未下载版本11。然而
+>本地实例上版本11的内容与
+>中央实例上版本11的内容。
+
+> **注意**
+>
+>您也可以使用**导入导出**应用程序来同步元数据
+>手动。
+
+## 工作流程 { #workflow } 
+
+1.  在中央实例上，配置元数据版本控制。你应该
+    一旦中央实例包含元数据，请执行此操作。
+
+2.  将本地实例连接到中央实例。
+
+3.  在本地实例上，配置自动同步。
+
+## 在中央实例上配置元数据版本控制 { #configure-metadata-versioning-on-central-instance } 
+
+> **注意**
+>
+>要同步元数据，中央系统的用户帐户必须
+>具有以下权限：
+>
+> ** F \ _METADATA \ _MANAGE **
+>
+>只有具有此权限的用户才可以创建和
+>下载元数据。这是为了确保中央系统的安全性
+>创建元数据的位置。而不是提供
+>对字段实例具有ALL权限的用户，您需要创建一个
+>仅具有此特定权限的用户。
+
+1.  On the central instance, open the **System Settings** app and click
+    **同步**。
+
+2.  Go to the **Metadata versioning** section and select **Enable
+    元数据的版本控制
+    同步**。
+
+    ![](resources/images/metadata_synchronization/metadata_versioning.png)
+
+3.  （可选）选择**如果DHIS2版本不同，则不同步元数据**。
+
+4.  选择一种元数据版本：**尽力而为**或**原子**。
+
+      - *尽力而为*表示如果元数据导入遇到
+        缺少参考（例如，数据上缺少数据元素
+        元素组导入），它将忽略错误并继续
+        进口。
+
+      - * Atomic *表示全部或全部-如果以下情况将导致元数据导入失败
+        任何引用都不存在。
+
+        > **Note**
+        >
+        > Each metadata entity is associated with a "User" object. If
+        > this "User" reference is missing while importing metadata
+        > version of type ATOMIC, the import will fail at the validation
+        > phase itself. This means that the user who creates metadata
+        > also needs to synchronize down to local instances to
+        > successfully import the metadata version of type ATOMIC.
+
+5.  Click **Create new version**. The new version is added to the
+    版本表。
+
+## 将本地实例连接到中央实例 { #connect-local-instance-to-central-instance } 
+
+要启用元数据同步，必须配置连接
+在本地实例和中央实例之间。
+
+1.  On the local instance, open the **System Settings** app and click
+    **同步**。
+
+2.  将中央DHIS2实例的详细信息添加到本地实例：
+
+      - **远程服务器URL **
+
+      - **远程服务器用户名**
+
+      - **远程服务器密码**
+
+3.  Go to the **Metadata versioning** section and select **Enable
+    元数据同步的版本控制**。
+
+4.  （可选）选择**如果DHIS2版本不同，则不同步元数据**。
+
+    元数据模式在DHIS2版本之间可能会发生变化
+    使不同的元数据版本不兼容。
+
+    启用后，此选项将不允许元数据同步
+    如果中央实例和本地实例具有不同的DHIS2，则会发生
+    版本。这适用于通过
+    用户界面和API。
+
+    唯一可能禁用此选项的时间是
+    同步具有以下内容的基本实体，例如数据元素
+    在DHIS2版本之间没有变化。
+
+5.  （可选）配置电子邮件通知以通知用户有关
+    元数据同步成功或失败：
+
+    1.  Open the **System Settings** app and click **Email**.
+
+    2.  输入**主机名**，**端口**，**用户名**，**密码**和
+        **电子邮件发件人**。
+
+    3.  Click **Server** and enter a **System notifications email
+        地址**。
+
+        此电子邮件地址将收到有关元数据的通知
+        同步状态。
+
+    > **Tip**
+    >
+    > When you receive email notification about a metadata
+    > synchronization failure, check which metadata version that causes
+    > the error and resolve it. Then you avoid future errors when the
+    > system downloads new metadata versions.
+
+## 在本地实例上配置自动元数据同步 { #configure-automatic-metadata-synchronization-on-local-instance } 
+
+一旦配置了自动元数据同步（计划）
+在本地实例上，调度程序将在该特定时间运行，并且
+从中央同步（下载和导入）元数据
+实例。本地用户无需手动干预
+实例。
+
+调度程序完成元数据同步后，
+本地实例将具有与中央实例完全相同的元数据
+系统。
+
+> **注意**
+>
+>用户密码不同步。他们被取消为
+>安全原因。元数据同步后，管理员用户必须
+>重设这些密码。
+
+1.  On the local instance, open the **Data Administration** app and
+    点击**计划**。
+
+2.  In the **Metadata Synchronization** section, select **Enabled**.
+
+3.  选择一个时间段：**每天**，**每周**，**每月**或
+    **每年**。
+
+    ![](resources/images/metadata_synchronization/metadata_sync.png)
+
+4.  点击**开始**。
+
+## 在中央或本地实例上手动创建新的元数据版本 { #create-a-new-metadata-version-manually-on-central-or-local-instance } 
+
+1.  Open the **System Settings** app and click **Synchronization**.
+
+2.  Go to the **Metadata versioning** section and select **Enable
+    元数据同步的版本控制**。
+
+3.  （可选）选择**如果DHIS2版本不同，则不同步元数据**。
+
+4.  Select **Best effort** or **Atomic**.
+
+5.  Click **Create new version**. The new version is added to the
+    版本表。
+
+当系统是*中央实例*时，您将在
+版本表：
+
+![](resources/images/settings/metadata_versioning_table.png)
+
+
+| 目的 | 描述 |
+|---|---|
+| Master version | The latest version in the system. |
+| Version | Name of the version. The name is automatically generated by system. |
+| When | The timestamp of the metadata version creation at the central instance. |
+| 类型 | Type of metadata version. |
+
+当system是* local instance *时，您会在
+版本控制
+表：
+
+![](resources/images/settings/metadata_versioning_table_failure_case.png)
+
+
+| 目的 | 描述 |
+|---|---|
+| Master version | The latest version of the central instance.<br>      <br>    **Note**<br>     <br>    The master version information is the central instance's latest version. This is important to look at the difference between the versions of metadata that exist at central and at local. |
+| Last sync attempt | If the last sync attempt is a failure, this will be displayed. |
+| Version | Name of the version. The name is automatically generated by system. |
+| When | The timestamp of the metadata version creation at the central instance. |
+| 类型 | Type of metadata version. |
+| Last sync | Timestamp of when the last sync happened for this version in this system. |
+
+## 参考信息：元数据同步配置参数 { #reference-information-metadata-synchronization-configuration-parameters } 
+
+执行元数据同步的过程称为元数据
+同步任务。该任务在同步以下内容之前执行一系列步骤
+元数据：
+
+  - 从本地推送数据（聚合数据和匿名事件数据）
+    实例到中央实例。
+
+  - 获取本地实例的当前元数据版本。然后使用
+    此版本信息作为获取元数据列表的基准
+    在基准之后创建的版本。
+
+  - 如果在中央实例上创建了新版本，它将执行
+    元数据版本的同步。邮件
+    每次成功后将发送给配置的用户（如果有）
+    在本地实例上同步元数据版本。
+
+Once the Metadata Sync Task has run at the scheduled time, the task can
+retry (if any of the steps fail) based on the configuration of the
+following parameters defined in `dhis.conf` file:
+
+
+| Parameter | Default value |
+|---|---|
+| `metadata.sync.retry` | 3 |
+| `metadata.sync.retry.time.frequency.millisec` | 30000 |
+
+每次重试将在指定的时间（毫秒）后进行。如果
+即使所有重试后，步骤仍然失败，然后调度程序
+停止执行，然后将邮件发送给配置的用户
+（如果有）。如果未指定任何值，则默认值为
+用过的。
+
+`metadata.sync.retry` = 5
+
+`metadata.sync.retry.time.frequency.millisec` = 10000
+

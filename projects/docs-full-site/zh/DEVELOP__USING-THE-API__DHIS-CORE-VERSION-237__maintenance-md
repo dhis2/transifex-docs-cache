@@ -1,0 +1,571 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.37/src/developer/web-api/maintenance.md"
+revision_date: '2021-06-14'
+tags:
+- DHIS core version 2.37
+- Develop
+---
+
+# 保养 { #maintenance } 
+
+## Resource and analytics tables { #webapi_generating_resource_analytics_tables } 
+
+DHIS2 具有一组生成的数据库表，用作
+各种系统功能的基础。这些表可以执行
+立即或计划通过定期执行
+用户界面。它们也可以通过 Web API 生成为
+本节说明。此任务通常是针对系统的一项任务
+管理员而不使用客户端。
+
+资源表由 DHIS2 应用程序内部使用
+各种分析功能。这些表对用户也很有价值
+编写高级 SQL 报告。它们可以通过 POST 或 PUT 生成
+请求到以下 URL：
+
+    / api / 33 / resourceTables
+
+分析表针对数据聚合进行了优化并使用
+目前在 DHIS2 中用于数据透视表模块。分析表可以
+使用 POST 或 PUT 请求生成：
+
+    / api / 33 / resourceTables / analytics
+
+
+
+Table: Analytics tables optional query parameters
+
+| 查询参数 | 选项 | 描述 |
+|---|---|---|
+| skipResourceTables | false &#124; true | Skip generation of resource tables |
+| skipAggregate | false &#124; true | Skip generation of aggregate data and completeness data |
+| skipEvents | false &#124; true | Skip generation of event data |
+| skipEnrollment | false &#124; true | Skip generation of enrollment data |
+| lastYears | 整数 | Number of last years of data to include |
+
+“数据质量”和“数据监控”可通过监控运行
+任务，由以下端点触发：
+
+    / api / 33 / resourceTables / monitoring
+
+此任务将分析您的验证规则，查找任何违规并
+将它们保存为验证结果。
+
+这些请求将立即返回并启动服务器端
+过程。
+
+## 保养 { #webapi_maintenance } 
+
+要执行维护，您可以与 *maintenance* 资源进行交互。您应该使用 *POST* 或 *PUT* 作为请求方法。可以使用以下方法。
+
+清除分析表将删除所有分析表。
+
+    开机自检/ api / maintenance / analyticsTablesClear
+
+分析表分析将收集有关数据库中分析表内容的统计信息。
+
+    开机自检/ api / maintenance / analyticsTablesAnalyze
+
+清除过期邀请将删除所有用户帐户邀请
+已过期。
+
+    开机自检/ api / maintenance / expiredInvitationsClear
+
+期间修剪将删除未链接到任何数据的期间
+值。
+
+    开机自检/ api / maintenance / periodPruning
+
+零数据值删除将删除链接到数据的零数据值
+零数据被定义为不重要的元素：
+
+    开机自检/ api / maintenance / zeroDataValueRemoval
+
+软删除的数据值删除将永久删除软删除的数据值。
+
+    开机自检/ api / maintenance / softDeletedDataValueRemoval
+
+软删除的程序阶段实例删除将永久删除软删除的事件。
+
+    开机自检/ api / maintenance / softDeletedProgramStageInstanceRemoval
+
+软删除程序实例的删除将永久删除软删除的注册。
+
+    开机自检/ api / maintenance / softDeletedProgramInstanceRemoval
+
+软删除的跟踪实体实例的删除将永久删除软删除的跟踪实体实例。
+
+    开机自检/ api / maintenance / softDeletedTrackedEntityInstanceRemoval
+
+删除SQL视图将删除数据库中的所有SQL视图。请注意，它不会删除DHIS2 SQL视图实体。
+
+    开机自检/ api / maintenance / sqlViewsDrop
+
+创建SQL视图将重新创建数据库中的所有SQL视图。
+
+    开机自检/ api / maintenance / sqlViewsCreate
+
+类别选项组合更新将删除过时并为所有类别组合生成缺少的类别选项组合。
+
+    开机自检/ api / maintenance / categoryOptionComboUpdate
+
+也可以使用以下端点为单个类别组合更新类别选项组合。
+
+    开机自检/ api / maintenance / categoryOptionComboUpdate / categoryCombo / <category-combo-uid>
+
+缓存清除将清除应用程序Hibernate缓存和分析分区缓存。
+
+    开机自检/ api / maintenance / cacheClear
+
+组织单位路径更新将重新生成组织单位路径属性。这可能是有用的，例如如果您使用SQL导入组织单位。
+
+    开机自检/ api / maintenance / ouPathsUpdate
+
+数据修剪将删除完整的数据集注册，数据批准，数据价值审核和数据价值，在这种情况下是组织单位。
+
+    开机自检/ api / maintenance / dataPruning / organisationUnits / <org-unit-id>
+
+数据元素的数据修剪，这将删除数据值审核和数据值。
+
+    开机自检/ api / maintenance / dataPruning / dataElement / <data-element-uid>
+
+元数据验证将应用所有元数据验证规则，并返回操作结果。
+
+    开机自检/ api / metadataValidation
+
+应用程序重新加载将通过从文件系统读取来刷新已安装应用程序的DHIS2托管缓存。
+
+    开机自检/ api / appReload
+
+通过对api / maintenance资源的POST请求以批处理方式支持维护操作，在api / maintenance资源中，该操作作为查询参数提供：
+
+    开机自检/ api / maintenance？analyticsTablesClear = true＆expiredInvitationsClear = true
+      ＆periodPruning = true＆zeroDataValueRemoval = true＆sqlViewsDrop = true＆sqlViewsCreate = true
+      ＆categoryOptionComboUpdate = true＆cacheClear = true＆ouPathsUpdate = true
+
+## 系统信息 { #webapi_system_resource } 
+
+系统资源为您提供方便的信息和
+职能。系统资源可以在 */api/system* 中找到。
+
+### 产生识别码 { #webapi_system_resource_generate_identifiers } 
+
+要生成有效的随机 DHIS2 标识符，您可以执行 GET 请求
+此资源：
+
+    / api / 33 / system / id？limit = 3
+
+*limit* 查询参数是可选的，表示有多少
+您希望与响应一起返回的标识符。默认为
+返回一个标识符。响应将包含一个带有
+数组命名代码，类似于：
+
+```json
+{
+  "codes": [
+    "Y0moqFplrX4",
+    "WI0VHXuWQuV",
+    "BRJNBBpu4ki"
+  ]
+}
+```
+
+DHIS2 UID格式具有以下要求：
+
+  - 长11个字符。
+
+  - 仅字母数字字符，即。字母或数字字符
+    (A-Za-z0-9)。
+
+  - 以字母字符（A-Za-z）开头。
+
+### 查看系统信息 { #webapi_system_resource_view_system_information } 
+
+要获取有关当前系统的信息，您可以执行 GET 请求
+这个网址：
+
+    / api / 33 / system / info
+
+支持 JSON 和 JSONP 响应格式。系统信息响应
+目前包括以下属性。
+
+```json
+{
+  "contextPath": "http://yourdomain.com",
+  "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/29.0.1547.62",
+  "calendar": "iso8601",
+  "dateFormat": "yyyy-mm-dd",
+  "serverDate": "2021-01-05T09:16:03.548",
+  "serverTimeZoneId": "Etc/UTC",
+  "serverTimeZoneDisplayName": "Coordinated Universal Time",
+  "version": "2.13-SNAPSHOT",
+  "revision": "11852",
+  "buildTime": "2013-09-01T21:36:21.000+0000",
+  "serverDate": "2013-09-02T12:35:54.311+0000",
+  "environmentVariable": "DHIS2_HOME",
+  "javaVersion": "1.7.0_06",
+  "javaVendor": "Oracle Corporation",
+  "javaIoTmpDir": "/tmp",
+  "javaOpts": "-Xms600m -Xmx1500m -XX:PermSize=400m -XX:MaxPermSize=500m",
+  "osName": "Linux",
+  "osArchitecture": "amd64",
+  "osVersion": "3.2.0-52-generic",
+  "externalDirectory": "/home/dhis/config/dhis2",
+  "databaseInfo": {
+    "type": "PostgreSQL",
+    "name": "dhis2",
+    "user": "dhis",
+    "spatialSupport": false
+  },
+  "memoryInfo": "Mem Total in JVM: 848 Free in JVM: 581 Max Limit: 1333",
+  "cpuCores": 8
+}
+```
+
+> **注意**
+>
+>如果请求此资源的用户不具有完全权限，则仅包括不被视为敏感的属性。
+
+仅获取有关系统上下文的信息，即`contextPath` 和
+`userAgent`，您可以向以下 URL 发出 GET 请求。 JSON 和
+支持 JSONP 响应格式：
+
+    / api / 33 / system / context
+
+### 检查用户名和密码组合是否正确 { #webapi_system_resource_check_username_password } 
+
+检查某些用户凭据（用户名和密码组合）
+是正确的，您可以使用以下资源向以下资源发出 *GET* 请求
+*基本认证*：
+
+    / api / 33 / system / ping
+
+您可以通过检查 *HTTP 来检测身份验证的结果
+响应头的状态码*。可能状态的含义
+代码如下。请注意，这适用于 Web API 请求
+一般的。
+
+
+
+Table: HTTP Status codes
+
+| HTTP Status code | 描述 | Outcome |
+|---|---|---|
+| 200 | OK | Authentication was successful |
+| 302 | Found | No credentials were supplied with the request - no authentication took place |
+| 401 | Unauthorized | The username and password combination was incorrect - authentication failed |
+
+### 查看异步任务状态 { #webapi_system_resource_view_async_task_status } 
+
+Tasks which often take a long time to complete can be performed
+asynchronously. After initiating an async task you can poll the status
+through the `system/tasks` resource by supplying the task category and
+the task identifier of interest.
+
+轮询任务状态时，您需要进行身份验证
+启动任务的用户。以下任务类别是
+支持的：
+
+
+
+Table: Task categories
+
+| 识别码 | 描述 |
+|---|---|
+| ANALYTICS_TABLE | Generation of the analytics tables. |
+| RESOURCE_TABLE | Generation of the resource tables. |
+| MONITORING | Processing of data surveillance/monitoring validation rules. |
+| DATAVALUE_IMPORT | Import of data values. |
+| EVENT_IMPORT | Import of events. |
+| ENROLLMENT_IMPORT | Import of enrollments. |
+| TEI_IMPORT | Import of tracked entity instances. |
+| METADATA_IMPORT | Import of metadata. |
+| DATA_INTEGRITY | Processing of data integrity checks. |
+
+每个异步任务都会自动分配一个标识符，该标识符可以
+用于监视任务的状态。这个任务标识符是
+当您通过各种方式启动异步任务时由 API 返回
+启用异步的端点。
+
+#### 监控任务 { #monitoring-a-task } 
+
+您可以通过对系统任务的 GET 请求轮询任务状态
+像这样的资源：
+
+    / api / 33 / system / tasks / {task-category-id} / {task-id}
+
+一个示例请求可能看起来像这样：
+
+    / api / 33 / system / tasks / DATAVALUE_IMPORT / j8Ki6TgreFw
+
+响应将提供有关状态的信息，例如
+通知级别、类别、时间和状态。 *已完成的*属性
+指示该过程是否被认为是完整的。
+
+```json
+[{
+  "uid": "hpiaeMy7wFX",
+  "level": "INFO",
+  "category": "DATAVALUE_IMPORT",
+  "time": "2015-09-02T07:43:14.595+0000",
+  "message": "Import done",
+  "completed": true
+}]
+```
+
+#### 监视类别的所有任务 { #monitoring-all-tasks-for-a-category } 
+
+您可以通过 GET 请求轮询特定类别的所有任务
+系统任务资源：
+
+    / api / 33 / system / tasks / {task-category-id}
+
+轮询数据值导入任务状态的示例请求
+看起来像这样：
+
+    / api / 33 / system / tasks / DATAVALUE_IMPORT
+
+#### 监控所有任务 { #monitor-all-tasks } 
+
+您可以使用以下命令请求系统中所有当前正在运行的任务的列表
+对系统任务资源的 GET 请求：
+
+    / api / 33 / system / tasks
+
+响应将类似于以下内容：
+
+```json
+[{
+  "EVENT_IMPORT": {},
+  "DATA_STATISTICS": {},
+  "RESOURCE_TABLE": {},
+  "FILE_RESOURCE_CLEANUP": {},
+  "METADATA_IMPORT": {},
+  "CREDENTIALS_EXPIRY_ALERT": {},
+  "SMS_SEND": {},
+  "MOCK": {},
+  "ANALYTICSTABLE_UPDATE": {},
+  "COMPLETE_DATA_SET_REGISTRATION_IMPORT": {},
+  "DATAVALUE_IMPORT": {},
+  "DATA_SET_NOTIFICATION": {},
+  "DATA_INTEGRITY": {
+    "OB1qGRlCzap": [{
+      "uid": "LdHQK0PXZyF",
+      "level": "INFO",
+      "category": "DATA_INTEGRITY",
+      "time": "2018-03-26T15:02:32.171",
+      "message": "Data integrity checks completed in 38.31 seconds.",
+      "completed": true
+    }]
+  },
+  "PUSH_ANALYSIS": {},
+  "MONITORING": {},
+  "VALIDATION_RESULTS_NOTIFICATION": {},
+  "REMOVE_EXPIRED_RESERVED_VALUES": {},
+  "DATA_SYNC": {},
+  "SEND_SCHEDULED_MESSAGE": {},
+  "DATAVALUE_IMPORT_INTERNAL": {},
+  "PROGRAM_NOTIFICATIONS": {},
+  "META_DATA_SYNC": {},
+  "ANALYTICS_TABLE": {},
+  "PREDICTOR": {}
+}]
+```
+
+### 查看异步任务摘要 { #view-asynchronous-task-summaries } 
+
+任务摘要资源允许您检索任务摘要
+异步任务调用。您需要指定类别和
+可选的任务标识符。任务标识符可以是
+从发起请求的 API 请求的响应中检索
+异步任务。
+
+要检索特定任务的摘要，您可以发出以下请求：
+
+    / api / 33 / system / taskSummaries / {task-category-id} / {task-id}
+
+一个示例请求可能看起来像这样：
+
+    / api / 33 / system / taskSummaries / DATAVALUE_IMPORT / k72jHfF13J1
+
+响应将类似于以下内容：
+
+```json
+{
+  "responseType": "ImportSummary",
+  "status": "SUCCESS",
+  "importOptions": {
+    "idSchemes": {},
+    "dryRun": false,
+    "async": true,
+    "importStrategy": "CREATE_AND_UPDATE",
+    "mergeMode": "REPLACE",
+    "reportMode": "FULL",
+    "skipExistingCheck": false,
+    "sharing": false,
+    "skipNotifications": false,
+    "datasetAllowsPeriods": false,
+    "strictPeriods": false,
+    "strictCategoryOptionCombos": false,
+    "strictAttributeOptionCombos": false,
+    "strictOrganisationUnits": false,
+    "requireCategoryOptionCombo": false,
+    "requireAttributeOptionCombo": false,
+    "skipPatternValidation": false
+  },
+  "description": "Import process completed successfully",
+  "importCount": {
+    "imported": 0,
+    "updated": 431,
+    "ignored": 0,
+    "deleted": 0
+  },
+  "dataSetComplete": "false"
+}
+```
+
+您还可以检索多个任务的导入摘要
+具有类似请求的特定类别
+这：
+
+    / api / 33 / system / taskSummaries / {task-category-id}
+
+### 获取外观信息 { #webapi_system_resource_get_appearance_information } 
+
+您可以使用 GET 以 JSON 格式检索可用的标志图标
+要求：
+
+    / api / 33 / system / flags
+
+您可以使用 GET 以 JSON 格式检索可用的 UI 样式
+要求：
+
+    / api / 33 / system / styles
+
+## Cluster info { #cluster-info } 
+
+When DHIS 2 is set up in a cluster configuration, it is useful to know which node in the cluster acts as the leader of the cluster. The following API can be used to get the details of the leader node instance. The API supports both JSON and XML formats.
+
+```
+GET /api/36/cluster/leader
+```
+
+A sample JSON response looks like this:
+
+```json
+{
+  "leaderNodeId": "play-dhis2-org-dev",
+  "leaderNodeUuid": "d386e46b-26d4-4937-915c-025eb99c8cad",
+  "currentNodeId": "play-dhis2-org-dev",
+  "currentNodeUuid": "d386e46b-26d4-4937-915c-025eb99c8cad",
+  "leader": true
+}
+```
+
+## 最小-最大数据元素 { #webapi_min_max_data_elements } 
+
+min-max 数据元素资源允许您设置最小值和最大值
+数据元素的值范围。它是独一无二的
+组织单位、数据元素和类别选项组合。
+
+    / api / minMaxDataElements
+
+
+
+Table: Min-max data element data structure
+
+| 项目 | 描述 | 数据类型 |
+|---|---|---|
+| source | Organisation unit identifier | 串 |
+| dataElement | Data element identifier | 串 |
+| optionCombo | Data element category option combo identifier | 串 |
+| min | Minimum value | 整数 |
+| max | Maximum value | 整数 |
+| generated | Indicates whether this object is generated by the system (and not set manually). | Boolean |
+
+您可以从以下位置检索所有最小-最大数据元素的列表
+资源：
+
+    GET /api/minMaxDataElements.json
+
+您可以像这样过滤响应：
+
+    GET /api/minMaxDataElements.json?filter=dataElement.id:eq:UOlfIjgN8X6
+
+    GET /api/minMaxDataElements.json?filter=dataElement.id:in:[UOlfIjgN8X6,xc8gmAKfO95]
+
+min-max 数据元素的过滤器参数支持两种运算符：
+eq 和 in。您还可以使用 `fields` 查询参数。
+
+    GET /api/minMaxDataElements.json?fields=:all,dataElement[id,name]
+
+### 添加/更新最小-最大数据元素 { #webapi_add_update_min_max_data_element } 
+
+要添加新的最小-最大数据元素，请使用POST请求执行以下操作：
+
+    POST /api/minMaxDataElements.json
+
+JSON内容格式如下所示：
+
+```json
+{
+  "min": 1,
+  "generated": false,
+  "max": 100,
+  "dataElement": {
+    "id": "UOlfIjgN8X6"
+   },
+  "source": {
+    "id": "DiszpKrYNg8"
+  },
+  "optionCombo": {
+    "id": "psbwp3CQEhs"
+  }
+}
+```
+
+如果数据元素、组织单位和类别的组合
+选项组合存在，最小值-最大值将被更新。
+
+### 删除最小-最大数据元素 { #webapi_delete_min_max_data_element } 
+
+要删除最小-最大数据元素，请使用DELETE方法发送请求：
+
+    删除/api/minMaxDataElements.json
+
+JSON内容的格式与上述类似：
+
+```json
+{
+  "min": 1,
+  "generated": false,
+  "max": 100,
+  "dataElement": {
+    "id": "UOlfIjgN8X6"
+   },
+  "source": {
+    "id": "DiszpKrYNg8"
+  },
+  "optionCombo": {
+    "id": "psbwp3CQEhs"
+  }
+}
+```
+
+## 锁定异常 { #webapi_lock_exceptions } 
+
+锁定异常资源允许您打开其他锁定的数据
+用于特定数据集、时期和组织的数据输入集
+单元。您可以从以下资源中读取锁定异常：
+
+    / api / lockExceptions
+
+要创建新的锁定异常，您可以使用 POST 请求并指定
+数据集、期间和组织单位：
+
+    POST / api / lockExceptions？ds = BfMAe6Itzgt＆pe = 201709＆ou = DiszpKrYNg8
+
+要删除锁定异常，您可以使用类似的请求语法
+删除请求：
+
+    删除/ api / lockExceptions？ds = BfMAe6Itzgt＆pe = 201709＆ou = DiszpKrYNg8
+

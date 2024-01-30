@@ -1,0 +1,436 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.37/src/developer/web-api/data-store.md"
+revision_date: '2021-08-19'
+tags:
+- DHIS core verze 2.37
+- Vývoj
+---
+
+# Data store { #data-store } 
+
+## Data store { #webapi_data_store } 
+
+Using the *dataStore* resource, developers can store arbitrary data for
+their apps. Access to a datastore's key is based on its sharing settings.
+By default all keys created are publicly accessible (read and write).
+Additionally,  access to a datastore's namespace is limited to the user's
+access to the corresponding app, if the app has reserved the namespace.
+For example a user with access to the "sampleApp" application will also
+be able to use the sampleApp namespace in the datastore. If a namespace
+is not reserved, no specific access is required to use it.
+
+    /api/33/dataStore
+
+Note that there are reserved namespaces used by the system that require 
+special authority to be able to read or write entries. 
+For example the namespace for the android settings app `ANDROID_SETTINGS_APP`
+will require `F_METADATA_MANAGE` authority.
+
+### Struktura úložiště Data store { #webapi_data_store_structure } 
+
+Data store entries consist of a namespace, key and value. The
+combination of namespace and key is unique. The value data type is JSON.
+
+
+
+Tabulka: Struktura úložiště dat
+
+| Položka | Popis | Datový typ |
+|---|---|---|
+| Jmenný prostor | Jmenné prostory pro organizaci záznamů. | Řetězec |
+| Klíč | Klíč pro identifikaci hodnot. | Řetězec |
+| Hodnota | Hodnota, která obsahuje informace o záznamu. | JSON |
+| Šifrováno | Označuje, zda má být hodnota daného klíče zašifrována | Boolean |
+
+### Získejte klíče a jmenné prostory { #webapi_data_store_get_keys_and_namespaces } 
+
+Seznam všech existujících jmenných prostorů:
+
+    GET /api/33/dataStore
+
+Příklad požadavku curl pro výpis:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore" -u admin:district
+```
+
+Příklad odpovědi:
+
+```json
+[
+  "foo",
+  "bar"
+]
+```
+
+Seznam všech klíčů ve jmenném prostoru:
+
+    GET /api/33/dataStore/<namespace>
+
+Příklad požadavku curl pro výpis:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo" -u admin:district
+```
+
+Příklad odpovědi:
+
+```json
+[
+  "key_1",
+  "key_2"
+]
+```
+
+Načtení hodnoty pro existující klíč z oboru názvů:
+
+    GET /api/33/dataStore/<namespace>/<key>
+
+Příklad curl požadavku pro načtení:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo/key_1"-u admin:district
+```
+
+Příklad odpovědi:
+
+```json
+{
+  "foo":"bar"
+}
+```
+
+Načtení metadat pro existující klíč z oboru názvů:
+
+    GET /api/33/dataStore/<namespace>/<key>/metaData
+
+Příklad curl požadavku pro načtení:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo/key_1/metaData" -u admin:district
+```
+
+Příklad odpovědi:
+
+```json
+{
+  "id": "dsKeyUid001", 
+  "created": "...",
+  "user": {...},
+  "namespace": "foo",
+  "key": "key_1"
+}
+```
+
+### Vytvořte hodnoty { #webapi_data_store_create_values } 
+
+Vytvoření nového klíče a hodnoty pro jmenný prostor:
+
+    POST /api/33/dataStore/<namespace>/<key>
+
+Příklad curl požadavku pro vytvoření za předpokladu platného datového obsahu JSON:
+
+```bash
+curl "https://play.dhis2.org/demo/api/33/dataStore/foo/key_1" -X POST
+  -H "Content-Type: application/json" -d "{\"foo\":\"bar\"}" -u admin:district
+```
+
+Příklad odpovědi:
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 201,
+  "status": "OK",
+  "message": "Key 'key_1' created."
+}
+```
+
+Pokud požadujete šifrování dat, která ukládáte (například pověření uživatele apod.), Můžete k adrese URL připojit dotaz takto:
+
+    GET /api/33/dataStore/<namespace>/<key>?encrypt=true
+
+### Aktualizace hodnot { #webapi_data_store_update_values } 
+
+Aktualizace klíče, který existuje ve jmenném prostoru:
+
+    PUT /api/33/dataStore/<namespace>/<key>
+
+Příklad curl požadavku pro aktualizaci za předpokladu platného datového obsahu JSON:
+
+```bash
+curl "https://play.dhis2.org/demo/api/33/dataStore/foo/key_1" -X PUT -d "[1, 2, 3]"
+  -H "Content-Type: application/json" -u admin:district
+```
+
+Příklad odpovědi:
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 200,
+  "status": "OK",
+  "message": "Key 'key_1' updated."
+}
+```
+
+### Smazání klíčů { #webapi_data_store_delete_keys } 
+
+Odstranění existujícího klíče z jmenného prostoru:
+
+    DELETE /api/33/dataStore/<namespace>/<key>
+
+Příklad žádosti o smazání curl:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo/key_1" -X DELETE -u admin:district
+```
+
+Příklad odpovědi:
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 200,
+  "status": "OK",
+  "message": "Key 'key_1' deleted from namespace 'foo'."
+}
+```
+
+Odstranění všech klíčů ve jmenném prostoru:
+
+    DELETE /api/33/dataStore/<namespace>
+
+Příklad žádosti o smazání curl:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo" -X DELETE -u admin:district
+```
+
+Příklad odpovědi:
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 200,
+  "status": "OK",
+  "message": "Namespace 'foo' deleted."
+}
+```
+
+### Sdílení klíčů úložiště dat { #webapi_data_store_sharing } 
+
+Sharing of datastore keys follows the same principle as for other metadata sharing (see
+[Sharing](#webapi_sharing)).
+
+Získání nastavení sdílení pro konkrétní klíč úložiště dat:
+
+    GET /api/33/sharing?type=dataStore&id=<uid>
+
+Kde id klíče datového úložiště pochází z koncového bodu `/metaData` pro tento klíč:
+
+    /api/33/dataStore/<namespace>/<key>/metaData
+
+Úprava nastavení sdílení pro konkrétní klíč úložiště dat:
+
+    POST /api/33/sharing?type=dataStore&id=<uid>
+
+s následujícím požadavkem:
+
+```json
+{
+  "object": {
+    "publicAccess": "rw------",
+    "externalAccess": false,
+    "user": {},
+    "userAccesses": [],
+    "userGroupAccesses": [
+      {
+        "id": "hj0nnsVsPLU",
+        "access": "rw------"
+      },
+      {
+        "id": "qMjBflJMOfB",
+        "access": "r-------"
+      }
+    ]
+  }
+}
+```
+
+## Úložiště uživatelských dat { #webapi_user_data_store } 
+
+In addition to the *dataStore* which is shared between all users of the
+system, a user-based data store is also available. Data stored to the
+*userDataStore* is associated with individual users, so that each user
+can have different data on the same namespace and key combination. All
+calls against the *userDataStore* will be associated with the logged in
+user. This means one can only see, change, remove and add values
+associated with the currently logged in user.
+
+    /api/33/userDataStore
+
+### Struktura úložiště uživatelských dat { #webapi_user_data_store_structure } 
+
+*userDataStore* consists of a user, a namespace, keys and associated
+values. The combination of user, namespace and key is unique.
+
+
+
+Tabulka: Struktura úložiště uživatelských dat
+
+| Položka | Popis | Datový typ |
+|---|---|---|
+| Uživatel | Uživatel, se kterým jsou tato data spojena | Řetězec |
+| Jmenný prostor | Jmenný prostor, do kterého klíč patří | Řetězec |
+| Klíč | Klíč, na kterém je uložena hodnota | Řetězec |
+| Hodnota | Uložená hodnota | JSON |
+| Šifrováno | Označuje, zda má být hodnota zašifrována | Boolean |
+
+### Získejte jmenné prostory { #webapi_user_data_store_get_namespaces } 
+
+Vrátí pole všech existujících jmenných prostorů
+
+    GET /api/33/userDataStore
+
+Příklad
+    požadavek:
+
+```bash
+curl -H "Content-Type: application/json" -u admin:district "play.dhis2.org/api/33/userDataStore"
+```
+
+```json
+[
+  "foo",
+  "bar"
+]
+```
+
+### Získejte klíče { #webapi_user_data_store_get_keys } 
+
+Vrátí pole všech existujících klíčů v daném oboru názvů
+
+    GET /api/userDataStore/<namespace>
+
+Příklad požadavku:
+
+```bash
+curl -H "Content-Type: application/json" -u admin:district "play.dhis2.org/api/33/userDataStore/foo"
+```
+
+```json
+[
+  "key_1",
+  "key_2"
+]
+```
+
+### Získejte hodnoty { #webapi_user_data_store_get_values } 
+
+Vrátí hodnotu pro daný jmenný prostor a klíč
+
+    GET /api/33/userDataStore/<namespace>/<key>
+
+Příklad požadavku:
+
+```bash
+curl -H "Content-Type: application/json" -u admin:district "play.dhis2.org/api/33/userDataStore/foo/bar"
+```
+
+```json
+{
+  "some": "value"
+}
+```
+
+### Vytvořte hodnotu { #webapi_user_data_store_create_values } 
+
+Přidá novou hodnotu k danému klíči v daném jmenném prostoru.
+
+    POST /api/33/userDataStore/<namespace>/<key>
+
+Příklad požadavku:
+
+```bash
+curl -X POST -H "Content-Type: application/json" -u admin:district -d "['some value']"
+  "play.dhis2.org/api/33/userDataStore/foo/bar"
+```
+
+```json
+{
+  "httpStatus": "Created",
+  "httpStatusCode": 201,
+  "status": "OK",
+  "message": "Key 'bar' in namespace 'foo' created."
+}
+```
+
+Pokud požadujete šifrování hodnoty (například pověření uživatele apod.), Můžete k adrese URL připojit dotaz takto:
+
+    GET /api/33/userDataStore/<namespace>/<key>?encrypt=true
+
+### Aktualizace hodnot { #webapi_user_data_store_update_values } 
+
+Aktualizuje existující hodnotu
+
+    PUT /api/33/userDataStore/<namespace>/<key>
+
+Příklad požadavku:
+
+```bash
+curl -X PUT -H "Content-Type: application/json" -u admin:district -d "['new value']"
+  "play.dhis2.org/api/33/userDataStore/foo/bar"
+```
+
+```json
+{
+  "httpStatus":"Created",
+  "httpStatusCode":201,
+  "status":"OK",
+  "message":"Key 'bar' in namespace 'foo' updated."
+}
+```
+
+### Odstranit klíč { #webapi_user_data_store_delete_key } 
+
+Odstranění klíče
+
+    DELETE /api/33/userDataStore/<namespace>/<key>
+
+Příklad požadavku:
+
+```bash
+curl -X DELETE -u admin:district "play.dhis2.org/api/33/userDataStore/foo/bar"
+```
+
+```json
+{
+  "httpStatus":"OK",
+  "httpStatusCode":200,
+  "status":"OK",
+  "message":"Key 'bar' deleted from the namespace 'foo."
+}
+```
+
+### Odstranit jmenný prostor { #webapi_user_data_store_delete_namespace } 
+
+Odstranění všech klíčů v daném jmenném prostoru
+
+    DELETE /api/33/userDataStore/<namespace>
+
+Příklad požadavku:
+
+```bash
+curl -X DELETE -u admin:district "play.dhis2.org/api/33/userDataStore/foo"
+```
+
+```json
+{
+  "httpStatus":"OK",
+  "httpStatusCode":200,
+  "status":"OK",
+  "message":"All keys from namespace 'foo' deleted."
+}
+```
+
