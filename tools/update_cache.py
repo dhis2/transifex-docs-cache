@@ -39,7 +39,7 @@ for p in projects:
         # get the min date from the "last_update" file in the project directory (minus one day to give some overlap)
         if os.path.exists(cache_timestamp_file):
             with open(cache_timestamp_file) as f:
-                min_date = datetime.datetime.strptime(f.readline().strip(),'%Y-%m-%dT%H:%M:%SZ') - datetime.timedelta(days=1)
+                min_date = datetime.datetime.strptime(f.readline().strip(),'%Y-%m-%dT%H:%M:%SZ') - datetime.timedelta(days=365)
 
 
         tic = time.perf_counter()
@@ -55,7 +55,7 @@ for p in projects:
                         # print(last_update,r.name,r.slug)
                         # pull the resource from transifex
                         path = proj_lang_path+"/"+r.slug
-                        executor.submit(r.pull,l.code,path)
+                        executor.submit(r.pull,l.code,path,"default")
             
         toc = time.perf_counter()
         print(f"Pulled files from transifex in {toc - tic:0.4f} seconds")
