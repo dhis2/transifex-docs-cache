@@ -1,0 +1,845 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-sdk/blob/master/docs/content/developer/workflow.md"
+revision_date: '2024-01-08'
+tags:
+- Vývoj
+---
+
+# Workflow { #android_sdk_workflow }
+
+V současné době je SDK primárně zaměřena na vytváření aplikací, které fungují v offline režimu. Stručně řečeno, SDK udržuje instanci místní databáze, která se používá k místní práci (vytváření formulářů, správa dat, ...). Na žádost klienta je tato místní databáze synchronizována se serverem.
+
+Typický pracovní postup by vypadal takto:
+
+1. **Přihlášení**
+2. **Synchronizovat metadata:** SDK stáhne podmnožinu metadat serveru, takže je lze kdykoli použít. Synchronizace metadat je zcela závislá na uživateli (další podrobnosti) viz [Synchronizace](#android_sdk_metadata_synchronization)
+3. **Stáhnout data:** Pokud chcete mít v zařízení k dispozici existující data, i když jste offline, můžete si stáhnout a uložit existující sledovací a agregovaná data v zařízení.
+4. **Udělejte práci:** v tomto okamžiku je aplikace schopna vytvořit formuláře pro zadávání dat a zobrazit některá existující data. Uživatel pak může upravovat / mazat / aktualizovat data.
+5. **Nahrát data:** čas od času se práce provedená v instanci místní databáze odešle na server.
+6. **Sync metadat:** se doporučuje synchronizovat metadata poměrně často, aby se zjistily změny v konfiguraci metadat.
+
+## Přihlášení / Odhlášení { #android_sdk_login_logout }
+
+Před interakcí se serverem je nutné se přihlásit do instance DHIS 2.
+
+```java
+d2.userModule().logIn(username, password, serverUrl)
+
+d2.userModule().logOut()
+```
+
+As of version 1.6.0, the SDK supports the storage of information for multiple accounts, which means keeping a separate database for each pair user-server. Despite of that, only one account can active (or logged in) simultaneously. That means that only one user can be authenticated in only one server at the same time. 
+
+Počet maximálních povolených účtů může být konfigurován aplikací (ve výchozím nastavení je jeden). Po úspěšném přihlášení pro nový pár uživatel-server se automaticky vytvoří nový účet. Pokud počet účtů překročí konfigurované maximum, nejstarší účet a související databáze se automaticky odstraní.
+
+```java
+// Get the account list
+d2.userModule().accountManager().getAccounts();
+
+// Get/set the maximum number of accounts
+d2.userModule().accountManager().getMaxAccounts();
+d2.userModule().accountManager().setMaxAccounts();
+
+// Delete account for current user
+d2.userModule().accountManager().deleteCurrentAccount();
+```
+
+AccountManager zpřístupní pozorovatelnou událost, která při odstranění aktuálního účtu vyvolá událost. Obsahuje důvod, proč byl účet smazán.
+
+```java
+// Emits an event when the current account is deleted
+d2.userModule().accountManager().accountDeletionObservable();
+```
+
+Po odhlášení sada SDK sleduje posledního přihlášeného uživatele, aby mohla rozlišovat opakující se a nové uživatele. Udržuje také hash pověření uživatele, aby ověřil uživatele, i když není k dispozici připojení. Vzhledem k uvedenému bude metoda přihlášení:
+
+- Pokud ověřený uživatel již existuje: vyhodí to chybu.
+- Else if *Online*:
+  - Try **login online**: the SDK will send the username and password to the API, which will determine whether they are correct. If successful:
+        - If no database exists: create new database with encryption value from server.
+        - If database for another [serverUrl, user] exists, delete it and create new database with encryption value from server. Not synced data of previously logged user will be permanently lost.
+        - If database for the current [serverUrl, user] pair exists, open the database and encrypt or decrypt database if encryption status has changed in the server.
+  - Pokud byl uživatelský účet na serveru zakázán: vymaže databázi a hodí chybu.
+- Else if *Offline*:
+  - Pokud byla dvojice [serverUrl, uživatel] poslední ověřená:
+    - Zkuste **přihlášení offline**: SDK ověří, že přihlašovací údaje jsou stejné jako poslední poskytnuté, které byly dříve ověřeny API.
+  - Pokud pár [serverUrl, uživatel] nebyl posledním ověřeným: vyhodí chybu
+
+Volání metod modulu nebo úložiště před úspěšným přihlášením nebo po odhlášení bude mít za následek chyby „Databáze nebyla vytvořena“.
+
+Metoda odhlášení odebere pověření uživatele, takže před jakoukoli interakcí se serverem je nutné nové přihlášení. Metadata a data jsou zachována, takže uživatel se může odhlásit / přihlásit bez ztráty jakýchkoli informací.
+
+## Přihlášení pomocí OpenID { #android_sdk_login_open_id }
+
+Sada SDK obsahuje podporu pro OpenID. Pro přihlášení pomocí OpenID je vyžadován OpenIDConnectConfig:
+
+```java
+OpenIDConnectConfig openIdConfig = new OpenIDConnectConfig(clientId, redirectUri, discoveryUri, authorizationUrl, tokenUrl);
+```
+
+Je povinné zadat buď discoveryUri, nebo obě AuthorizationUrl a tokenUrl.
+
+Tuto konfiguraci lze použít k přihlášení.
+
+```java
+d2.userModule().openIdHandler().logIn(openIdConfig)
+```
+
+Toto volání vrací IntentWithRequestCode, který v aplikaci pro Android umožňuje spuštění přihlašovací obrazovky OpenID od poskytovatele konfigurace.
+
+```java
+startActivityForResult(intentWithRequestCode.getIntent(), intentWithRequestCode.getRequestCode());
+```
+
+Po úspěšném přihlášení lze vrácená data záměru použít spolu s adresou URL serveru ke spuštění synchronizace.
+
+```java
+d2.userModule().openIdHandler().handleLogInResponse(serverUrl, data, requestCode);
+```
+
+Do souboru manifestu aplikace je povinné zahrnout následující aktivitu:
+
+```xml
+<activity   android:name="net.openid.appauth.RedirectUriReceiverActivity"
+            android:exported="true"
+            tools:node="replace">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="<your redirect url scheme>" />
+            </intent-filter>
+</activity>
+```
+
+Chcete-li nakonfigurovat všechny parametry, zkontrolujte následující pokyny pro poskytovatele OpenID, které server implementuje:
+
+|Poskytovatelé OpenID|
+|----------------|
+|[Google](https://github.com/openid/AppAuth-Android/blob/master/app/README-Google.md)          |
+|[GitHub](https://docs.github.com/en/developers/apps/authorizing-oauth-apps)          |
+|[ID-porten](https://docs.digdir.no/oidc_protocol_authorize.html)       |
+|[OKTA](https://github.com/openid/AppAuth-Android/blob/master/app/README-Okta.md)            |
+|[KeyCloak](https://www.keycloak.org/docs/latest/authorization_services/index.html#_service_authorization_api)        |
+|[Azure AD](https://docs.microsoft.com/es-es/azure/active-directory-b2c/signin-appauth-android?tabs=app-reg-ga)        |
+|[WS02](https://medium.com/@maduranga.siriwardena/configuring-appauth-android-with-wso2-identity-server-8d378835c10a)            |
+
+## Synchronizace metadat { #android_sdk_metadata_synchronization }
+
+Synchronizace metadat je obvykle prvním krokem po přihlášení. Načte a přechovává metadata potřebná pro aktuálního uživatele. Chcete-li spustit synchronizaci metadat, musíme provést:
+
+```java
+d2.metadataModule().download();
+```
+
+Aby se ušetřilo využití šířky pásma a úložný prostor, SDK nesynchronizuje všechna metadata na serveru, ale podmnožinu. Tato podmnožina je definována jako metadata požadovaná uživatelem k provádění úkolů zadávání dat: vykreslování programů a datových sad, provádění pravidel programu, hodnocení indikátorů in-line programů atd.
+
+Na základě toho zahrnuje synchronizace metadat následující prvky:
+
+|   Prvek                     |   Podmínka nebo rozsah |
+|-----------------------        |-------------|
+| Systémová informace                   | Vše |
+| Nastavení systému               | KeyFlag, KeyStyle |
+| Aplikace Nastavení Android          | Obecná nastavení, Synchronizace, Vzhled, Analytika |
+| Uživatelské nastavení                 | KeyDbLocale, KeyUiLocale |
+| Uživatel                          | Pouze ověřený uživatel |
+| UserRole                      | Role přiřazené ověřenému uživateli |
+| Autorita                     | Autority přiřazené ověřenému uživateli |
+| Program                       | Programy, ke kterým má uživatel (alespoň) přístup k datům a které jsou přiřazeny jakékoli organizační jednotce, která je viditelná |
+| RelationshipTypes             | Všechny typy viditelné uživatelem |
+| OptionGroups                  | Pouze pokud je server větší než 2,29 |
+| EventFilters                  | Ty, které se týkají stažených programů |
+| TrackedEntityInstanceFilters  | Ty, které se týkají stažených programů |
+| ProgramStageWorkingList       | Ty, které se týkají stažených programů |
+| DataSet                       | Datové sady, ke kterým má uživatel (alespoň) přístup k datům a které jsou přiřazeny jakékoli organizační jednotce viditelné uživatelem |
+| Pravidla ověřování              | Pravidla ověřování přidružená k datovým sadám |
+| OrganisationUnit              | OrganisationUnits v CAPTURE nebo SEARCH rozsahu (včetně podřazených) |
+| OrganisationUnitGroup         | Skupiny přiřazené staženým organizačním jednotkám |
+| OrganisationUnitLevel         | Vše |
+| Konstantní                      | Vše |
+| Vizualizace                | Vizualizace přiřazené k nastavení Analytics (aplikace Nastavení pro Android) |
+| Indikátory                    | Indikátory přiřazené ke staženým datovým sadám a vizualizacím |
+| SMS Module metadata           | Pouze pokud je povolen modul SMS |
+
+V případě programů a datových sad zahrnuje synchronizace metadat všechna metadata, která se k nim vztahují: fáze, sekce, datové prvky, možnosti, kategorie atd. Tyto prvky, které nesouvisejí s žádným programem nebo datovou sadou, nejsou zahrnuty.
+
+### Poškozené konfigurace { #corrupted-configurations } 
+
+Tato částečná synchronizace metadat může vystavit problémy se špatnou konfigurací na straně serveru. Například ProgramRuleVariable ukazující na DataElement, který do programu již nepatří. Z důvodu použití omezení na úrovni databáze se tato nesprávná konfigurace zobrazí jako chyba cizího klíče.
+
+Sada SDK nezklame synchronizaci, ale chyby uloží do tabulky ke kontrole. K těmto chybám lze získat přístup:
+
+```java
+d2.maintenanceModule().foreignKeyViolations()
+```
+
+## Stavy dat { #android_sdk_data_states }
+
+Data objects have a read-only `syncState` property that indicates the current state of the object in terms of synchronization with the server. This state is maintained by the SDK. 
+
+Možné stavy jsou:
+
+- **SYNCHRONIZOVANÉ**. Prvek se synchronizuje se serverem. Pro tuto hodnotu neexistují žádné místní změny.
+- **TO_POST**. Data vytvořená místně, která na serveru dosud neexistují.
+- **K_AKTUALIZACI**. Data upravená místně, která existují na serveru.
+- **NAHRÁVÁNÍ**. Data se nahrávají. Pokud je před přijetím jakékoli odpovědi serveru změněn, jeho stav je zpět na `TO_UPDATE`. Když dorazí odpověď serveru, jeho stav se nezmění na `SYNCED`, ale zůstane v` TO_UPDATE`, což znamená, že existují místní změny.
+- **SENT_VIA_SMS**. Data is sent via sms and there is no server response yet. Some servers do not have the capability to send a response, so this state means that data has been sent, but we do not know if it has been correctly imported in the server or not.
+- **SYNCED_VIA_SMS**. Data is sent via sms and there is a successful response from the server.
+- **CHYBA**. Data, která po posledním nahrání přijala ze serveru chybu.
+- **VAROVÁNÍ**. Data, která od posledního nahrání obdržela varování ze serveru.
+
+Navíc v `TrackedEntityInstance`, `Zápis` a `Události` můžeme mít:
+
+- **VZTAH**. Tento prvek byl stažen pouze za účelem naplnění vztahu k jinému prvku. Tento prvek `VZTAH` má pouze základní informace (uid, typ atd.) a seznam TrackedEntityAttributes (v případě TrackedEntityInstances), aby bylo možné vytisknout smysluplné informace o vztahu. Ostatní data, jako jsou zápisy, události, poznámky, hodnoty nebo vztahy, se nestahují. Tento prvek také nelze upravit ani nahrát na server.
+
+Kromě vlastnosti `syncState` mají třídy `TrackedEntityInstance`, `Zápis` a `Události` vlastnost nazvanou `aggregatedSyncState`, která představuje stav synchronizace jejich potomků. Pokud je například hodnota dataValue upravena v  `Událost`, výsledné stavy pro související objekty budou:
+
+| Prvek               | SyncState   | AggregatedSyncState |
+|-----------------------|-------------|---------------------|
+| TrackedEntityInstance | SYNCED      | TO_UPDATE           |
+| Zápis            | SYNCED      | TO_UPDATE           |
+| událost                 | TO_UPDATE   | TO_UPDATE           |
+
+## Data trasovače { #android_sdk_tracker_data }
+
+### Stahování dat trasovače { #tracker-data-download } 
+
+> **Důležité**
+>
+> V části [Nastavení aplikace](#android_sdk_settings_app) zjistíte, jak lze tuto aplikaci použít k ovládání parametrů synchronizace.
+
+By default, the SDK only downloads TrackedEntityInstances and Events
+that are located in user capture scope, but it is also possible to
+download TrackedEntityInstances in search scope.
+
+The tracked entity module contains the
+`TrackedEntityInstanceDownloader`. The downloader follows a builder
+pattern which allows the download of tracked entity instances filtering by
+**different parameters** as well as defining some **limits**. The same
+behavior can be found within the event module for events.
+
+The downloader tracks the latest successful download in order to avoid
+downloading unmodified data. It makes use of paging with a best effort
+strategy: in case a page fails to be downloaded or persisted, it is
+skipped and it will continue with the next pages.
+
+Toto je příklad toho, jak jej lze použít.
+
+```java
+d2.trackedEntityModule().trackedEntityInstanceDownloader()
+    .[filters]
+    .[limits]
+    .download()
+```
+
+```java
+d2.eventModule().eventDownloader()
+    .[filters]
+    .[limits]
+    .download()
+```
+
+Aktuálně je možné určit další filtry:
+
+- `byProgramUid()`. Filters by program uid and downloads the not synced
+  objects inside the program.
+- `byUid()`. Filters by the tracked entity instance uid and downloads a
+  unique object. This filter can be used to download the tracked entity
+  instances found within search scope. (Only for tracked entity
+  instances).
+- `byProgramStatus()`. Filtruje ty instance trasovaných entit, které mají registraci s daným stavem.
+
+The downloader also allows to limit the number of downloaded objects.
+These limits can also be combined with each other.
+
+- `limit()`. Omezí maximální počet objektů ke stažení.
+- `limitByProgram()`. Take the established limit and apply it to each
+  program. The number of objects that will be downloaded will be the one
+  obtained by multiplying the limit set by the number of user programs.
+- `limitByOrgunit()`. Take the established limit and apply it for each
+  organisation unit. The number of objects that will be downloaded will
+  be the one obtained by multiplying the limit set by the number of user
+  organisation units.
+
+Další vlastnosti:
+
+- `overwrite()`. Ve výchozím nastavení SDK nepřepisuje data v zařízení v jiném stavu než SYNCED. Pokud chcete přepsat data v zařízení, bez ohledu na jeho stav, přidejte tuto metodu do řetězce dotazů.
+
+The next snippet of code shows an example of the
+TrackedEntityInstanceDownloader usage.
+
+```java
+d2.trackedEntityModule().trackedEntityInstanceDownloader()
+    .byProgramUid("program-uid")
+    .limitByOrgunit(true)
+    .limitByProgram(true)
+    .limit(50)
+    .download()
+```
+
+Additionally, if you want the images associated to `Image` data values available to be downloaded in the device, you must download them. See [*Dealing with FileResources*](#android_sdk_file_resources) section for more details.
+
+### Vyhledávání dat ze sledování { #tracker-data-search } 
+
+DHIS2 has a functionality to filter TrackedEntityInstances by related
+properties, like attributes, organisation units, programs or enrollment
+dates. The Sdk provides the `TrackedEntitySearchCollectionRepository` 
+with methods that allow the download of tracked entity
+instances within the search scope. It can be found inside the tracked entity instance module.
+
+The tracked entity instance search is a powerful tool that follows a
+builder pattern and allows the download of tracked entity instances
+filtering by **different parameters**.
+
+```java
+d2.trackedEntityModule().trackedEntitySearch()
+    .[repository mode]
+    .[filters]
+    .get()
+```
+
+The source where the TEIs are retrieved from is defined by the **repository mode**.
+These are the different repository modes available:
+
+- `onlineOnly()`. Only TrackedEntityInstances coming from the server are
+  returned in the list. Internet connection is required to use this mode.
+- `offlineOnly()`. Only TrackedEntityInstances coming from local
+  database are returned in the list.
+- `onlineFirst()`. TrackedEntityInstances coming from the server are
+  returned in first place. Once there are no more results online, it
+  continues with TrackedEntityInstances in the local database. Internet
+  connection is required to use this mode.
+- `offlineFirst()`. TrackedEntityInstances coming from local database
+  are returned in first place. Once there are no more results, it continues
+  with TrackedEntityInstances coming from the server. This method may
+  speed up the initial load. Internet connection is required to use this
+  mode.
+
+This repository follows the same syntax as other repositories.
+Additionally, the repository offers different strategies to fetch data:
+
+- `byAttribute()`. This method adds an *attribute* filter to the query.
+  If this method is called several times, conditions are appended with an AND
+  connector. For example:
+
+  ```java
+  d2.trackedEntityModule().trackedEntitySearch()
+      .byAttribute("uid1").eq("value1")
+      .byAttribute("uid2").eq("value2")
+      .get()
+  ```
+
+  That means that the instance must have attribute `uid1` with value
+  `value1` **AND** attribute `uid2` with value `value2`.
+
+- `byFilter()`. This method adds a *filter* to the query. If this
+  method is called several times, conditions are appended with an AND
+  connector. For example:
+
+  ```java
+  d2.trackedEntityModule().trackedEntitySearch()
+      .byFilter("uid1").eq("value1")
+      .byFilter("uid2").eq("value2")
+      .get()
+  ```
+
+  That means that the instance must have attribute `uid1` with value
+  `value1` **AND** attribute `uid2` with value `value2`.
+
+- `byQuery()`. Search tracked entity instances with **any** attribute
+  matching the query.
+- `byDataValue()`. Search tracked entity instances based on the values of their events. This filter is usually used along with `programStage()` filter.
+- `byProgram()`. Filter by enrollment program. Only one program can be
+  specifikováno.
+- `byProgramStage()`. Filter by enrollment program stage. Only one program stage can be specified.
+- `byOrgUnits()`. Filter by tracked entity instance organisation units.
+  More than one organisation unit can be specified.
+- `byOrgUnitMode()`. Define the organisation unit mode.
+- `byProgramDate()`. Define an enrollment date filter. It only applies if a program has been specified.
+- `byIncidentDate()`. Define an incident date filter.
+- `byEnrollmentStatus()`. Define a filter for enrollment status.
+- `byEventDate()`. Define an event date filter.
+- `byEventStatus()`. Define a filter for event status.
+- `byTrackedEntityType()`. Filter by TrackedEntityType. Only one type
+  can be specified.
+- `byIncludeDeleted()`. Whether to include or not deleted tracked entity
+  instances. Currently, this filter only applies to **offline**
+  instances.
+- `byStates()`. Filter by sync status. Using this filter forces
+  **offline only** mode.
+- `byFollowUp()`. Filter by followUp.
+- `byAssignedUserMode()`. Filter using an assignedUserMode.
+- `byLastUpdatedDate()`. Define a lastUpdated filter.
+- `byTrackedEntities()`. Filter by tracked entity uids.
+- `byTrackedEntityInstanceFilter()`. TrackedEntityInstanceFilters, známé také jako **pracovní seznamy**, jsou předdefinovanou sadou parametrů dotazu.
+- `byProgramStageWorkingList()`. Apply a ProgramStageWorkingList filter.
+
+Příklad:
+
+```java
+d2.trackedEntityModule().trackedEntitySearch()
+                .byOrgUnits().eq("orgunitUid")
+                .byOrgUnitMode().eq(OrganisationUnitMode.DESCENDANTS)
+                .byProgram().eq("programUid")
+                .byAttribute("attributeUid").like("value")
+                .offlineFirst()
+```
+
+> **Important**
+>
+> TrackedEntityInstances retrieved using this repository are not persisted in the database. It is possible
+to fully download them using the `byUid()` filter of the `TrackedEntityInstanceDownloader` within the tracked entity instance module.
+
+Může se stát, že přidáte filtry do úložiště dotazů v různých částech aplikace a nebudete mít jasnou představu o použitých filtrech, zvláště při použití pracovních seznamů, protože přidávají sadu parametrů. Chcete-li to vyřešit, můžete kdykoli přistupovat k rozsahu filtru v úložišti:
+
+```java
+d2.trackedEntityModule().trackedEntitySearch()
+    .[ filters ]
+    .getScope();
+```
+
+In addition to the standard `getPaged(int)` and `getDataSource()` methods that are available in all the repositories, the TrackedEntitySearch repository exposes a method to wrap the response in a `Result` object: the `getResultDataSource()`. This method is kind of a workaround to deal with the lack of error management in the Version 2 of the Android Paging Library (it is hardly improved in version 3). Using this dataSource you can catch search errors, such as "Min attributes required" or "Max tei count reached". 
+
+
+### Working lists / Tracker filters { #working-lists-tracker-filters } 
+
+There are three concepts related to building a predifined filter for tracker objects:
+
+- **TrackedEntityInstanceFilters**: they define filters to be used against TrackedEntity objects and have some limited capabilities to filter by event-related data, such as eventDate or eventStatus.
+- **EventFilters**: they define filters to be used against Event objects.
+- **ProgramStageWorkingList**: they define filters to be used against TrackedEntity objects and they add support to filter by event-related data. It is mandatory to specify a particular ProgramStage.
+
+As usual, they have their own collection repository and can be applied in "search" repositories. For example:
+
+```java
+// Get the filters
+List<TrackedEntityInstanceFilter> filters = d2.trackedEntityModule().trackedEntityInstanceFilters().blockingGet();
+List<EventFilter> filters = d2.eventModule().eventFilters().blockingGet();
+List<ProgramStageWorkingList> workingLists = d2.programModule().programStageWorkingLists().blockingGet();
+
+// Apply the filters
+d2.trackedEntityModule().trackedEntitySearch()
+    .byTrackedEntityInstanceFilter().eq("filterUid")
+    .byProgramStageWorkingList().eq("workingListUid")
+    .get()
+
+d2.eventModule().eventQuery()
+    .byEventFilter().eq("filterUid")
+    .get();
+```
+
+### Ownership { #ownership } 
+
+The concept of ownership is supported in the SDK. In short, each pair trackedEntityInstance - program is owned by an organisationUnit. This ownership is used in the trackedEntityInstance search to determine the owner organisationUnit the TEI belongs to.
+
+You can get the program owners for each trackedEntityInstance by using the repository:
+
+```java
+d2.trackedEntityModule().trackedEntityInstances()
+        .withProgramOwners()
+        .get();
+```
+
+Also, you can permanently transfer the ownership by using the OwnershipManager. This transfer will be automatically uploaded to the server in the next synchronization. 
+
+```java
+d2.trackedEntityModule().ownershipManager()
+        .transfer(teiUid, programUid, ownerOrgunit);
+```
+
+### Break the glass { #break-the-glass } 
+
+Koncept "Rozbití skla" je založen na vlastnictví dvojice trackedEntityInstance – zápis. Pokud je program **PROTECTED** a uživatel nemá k organizační jednotce **DATA CAPTURE**, je nutné pro načtení a úpravu dat rozbít sklo. Pracovní postup by byl:
+
+1. Vyhledejte všechny instance trasovaných entit v rozsahu **SEARCH**. Je důležité nezahrnout uid programu do dotazu: server vrátí pouze ty TEI, které jsou přístupné uživateli, takže chráněné TEI v rozsahu vyhledávání nebudou vráceny (jinak by uživatel věděl, zda jsou TEI zapsány nebo ne bez udání důvodu).
+2. Stáhněte si TEI pomocí downloaderu a zadejte **TEI uid** a **uid programu**. Pro vynucení chyby vlastnictví je důležité zahrnout oba parametry.
+3. Zachyťte chybu, pokud existuje, a zkontrolujte, zda se nejedná o chybu OWNERSHIP_ACCESS_DENIED.
+4. Pokud ano, požádejte o vlastnictví pomocí modulu vlastnictví (viz fragment kódu níže).
+5. Zkuste znovu dotaz v kroku 2.
+
+```java
+TrackedEntityInstanceDownloader teiRepository = d2.trackedEntityModule().trackedEntityInstanceDownloader()
+        .byUid().eq(teiUid)
+        .byProgramUid(programUid);
+
+try {
+    teiRepository.blockingDownload();
+} catch (RuntimeException e) {
+    if (e.getCause() instanceof D2Error &&
+            ((D2Error) e.getCause()).errorCode() == D2ErrorCode.OWNERSHIP_ACCESS_DENIED) {
+        // Show a dialog to the user and capture the reason to break the glass
+        String reason = "Reason to break the glass";
+
+        // Break the glass
+        d2.trackedEntityModule().ownershipManager()
+                .blockingBreakGlass(teiUid, programUid, reason);
+
+        // Download again
+        teiRepository.blockingDownload();
+    } else {
+        // Deal with other exceptions
+    }
+}
+```
+
+Doporučujeme nahrát data ihned po úpravě, protože vlastnictví vyprší za dvě hodiny (může záviset na verzích DHIS2). Pokud vlastnictví vypršelo, když se uživatel pokusí nahrát data, SDK automaticky provede dotaz "rozbití skla" na pozadí s původním důvodem a přidá předponu "Synchronizace aplikací pro Android:". Tímto způsobem mohl administrátor snadno zjistit, že tato operace není skutečným rozbitím skla, ale pouze pomocným dotazem k provedení synchronizace.
+
+### Zápis dat trasovače { #tracker-data-write } 
+
+Obecně existují dva různé případy pro správu vytváření / vydání / mazání dat: případ, kdy je objekt identifikovatelný (to znamená, že má vlastnost `uid`) a případ, kdy objekt není identifikovatelný.
+
+**Identifikovatelné objekty** (TrackedEntityInstance, Enrollment, Event). Tato úložiště mají metodu `uid()`, která vám umožňuje přístup k metodám edice pro jeden objekt. V případě, že objekt ještě neexistuje, je nutné jej nejprve vytvořit. Typický pracovní postup pro vytvoření / úpravu objektu by byl:
+
+- Pomocí třídy `CreateProjection` přidejte do úložiště novou instanci.
+- Uid vrácený touto metodou uložte.
+- Pro získání přístupu k metodám vydání použijte metodu `uid()` s předchozím uid.
+
+A v kódu by to vypadalo takto:
+
+```java
+String eventUid = d2.eventModule().events().add(
+    EventCreateProjection.create("enrollment", "program", "programStage", "orgUnit", "attCombo"));
+
+d2.eventModule().events().uid(eventUid).setStatus(COMPLETED);
+```
+
+**Neidentifikovatelné objekty** (TrackedEntityAttributeValue, TrackedEntityDataValue). Tato úložiště mají metodu `value()`, která vám umožňuje přístup k metodám edice pro jeden objekt. Parametry přijímané touto metodou jsou parametry, které jednoznačně identifikují hodnotu.
+
+Například psaní TrackedEntityDataValue by vypadalo takto:
+
+```java
+d2.trackedEntityModule().trackedEntityDataValues().value(eventUid, dataElementid).set(“5”);
+```
+
+Data values of type `Image` involve an additional step to create/update/read the associated file resource. More details in the [*Dealing with FileResources*](#android_sdk_file_resources) section below.
+
+#### Write events in read-only TEIs { #write-events-in-read-only-teis } 
+
+It is important to pay special attention to user's data access to the TEIs, enrollments and events. The SDK modify the status of the data when any *write* method is executed in order to upload it to the server in the next synchronization. If a user has no write data access to a particular element, the app should prevent the edition of this element.
+
+Omezení, která musí aplikace dodržovat, jsou tato:
+
+- **TrackedEntityInstances:** uživatel musí mít přístup k datům pro zápis do **TrackedEntityType**.
+- **Zápisy:** uživatel musí mít přístup k datům pro zápis **jak do TrackedEntityType, tak do programu** (toto dodatečné omezení je uloženo sadou SDK).
+- **Události:** uživatel musí mít přístup k datům pro zápis do **ProgramStage**.
+
+### Nahrávání dat trasovače { #tracker-data-upload } 
+
+TrackedEntityInstance a úložiště událostí mají metodu `upload()` pro nahrávání Trasovacích dat a Dat událostí (bez registrace). Pokud byl rozsah úložiště zmenšen metodami filtrování, nahrají se pouze filtrované objekty.
+
+```java
+d2.( trackedEntityModule() | eventModule() )
+    .[ filters ]
+    .upload();
+```
+
+Nelze nahrát data, jejichž stav je `ERROR` nebo `WARNING` . Před pokusem o nové nahrání je nutné konflikty vyřešit: to znamená provést úpravu problematických dat, která vynutí jejich stav zpět na `TO_UPDATE`.
+
+Od verze 2.37 byl představen nový importér trasovačů (koncový bod `/api/tracker`). Výchozí importér trasovačů je stále starý (`/api/trackedEntityInstances`), ale můžete se přihlásit k používání tohoto nového importéru trasovače pomocí webové aplikace Nastavení Android (viz [Synchronizace](#android_sdk_synchronization_settings)). Toto je interní sada SDK; API vystavené aplikaci se nemění.
+
+Před nahráním dat trasovače je třeba nahrát prostředky souboru v jiném volání. Dotaz pro zveřejnění zdrojů souborů je:
+
+```java
+d2.fileResourceModule().fileResources().upload();
+```
+
+More information about file resources in the section [*Dealing with FileResources*](#android_sdk_file_resources).
+
+#### Konflikty trasovače { #tracker-conflicts } 
+
+Reakce serveru je analyzována, aby bylo zajištěno, že byla data na server správně nahrána. V případě, že odpověď serveru zahrnuje konflikty importu, jsou tyto konflikty uloženy v databázi, aby je aplikace mohla zkontrolovat a podniknout kroky k jejich vyřešení.
+
+```java
+d2.importModule().trackerImportConflicts()
+```
+
+Konflikty spojené s TrackedEntityInstance, Zápisem nebo Událostí jsou automaticky odstraněny po úspěšném nahrání objektu.
+
+Sada SDK se pokouší identifikovat konfliktní dataElement nebo atribut analýzou odpovědi serveru. Pokud ano, také uloží hodnotu prvku, když došlo ke konfliktu, aby aplikace mohla zvýraznit prvek ve formuláři, když hodnota ještě nebyla opravena.
+
+### Data trasovače: rezervované hodnoty { #tracker-data-reserved-values } 
+
+Atributy trasované entity nakonfigurované jako **jedinečné** a **automaticky generované** jsou generovány serverem podle vzoru definovaného uživatelem. Tyto hodnoty může generovat pouze server, což znamená, že je musíme předem rezervovat, abychom je mohli využívat při offline provozu.
+
+Aplikace je zodpovědná za rezervování vygenerovaných hodnot před přechodem do režimu offline. To může být spuštěno:
+
+```java
+// Reserve values for all the unique and automatically generated trackedEntityAttributes.
+d2.trackedEntityModule().reservedValueManager().downloadAllReservedValues(numValuesToFillUp)
+
+// Reserve values for a particular trackedEntityAttribute.
+d2.trackedEntityModule().reservedValueManager().downloadReservedValues("attributeUid", numValuesToFillUp)
+```
+
+V závislosti na tom, jak dlouho aplikace očekává, že bude offline, může rozhodnout o množství hodnot, které si má rezervovat. V případě, že vzor atributů závisí na kódu organizační jednotky, SDK rezervuje hodnoty pro všechny příslušné organizační jednotky. Další podrobnosti o logice v Javadocu.
+
+Rezervované hodnoty lze získat:
+
+```java
+d2.trackedEntityModule().reservedValueManager().getValue("attributeUid", "orgunitUid")
+```
+
+### Data trasovače: vztahy { #tracker-data-relationships } 
+
+The SDK supports all types of relationships. They are downloaded when syncing and can be accessed and created or modified. 
+
+
+|                    | TEI        | Zápis   | událost      |
+|--------------------|:----------:|:------------:|:----------:|
+| **TEI**            | X          | X            | X          |
+| **Zápis**     | X          | X            | X          |
+| **Událost**          | X          | X            | X          |
+_Podporované vztahy_
+
+Vztahy jsou přístupné pomocí modulu vztahů.
+
+Databázové dotazovací vztahy spojené s TEI.
+
+```java
+d2.relationshipModule().relationships().getByItem(
+    RelationshipHelper.teiItem("trackedEntityInstanceUid")
+)
+```
+
+Dotaz na vztahy spojené se zápisem.
+
+```java
+d2.relationshipModule().relationships().getByItem(
+    RelationshipHelper.enrollmentItem("enrollmentUid")
+)
+```
+
+Nebo dotaz na vztahy spojené s událostí.
+
+```java
+d2.relationshipModule().relationships().getByItem(
+    RelationshipHelper.eventItem("eventUid")
+)
+```
+
+Ve stejném modulu můžete vytvářet nové vztahy libovolného typu pomocí `RelationshipHelper` k modelování vztahu a později je přidat do úložiště kolekce vztahů:
+
+```java
+Relationship relationship = RelationshipHelper.teiToTeiRelationship("fromTEIUid", "toTEIUid", "relationshipTypeUid");
+
+d2.relationshipModule().relationships().add(relationship);
+```
+
+Pokud související trackedEntityInstance ještě neexistuje a existují hodnoty atributů, které je třeba zdědit, můžete použít následující metodu k zdědění hodnot atributů z jedné TEI do jiné v kontextu určitého programu. Dědí se pouze atributy označené jako `inherit`.
+
+```java
+d2.trackedEntityModule().trackedEntityInstanceService()
+    .inheritAttributes("fromTeiUid", "toTeiUid", "programUid");
+```
+
+## Agregovaná data { #android_sdk_aggregated_data }
+
+### Souhrnné stahování dat { #aggregated-data-download } 
+
+> **Důležité**
+>
+> V části [Nastavení aplikace](#android_sdk_settings_app) zjistíte, jak lze tuto aplikaci použít k ovládání parametrů synchronizace.
+
+```java
+d2.aggregatedModule().data().download()
+```
+
+By default, the SDK downloads **aggregated data values**, **dataset
+complete registration values** and **approvals** corresponding to:
+
+- **DataSets**: all available dataSets (those the user has at least read
+  data access to).
+- **OrganisationUnits**: rozsah sběru dat.
+- **Období**: všechna dostupná období, což znamená minimálně:
+  - Dny: posledních 60 dní.
+  - Týdně: posledních 13 týdnů (včetně variant počátečního dne).
+  - Čtrnáctidenní: posledních 13 dvoutýdnů.
+  - Měsíčně: posledních 12 měsíců.
+  - Dvouměsíčně: posledních 6 měsíců.
+  - Čtvrtletně: posledních 5 čtvrtletí.
+  - Šestiměsíční: posledních 5 šestiměsíců (počínaje lednem a dubnem).
+  - Ročně: posledních 5 let (včetně variant finančního roku).
+
+  In addition, if any dataset allows data entry for **future periods**,
+  the Sdk will download the data for those open periods and store them. 
+
+The Sdk also keeps track of the latest successful download in order to
+avoid downloading unmodified server data.
+
+In the download of **data approvals**, workflow and attribute option
+combination identifiers will be considered in addition to the
+organisation units and periods. The different possible states for data
+approval are:
+
+- `UNAPPROVABLE`. Data approval does not apply to this selection. (Data
+  is neither *approved* nor *unapproved*).
+- `UNAPPROVED_WAITING`. Data could be approved for this selection, but
+  is waiting for some lower-level approval before it is ready to be
+  approved.
+- `UNAPPROVED_ELSEWHERE`. Data is unapproved and is waiting for
+  approval somewhere else (can not be approved here).
+- `UNAPPROVED_READY`. Data is unapproved, and is ready to be approved
+  for this selection.
+- `UNAPPROVED_ABOVE`. Data výše nejsou schválena.
+- `APPROVED_HERE`. Data is approved, and was approved here (so could be
+  unapproved here).
+- `APPROVED_ELSEWHERE`. Data is approved, but was not approved here (so
+  cannot be unapproved here).
+- `APPROVED_ABOVE`. Data jsou schválena výše.
+- `ACCEPTED_HERE`. Data is approved and accepted here (so could be
+  unapproved here).
+- `ACCEPTED_ELSEWHERE`. Data jsou schválena a přijata, ale jinde.
+
+Schválení údajů se stahuje pouze pro verze vyšší než 2,29.
+
+### Agregovaný zápis dat { #aggregated-data-write } 
+
+#### Období { #periods } 
+
+In order to write data values or data set complete registrations, it's mandatory to provide a period id. Periods are stored in a table in the database and
+the provided period ids must be already present in that table, otherwise, a Foreign Key error will be thrown. To prevent that situation, the `PeriodHelper` is
+exposed inside the `PeriodModule`. Before adding aggregated data related to a dataSet, the following method must be called:
+
+```java
+Single<List<Period>> periods = d2.periodModule().periodHelper().getPeriodsForDataSet("dataSetUid");
+```
+
+Tím zajistíte, že:
+1. Aplikace vybere jedno z daných období, čímž zabrání chybným nebo nesprávným obdobím.
+2. Aplikace bude moci vybrat pouze budoucí období definovaná v poli `DataSet.openFuturePeriods`.
+3. Aplikace bude moci vybrat pouze minulá období definovaná na základě limitů deklarovaných v sekci Stažení agregovaných dat.
+
+#### Hodnota dat { #data-value } 
+
+DataValueCollectionRepository má metodu `value()`, která umožňuje přístup k metodám edice. Parametry přijímané touto metodou jsou parametry, které jednoznačně identifikují hodnotu.
+
+```java
+DataValueObjectRepository valueRepository = d2.dataValueModule().dataValues()
+    .value("periodId", "orgunitId", "dataElementId", "categoryOptionComboId", "attributeOptionComboId");
+
+valueRepository.set("value")
+```
+
+#### Kompletní registrace datového souboru { #data-set-complete-registration } 
+
+The Sdk provides within the data set module a collection repository for
+data set complete registrations. This repository contains methods to add
+new completions and delete them.
+
+To add a new data set complete registration is available an `add()`
+method:
+
+```java
+d2.dataSetModule().dataSetCompleteRegistrations()
+    .add(dataSetCompleteRegistration);
+```
+
+In order to remove them from the database, the repository has a `value()`
+method that gives access to deletion methods (`delete()` and
+`deleteIfExist()`). The parameters accepted by this method are the
+parameters that unambiguously identify the data set complete
+registration.
+
+```java
+d2.dataSetModule().dataSetCompleteRegistrations()
+    .value("periodId", "orgunitId", "dataSetUid","attributeOptionCombo")
+    .delete()
+```
+
+### Souhrnné nahrávání dat { #aggregated-data-upload } 
+
+DataValueCollectionRepository má metodu `upload()` k nahrání agregovaných datových hodnot.
+
+```java
+d2.dataValueModule().dataValues().upload();
+```
+
+### Instance Datových Sad { #dataset-instances } 
+
+DataSetInstance v SDK je praktická reprezentace existujících agregovaných dat. DataSetInstance představuje jedinečnou kombinaci DataSet - Period - Orgunit - AttributeOptionCombo a pro některé vlastnosti obsahuje další informace, jako je stav synchronizace, počet hodnot nebo displayName.
+
+```java
+d2.dataSetModule().dataSetInstances()
+    .[ filters ]
+    .get()
+
+// For example
+d2.dataSetModule().dataSetInstances()
+    .byDataSetUid().eq("datasetUid")
+    .byOrganisationUnitUid().eq("orgunitUid")
+    .byPeriod().in("201901", "201902")
+    .get();
+```
+
+Pokud potřebujete pouze vysoký přehled o stavu agregovaných dat, můžete použít úložiště `DataSetInstanceSummary`. Přijímá stejné filtry a pro každou kombinaci vrací počet `DataSetInstance`.
+
+## Nakládání s FileResources { #android_sdk_file_resources }
+
+SDK nabízí modul (`FileResourceModule`) a dva pomocníky (dále jen `FileResourceDirectoryHelper` a `FileResizerHelper`), které umožňují práci se soubory.
+
+In the context of a mobile connection, dealing with fileResources could be high bandwidth consuming. For this reason, fileResources are not downloaded by default when downloading data and they must be explicitly downloaded if wanted. The recommendation is to download to fileResources only if it is important to have them in the device. If they are not downloaded, there is no negative consequence in terms of data integrity; the only consequence is that they are not available in the device.
+
+On the other hand, fileResource upload is not optional: the SDK will upload all the fileResources created in the device when uploading data. This is important in order to have successful synchronizations and keep data integrity.
+
+### Modul souborových prostředků { #file-resources-module } 
+
+Tento modul obsahuje metody stahování souborových prostředků přidružených ke staženým datům a úložiště kolekce souborových prostředků databáze.
+
+- **File resources download**.
+The `fileResourceDownloader()` offers methods to filter the fileResources we want to download. It will search for values that match the filters and whose file resource has not been previously downloaded.
+
+  ```java
+  d2.fileResourceModule().fileResourceDownloader()
+      .byDomainType().eq(FileResourceDomainType.TRACKER)
+      .byElementType().eq(FileResourceElementType.DATA_ELEMENT)
+      .byValueType().in(FileResourceValueType.IMAGE, FileResourceValueType.FILE_RESOURCE)
+      .byMaxContentLength().eq(2000000)
+      .download();
+  ```
+
+  The SDK has a default maxContentLength of 6000000.
+
+  Po stažení souborů můžete získat různé prostředky souborů stažené prostřednictvím úložiště.
+
+- **File resource collection repository**.
+Through this repository it is possible to request files, save new ones and upload them to the server. 
+
+  - **Get**. It behaves in a similar fashion to any other SDK repository. It allows to get collections by applying different filters if desired.
+
+    ```java
+    d2.fileResourceModule().fileResources()
+        .[ filters ]
+        .get()
+    ```
+
+  - **Přidat**. Chcete-li uložit soubor, musíte jej přidat pomocí metody `add()`  úložiště poskytnutím objektu typu `File`. Metoda `add()` vrátí uid, který byl vygenerován při přidání souboru. Toto uid by se mělo použít k aktualizaci hodnoty atributu trasované entity, nebo hodnoty dat trasované entity přidružené k prostředku souboru.
+
+    ```java
+    d2.fileResourceModule().fileResources()
+        .add(file); // Single<String> The fileResource uid
+    ```
+
+### Pomocník pro změnu velikosti souboru { #file-resizer-helper } 
+
+Sdk poskytuje pomocníka pro změnu velikosti obrazových souborů (`FileResizerHelper`). Tento pomocník obsahuje metodu `resizeFile()` , která přijímá soubor, který chcete zmenšit, a dimenzi, na kterou jej chcete zmenšit.
+
+Možné dimenze jsou v následující tabulce.
+
+| Malý | Medium | Velký  |
+|-------|--------|--------|
+| 256px | 512px  | 1024px |
+
+Pomocník vezme soubor, změří výšku a šířku obrázku, určí, která ze dvou stran je větší a zmenší největší ze stran na danou dimenzi a druhá strana se zmenší na svou proporcionální velikost. **Měřítko obrázku si vždy zachová proporce**.
+
+V případě, že je poslední obrázek menší než dimenze, na kterou chcete změnit jeho velikost, bude vrácen stejný soubor bez úpravy.
+
+Metoda `resizeFile()` vrátí nový soubor umístěný ve stejném nadřazeném adresáři souboru, jehož velikost má být změněna pod názvem `resized-DIMENSION-` + název souboru bez změny velikosti.
+
+### Pomocník adresáře souborových prostředků { #file-resource-directory-helper } 
+
+Pomocná třída `FileResourceDirectoryHelper` poskytuje dvě metody.
+
+- `getFileResourceDirectory()`. This method returns a `File` object whose path points to the `sdk_resources` directory where the SDK will save the files associated with the file resources.
+
+- `getFileCacheResourceDirectory()`. Tato metoda vrací objekt `File`, jehož cesta směřuje do adresáře `sdk_cache_resources`. Toto by mělo být místo, kde jsou ukládány nestálé soubory, jako jsou fotografie z fotoaparátů nebo obrázky, jejichž velikost má být změněna. Vzhledem k tomu, že adresář je obsažen v adresáři mezipaměti, může systém Android automaticky mazat soubory v adresáři mezipaměti, jakmile systém vyčerpá paměť. Aplikace třetích stran mohou také mazat soubory z adresáře mezipaměti. Dokonce i uživatel může ručně vymazat mezipaměť z Nastavení. Skutečnost, že mezipaměť lze vymazat výše popsanými metodami, by však neměla znamenat, že mezipaměť bude automaticky vymazána; mezipaměť bude proto třeba čas od času proaktivně upravovat.
+

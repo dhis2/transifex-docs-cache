@@ -1,0 +1,171 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-sdk/blob/master/docs/content/developer/modules-and-repositories.md"
+revision_date: '2023-11-02'
+tags:
+- Develop
+---
+
+# 模块和存储库{ #android_sdk_modules_and_repositories }
+
+`D2` object is the entry point to interact with the SDK. The SDK forces the `D2` object to be a singleton across the application.
+
+Modules are the layer below `D2`. They act as a wrapper for related functionality. A module includes some related repositories and might expose some services and helpers.
+
+存储库充当DB（在某些情况下为Web API）的外观。它们提供元数据的读取功能和数据的读/写功能。
+
+## 处理返回类型：RxJava { #android_sdk_dealing_with_rxjava }
+
+SDK使用RxJava类（可观察，单个，可完成，可流动）作为所有方法的首选返回类型。选择RxJava类的原因主要有两个：
+
+- **为了促进对返回对象的异步处理。** SDK中的大多数操作都很耗时，必须在辅助线程中执行。这些返回类型强制应用处理这种异步行为。
+- **要通知进度。**元数据或数据同步之类的方法可能需要几分钟才能完成。从用户的角度来看，有进步感非常有帮助。
+
+这并不意味着应用程序被迫在其代码中使用RxJava：它们仅被迫处理某些方法的异步行为。 SDK通常会公开每个方法的* blocking *版本。
+
+例如，使用RxJava和AsyncTask的同一查询：
+
+*使用RxJava *
+
+```java
+d2.programModule().programs()
+    .subscribeOn(Schedulers.io())
+    .observeOn(AndroidSchedulers.mainThread())
+    .get()
+    .subscribe(programs -> {}); //List<Program>
+```
+
+*使用AsyncTask *
+
+```java
+new AsyncTask<Void, Void, List<Program>>() {
+    protected List<Program> doInBackground() {
+        return d2.programModule().programs().blockingGet();
+    }
+
+    protected void onPostExecute(List<Program> programs) {
+
+    }
+}.execute();
+```
+
+访问数据库非常耗时，建议使用任何推荐的方法在单独的线程中执行此操作
+方法。但是，涉及访问 Web API 的程序（例如登录、元数据或数据下载或上传）**必须**
+在单独的线程中运行，否则Android会抛出错误。
+
+## 查询建筑物 { #android_sdk_query_building }
+
+存储库提供了带有编译时验证的构建器语法，以访问资源。典型的查询由一些修饰符（过滤器，顺序，嵌套字段）组成，并以操作（获取，计数，getPaged等）结束。
+
+```java
+// Generic syntax
+d2.<module>.<repository>
+    .[ filter | orderBy | nested fields ]
+    .<action>;
+
+// An example for events
+d2.eventModule().events()
+    .byOrganisationUnitUid().eq("DiszpKrYNg8")
+    .byEventDate().after(Date("2019-05-05"))
+    .orderByEventDate(DESC)
+    .withTrackedEntityDataValues()
+    .get();
+```
+
+### 筛选器 { #android_sdk_filters }
+
+Repositories expose the list of available filters prefixed by the keyword "by". The list of filter operators available for each filter is dependant on the filter value type: for example, a value type `Date` will offer operators like `after`, `before`, `inPeriods`, while a value type `Boolean` will offer `isFalse` or `isTrue`.
+
+可以按任何顺序将多个过滤器附加到同一查询。过滤器使用运算符“ AND”全局连接。这意味着查询类似于
+
+```java
+d2.eventModule().events()
+    .byOrganisationUnitUid().eq("DiszpKrYNg8")
+    .byEventDate().after(Date("2019-05-05"))
+    ...
+```
+
+将返回分配给其“事件日期”在“ 2019-05-05”之后的组织单位“ DiszpKrYNg8” ** AND **的事件。
+
+### 排序依据 { #android_sdk_order_by }
+
+排序修饰符以关键字“ orderBy”为前缀。
+
+可以将多个“ orderBy”修饰符附加到同一查询中。查询中“ orderBy”修饰符的顺序确定顺序优先级。这意味着查询类似于
+
+```java
+d2.eventModule().events()
+    .orderByEventDate(DESC)
+    .orderByLastUpdated(DESC)
+    ...
+```
+
+将首先由EventDate后代排序，然后由LastUpdated后代排序。
+
+### 包括嵌套字段 { #android_sdk_nested_fields }
+
+Repositories return classes that are not an exact match of database tables: they are more complex objects that might include some properties obtained from other tables. For example, the `Event` class has a property called `trackedEntityDataValues` that include a list of TrackedEntityDataValues. The main reason to choose this kind of objects is to absorb the complexity of dealing with link tables so the app does not have to care about building links between objects.
+
+由于性能问题，默认情况下不包括此类属性：必须明确查询它们。在存储库中，默认情况下不包括且需要查询的属性以关键字“ with”为前缀。
+
+几个属性可以按任何顺序附加到同一查询中。例如，类似
+
+```java
+d2.programModule().programs()
+    .withTrackedEntityType()
+    ...
+```
+
+将返回一个嵌套的 `TrackedEntityType` 对象。
+
+## 帮手 { #android_sdk_helpers }
+
+The SDK include some helpers in the package `org.hisp.dhis.android.core.arch.helpers`. They can be easily found in Android Studio by searching `Helper` in class names. They include some helpful methods to perform common operations:
+
+- `AccessHelper`：与访问（共享设置）对象有关。
+- `CollectionsHelper`：集合的常用操作。
+- `CoordinateHelper`，`GeometryHelper`：地理空间数据操作。
+- `FileResizeHelper`、`FileResourceDirectoryHelper`：文件资源操作。
+- `UidsHelper`：带有uid的对象集合的常用操作。
+- `UserHelper`：与用户认证相关的操作。
+- `ValueType`：不同值类型及其验证器的列表。
+
+## 模块清单 { #android_sdk_module_list }
+
+系统模块：
+
+- 导入模块
+- 维护模块
+- 系统信息模块
+- 设置模块
+- 数据存储模块
+- 擦拭模块
+
+大块模块：
+
+- 元数据模块
+- AggregatedDataModule
+
+具体模块：
+
+- attributeModule
+- categoryModule
+- constantModule
+- dataElementModule
+- dataSetModule
+- dataValueModule
+- 注册模块
+- eventModule
+- fileResourceModule
+- indicatorModule
+- legendSetModule
+- noteModule
+- OrganisationUnitModule
+- optionModule
+- periodModule
+- 程序模块
+- 关系模块
+- 短信模块
+- trackedEntityModule
+- userModule
+- validationModule
+

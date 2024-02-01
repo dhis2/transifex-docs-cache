@@ -1,0 +1,845 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-sdk/blob/master/docs/content/developer/workflow.md"
+revision_date: '2024-01-08'
+tags:
+- Desenvolver
+---
+
+# Workflow { #android_sdk_workflow }
+
+Atualmente, o SDK é principalmente orientado para construir aplicativos que funcionam em modo offline. Resumindo, o SDK mantém uma instância de banco de dados local que é usada para fazer o trabalho localmente (criar formulários, gerenciar dados, ...). Quando solicitado pelo cliente, este banco de dados local é sincronizado com o servidor.
+
+Um fluxo de trabalho típico seria assim:
+
+1. **Conecte-se**
+2. **Metadados de sincronização:** o SDK baixa um subconjunto dos metadados do servidor para que esteja disponível para uso a qualquer momento. A sincronização de metadados é totalmente dependente do usuário (consulte [Sincronização] (# android_sdk_metadata_synchronization) para obter mais detalhes)
+3. **Baixar dados:** se deseja ter os dados existentes disponíveis no dispositivo, mesmo quando offline, pode baixar e salvar o rastreador existente e dados agregados no dispositivo.
+4. **Faça o trabalho:** neste ponto, o aplicativo é capaz de criar os formulários de entrada de dados e mostrar alguns dados existentes. Em seguida, o usuário pode editar /excluir/actualizar os dados.
+5. **Carregar dados:** de vez em quando, o trabalho realizado na instância do banco de dados local é enviado ao servidor.
+6. **Sincronizar metadados:** é recomendado sincronizar metadados com bastante frequência para detectar mudanças na configuração de metadados.
+
+## Entrar sair { #android_sdk_login_logout }
+
+Before interacting with the server it is required to login into the DHIS 2 instance.
+
+```java
+d2.userModule (). logIn (nome de usuário, senha, serverUrl)
+
+d2.userModule (). logOut ()
+```
+
+As of version 1.6.0, the SDK supports the storage of information for multiple accounts, which means keeping a separate database for each pair user-server. Despite of that, only one account can active (or logged in) simultaneously. That means that only one user can be authenticated in only one server at the same time. 
+
+The number of maximum allowed accounts can be configured by the app (it defaults to one). A new account is automatically created after a successful login for a new pair user-server. If the number of accounts exceeds the maximum configured, the oldest account and its related database are automatically removed.
+
+```java
+// Get the account list
+d2.userModule().accountManager().getAccounts();
+
+// Get/set the maximum number of accounts
+d2.userModule().accountManager().getMaxAccounts();
+d2.userModule().accountManager().setMaxAccounts();
+
+// Delete account for current user
+d2.userModule().accountManager().deleteCurrentAccount();
+```
+
+The accountManager exposes an observable that emits an event when the current account is deleted. It includes the reason why the account was deleted.
+
+```java
+// Emits an event when the current account is deleted
+d2.userModule().accountManager().accountDeletionObservable();
+```
+
+Após um logout, o SDK rastreia o último usuário conectado para poder diferenciar os usuários recorrentes dos novos. Ele também mantém um hash das credenciais do usuário para autenticar o usuário, mesmo quando não há conectividade. Dito isso, o método de login irá:
+
+- Se já existir um usuário autenticado: lance um erro.
+- Caso contrário, se *Online*:
+  - Tente **fazer login online**: o SDK enviará o nome de usuário e a senha para a API, que determinará se estão corretos. Se bem-sucedido:
+        - If no database exists: create new database with encryption value from server.
+        - If database for another [serverUrl, user] exists, delete it and create new database with encryption value from server. Not synced data of previously logged user will be permanently lost.
+        - If database for the current [serverUrl, user] pair exists, open the database and encrypt or decrypt database if encryption status has changed in the server.
+  - Se a conta do usuário foi desabilitada no servidor: exclua o banco de dados e acione um erro.
+- Caso contrário, se *Off-line*:
+  - Se o par [serverUrl, usuário] foi o último autenticado:
+    - Tente **login offline**: o SDK verificará se as credenciais são as mesmas fornecidas por último, que foram validadas anteriormente pela API.
+  - Se o par [serverUrl, usuário] não foi o último autenticado: lance um erro
+
+Chamar métodos de módulo ou repositório antes de um login bem-sucedido ou após um logout resultará em erros de "Banco de dados não criado".
+
+O método de logout remove as credenciais do usuário, portanto, um novo login é necessário antes de qualquer interação com o servidor. Metadados e dados são preservados para que o usuário possa fazer logout/login sem perder nenhuma informação.
+
+## Login with OpenID { #android_sdk_login_open_id }
+
+The SDK includes support for OpenID. To perform a login using OpenID an OpenIDConnectConfig is required:
+
+```java
+OpenIDConnectConfig openIdConfig = novo OpenIDConnectConfig (clientId, redirectUri, discoveryUri, permissionUrl, tokenUrl);
+```
+
+It is mandatory to either provide a discoveryUri or both authorizationUrl and tokenUrl.
+
+This configuration can be used to perform a login.
+
+```java
+d2.userModule (). openIdHandler (). logIn (openIdConfig)
+```
+
+This call returns an IntentWithRequestCode which in an android app allows starting the OpenID login screen from the configuration provider.
+
+```java
+startActivityForResult (intentWithRequestCode.getIntent (), intentWithRequestCode.getRequestCode ());
+```
+
+Upon a successful login, the returned intent data can be used alongside the server url to start the sync.
+
+```java
+d2.userModule().openIdHandler().handleLogInResponse (serverUrl, data, requestCode);
+```
+
+It is mandatory to include the following activity in the application Manifest file:
+
+```xml
+<activity   android:name="net.openid.appauth.RedirectUriReceiverActivity"
+            android:exported="true"
+            tools:node="replace">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="<your redirect url scheme>" />
+            </intent-filter>
+</activity>
+```
+
+In order to configure all parameters check the following OpenID providers guidelines the server implements:
+
+|OpenID Providers|
+|----------------|
+|[Google](https://github.com/openid/AppAuth-Android/blob/master/app/README-Google.md)          |
+|[GitHub](https://docs.github.com/en/developers/apps/authorizing-oauth-apps)          |
+|[ID-porten](https://docs.digdir.no/oidc_protocol_authorize.html)       |
+|[OKTA](https://github.com/openid/AppAuth-Android/blob/master/app/README-Okta.md)            |
+|[KeyCloak](https://www.keycloak.org/docs/latest/authorization_services/index.html#_service_authorization_api)        |
+|[Azure AD](https://docs.microsoft.com/es-es/azure/active-directory-b2c/signin-appauth-android?tabs=app-reg-ga)        |
+|[WS02](https://medium.com/@maduranga.siriwardena/configuring-appauth-android-with-wso2-identity-server-8d378835c10a)            |
+
+## Sincronização de metadados { #android_sdk_metadata_synchronization }
+
+A sincronização de metadados geralmente é a primeira etapa após o login. Ele busca e persiste os metadados necessários para o usuário actual. Para iniciar a sincronização de metadados, devemos executar:
+
+```java
+d2.metadataModule (). download ();
+```
+
+Para economizar uso de largura de banda e espaço de armazenamento, o SDK não sincroniza todos os metadados no servidor, mas um subconjunto. Este subconjunto é definido como os metadados exigidos pelo usuário para realizar tarefas de entrada de dados: renderizar programas e conjuntos de dados, executar regras de programa, avaliar indicadores de programa em linha, etc.
+
+Com base nisso, a sincronização de metadados inclui os seguintes elementos:
+
+|   Elemento                     |   Condição ou escopo |
+|-----------------------        |-------------|
+| Informação do sistema                   | Todos |
+| Configurações de sistema               | KeyFlag, KeyStyle |
+| Android Settings App          | General settings, Synchronization, Appearance, Analaytics |
+| Configurações do Usuário                 | KeyDbLocale, KeyUiLocale |
+| Do utilizador                          | Apenas usuário autenticado |
+| Papel do usuário                      | Funções atribuídas ao usuário autenticado |
+| Autoridade                     | Autoridades atribuídas ao usuário autenticado |
+| Programa                       | Programas aos quais o usuário tem (pelo menos) acesso de leitura aos dados e que são atribuídos a qualquer orgunit visível pelo usuário |
+| RelationshipTypes             | All the types visible by the user |
+| OptionGroups                  | Somente se o servidor for maior que 2.29 |
+| EventFilters                  | Those related to downloaded programs |
+| TrackedEntityInstanceFilters  | Those related to downloaded programs |
+| ProgramStageWorkingList       | Those related to downloaded programs |
+| Conjunto de Dados                       | DataSets aos quais o usuário tem (pelo menos) acesso de leitura de dados e que são atribuídos a qualquer orgunit visível pelo usuário |
+| Regras de validação              | Regras de validação associadas aos dataSets |
+| OrganisationUnit              | OrganisationUnits no escopo CAPTURE ou SEARCH (descendentes incluídos) |
+| OrganisationUnitGroup         | Grupos atribuídos a unidades organizacionais baixadas |
+| OrganisationUnitLevel         | Todos |
+| Constante                      | Todos |
+| Visualizações                | Visualizations assigned to Analytics settings (Android Settings App) |
+| Indicadores                    | Indicators assigned to downloaded dataSets and visualizations |
+| Metadados do módulo SMS           | Somente se o módulo SMS estiver habilitado |
+
+No caso de Programas e DataSets, a sincronização de metadados inclui todos os metadados relacionados a eles: estágios, secções, dataElements, opções, categorias, etc. Aqueles elementos que não estão relacionados a nenhum Programa ou DataSet não estão incluídos.
+
+### Configurações corrompidas { #corrupted-configurations }
+
+Essa sincronização parcial de metadados pode expor problemas de configuração incorreta do lado do servidor. Por exemplo, um ProgramRuleVariable apontando para um DataElement que não pertence mais ao programa. Devido ao uso de restrições no nível do banco de dados, essa configuração incorreta aparecerá como um erro de chave estrangeira.
+
+O SDK não falha na sincronização, mas armazena os erros em uma tabela para inspeção. Esses erros podem ser acessados por:
+
+```java
+d2.maintenanceModule (). ForeignKeyViolations ()
+```
+
+## Estados de dados { #android_sdk_data_states }
+
+Data objects have a read-only `syncState` property that indicates the current state of the object in terms of synchronization with the server. This state is maintained by the SDK. 
+
+Os estados possíveis são:
+
+- **SINCRONIZADO**. O elemento é sincronizado com o servidor. Não há mudanças locais para este valor.
+- **TO_POST**. Dados criados localmente que ainda não existem no servidor.
+- **TO_UPDATE**. Dados modificados localmente que existem no servidor.
+- **ENVIANDO**. Os dados estão sendo carregados. Se for modificado antes de receber qualquer resposta do servidor, seu estado volta para `TO_UPDATE`. Quando chega a resposta do servidor, seu estado não muda para `SYNCED`, mas permanece em` TO_UPDATE` para indicar que há mudanças locais.
+- **SENT_VIA_SMS**. Data is sent via sms and there is no server response yet. Some servers do not have the capability to send a response, so this state means that data has been sent, but we do not know if it has been correctly imported in the server or not.
+- **SYNCED_VIA_SMS**. Data is sent via sms and there is a successful response from the server.
+- **ERRO**. Dados que receberam um erro do servidor após o último upload.
+- **AVISO**. Dados que receberam um aviso do servidor após o último upload.
+
+Additionally, in `TrackedEntityInstance`, `Enrollment` and `Events` we might have:
+
+- **RELATIONSHIP**. This element has been downloaded with the sole purpose of fulfilling a relationship to another element. This `RELATIONSHIP` element only has basic information (uid, type, etc) and the list of TrackedEntityAttributes (in case of TrackedEntityInstances) to be able to print meaningful information about the relationship. Other data such as enrollments, events, notes, values or relationships are not downloaded. Also, this element cannot be modified or uploaded to the server.
+
+Besides the property `syncState`, the classes `TrackedEntityInstance`, `Enrollment` and `Events` have a property called `aggregatedSyncState` that represents the sync state of its children. For example, if a dataValue is modified in an `Event`, the resulting states for the related objects would be:
+
+| Elemento               | SyncState   | AggregatedSyncState |
+|-----------------------|-------------|---------------------|
+| TrackedEntityInstance | SYNCED      | TO_UPDATE           |
+| Inscrição            | SYNCED      | TO_UPDATE           |
+| Evento                 | TO_UPDATE   | TO_UPDATE           |
+
+## Dados do rastreador { #android_sdk_tracker_data }
+
+### Download de dados do rastreador { #tracker-data-download }
+
+> **Importante**
+>
+> Consulte a secção [Configurações do aplicativo] (# android_sdk_settings_app) para saber como esse aplicativo pode ser usado para controlar os parâmetros de sincronização.
+
+By default, the SDK only downloads TrackedEntityInstances and Events
+that are located in user capture scope, but it is also possible to
+download TrackedEntityInstances in search scope.
+
+O módulo de entidade rastreada contém o
+`TrackedEntityInstanceDownloader`. O downloader segue um construtor
+padrão que permite o download de instâncias de entidades rastreadas, filtrando por
+**parâmetros diferentes**, bem como definir alguns **limites**. O mesmo
+o comportamento pode ser encontrado no módulo de eventos para eventos.
+
+The downloader tracks the latest successful download in order to avoid
+downloading unmodified data. It makes use of paging with a best effort
+strategy: in case a page fails to be downloaded or persisted, it is
+skipped and it will continue with the next pages.
+
+Este é um exemplo de como pode ser usado.
+
+```java
+d2.trackedEntityModule (). trackedEntityInstanceDownloader ()
+    . [filtros]
+    . [limites]
+    .download()
+```
+
+```java
+d2.eventModule (). eventDownloader ()
+    . [filtros]
+    . [limites]
+    .download()
+```
+
+Actualmente, é possível especificar os próximos filtros:
+
+- `byProgramUid()`. Filters by program uid and downloads the not synced
+  objectos dentro do programa.
+- `byUid()`. Filters by the tracked entity instance uid and downloads a
+  objecto único. Este filtro pode ser usado para baixar a entidade rastreada
+  instances found within search scope. (Only for tracked entity
+  instances).
+- `byProgramStatus()`. Filters those tracked entity instances that have a enrollment with the given status.
+
+O downloader também permite limitar o número de objetos baixados.
+Esses limites também podem ser combinados entre si.
+
+- `limit ()`. Limite o número máximo de objetos para download.
+- `limitByProgram()`. Take the established limit and apply it to each
+  programa. O número de objetos que serão baixados será o único
+  obtained by multiplying the limit set by the number of user programs.
+- `limitByOrgunit()`. Take the established limit and apply it for each
+  organisation unit. The number of objects that will be downloaded will
+  be the one obtained by multiplying the limit set by the number of user
+  organisation units.
+
+Other properties:
+
+- `overwrite()`. By default, the SDK does not overwrite data in the device in a status other than SYNCED. If you want to overwrite the data in the device, no matter the status it has, add this method to the query chain.
+
+The next snippet of code shows an example of the
+TrackedEntityInstanceDownloader usage.
+
+```java
+d2.trackedEntityModule (). trackedEntityInstanceDownloader ()
+    .byProgramUid ("program-uid")
+    .limitByOrgunit (true)
+    .limitByProgram (true)
+    .limit (50)
+    .download()
+```
+
+Additionally, if you want the images associated to `Image` data values available to be downloaded in the device, you must download them. See [*Dealing with FileResources*](#android_sdk_file_resources) section for more details.
+
+### Pesquisa de dados do rastreador { #tracker-data-search }
+
+DHIS2 has a functionality to filter TrackedEntityInstances by related
+properties, like attributes, organisation units, programs or enrollment
+dates. The Sdk provides the `TrackedEntitySearchCollectionRepository` 
+with methods that allow the download of tracked entity
+instances within the search scope. It can be found inside the tracked entity instance module.
+
+The tracked entity instance search is a powerful tool that follows a
+builder pattern and allows the download of tracked entity instances
+filtering by **different parameters**.
+
+```java
+d2.trackedEntityModule().trackedEntitySearch()
+    .[repository mode]
+    .[filters]
+    .get()
+```
+
+A fonte de onde os TEIs são recuperados é definida pelo **modo de repositório**.
+Estes são os diferentes modos de repositório disponíveis:
+
+- `onlineOnly()`. Only TrackedEntityInstances coming from the server are
+  returned in the list. Internet connection is required to use this mode.
+- `offlineOnly()`. Only TrackedEntityInstances coming from local
+  database are returned in the list.
+- `onlineFirst()`. TrackedEntityInstances coming from the server are
+  returned in first place. Once there are no more results online, it
+  continues with TrackedEntityInstances in the local database. Internet
+  connection is required to use this mode.
+- `offlineFirst()`. TrackedEntityInstances coming from local database
+  are returned in first place. Once there are no more results, it continues
+  with TrackedEntityInstances coming from the server. This method may
+  speed up the initial load. Internet connection is required to use this
+  mode.
+
+This repository follows the same syntax as other repositories.
+Additionally, the repository offers different strategies to fetch data:
+
+- `byAttribute ()`. Este método adiciona um filtro de *atributo* à consulta.
+  If this method is called several times, conditions are appended with an AND
+  connector. For example:
+
+  ```java
+  d2.trackedEntityModule().trackedEntitySearch()
+      .byAttribute("uid1").eq("value1")
+      .byAttribute("uid2").eq("value2")
+      .get()
+  ```
+
+  That means that the instance must have attribute `uid1` with value
+  Atributo `valor1` **AND**` uid2` com o valor `valor2`.
+
+- `byFilter ()`. Este método adiciona um *filtro* à consulta. Se este
+  method is called several times, conditions are appended with an AND
+  connector. For example:
+
+  ```java
+  d2.trackedEntityModule().trackedEntitySearch()
+      .byFilter("uid1").eq("value1")
+      .byFilter("uid2").eq("value2")
+      .get()
+  ```
+
+  That means that the instance must have attribute `uid1` with value
+  Atributo `valor1` **AND**` uid2` com o valor `valor2`.
+
+- `byQuery ()`. Pesquisar instâncias de entidades rastreadas com **qualquer** atributo
+  matching the query.
+- `byDataValue()`. Search tracked entity instances based on the values of their events. This filter is usually used along with `programStage()` filter.
+- `byProgram()`. Filter by enrollment program. Only one program can be
+  specified.
+- `byProgramStage()`. Filter by enrollment program stage. Only one program stage can be specified.
+- `byOrgUnits()`. Filter by tracked entity instance organisation units.
+  More than one organisation unit can be specified.
+- `byOrgUnitMode()`. Define the organisation unit mode.
+- `byProgramDate()`. Define an enrollment date filter. It only applies if a program has been specified.
+- `byIncidentDate()`. Define an incident date filter.
+- `byEnrollmentStatus()`. Define a filter for enrollment status.
+- `byEventDate()`. Define an event date filter.
+- `byEventStatus()`. Define a filter for event status.
+- `byTrackedEntityType()`. Filter by TrackedEntityType. Only one type
+  can be specified.
+- `byIncludeDeleted()`. Whether to include or not deleted tracked entity
+  instâncias. Actualmente, este filtro se aplica apenas a **offline**
+  instances.
+- `byStates()`. Filter by sync status. Using this filter forces
+  Modo **offline apenas**.
+- `byFollowUp()`. Filter by followUp.
+- `byAssignedUserMode()`. Filter using an assignedUserMode.
+- `byLastUpdatedDate()`. Define a lastUpdated filter.
+- `byTrackedEntities()`. Filter by tracked entity uids.
+- `byTrackedEntityInstanceFilter ()`. Também conhecido como **listas de trabalho**, trackedEntityInstanceFilters são um conjunto predefinido de parâmetros de consulta.
+- `byProgramStageWorkingList()`. Apply a ProgramStageWorkingList filter.
+
+Exemplo:
+
+```java
+d2.trackedEntityModule().trackedEntitySearch()
+                .byOrgUnits().eq("orgunitUid")
+                .byOrgUnitMode().eq(OrganisationUnitMode.DESCENDANTS)
+                .byProgram().eq("programUid")
+                .byAttribute("attributeUid").like("value")
+                .offlineFirst()
+```
+
+> **Importante**
+>
+> TrackedEntityInstances recuperados usando este repositório não são persistentes no banco de dados. É possível
+para baixá-los totalmente usando o filtro `byUid ()` do `TrackedEntityInstanceDownloader` dentro do módulo de instância de entidade rastreada.
+
+Pode acontecer que adicione filtros ao repositório de consultas em diferentes partes da aplicação e não tenha uma imagem clara sobre os filtros aplicados, especialmente ao usar listas de trabalho porque adicionam um conjunto de parâmetros. Para resolver isso, pode acessar o escopo do filtro a qualquer momento no repositório:
+
+```java
+d2.trackedEntityModule().trackedEntitySearch()
+    .[ filters ]
+    .getScope();
+```
+
+In addition to the standard `getPaged(int)` and `getDataSource()` methods that are available in all the repositories, the TrackedEntitySearch repository exposes a method to wrap the response in a `Result` object: the `getResultDataSource()`. This method is kind of a workaround to deal with the lack of error management in the Version 2 of the Android Paging Library (it is hardly improved in version 3). Using this dataSource you can catch search errors, such as "Min attributes required" or "Max tei count reached". 
+
+
+### Working lists / Tracker filters { #working-lists-tracker-filters } 
+
+There are three concepts related to building a predifined filter for tracker objects:
+
+- **TrackedEntityInstanceFilters**: they define filters to be used against TrackedEntity objects and have some limited capabilities to filter by event-related data, such as eventDate or eventStatus.
+- **EventFilters**: they define filters to be used against Event objects.
+- **ProgramStageWorkingList**: they define filters to be used against TrackedEntity objects and they add support to filter by event-related data. It is mandatory to specify a particular ProgramStage.
+
+As usual, they have their own collection repository and can be applied in "search" repositories. For example:
+
+```java
+// Get the filters
+List<TrackedEntityInstanceFilter> filters = d2.trackedEntityModule().trackedEntityInstanceFilters().blockingGet();
+List<EventFilter> filters = d2.eventModule().eventFilters().blockingGet();
+List<ProgramStageWorkingList> workingLists = d2.programModule().programStageWorkingLists().blockingGet();
+
+// Apply the filters
+d2.trackedEntityModule().trackedEntitySearch()
+    .byTrackedEntityInstanceFilter().eq("filterUid")
+    .byProgramStageWorkingList().eq("workingListUid")
+    .get()
+
+d2.eventModule().eventQuery()
+    .byEventFilter().eq("filterUid")
+    .get();
+```
+
+### Ownership { #ownership } 
+
+The concept of ownership is supported in the SDK. In short, each pair trackedEntityInstance - program is owned by an organisationUnit. This ownership is used in the trackedEntityInstance search to determine the owner organisationUnit the TEI belongs to.
+
+You can get the program owners for each trackedEntityInstance by using the repository:
+
+```java
+d2.trackedEntityModule().trackedEntityInstances()
+        .withProgramOwners()
+        .get();
+```
+
+Also, you can permanently transfer the ownership by using the OwnershipManager. This transfer will be automatically uploaded to the server in the next synchronization. 
+
+```java
+d2.trackedEntityModule().ownershipManager()
+        .transfer(teiUid, programUid, ownerOrgunit);
+```
+
+### Break the glass { #break-the-glass } 
+
+The "Break the glass" concept is based on the ownership of the pair trackedEntityInstance - enrollment. If the program is **PROTECTED** and the user does not have **DATA CAPTURE** to the organisation unit, it is required to break the glass in order to read and modify the data. The workflow would be:
+
+1. Search for any tracked entity instances in **SEARCH** scope. It is important to not include the program uid in the query: the server will only return those TEIs that are accessible to the user, so protected TEIs in search scope won't be returned (otherwise, the user would know if the TEIs is enrolled or not without giving any reason).
+2. Download the TEI using the downloader and specify the **TEI uid** and the **program uid**. It is important to include both parameters to force the ownership error.
+3. Catch the error, if any, and check if it is an OWNERSHIP_ACCESS_DENIED error.
+4. If so, request the ownwership using the ownership module (see code snippet below).
+5. Try again the query in step 2.
+
+```java
+TrackedEntityInstanceDownloader teiRepository = d2.trackedEntityModule().trackedEntityInstanceDownloader()
+        .byUid().eq(teiUid)
+        .byProgramUid(programUid);
+
+try {
+    teiRepository.blockingDownload();
+} catch (RuntimeException e) {
+    if (e.getCause() instanceof D2Error &&
+            ((D2Error) e.getCause()).errorCode() == D2ErrorCode.OWNERSHIP_ACCESS_DENIED) {
+        // Show a dialog to the user and capture the reason to break the glass
+        String reason = "Reason to break the glass";
+
+        // Break the glass
+        d2.trackedEntityModule().ownershipManager()
+                .blockingBreakGlass(teiUid, programUid, reason);
+
+        // Download again
+        teiRepository.blockingDownload();
+    } else {
+        // Deal with other exceptions
+    }
+}
+```
+
+It is recommended to upload the data immediately after if has been edited because the ownership expires in two hours (it could depend on DHIS2 versions). If the ownership has expired when the user tries to upload the data, the SDK will automatically perform a "break-the-glass" query in the background using the original reason and add the prefix "Android App sync:". In this way, an administrator could easily identify that this operation is not a real break the glass, but just an auxiliary query to perform the synchronization.
+
+### Gravação de dados do rastreador { #tracker-data-write } 
+
+Em geral, existem dois casos diferentes para gerenciar a criação/edição/exclusão de dados: o caso em que o objecto é identificável (ou seja, possui uma propriedade `uid`) e o caso em que o objecto não é identificável.
+
+**Objectos identificáveis** (TrackedEntityInstance, Enrollment, Event). Esses repositórios têm um método `uid ()` que fornece acesso a métodos de edição para um único objecto. Caso o objecto ainda não exista, é necessário criá-lo primeiro. Um fluxo de trabalho típico para criar/editar um objecto seria:
+
+- Use a classe `CreateProjection` para adicionar uma nova instância no repositório.
+- Salve o uid retornado por este método.
+- Use o método `uid ()` com o uid anterior para obter acesso aos métodos de edição.
+
+E no código isso se pareceria com:
+
+```java
+String eventUid = d2.eventModule (). Events (). Add (
+    EventCreateProjection.create ("inscrição", "programa", "programStage", "orgUnit", "attCombo"));
+
+d2.eventModule (). events (). uid (eventUid) .setStatus (COMPLETED);
+```
+
+**Objectos não identificáveis** (TrackedEntityAttributeValue, TrackedEntityDataValue). Esses repositórios têm um método `value ()` que dá acesso a métodos de edição para um único objecto. Os parâmetros aceitos por esse método são os parâmetros que identificam um valor de forma inequívoca.
+
+Por exemplo, escrever um TrackedEntityDataValue seria como:
+
+```java
+d2.trackedEntityModule (). trackedEntityDataValues (). value (eventUid, dataElementid) .set (“5”);
+```
+
+Data values of type `Image` involve an additional step to create/update/read the associated file resource. More details in the [*Dealing with FileResources*](#android_sdk_file_resources) section below.
+
+#### Write events in read-only TEIs { #write-events-in-read-only-teis } 
+
+It is important to pay special attention to user's data access to the TEIs, enrollments and events. The SDK modify the status of the data when any *write* method is executed in order to upload it to the server in the next synchronization. If a user has no write data access to a particular element, the app should prevent the edition of this element.
+
+The restrictions that must be followed by the app are these ones:
+
+- **TrackedEntityInstances:** o usuário deve ter acesso de gravação de dados ao **TrackedEntityType**.
+- **Inscrições:** o usuário deve ter acesso de gravação de dados **a TrackedEntityType e ao Programa** (esta restrição adicional é imposta pelo SDK).
+- **Eventos:** o usuário deve ter acesso de gravação de dados ao **ProgramStage**.
+
+### Upload de dados do rastreador { #tracker-data-upload } 
+
+Os repositórios TrackedEntityInstance e Event têm um método `upload ()` para fazer upload de dados do Tracker e dados do evento (sem registro), respectivamente. Se o escopo do repositório foi reduzido por métodos de filtro, apenas os objetos filtrados serão carregados.
+
+```java
+d2. (trackedEntityModule () | eventModule ())
+    . [filtros]
+    .Envio();
+```
+
+Dados cujo estado é `ERROR` ou` WARNING` não podem ser carregados. É necessário resolver os conflitos antes de tentar um novo upload: isso significa fazer uma modificação nos dados problemáticos, o que força seu estado de volta para `TO_UPDATE`.
+
+A partir da versão 2.37, um novo importador de rastreador foi introduzido (ponto de extremidade `/api/tracker`). O importador de rastreador padrão ainda é o legado (`/apl/trackedEntityInstances`), mas pode optar por usar este novo importador de rastreador usando o webapp de configurações do Android (consulte [Sincronização] (# android_sdk_synchronization_settings)). Isso é interno ao SDK; a API exposta ao aplicativo não muda.
+
+File resources must be uploaded in a different post call before tracker data upload. The query to post file resources is:
+
+```java
+d2.fileResourceModule (). fileResources (). upload ();
+```
+
+More information about file resources in the section [*Dealing with FileResources*](#android_sdk_file_resources).
+
+#### Conflitos de rastreador { #tracker-conflicts } 
+
+A resposta do servidor é analisada para garantir que os dados foram carregados corretamente para o servidor. Caso a resposta do servidor inclua conflitos de importação, esses conflitos são armazenados no banco de dados, para que o aplicativo possa verificá-los e tomar medidas para resolvê-los.
+
+```java
+d2.importModule (). trackerImportConflicts ()
+```
+
+Os conflitos vinculados a TrackedEntityInstance, Enrollment ou Evento são removidos automaticamente após um upload bem-sucedido do objecto.
+
+O SDK tenta identificar o conflito dataElement ou atributo analisando a resposta do servidor. Em caso afirmativo, ele também armazena o valor do elemento quando o conflito aconteceu para que o aplicativo possa destacar o elemento no formulário quando o valor ainda não foi fixado.
+
+### Dados do rastreador: valores reservados { #tracker-data-reserved-values } 
+
+Atributos de entidade rastreados configurados como **únicos** e **gerados automaticamente** são gerados pelo servidor seguindo um padrão definido pelo usuário. Esses valores só podem ser gerados pelo servidor, o que significa que precisamos reservá-los com antecedência para que possamos utilizá-los quando estivermos operando offline.
+
+O aplicativo é responsável por reservar os valores gerados antes de ficar offline. Isso pode ser acionado por:
+
+```java
+// Reserve valores para todos os trackedEntityAttributes únicos e gerados automaticamente.
+d2.trackedEntityModule (). reservedValueManager (). downloadAllReservedValues (numValuesToFillUp)
+
+// Reserve valores para um trackedEntityAttribute específico.
+d2.trackedEntityModule (). reservedValueManager (). downloadReservedValues ("attributeUid", numValuesToFillUp)
+```
+
+Dependendo de quanto tempo o aplicativo espera ficar offline, ele pode decidir a quantidade de valores a reservar. Caso o padrão de atributo dependa do código orgunit, o SDK reservará valores para todos os orgunits relevantes. Mais detalhes sobre a lógica em Javadoc.
+
+Os valores reservados podem ser obtidos por:
+
+```java
+d2.trackedEntityModule (). reservedValueManager (). getValue ("attributeUid", "orgunitUid")
+```
+
+### Dados do rastreador: relacionamentos { #tracker-data-relationships } 
+
+The SDK supports all types of relationships. They are downloaded when syncing and can be accessed and created or modified. 
+
+
+|                    | TEI        | Inscrição   | Evento      |
+|--------------------|:----------:|:------------:|:----------:|
+| **TEI**            | X          | X            | X          |
+| **Enrollment**     | X          | X            | X          |
+| **Event**          | X          | X            | X          |
+_Supported relationships_
+
+Relationships are accessed by using the relationships module.
+
+Relacionamentos de consulta associados a um TEI.
+
+```java
+d2.relationshipModule (). relationships (). getByItem (
+    RelationshipHelper.teiItem ("trackedEntityInstanceUid")
+)
+```
+
+Query relationships associated to an enrollment.
+
+```java
+d2.relationshipModule (). relationships (). getByItem (
+    RelationshipHelper.enrollmentItem ("registrationUid")
+)
+```
+
+Or query relationships associated to an event.
+
+```java
+d2.relationshipModule (). relationships (). getByItem (
+    RelationshipHelper.eventItem ("eventUid")
+)
+```
+
+In the same module you can create new relationships of any type using the `RelationshipHelper` to model the relationship and adding them later to the relationship collection repository:
+
+```java
+Relacionamento de relacionamento = RelationshipHelper.teiToTeiRelationship ("fromTEIUid", "toTEIUid", "relationshipTypeUid");
+
+d2.relationshipModule (). relationships (). add (relacionamento);
+```
+
+Se o trackedEntityInstance relacionado ainda não existir e houver valores de atributos que devem ser herdados,  pode usar o método a seguir para herdar valores de atributos de um TEI para outro no contexto de um determinado programa. Apenas os atributos marcados como `herdar` serão herdados.
+
+```java
+d2.trackedEntityModule (). trackedEntityInstanceService ()
+    .inheritAttributes ("fromTeiUid", "toTeiUid", "programUid");
+```
+
+## Dados agregados { #android_sdk_aggregated_data }
+
+### Download de dados agregados { #aggregated-data-download } 
+
+> **Importante**
+>
+> Consulte a secção [Configurações do aplicativo] (# android_sdk_settings_app) para saber como esse aplicativo pode ser usado para controlar os parâmetros de sincronização.
+
+```java
+d2.aggregatedModule (). data (). download ()
+```
+
+Por padrão, o SDK baixa **valores de dados agregados**, **conjunto de dados
+valores completos de registro** e **aprovações** correspondentes a:
+
+- **DataSets**: todos os dataSets disponíveis (aqueles que o usuário leu pelo menos
+  data access to).
+- **OrganisationUnits**: escopo de captura.
+- **Períodos**: todos os períodos disponíveis, o que significa pelo menos:
+  - Dias: últimos 60 dias.
+  - Semanas: últimas 13 semanas (incluindo variantes do dia inicial).
+  - Quinzenal: últimas 13 semanas.
+  - Mensal: últimos 12 meses.
+  - Bimestral: últimos 6 bi-meses.
+  - Trimestres: últimos 5 trimestres.
+  - Semestral: últimos 5 semestrais (começando em janeiro e abril).
+  - Anual: últimos 5 anos (incluindo variantes do exercício).
+
+  Além disso, se algum conjunto de dados permitir a entrada de dados para **períodos futuros**,
+  the Sdk will download the data for those open periods and store them. 
+
+The Sdk also keeps track of the latest successful download in order to
+avoid downloading unmodified server data.
+
+No download de **aprovações de dados**, fluxo de trabalho e opção de atributo
+identificadores de combinação serão considerados além do
+unidades organizacionais e períodos. Os diferentes estados possíveis para os dados
+aprovação são:
+
+- `UNAPPROVABLE`. Data approval does not apply to this selection. (Data
+  não é *aprovado* nem *não aprovado*).
+- `UNAPPROVED_WAITING`. Data could be approved for this selection, but
+  is waiting for some lower-level approval before it is ready to be
+  approved.
+- `UNAPPROVED_ELSEWHERE`. Data is unapproved and is waiting for
+  approval somewhere else (can not be approved here).
+- `UNAPPROVED_READY`. Data is unapproved, and is ready to be approved
+  for this selection.
+- `UNAPPROVED_ABOVE`. Os dados não foram aprovados acima.
+- `APPROVED_HERE`. Data is approved, and was approved here (so could be
+  unapproved here).
+- `APPROVED_ELSEWHERE`. Data is approved, but was not approved here (so
+  cannot be unapproved here).
+- `APPROVED_ABOVE`. Os dados são aprovados acima.
+- `ACCEPTED_HERE`. Data is approved and accepted here (so could be
+  unapproved here).
+- `ACCEPTED_ELSEWHERE`. Os dados são aprovados e aceitos, mas em outro lugar.
+
+As aprovações de dados são baixadas apenas para versões superiores a 2.29.
+
+### Gravação de dados agregados { #aggregated-data-write } 
+
+#### Períodos { #periods } 
+
+In order to write data values or data set complete registrations, it's mandatory to provide a period id. Periods are stored in a table in the database and
+the provided period ids must be already present in that table, otherwise, a Foreign Key error will be thrown. To prevent that situation, the `PeriodHelper` is
+exposed inside the `PeriodModule`. Before adding aggregated data related to a dataSet, the following method must be called:
+
+```java
+Único <List<Period>> períodos = d2.periodModule (). PeriodHelper (). GetPeriodsForDataSet ("dataSetUid");
+```
+
+Isso irá garantir que:
+1. O aplicativo escolherá um dos períodos fornecidos, evitando períodos malformados ou incorretos.
+2. O aplicativo só poderá escolher os períodos futuros definidos pelo campo `DataSet.openFuturePeriods`.
+3. O aplicativo só poderá escolher os períodos passados definidos com base nos limites declarados na seção Download de Dados Agregados.
+
+#### Valor de dados { #data-value } 
+
+DataValueCollectionRepository tem um método `value ()` que dá acesso aos métodos de edição. Os parâmetros aceitos por esse método são os parâmetros que identificam um valor de forma inequívoca.
+
+```java
+DataValueObjectRepository valueRepository = d2.dataValueModule (). DataValues ()
+    .value ("periodId", "orgunitId", "dataElementId", "categoryOptionComboId", "attributeOptionComboId");
+
+valueRepository.set ("valor")
+```
+
+#### Registro completo do conjunto de dados { #data-set-complete-registration } 
+
+The Sdk provides within the data set module a collection repository for
+data set complete registrations. This repository contains methods to add
+new completions and delete them.
+
+To add a new data set complete registration is available an `add()`
+method:
+
+```java
+d2.dataSetModule (). dataSetCompleteRegistrations ()
+    .add (dataSetCompleteRegistration);
+```
+
+In order to remove them from the database, the repository has a `value()`
+method that gives access to deletion methods (`delete()` and
+`deleteIfExist()`). The parameters accepted by this method are the
+parameters that unambiguously identify the data set complete
+registration.
+
+```java
+d2.dataSetModule (). dataSetCompleteRegistrations ()
+    .value ("periodId", "orgunitId", "dataSetUid", "attributeOptionCombo")
+    .excluir()
+```
+
+### Upload de dados agregados { #aggregated-data-upload } 
+
+DataValueCollectionRepository tem um método `upload ()` para fazer upload de valores de dados agregados.
+
+```java
+d2.dataValueModule (). dataValues (). upload ();
+```
+
+### Instâncias de DataSet { #dataset-instances } 
+
+Um DataSetInstance no SDK é uma representação prática dos dados agregados existentes. Um DataSetInstance representa uma combinação única de DataSet - Period - Orgunit - AttributeOptionCombo e inclui informações extras como estado de sincronização, contagem de valor ou displayName para algumas propriedades.
+
+```java
+d2.dataSetModule (). dataSetInstances ()
+    . [filtros]
+    .pegue()
+
+// Por exemplo
+d2.dataSetModule (). dataSetInstances ()
+    .byDataSetUid (). eq ("datasetUid")
+    .byOrganisationUnitUid (). eq ("orgunitUid")
+    .byPeriod (). in ("201901", "201902")
+    .pegue();
+```
+
+Se só precisa de uma visão geral de alto nível do status dos dados agregados, pode usar o repositório `DataSetInstanceSummary`. Ele aceita os mesmos filtros e retorna uma contagem de `DataSetInstance` para cada combinação.
+
+## Lidando com FileResources { #android_sdk_file_resources }
+
+O SDK oferece um módulo (o `FileResourceModule`) e dois auxiliares (o` FileResourceDirectoryHelper` e `FileResizerHelper`) que permitem trabalhar com arquivos.
+
+In the context of a mobile connection, dealing with fileResources could be high bandwidth consuming. For this reason, fileResources are not downloaded by default when downloading data and they must be explicitly downloaded if wanted. The recommendation is to download to fileResources only if it is important to have them in the device. If they are not downloaded, there is no negative consequence in terms of data integrity; the only consequence is that they are not available in the device.
+
+On the other hand, fileResource upload is not optional: the SDK will upload all the fileResources created in the device when uploading data. This is important in order to have successful synchronizations and keep data integrity.
+
+### Módulo de recursos de arquivo { #file-resources-module } 
+
+Este módulo contém métodos para baixar os recursos de arquivo associados aos dados baixados e o repositório de coleta de recursos de arquivo do banco de dados.
+
+- **Download de recursos de arquivo**.
+The `fileResourceDownloader()` offers methods to filter the fileResources we want to download. It will search for values that match the filters and whose file resource has not been previously downloaded.
+
+  ```java
+  d2.fileResourceModule().fileResourceDownloader()
+      .byDomainType().eq(FileResourceDomainType.TRACKER)
+      .byElementType().eq(FileResourceElementType.DATA_ELEMENT)
+      .byValueType().in(FileResourceValueType.IMAGE, FileResourceValueType.FILE_RESOURCE)
+      .byMaxContentLength().eq(2000000)
+      .download();
+  ```
+
+  The SDK has a default maxContentLength of 6000000.
+
+  Depois de baixar os arquivos, pode obter os diferentes recursos de arquivo baixados por meio do repositório.
+
+- **Repositório de coleta de recursos de arquivo**.
+Through this repository it is possible to request files, save new ones and upload them to the server. 
+
+  - **Get**. It behaves in a similar fashion to any other SDK repository. It allows to get collections by applying different filters if desired.
+
+    ```java
+    d2.fileResourceModule().fileResources()
+        .[ filters ]
+        .get()
+    ```
+
+  - **Adicionar**. Para salvar um arquivo, deve adicioná-lo usando o método `add ()` do repositório, fornecendo um objecto do tipo `Arquivo`. O método `add ()` retornará o uid que foi gerado ao adicionar o arquivo. Este uid deve ser usado para actualizar o valor do atributo da entidade rastreada ou o valor dos dados da entidade rastreada associado ao recurso de arquivo.
+
+    ```java
+    d2.fileResourceModule().fileResources()
+        .add(file); // Single<String> The fileResource uid
+    ```
+
+### Ajudante de redimensionamento de arquivo { #file-resizer-helper } 
+
+O Sdk fornece um auxiliar para redimensionar arquivos de imagem (`FileResizerHelper`). Este auxiliar contém um método `resizeFile ()` que aceita o arquivo que deseja reduzir e a dimensão para a qual deseja reduzi-lo.
+
+As dimensões possíveis estão na tabela a seguir.
+
+| Pequena | Médio | Grande  |
+|-------|--------|--------|
+| 256px | 512px  | 1024px |
+
+O ajudante pega o arquivo, mede a altura e largura da imagem, determina qual dos dois lados é maior e reduz o maior dos lados para a dimensão dada e o outro lado é dimensionado para seu tamanho proporcional. **O dimensionamento da imagem sempre manterá as proporções**.
+
+Caso a última imagem seja menor que a dimensão para a qual se deseja redimensioná-la, o mesmo arquivo será devolvido sem ser modificado.
+
+O método `resizeFile ()` retornará um novo arquivo localizado no mesmo diretório pai do arquivo a ser redimensionado com o nome `resized-DIMENSION-` + o nome do arquivo sem redimensionar.
+
+### Auxiliar de diretório de recursos de arquivo { #file-resource-directory-helper } 
+
+A classe auxiliar `FileResourceDirectoryHelper` fornece dois métodos.
+
+- `getFileResourceDirectory()`. This method returns a `File` object whose path points to the `sdk_resources` directory where the SDK will save the files associated with the file resources.
+
+- `getFileCacheResourceDirectory ()`. Este método retorna um objecto `File` cujo caminho aponta para o diretório` sdk_cache_resources`. Este deve ser o local onde os arquivos voláteis são armazenados, como fotos da câmera ou imagens a serem redimensionadas. Como o diretório está contido no diretório de cache, o Android pode excluir automaticamente os arquivos do diretório de cache quando o sistema está prestes a ficar sem memória. Os aplicativos de terceiros também podem excluir arquivos do diretório de cache. Até mesmo o usuário pode limpar manualmente o cache em Configurações. No entanto, o facto de que o cache pode ser limpo nos métodos explicados acima não deve significar que o cache será limpo automaticamente; portanto, o cache precisará ser organizado de vez em quando de maneira proativa.
+

@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/analytics.md"
-revision_date: '2023-12-13'
+revision_date: '2024-01-23'
 tags:
 - DHIS核心 主版
 - Develop
@@ -2814,13 +2814,331 @@ Web API 提供了可用于转换 SVG 内容的资源
 | svg | 是的 | SVG 内容 |
 | 文件名 | 不 | 返回的附件的文件名，不带文件扩展名 |
 
-## 分析查询执行计划和成本，包括执行时间估计{ #analytics-query-execution-plan-and-costs-including-execution-time-estimation }
+## Analytics outlier detection { #webapi_analytics_outlier_detection } 
 
-分析 API 提供用于调查查询性能问题的端点。它作为所有分析端点的一部分实现：
+The analytics outliert API provides endpoints for investigation of the data quality based on Z Score and Modified Z Score. Both scores are statistical measures that help analyze and interpret data in the context of deviations from the middle value. They are particularly useful in identifying outliers or extreme values in a dataset. The API is implemented as a single analytics endpoint:
 
-- 分析/解释
-- 分析/事件/解释
-- 分析/注册/解释
+- /api/analytics/outlierDetection
+
+### Request  { #webapi_analytics_outlier_detection_request } 
+
+**Query parameters**
+
+| 查询参数 | 描述 | 需要 | 选项（默认为默认）
+|---|---|---|---|
+| ds | 资料集 | 是的 | Data set identifier |
+| 开始日期 | Start date for interval tocheck for outliers | No (relative date period is mandatory in this case) | Date (yyyy-MM-dd) |
+| 结束日期 |End date for interval to check for outliers | No (relative date period is mandatory in this case) | Date (yyyy-MM-dd) |
+| 聚乙烯 | ISO periods and relative periods | No (start and end date is mandatory in this case) | see "date and period format"  |
+| relativePeriodDate | Date used as basis for relative periods. | 不| Date (yyyy-MM-dd) |
+| 欧 | Organisation unit, organiosation unit level or groups (can be combined) | 是的 |Organisation unit (level, group) identifier |
+| 标头 | The name of the headers to be returned as part of the response. One or more headers name separated by comma |  不 | (NULL), dx, dxname, pename, pe ... |
+| 订购 | Sort the records on the value column | 不 | absdev, zscore, modifiedzscore, median, mean, stddev, medianabsdeviation, lowerbound, upperbound |
+| sortOrder | Sort the records on the value column in ascending or descending order | 不 |ASC, DESC |
+| 算法 |Algorithm to use for outlier detection | 不 | Z_SCORE, MODIFIED_Z_SCORE |
+| 临界点 | Threshold for outlier values Z_SCORE or MODIFIED_Z_SCORE| 不 |Numeric, greater than zero. Default: 3.0|
+| inputIdScheme | Identifier scheme to use for metadata items in the query request, can be an identifier, code or attributes. | 不 | UID, ID, CODE, NAME |
+| maxResults | Maximum rows (responses) | 不 | 500 |
+
+**Request example**
+
+    GET api/analytics/outlierDetection?ds=BfMAe6Itzgt&ou=ImspTQPwCqd&startDate=2022-07-26&endDate=2022-10-26&algorithm=Z_SCORE&maxResults=30&orderBy=value&threshold=3.0&sortOrder=asc&outputIdScheme=code
+
+
+### Response { #webapi_analytics_outlier_detection_response } 
+
+Response is delivered in several representation formats. The default format is JSON. The
+available formats and content types are:
+
+  - json（应用程序/ json）
+  - xml（应用程序/ xml）
+  - xsl (application/vnd.ms-excel)
+  - csv（应用程序/ csv）
+  - html（text / html）
+  - html + css（text / html）
+
+**Response example**
+
+```json
+{
+    "headers": [
+        {
+            "name": "dx",
+            "column": "Data",
+            "valueType": "TEXT",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "dxname",
+            "column": "Data name",
+            "valueType": "TEXT",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "pe",
+            "column": "Period",
+            "valueType": "TEXT",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "pename",
+            "column": "Period name",
+            "valueType": "TEXT",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "ou",
+            "column": "Organisation unit",
+            "valueType": "TEXT",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "ouname",
+            "column": "Organisation unit name",
+            "valueType": "TEXT",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "ounamehierarchy",
+            "column": "Organisation unit name hierarchy",
+            "valueType": "TEXT",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "coc",
+            "column": "Category option combo",
+            "valueType": "TEXT",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "cocname",
+            "column": "Category option combo name",
+            "valueType": "TEXT",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "aoc",
+            "column": "Attribute option combo",
+            "valueType": "TEXT",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "aocname",
+            "column": "Attribute option combo name",
+            "valueType": "TEXT",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "value",
+            "column": "Value",
+            "valueType": "NUMBER",
+            "type": "java.lang.Double",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "mean",
+            "column": "Mean",
+            "valueType": "NUMBER",
+            "type": "java.lang.Double",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "stddev",
+            "column": "Standard deviation",
+            "valueType": "NUMBER",
+            "type": "java.lang.Double",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "absdev",
+            "column": "Absolute deviation",
+            "valueType": "NUMBER",
+            "type": "java.lang.Double",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "zscore",
+            "column": "zScore",
+            "valueType": "NUMBER",
+            "type": "java.lang.Double",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "lowerbound",
+            "column": "Lower boundary",
+            "valueType": "NUMBER",
+            "type": "java.lang.Double",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "upperbound",
+            "column": "Upper boundary",
+            "valueType": "NUMBER",
+            "type": "java.lang.Double",
+            "hidden": false,
+            "meta": false
+        }
+    ],
+    "metaData": {
+        "maxResults": 30,
+        "count": 3,
+        "orderBy": "VALUE",
+        "threshold": 3.0,
+        "algorithm": "Z_SCORE"
+    },
+    "rowContext": {},
+    "width": 18,
+    "rows": [
+        [
+            "DE_22",
+            "Q_Early breastfeeding (within 1 hr after delivery) at BCG",
+            "202209",
+            "September 2022",
+            "OU_204860",
+            "Sandaru CHC",
+            "/Sierra Leone/Kailahun/Penguia/Sandaru CHC",
+            "COC_292",
+            "Fixed, <1y",
+            "default",
+            "default",
+            "105.0",
+            "18.26357",
+            "28.70554",
+            "86.73643",
+            "3.02159",
+            "-67.85306",
+            "104.38019"
+        ],
+        [
+            "DE_359706",
+            "BCG doses given",
+            "202208",
+            "August 2022",
+            "OU_595",
+            "Ngalu CHC",
+            "/Sierra Leone/Bo/Bargbe/Ngalu CHC",
+            "COC_292",
+            "Fixed, <1y",
+            "default",
+            "default",
+            "220.0",
+            "41.64407",
+            "57.44954",
+            "178.35593",
+            "3.10457",
+            "-130.70455",
+            "213.99269"
+        ],
+        [
+            "DE_35",
+            "Yellow Fever doses given",
+            "202209",
+            "September 2022",
+            "OU_1027",
+            "Yemoh Town CHC",
+            "/Sierra Leone/Bo/Kakua/Yemoh Town CHC",
+            "COC_292",
+            "Fixed, <1y",
+            "default",
+            "default",
+            "466.0",
+            "48.18605",
+            "114.27966",
+            "417.81395",
+            "3.65607",
+            "-294.65294",
+            "391.02504"
+        ]
+    ],
+    "headerWidth": 18,
+    "height": 3
+}
+```
+### Statistics in response { #webapi_analytics_outlier_detection_stats_in_response }
+
+| Statistical Measure | Header name | 描述 | 链接 |
+|---|---|---|---|
+| 值 | 价值 | The data set/ data element numeric value (Penta1 doses given, Measles doses given, etc.) | |
+| Mean | 意思是 |The average value of a set of numbers. Calculated by summing all values and dividing by the count.| https://www.khanacademy.org/math/statistics-probability/summarizing-quantitative-data |
+| Standard Deviation | stddev | A measure of the amount of variation or dispersion in a set of values. | https://www.statisticshowto.com/probability-and-statistics/standard-deviation/ |
+| Absolute Deviation | absdev | The absolute difference between each data value and the middle value. | https://www.mathsisfun.com/data/mean-absolute-deviation.html |
+| Z Score | zscore | A standardized score that represents how many standard deviations a data value is from the mean. | https://www.statisticshowto.com/probability-and-statistics/z-score/ |
+| Modified Z Score | modifiedzscore | Similar to the Z score but robust to outliers. It uses the median and median absolute deviation. | https://www.statisticshowto.com/modified-z-scores/ |
+| Median Absolute Deviation | medianabsdeviation | A robust measure of the spread of data values, calculated as the median of the absolute deviations from the median. | https://math.stackexchange.com/questions/2232309/median-absolute-deviation-mad-formula |
+| Minimum | lowerbound | The minimum is the smallest value in a dataset. It represents the lowest observed value among all the data values. | |
+| Maximum| upperbound | The maximum is the largest value in a dataset. It represents the highest observed value among all the data values. | |
+
+
+### Error messages { #webapi_analytics_outlier_detection_error_messages } 
+
+**_NOTE:_** *All messages are delivered with http status code 409.*
+
+| 码 | 信息 |
+|---|---|
+| E2200 | At least one data element must be specified. |
+| E2201 | Start date and end date or relative period must be specified. |
+| E2202 | Start date must be before end date. |
+| E2203 | 必须至少指定一个组织单位。 | 
+| E2204 | Threshold must be a positive number. |
+| E2205 | Max results must be a positive number. |
+| E2206 | Max results exceeds the allowed max limit: *500*. |
+| E2207 | Data start date must be before data end date. |
+| E2208 | Non-numeric data values encountered during outlier value detection. |
+| E2209 | Data start date not allowed. |
+| E2210 | Data end date not allowed. |
+| E2211 | Algorithm min-max values not allowed. |
+| E2212 | Specifying both a start date/end date and a relative period is not allowed. |
+| E2213 | Value of param orderBy is not compatible with algorithm *Z_SCORE*. |
+| E7180 | The analytics outliers data does not exist. Please ensure analytics job was run and did not skip the outliers. |
+| E7181 | Column *dxname* specified in orderBy, is not eligible for orderBy or does not exist. |
+
+**_NOTE:_** *The values in error messages are examples only*
+
+**Error message example**
+```json
+{
+    "httpStatus": "Conflict",
+    "httpStatusCode": 409,
+    "status": "ERROR",
+    "message": "Start date and end date or relative period must be specified",
+    "errorCode": "E2201"
+}
+```
+## Analytics query execution plan and costs including execution time estimation { #analytics-query-execution-plan-and-costs-including-execution-time-estimation } 
+
+The analytics API provides endpoints for investigation of query performance issues. It is implemented as part of all analytics endpoints:
+
+- analytics/explain
+- analytics/event/explain
+- analytics/enrollment/explain
 
 **例**
 
@@ -2829,7 +3147,7 @@ Web API 提供了可用于转换 SVG 内容的资源
       &filter=pe:THIS_YEAR&includeNumDen=false&skipMeta=false
       &skipData=true&includeMetadataDetails=true
 
-响应看起来像这样。
+The response looks like this.
 
 ```json
 {
@@ -3089,25 +3407,29 @@ Web API 提供了可用于转换 SVG 内容的资源
 }
 ```
 
-此响应显示 PostgreSQL 规划器为所提供的语句生成的执行计划。
+This response displays the execution plan that the PostgreSQL planner generates for the supplied statement.
 
-执行计划显示了如何扫描语句引用的表：通过普通顺序扫描、索引扫描，以及如果引用多个表，将使用什么连接来将每个输入表中所需的行组合在一起。
+The execution plan shows how the table(s) referenced by the statement will be scanned: by plain sequential scan, index scan,and if multiple tables are referenced, what joins will be used to bring together the required rows from each input table.
 
-显示中最关键的部分是估计的语句执行成本，这是查询规划器对运行该语句所需时间的估计。
+The most critical part of the display is the estimated statement execution cost, which is the query planner's estimate at how long it will take to run the statement.
 
 All entry points are secured by authorization. The `F_PERFORM_ANALYTICS_EXPLAIN` role is required.
 
-## 分析说明 { #webapi_analytics_explain }
+## Analytics explain { #webapi_analytics_explain }
 
-    /api/分析/解释
+    /api/analytics/explain
 
-## 事件分析解释{ #webapi_event_analytics_explain }
+## Event analytics explain { #webapi_event_analytics_explain }
 
     /api/analytics/event/aggregate/{program}/explain
 
     /api/analytics/event/query/{program}/explain
 
-## 注册分析说明{ #webapi_enrollment_analytics_explain }
+## Enrollment analytics explain { #webapi_enrollment_analytics_explain }
 
     /api/analytics/enrollment/query/{program}/explain
+
+## Outliers analytics explain  { #webapi_analytics_outlier_detection_explain } 
+
+    /api/analytics/outlierDetection/explain
 

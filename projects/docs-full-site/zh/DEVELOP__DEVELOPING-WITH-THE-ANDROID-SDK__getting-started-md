@@ -1,0 +1,142 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-sdk/blob/master/docs/content/developer/getting-started.md"
+revision_date: '2024-01-29'
+tags:
+- Develop
+---
+
+# 开始使用 { #android_sdk_getting_started }
+
+## 安装 { #android_sdk_installation }
+
+在build.gradle中包括依赖项。
+
+```gradle
+dependencies {
+    implementation "org.hisp.dhis:android-core:1.9.1"
+    ...
+}
+```
+
+此外，如果尚无此存储库，则需要将该存储库包含在根gradle文件中：
+
+```等级
+所有项目{
+    储存库{
+        ...
+        专家{url'https://jitpack.io'}
+    }
+}
+```
+
+检查[此处的兼容性](#android_sdk_compatibility)。
+
+## D2初始化 { #android_sdk_initialization }
+
+ <!--TODO-->
+
+In order to start using the SDK, the first step is to initialize a `D2` object. The helper class `D2Manager` offers static methods to setup and initialize the `D2` instance. Also, it ensures that `D2` is a singleton across the application.
+
+The minimum configuration that needs to be passed to the `D2Manager` is the following: 
+
+```java
+D2Configuration configuration = D2Configuration.builder()
+    .context(context)
+    .build();
+```
+
+Using the configuration you can instantiate `D2`.
+
+```java
+Single<D2> d2Single = D2Manager.instantiateD2(configuration);
+```
+
+完成Single之后，您可以使用以下方法访问D2：
+
+```java
+D2 d2 = D2Manager.getD2();
+```
+
+If you are not using RxJava, you can instantiate `D2` in a blocking way:
+
+```java
+D2 d2 = D2Manager.blockingInstantiateD2(configuration);
+```
+
+The object `D2Configuration` has a lot of fields to configure the behavior of the SDK.
+
+|  属性    |   需要    |   描述 | 默认
+|-|-|-|-|
+| 语境       | 真正          | 应用环境 | --
+| 应用程序名称       | 假         | 用于创建“用户代理”标题 | 从Android清单
+| 应用程序版本    | 假         | 用于创建“用户代理”标题 | 从Android清单
+| 读取超时秒数 | 假  | 读取HTTP查询超时 | 30秒
+| 连接超时秒数 | 假 | HTTP查询的连接超时 | 30秒
+| 写入超时秒数 | 假 | 为HTTP查询写超时 | 30秒
+| 拦截器  | 假         | OkHttpClient的拦截器 | 没有
+| 网络拦截器 | 假   | OkHttpClient的NetworkInterceptors | 没有
+
+## Google Play 服务支持{ #google-play-services-support }
+
+The Google play services have been completely removed to make the SDK work on devices where the play services are not allowed; the SDK was using the `ProviderInstaller` present in the play service dependency to update the security provider to be protected against SSL exploits
+
+如果您使用的 SDK 版本不支持 Google Play 服务，您有两种选择来更新安全提供程序以防止 SSL 漏洞，您可以使用名为 [conscrypt](https://github.com/google/ conscrypt）到没有 google play 服务支持的目标设备，或者您可以使用非开源的 [play-services-safetynet](https://developer.android.com/training/articles/security-gms-provider) 依赖项需要谷歌播放服务。
+
+### 1. Play 服务 Safetynet 依赖{ #1-play-services-safetynet-dependency }
+
+If you're targeting devices that support the google play services, the best option is to use the `ProviderInstaller` included in the play-services-SafetyNet dependency by following steps.
+
+```gradle
+dependencies {
+    implementation "com.google.android.gms:play-services-safetynet:<version>"
+    ...
+}
+```
+
+After adding the `play-services-safetynet` dependency just create a method that you can used to install the security provider
+
+``java
+公共静态无效初始化（上下文上下文）{
+    尝试 {
+        // ....
+        ProviderInstaller.installIfNeeded(context.getApplicationContext());
+        // ....
+    } catch (GooglePlayServicesRepairableException e) {
+        Log.e(TAG, e.toString());
+    } catch (GooglePlayServicesNotAvailableException e) {
+        Log.e(TAG, e.toString());
+    } catch (NoSuchAlgorithmException e) {
+        Log.e(TAG, e.toString());
+    }
+}
+````
+
+For more information about `play-services-safetynet`, check the official documentation [link](https://developer.android.com/training/articles/security-gms-provider)
+
+### 2. 开源解决方案{ #2-open-source-solution }
+
+如果您的目标设备不是具有 google play 服务的设备，[conscrypt](https://github.com/google/conscrypt) 是 `play-services-safetynet` 依赖项的替代方案，可用于更新安全提供程序防范 SSL 漏洞
+
+```gradle
+dependencies {
+    implementation 'org.conscrypt:conscrypt-android:<conscrypt-version>'
+    ...
+}
+```
+
+设置 conscrypt 与 Google 的提供程序类似，如以下代码所示：
+
+``java
+公共静态无效初始化（）{
+    尝试 {
+        Security.insertProviderAt(Conscrypt.newProvider(), 1);
+    } catch（异常e）{
+        Log.e(TAG, e.toString());
+    } catch (NoSuchAlgorithmException e) {
+        Log.e(TAG, e.toString());
+    }
+}
+````
+
+有关 conscrypt 的更多信息，请查看此[链接](https://github.com/google/conscrypt) 上的官方 github 存储库
+
