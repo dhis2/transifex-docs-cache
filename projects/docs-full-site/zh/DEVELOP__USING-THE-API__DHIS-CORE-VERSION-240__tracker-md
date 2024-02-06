@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.40/src/developer/web-api/tracker.md"
-revision_date: '2024-01-09'
+revision_date: '2024-01-19'
 tags:
-- DHIS core version 2.40
 - Develop
+- DHIS core version 2.40
 ---
 
 # 追踪器 { #tracker } 
@@ -1208,27 +1208,26 @@ In this example, the user with uid `M0fCOxtkURr` will be assigned to the Event w
 |`页面大小`|`整数`| 任意正整数 |页面大小。默认为 50。 |
 |`总页数`|`Boolean`| `true`&#124;`false` |指示是否返回响应中的总页数 |
 |`跳过分页`|`Boolean`| `true`&#124;`false` |Indicates whether paging should be ignored and all rows should be returned. Defaults to `false`, meaning that by default all requests are paginated, unless `skipPaging=true`|
-|`订单`|`字符串`|comma-delimited list of `OrderCriteria` in the form of `propName:sortDirection`.<br><br>Available properties are: `completedAt`, `createdAt`, `createdAtClient`, `enrolledAt`, `updatedAt` and `updatedAtClient` <br><br> Example: `createdAt:desc`<br><br>**Note:** `propName` is case sensitive, `sortDirection` is case insensitive. `sortDirection` defaults to `asc` when non provided.|Sort the response based on given `OrderCriteria`|
 
-> **注意**
+> **Caution**
 >
-> 请注意，性能与请求的数据量直接相关。较大的页面将花费更多时间返回。
+> Be aware that the performance is directly related to the amount of data requested. Larger pages will take more time to return.
 
-#### 组织单位选择模式的请求参数 { #request-parameters-for-organisational-unit-selection-mode }
+#### Request parameters for Organisational Unit selection mode { #request-parameters-for-organisational-unit-selection-mode } 
 
 可用的组织单元选择模式在
 下表。
 
-|模式|描述|
+|Mode|描述|
 |---|---|
-|`已选择`|  请求中定义的组织单位。|
-|`CHILDREN`|  选定的组织单位及其直接子级，即下一级的组织单位。|
-|`DESCENDANTS`| 选定的组织单位和所有子组织单位，即子层次结构中的所有组织单位。|
-|`ACCESSIBLE`|  与当前用户和所有子级关联的数据视图组织单位，即子层次结构中的所有组织单位。如果未定义前者，则将回退到与当前用户关联的数据捕获组织单位。|
-|`捕获`| 与当前用户和所有子级关联的数据捕获组织单元，即子层次结构中的所有组织单元。|
-|`全部`| 系统中的所有组织单位。需要 ALL 权限。|
+|`SELECTED`|  Organisation units defined in the request.|
+|`CHILDREN`|  The selected organisation units and the immediate children, i.e., the organisation units at the level below.|
+|`DESCENDANTS`| The selected organisation units and all children, i.e., all organisation units in the sub-hierarchy.|
+|`ACCESSIBLE`|  The data view organisation units associated with the current user and all children, i.e., all organisation units in the sub-hierarchy. Will fall back to data capture organisation units associated with the current user if the former is not defined.|
+|`CAPTURE`| The data capture organisation units associated with the current user and all children, i.e., all organisation units in the sub-hierarchy.|
+|`ALL`| All organisation units in the system. Requires the ALL authority.|
 
-#### 用于过滤响应的请求参数 { #webapi_nti_field_filter }
+#### Request parameter to filter responses { #webapi_nti_field_filter }
 
 All export endpoints accept a `fields` parameter which controls which fields will be returned in the
 JSON response. `fields` parameter accepts a comma separated list of field names or patterns. A few
@@ -1237,61 +1236,61 @@ filter](#webapi_metadata_field_filter) for a more complete guide on how to use `
 
 ##### 例子 { #examples } 
 
-|参数示例|意义|
+|Parameter example|Meaning|
 |:---|:---|
-|`字段=*`|返回所有字段|
-|`字段=创建时间，uid`|只返回字段 `createdAt` 和 `uid`|
-|`字段=注册人数[*,!uid]`|returns all fields of `enrollments` except `uid`|
-|`字段=注册[uid]`|only returns `enrollments` field `uid`|
-|`字段=注册[uid,enrolledAt]`|only returns `enrollments` fields `uid` and `enrolledAt`|
+|`fields=*`|returns all fields|
+|`fields=createdAt,uid`|only returns fields `createdAt` and `uid`|
+|`fields=enrollments[*,!uid]`|returns all fields of `enrollments` except `uid`|
+|`fields=enrollments[uid]`|only returns `enrollments` field `uid`|
+|`fields=enrollments[uid,enrolledAt]`|only returns `enrollments` fields `uid` and `enrolledAt`|
 
-### 跟踪实体 (`GET /api/tracker/trackedEntities`) { #tracked-entities-get-apitrackertrackedentities }
+### Tracked Entities (`GET /api/tracker/trackedEntities`) { #tracked-entities-get-apitrackertrackedentities } 
 
-两个端点专用于被跟踪的实体：
+Two endpoints are dedicated to tracked entities:
 
 - `GET /api/tracker/trackedEntities`
-  - 检索匹配给定条件的跟踪实体
+  - retrieves tracked entities matching given criteria
 - `GET /api/tracker/trackedEntities/{id}`
-  - 根据提供的 id 检索被跟踪的实体
+  - retrieves a tracked entity given the provided id
 
-#### 跟踪实体收集端点 `GET /api/tracker/trackedEntities` { #tracked-entities-collection-endpoint-get-apitrackertrackedentities }
+#### Tracked Entities Collection endpoint `GET /api/tracker/trackedEntities` { #tracked-entities-collection-endpoint-get-apitrackertrackedentities } 
 
-此端点的目的是检索与客户端提供的标准匹配的跟踪实体。
+The purpose of this endpoint is to retrieve tracked entities matching client-provided criteria.
 
-端点返回与请求参数匹配的跟踪实体的列表。
+The endpoint returns a list of tracked entities that match the request parameters.
 
 ##### 请求语法 { #request-syntax } 
 
-|请求参数|类型|允许值|描述|
+|Request parameter|类型|Allowed values|描述|
 |---|---|---|---|
-|`查询`|`字符串`|`{运算符}：{过滤器值}`|Creates a filter over tracked entity attributes. Only the filter value is mandatory. The `EQ` operator is used if `operator` is not specified.|
-|`属性`|`字符串`|Comma separated values of attribute `UID`s |对于响应中的每个跟踪实体，仅返回指定的属性 |
-|`过滤器`|`字符串`|属性过滤器的逗号分隔值|Narrows response to TEIs matching given filters. A filter is a colon separated property or attribute UID with optional operator and value pairs. Example: `filter=H9IlTX2X6SL:sw:A` with operator starts with `sw` followed by a value. Special characters like `+` need to be percent-encoded so `%2B` instead of `+`. Characters such as `:` (colon) or `,` (comma), as part of the filter value, need to be escaped by `/` (slash). Likewise, `/` needs to be escaped. Multiple operator/value pairs for the same property/attribute like `filter=AuPLng5hLbE:gt:438901703:lt:448901704` are allowed. Repeating the same attribute UID is not allowed. User needs access to the attribute to filter on it.|
-|`orgUnit`|`字符串`|semicolon-delimited list of organisational unit `UID`|仅返回属于所提供组织单位的跟踪实体实例|
-|`ouMode` 请参阅 [ouModes](#Request-parameters-for-Organisingal-Unit-selection-mode)|`字符串`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|The mode of selecting organisation units, can be. Default is `SELECTED`, which refers to the selected organisation units only.|
-|`程序`|`字符串`|Program `UID`| a Program `UID` for which instances in the response must be enrolled into|
-|`程序状态`|`字符串`|`ACTIVE`&#124;`COMPLETED`&#124;`CANCELLED`|给定程序中跟踪实体实例的 ProgramStatus|
-|`程序阶段`|`字符串`|`UID`|a Program Stage `UID` for which instances in the response must have events for|
-|`跟进`|`Boolean`|`true`&#124;`false`|指示跟踪的实体实例是否被标记为针对指定程序进行跟进|
-|`更新后`|`日期时间`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 上次更新的开始日期|
-|`更新前`|`日期时间`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 上次更新的结束日期|
-|`更新内`|`持续时间`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601#Durations) | 返回不早于指定持续时间的 TEI|
-|`注册注册后`|`日期时间`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|指定课程的注册开始日期|
-|`注册之前注册`|`日期时间`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|给定计划的注册结束日期|
-|`注册发生后`|`日期时间`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|给定计划中事件的开始日期|
-|`注册发生之前`|`日期时间`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|给定计划中事件的结束日期|
-|`trackedEntityType`|`字符串`|跟踪实体类型的 UID|仅返回给定类型的跟踪实体实例|
+|`query`|`String`|`{operator}:{filter-value}`|Creates a filter over tracked entity attributes. Only the filter value is mandatory. The `EQ` operator is used if `operator` is not specified.|
+|`attribute`|`字符串`|Comma separated values of attribute `UID`s |For each tracked entity in the response, only returns specified attributes |
+|`filter`|`字符串`|Comma separated values of attribute filters|Narrows response to TEIs matching given filters. A filter is a colon separated property or attribute UID with optional operator and value pairs. Example: `filter=H9IlTX2X6SL:sw:A` with operator starts with `sw` followed by a value. Special characters like `+` need to be percent-encoded so `%2B` instead of `+`. Characters such as `:` (colon) or `,` (comma), as part of the filter value, need to be escaped by `/` (slash). Likewise, `/` needs to be escaped. Multiple operator/value pairs for the same property/attribute like `filter=AuPLng5hLbE:gt:438901703:lt:448901704` are allowed. Repeating the same attribute UID is not allowed. User needs access to the attribute to filter on it.|
+|`orgUnit`|`字符串`|semicolon-delimited list of organisational unit `UID`|Only return tracked entity instances belonging to provided organisational units|
+|`ouMode` see [ouModes](#Request-parameters-for-Organisational-Unit-selection-mode)|`字符串`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|The mode of selecting organisation units, can be. Default is `SELECTED`, which refers to the selected organisation units only.|
+|`program`|`字符串`|Program `UID`| a Program `UID` for which instances in the response must be enrolled into|
+|`programStatus`|`字符串`|`ACTIVE`&#124;`COMPLETED`&#124;`CANCELLED`|The ProgramStatus of the Tracked Entity Instance in the given program|
+|`programStage`|`字符串`|`UID`|a Program Stage `UID` for which instances in the response must have events for|
+|`followUp`|`Boolean`|`true`&#124;`false`|Indicates whether the Tracked Entity Instance is marked for follow up for the specified Program|
+|`updatedAfter`|`DateTime`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | Start date for last updated|
+|`updatedBefore`|`日期时间`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | End date for last updated|
+|`updatedWithin`|`Duration`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601#Durations) | Returns TEIs not older than specified Duration|
+|`enrollmentEnrolledAfter`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|Start date for enrollment in the given program|
+|`enrollmentEnrolledBefore`|`日期时间`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|End date for enrollment in the given program|
+|`enrollmentOccurredAfter`|`日期时间`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|Start date for incident in the given program|
+|`enrollmentOccurredBefore`|`日期时间`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|End date for incident in the given program|
+|`trackedEntityType`|`String`|UID of tracked entity type|Only returns Tracked Entity Instances of given type|
 |`trackedEntity`|`字符串`|semicolon-delimited list of tracked entity instance `UID`|Filter the result down to a limited set of tracked entities using explicit uids of the tracked entity instances by using `trackedEntity=id1;id2`. This parameter will, at the very least, create the outer boundary of the results, forming the list of all tracked entities using the uids provided. If other parameters/filters from this table are used, they will further limit the results from the explicit outer boundary.|
-|`分配的用户模式`|`字符串`|`CURRENT`&#124;`PROVIDED`&#124;`NONE`&#124;`ANY`|将结果限制为具有基于分配的用户选择模式分配的事件的跟踪实体。有关说明，请参阅下表“分配的用户模式”。 |
-|`指定用户`|`字符串`|以分号分隔的用户 UID 列表，用于根据分配给用户的事件进行过滤。|Filter the result down to a limited set of tracked entities with events that are assigned to the given user IDs by using `assignedUser=id1;id2`.This parameter will only be considered if assignedUserMode is either `PROVIDED` or `null`. The API will error out, if for example, `assignedUserMode=CURRENT` and `assignedUser=someId`|
-|`事件状态`|`字符串`|`ACTIVE`&#124;`COMPLETED`&#124;`VISITED`&#124;`SCHEDULE`&#124;`OVERDUE`&#124;`SKIPPED`|指定程序中任何事件的状态|
-|`事件发生后`|`日期时间`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|给定计划的活动开始日期|
-|`事件发生之前`|`日期时间`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|给定计划的活动结束日期|
-|`跳过元`|`Boolean`|`true`&#124;`false`|指示是否不在响应中包含元数据。|
-|`包含已删除`|`Boolean`|`true`&#124;`false`|指示是否包含软删除元素|
-|`包含所有属性`|`Boolean`|`true`&#124;`false`|指示是否包含所有TEI属性|
-|`附件`|`字符串`| |导出为文件时的文件名|
-|`潜在的重复`|`Boolean`|`true`&#124;`false`| 根据 TEI 是否为潜在重复项这一事实过滤结果。 true：返回标记为潜在重复项的 TEI。 false：返回 TEI 未标记为潜在重复项。如果省略，我们不会检查 TEI 是否为潜在重复项。 |
+|`assignedUserMode`|`字符串`|`CURRENT`&#124;`PROVIDED`&#124;`NONE`&#124;`ANY`|Restricts result to tracked entities with events assigned based on the assigned user selection mode. See table below "Assigned user modes" for explanations. |
+|`assignedUser`|`字符串`|Semicolon-delimited list of user UIDs to filter based on events assigned to the users.|Filter the result down to a limited set of tracked entities with events that are assigned to the given user IDs by using `assignedUser=id1;id2`.This parameter will only be considered if assignedUserMode is either `PROVIDED` or `null`. The API will error out, if for example, `assignedUserMode=CURRENT` and `assignedUser=someId`|
+|`eventStatus`|`字符串`|`ACTIVE`&#124;`COMPLETED`&#124;`VISITED`&#124;`SCHEDULE`&#124;`OVERDUE`&#124;`SKIPPED`|Status of any events in the specified program|
+|`eventOccurredAfter`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|Start date for Event for the given Program|
+|`eventOccurredBefore`|`日期时间`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|End date for Event for the given Program|
+|`skipMeta`|`Boolean`|`true`&#124;`false`|Indicates whether not to include metadata in the response.|
+|`includeDeleted`|`Boolean`|`true`&#124;`false`|Indicates whether to include soft-deleted elements|
+|`includeAllAttributes`|`Boolean`|`true`&#124;`false`|Indicates whether to include all TEI attributes|
+|`attachment`|`String`| |The file name in case of exporting as a file|
+|`potentialDuplicate`|`Boolean`|`true`&#124;`false`| Filter the result based on the fact that a TEI is a Potential Duplicate. true: return TEIs flagged as Potential Duplicates. false: return TEIs NOT flagged as Potential Duplicates. If omitted, we don't check whether a TEI is a Potential Duplicate or not. |
 |`order`|`String`|comma-delimited list of property name or attribute UID and sort direction pairs in format `propName:sortDirection`.|Supported fields: `createdAtClient`, `createdAt`, `enrolledAt`, `inactive`, `trackedEntity`, `updatedAtClient`, `updatedAt`.|
 
 The available assigned user modes are explained in the following table.
@@ -1624,7 +1623,7 @@ Returns a list of events based on the provided filters.
 |`programIdScheme`|`String`| `UID`&#124;`CODE`&#124;`ATTRIBUTE:{ID}`| Program ID scheme to use for export|
 |`programStageIdScheme`|`String`| `UID`&#124;`CODE`&#124;`ATTRIBUTE:{ID}`| Program Stage ID scheme to use for export|
 |`idScheme`|`string`| `UID`&#124;`CODE`&#124;`ATTRIBUTE:{ID}`| Allows to set id scheme for data element, category option combo, orgUnit, program and program stage at once.|
-|`order`|`String`|comma-delimited list of property name, attribute or data element UID and sort direction pairs in format `propName:sortDirection`.|Sort the response based on given order values.<br><br>Example: `createdAt:desc` or `SzVk2KvkSSd:asc`<br><br>**Note:** `propName` is case sensitive, `sortDirection` is case insensitive. Supported are `assignedUser, assignedUserDisplayName, attributeOptionCombo, completedAt, completedBy, createdAt, createdBy, deleted, enrolledAt, enrollment, enrollmentStatus, event, followup, occurredAt, orgUnit, orgUnitName, program, programStage, scheduleAt, status, storedBy, trackedEntity, updatedAt, updatedBy`.|
+|`order`|`String`|Supported fields are: `assignedUser, assignedUserDisplayName, attributeOptionCombo, completedAt, completedBy, createdAt, createdBy, deleted, enrolledAt, enrollment, enrollmentStatus, event, followup, occurredAt, orgUnit, orgUnitName, program, programStage, scheduleAt, status, storedBy, trackedEntity, updatedAt, updatedBy`.|Comma-delimited list of property name, attribute or data element UID and sort direction pairs in format `propName:sortDirection`.<br><br>**Note:** `propName` is case sensitive, `sortDirection` is case insensitive. |
 |`event`|`String`|comma-delimited list of `uid`| Filter the result down to a limited set of IDs by using event=id1;id2.|
 |`skipEventId`|`Boolean`| | Skips event identifiers in the response|
 |`attributeCc` (see note)|`String`| Attribute category combo identifier (must be combined with attributeCos)|
@@ -1888,6 +1887,7 @@ Returns a list of events based on filters.
 |`trackedEntity`|`String`|`uid`| Identifier of tracked entity instance|
 |`enrollment`|`String`|Comma-delimited list of `uid`| Filter the result down to a limited set of IDs by using enrollment=id1;id2.|
 |`includeDeleted`|`Boolean`| |  When true, soft deleted events will be included in your query result.|
+|`order`|`String`|Supported fields: `assignedUser, assignedUserDisplayName, attributeOptionCombo, completedAt, completedBy, createdAt, createdAtClient, createdBy, deleted, enrolledAt, enrollment, enrollmentStatus, event, followUp, occurredAt, orgUnit, program, programStage, scheduledAt, status, storedBy, trackedEntity, updatedAt, updatedAtClient, updatedBy`.|Comma-delimited list of property name, attribute or data element UID and sort direction pairs in format `propName:sortDirection`.|
 
 The query is case-insensitive. The following rules apply to the query parameters.
 
