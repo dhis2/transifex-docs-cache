@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/tracker.md"
-revision_date: '2023-12-13'
+revision_date: '2024-02-07'
 tags:
-- DHIS核心 主版
 - Develop
+- DHIS核心 主版
 ---
 
 # 追踪器 { #tracker } 
@@ -2011,18 +2011,19 @@ The `JSON` response can look like the following.
 |`事件`|`字符串`|`uid`| 事件标识符|
 |`字段`|`字符串`| 任何有效的字段过滤器（默认 `relationship,relationshipType,createdAtClient,from[trackedEntity[trackedEntity],enrollment[enrollment],event[event]],to[trackedEntity[trackedEntity],enrollment[enrollment],event[event]]`） |在响应中包含指定的子对象|
 |`订单`|`字符串`|comma-delimited list of `OrderCriteria` in the in format `propName:sortDirection`.|支持的字段：`created、createdAtClient`。|
+|`includeDeleted`|`Boolean`|`true`&#124;`false`| whether to include soft-deleted elements in your query result|
 
-以下规则适用于查询参数。
+The following rules apply to the query parameters.
 
-- 只能传递 `trackedEntity`、`enrollment`、`event` 中的一个参数
+- only one parameter among `trackedEntity`, `enrollment`, `event` can be passed
 
-> **注意**
+> **NOTE**
 >
-> 使用跟踪实体、注册或事件参数，将返回跟踪实体、注册或事件的任何关系
-> 事件是关系的一部分（从或到）。只要用户有权访问，就是这样。
+> Using tracked entity, Enrollment or Event params, will return any relationship where the trackedEntity, enrollment or
+> event is part of the relationship (either from or to). As long as user has access, that is.
 >
 
-#### 响应示例 { #example-response }
+#### Example response { #example-response } 
 
 ```json
 {
@@ -2061,101 +2062,101 @@ The `JSON` response can look like the following.
 }
 ```
 
-## 跟踪器访问控制{ #webapi_nti_access_control }
+## Tracker Access Control { #webapi_nti_access_control }
 
-Tracker 在访问控制方面有一些不同的概念，例如共享、组织单位范围、所有权和访问级别。以下各节对不同主题进行简短介绍。
+Tracker has a few different concepts in regards to access control, like sharing, organisation unit scopes, ownership, and access levels. The following sections provide a short introduction to the different topics.
 
-### 元数据共享{ #webapi_nti_metadata_sharing }
+### Metadata Sharing { #webapi_nti_metadata_sharing }
 
 
-共享设置是标准 DHIS2 功能，适用于跟踪器和聚合元数据/数据以及仪表板和可视化项目。共享的核心是定义谁可以看到/做什么的能力。一般来说，有五种可能的共享配置——无访问、元数据读取、元数据写入、数据读取和数据写入。这些访问配置可以在用户和/或用户组级别授予（以获得更大的灵活性）。重点关注 Tracker，以下元数据及其共享设置尤为重要：数据元素、类别选项、程序、程序阶段、被跟踪实体类型、被跟踪实体属性以及与 Tracker 相关的仪表板和仪表板项。
+Sharing setting is standard DHIS2 functionality that applies to both Tracker and Aggregate metadata/data as well as dashboards and visualization items. At the core of sharing is the ability to define who can see/do what. In general, there are five possible sharing configurations – no access, metadata read, metadata write, data read, and data write. These access configurations can be granted at user and/or user group level (for more flexibility). With a focus on Tracker, the following metadata and their sharing setting is of particular importance: Data Element, Category Option, Program, Program Stage, Tracked Entity Type, Tracked Entity Attribute as well as Tracker related Dashboards and Dashboard Items.
 
-共享设置的工作原理很简单——这些设置是在跟踪器数据导入/导出过程中强制执行的。要读取值，需要具有数据读取访问权限。如果用户需要修改数据，他/她需要具有数据写入权限。同样，如果用户需要修改元数据，则必须授予元数据写入权限。
+How sharing setting works is straightforward – the settings are enforced during Tracker data import/export processes. To read value, one needs to have data read access. If a user is expected to modify data, he/she needs to have data write access. Similarly, if a user is expected to modify metadata, it is essential to grant metadata write access.
 
-Tracker 数据的一个关键点是需要采用整体方法。例如，用户仅具有对数据元素的读取访问权限，将无法查看数据元素值。用户需要读取数据才能访问该数据元素所属的父程序阶段和程序。与类别选项组合相同。在Tracker中，Event与AttributeOptionCombo相关，AttributeOptionCombo是由Category Options的组合而成。因此，对于读取事件数据的用户，他/她需要对构成相关事件的AttributeOptionCombo的所有类别选项和相应类别具有数据读取访问权限。如果用户仅无法访问一个类别选项或类别，则该用户无权访问整个活动。
+One critical point with Tracker data is the need to have a holistic approach. For example, a user won’t be able to see the Data Element value by having read access to just the Data Element. The user needs to have data read to access the parent Program Stage and Program where this Data Element belongs. It is the same with the category option combination. In Tracker, the Event is related to AttributeOptionCombo, which is made up of a combination of Category Options. Therefore, for a user to read data of an Event, he/she needs to have data read access to all Category Options and corresponding Categories that constitute the AttributeOptionCombo of the Event in question. If a user lacks access to just one Category Option or Category, then the user has no access to the entire Event.
 
-在访问注册数据时，首先必须访问被跟踪实体。对被跟踪实体的访问是通过程序、被跟踪实体类型和被跟踪实体属性的共享设置来控制的。一旦访问注册，就可以访问事件数据，这同样取决于程序阶段和数据元素共享设置。
+When it comes to accessing Enrollment data, it is essential to have access to the Tracked Entity first. Access to a Tracked Entity is controlled through sharing setting of Program, Tracked Entity Type, and Tracked Entity Attribute. Once Enrollment is accessed, it is possible to access Event data, again depending on Program Stage and Data element sharing setting.
 
-另一个需要考虑的重要点是如何规划对程序的不同程序阶段的访问。有时，我们可能会遇到需要向特定用户组（实验室技术人员）授予特定阶段（例如“实验室结果”）访问权限的情况。在这种情况下，我们可以提供对“实验室结果”阶段的数据写入访问权限，也可以将数据读取到一个或多个阶段，以防万一我们希望实验室技术人员读取其他医疗结果，或者如果我们认为实验室技术人员没有必要，则不提供访问权限查看实验室相关以外的数据。
+Another vital point to consider is how to map out access to different Program Stages of a Program. Sometimes we could be in a situation where we need to grant access to a specific stage – for example, “Lab Result” – to a specific group of users (Lab Technicians). In this situation, we can provide data write access to "Lab Result" stage, probably data read to one or more stages just in case we want Lab Technicians to read other medical results or no access if we think it not necessary for the Lab Technicians to see data other than lab related.
 
-总之，DHIS2 具有细粒度的共享设置，我们可以使用它来实现数据和元数据级别的访问控制机制。这些共享设置可以直接应用于用户级别或用户组级别。究竟如何应用共享设置取决于当前的用例。
+In summary, DHIS2 has a fine-grained sharing setting that we can use to implement access control mechanisms both at the data and metadata level. These sharing settings can be applied directly at the user level or user group level. How exactly to apply a sharing setting depends on the use-case at hand.
 
-有关数据共享的更多详细信息，请查看[数据共享](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/about-sharing -of-objects.html#基于事件的程序的数据共享）。
+For more detailed information about data sharing, check out [Data sharing](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/about-sharing-of-objects.html#data-sharing-for-event-based-programs).
 
-### 组织单位范围{ #webapi_nti_ou_scope }
+### Organisation Unit Scopes { #webapi_nti_ou_scope }
 
-组织单位是 DHIS2 中最基本的对象之一。它们定义了一个允许用户记录和/或读取数据的范围。可以为用户分配三种类型的组织单位。这些是数据捕获、数据视图（未在跟踪器中使用）和跟踪器搜索。顾名思义，这些组织单元定义了允许用户进行相应操作的范围。
+Organisation units are one of the most fundamental objects in DHIS2. They define a universe under which a user is allowed to record and/or read data. There are three types of organisation units that can be assigned to a user. These are data capture, data view (not used in tracker), and tracker search. As the name implies, these organisation units define a scope under which a user is allowed to conduct the respective operations.
 
-然而，为了进一步微调范围，DHIS2 Tracker 引入了一个我们称之为 **OrganizationUnitSelectionMode** 的概念。这种模式常用于导出Tracker对象时。例如，假设用户具有特定的跟踪器搜索范围，这是否意味着每次用户尝试搜索跟踪器、注册或事件对象时我们都必须使用此范围？或者用户是否有兴趣将搜索仅限于选定的组织单位，或整个捕获组织单位范围，等等。
+However, to further fine-tune the scope, DHIS2 Tracker introduces a concept that we call **OrganisationUnitSelectionMode**. Such a mode is often used at the time exporting tracker objects. For example, given that a user has a particular tracker search scope, does it mean that we have to use this scope every time a user tries to search for a tracker, Enrollment, or Event object? Or is the user interested in limiting the searching just to the selected org unit, or the entire capture org unit scope, and so on.
 
-用户可以通过在 API 请求中传递 ouMode 的特定值来进行微调：
+Users can do the fine-tuning by passing a specific value of ouMode in their API request:
 
-*api/tracker/trackedEntities?orgUnit=UID&ouMode=special_organization_unit_selection_mode*
+*api/tracker/trackedEntities?orgUnit=UID&ouMode=specific_organisation_unit_selection_mode*
 
-目前，有六种选择模式可用：*SELECTED、CHILDREN、DESCENDANTS、CAPTURE、ACCESSIBLE 和 ALL*。
+Currently, there are six selection modes available: *SELECTED, CHILDREN, DESCENDANTS, CAPTURE, ACCESSIBLE, and ALL*.
 
-1. **SELECTED**：顾名思义，该模式将请求API发起的所有操作范围缩小到请求中指定的组织单元。
-2. **CHILDREN**：在此模式下，组织单位范围是使用选定的组织单位及其直接子级（即下一级的组织单位）构建的。
-3. **后代**：在此模式下，选定的组织单元及其下面的所有内容（不仅包括直接子级，还包括所有后代）构成了数据操作宇宙。
-4. **CAPTURE**：此模式包括与当前用户及其所有后代关联的数据捕获组织单元。它包含子层次结构中的所有组织单位。
-5. **可访问**：此模式旨在检索用户搜索范围组织单位内的数据。这涵盖了用户可见的所有内容，包括其搜索范围内的开放和审核的程序，以及用户捕获范围内受保护和封闭的程序中的数据。如果用户缺少搜索组织单位，系统将默认捕获范围，确保用户始终有权访问至少一个 Universe。捕获范围是强制性的，是保证用户数据环境的基本要素。
-6. **ALL**：此模式保留给授权用户，特别是具有 ALL 权限（超级用户）的用户。具有权限 F_TRACKED_ENTITY_INSTANCE_SEARCH_IN_ALL_ORGUNITS 的用户也可以在系统范围内搜索，但需要共享对返回的程序、程序阶段和/或跟踪的实体类型的访问权限。对于非授权用户，将会引发异常。
+1. **SELECTED**: As the name implies, this mode narrows down all operations initiated by the requesting API to the specified organisation unit in the request.
+2. **CHILDREN**: Under this mode, the organisation unit scope is constructed using the selected organisation unit and its immediate children, i.e., the organisation units at the level below.
+3. **DESCENDANTS**: In this mode, the selected organisation unit and everything underneath it, encompassing not only the immediate children but all descendants, constitute the data operation universe.
+4. **CAPTURE**: This mode includes the data capture organization units associated with the current user and all descendants. It encompasses all organization units in the sub-hierarchy.
+5. **ACCESSIBLE**: This mode is designed to retrieve data within the user's search scope organization units. This encompasses everything visible to the user, including open and audited programs within its search scope, as well as data in protected and closed programs within the user's capture scope. If a user lacks search organization units, the system defaults to capture scope, ensuring that the user always has access to at least one universe. The capture scope, being mandatory, serves as a foundational element in guaranteeing a data environment for the user.
+6. **ALL**: This mode is reserved for authorized users, specifically those with the authority ALL (super users). Users with the authority F_TRACKED_ENTITY_INSTANCE_SEARCH_IN_ALL_ORGUNITS can also search system-wide but need sharing access to the returned program, program stage, and/or tracked entity type. For non-authorized users, an exception will be raised.
 
-前三种模式 *SELECTED*、*CHILDREN* 和 *DESCENDANTS* 期望在请求中提供组织单位，而后三种模式 *CAPTURE*、*ACCESSIBLE* 和 *ALL* 则不需要，事实上如果提供了组织单位，请求将失败。
+The first three modes, *SELECTED*, *CHILDREN* and *DESCENDANTS* expect an organisation unit to be supplied in the request, while the last three, *CAPTURE*, *ACCESSIBLE* and *ALL* do not expect it and in fact the request will fail if an organisation unit is provided.
 
-当 API 请求中明确提供时，组织单位模式将是上面列出的模式之一。由于它不是必填字段，如果未指定，则如果存在组织单位，则默认值为 *SELECTED*，否则默认值为 *ACCESSIBLE*。
+The organisation unit mode will be one of the ones listed above when it's explicitly provided in the API request. Since it's not a mandatory field, in case it's not specified, then the default value will be *SELECTED* if an organisation unit is present, and *ACCESSIBLE* otherwise.
 
-在跟踪器导入操作时传递这些模式没有什么意义。因为在写入跟踪器数据时，每个对象都需要附加一个特定的组织单元。然后，系统将确保每个提到的组织单位是否属于 CAPTURE 范围。如果不是，系统将简单地拒绝写入操作。
+It makes little sense to pass these modes at the time of tracker import operations. Because when writing tracker data, each of the objects needs to have a specific organisation unit attached to them. The system will then ensure if each of the mentioned organisation units falls under the CAPTURE scope. If not, the system will simply reject the write operation.
 
-请注意，有 4 种与 Tracker 对象相关的组织单位关联类型。 TrackedEntity 有一个组织单元，通常称为注册组织单元。注册有一个与其关联的组织单位。事件还有一个与其关联的组织单位。 TrackedEntity-Program 组合还有一个所有者组织单元。
+Note that there is 4 type of organisation unit associations relevant for Tracker objects. A TrackedEntity has an organisation unit, commonly referred to as the Registration Organisation unit. Enrollments have an organisation unit associated with them. Events also have an organisation unit associated with them. There is also an Owner organisation unit for a TrackedEntity-Program combination.
 
-获取 Tracker 对象时，根据上下文，组织单元范围将应用于上述四个组织单元关联之一。
+When fetching Tracker objects, depending on the context, the organisation unit scope is applied to one of the above four organisation unit associations.
 
-例如，在没有程序上下文的情况下检索 TrackedEntities 时，组织单元范围将应用于 TrackedEntity 的注册组织单元。然而，在检索 TrackedEntities（包括特定程序数据）时，组织单位范围将应用于所有者组织单位。
+For example, when retrieving TrackedEntities without the context of a program, the organisation unit scope is applied to the registration organisation unit of the TrackedEntity. Whereas, when retrieving TrackedEntities, including specific program data, the organisation unit scope is applied to the Owner organisation unit.
 
-### 跟踪器计划所有权{ #webapi_nti_ownership }
+### Tracker Program Ownership { #webapi_nti_ownership }
 
-从 2.30 开始引入了一个名为 Tracker Ownership 的新概念。这为 TrackedEntity - 程序组合引入了新的组织单位关联。
-我们将其称为 TrackedEntity 的所有者（或拥有）组织单位
-程序的上下文。所有者组织单元用于决定读写与程序相关的跟踪器数据时的访问权限。
-这与程序的[访问级别](#webapi_nti_access_level) 配置一起决定程序相关数据（注册和事件）的访问行为。
-如果该 TrackedEntity-Program 组合的相应所有者组织单位属于用户的组织单位范围（搜索/捕获），则用户可以访问 TrackedEntity 的计划数据。对于配置了访问级别 *OPEN* 或 *AUDITED* 的计划，所有者组织单位必须位于用户的搜索范围内。
-对于配置了访问级别 *PROTECTED* 或 *CLOSED* 的程序，所有者组织单位必须位于用户的捕获范围内，才能访问特定跟踪实体的相应程序数据。无论程序访问级别如何，要访问 Tracker 对象，所请求的组织单元必须始终在用户的搜索范围内。用户无法请求其搜索范围之外的对象，除非它使用组织单位模式 ALL 并且具有足够的权限来使用该模式。
+A new concept called Tracker Ownership is introduced from 2.30. This introduces a new organisation unit association for a TrackedEntity - Program combination.
+We call this the Owner (or Owning) Organisation unit of a TrackedEntity in
+the context of a Program. The Owner organisation unit is used to decide access privileges when reading and writing tracker data related to a program.
+This, along with the Program's [Access Level](#webapi_nti_access_level) configuration, decides the access behavior for Program-related data (Enrollments and Events).
+A user can access a TrackedEntity's Program data if the corresponding Owner OrganisationUnit for that TrackedEntity-Program combination falls under the user's organisation unit scope (Search/Capture). For Programs that are configured with access level  *OPEN* or *AUDITED* , the Owner OrganisationUnit has to be in the user's search scope.
+For Programs that are configured with access level  *PROTECTED* or *CLOSED* , the Owner OrganisationUnit has to be in the user's capture scope to be able to access the corresponding program data for the specific tracked entity. Irrespective of the program access level, to access Tracker objects, the requested organisation unit must always be within the user's search scope. A user cannot request objects outside its search scope unless it's using the organisation unit mode ALL and has enough privileges to use that mode.
 
 #### 跟踪器所有权优先：打破常规 { #webapi_nti_tracker_ownership_override }
 
-可以暂时覆盖此所有权特权
-配置为 *PROTECTED* 访问级别的程序。任何用户
-如果满足以下条件，将能够临时访问程序相关数据：
-用户指定访问 TrackedEntity-Program 的原因
-数据。这种暂时获得访问权限的行为称为*破坏
-玻璃*。目前，临时访问时间为 3 小时。 DHIS2
-审核玻璃破碎情况以及用户指定的原因。
-无法临时访问已被访问的程序
-配置为 *CLOSED* 访问级别。打破玻璃
-TrackedEntity-Program组合，可以使用以下POST请求：
+It is possible to temporarily override this ownership privilege for a
+program that is configured with an access level of *PROTECTED*. Any user
+will be able to temporarily gain access to the Program related data if
+the user specifies a reason for accessing the TrackedEntity-Program
+data. This act of temporarily gaining access is termed as *breaking the
+glass*. Currently, temporary access is granted for 3 hours. DHIS2
+audits breaking the glass along with the reason specified by the user.
+It is not possible to gain temporary access to a program that has been
+configured with an access level of *CLOSED*. To break the glass for a
+TrackedEntity-Program combination, the following POST request can be used:
 
-    /API/33/tracker/所有权/覆盖？trackedEntity=DiszpKrYNg8
-      &program=eBAyeGv0exc&reason=患者+出现+up+for+紧急+护理
+    /API/33/tracker/ownership/override?trackedEntity=DiszpKrYNg8
+      &program=eBAyeGv0exc&reason=patient+showed+up+for+emergency+care
 
 #### 跟踪器所有权转移 { #webapi_nti_tracker_ownership_transfer }
 
-可以转让 TrackedEntity-Program 的所有权
-从一个组织单位到另一个组织单位。这对于患者来说很有用
-推荐或迁移。只有拥有所有权访问权限（或通过打破玻璃进行临时访问）的用户才能转让所有权。要将 TrackedEntity-Program 的所有权转移到另一个组织单位，可以使用以下 PUT 请求：
+It is possible to transfer the ownership of a TrackedEntity-Program
+from one organisation unit to another. This will be useful in case of patient
+referrals or migrations. Only a user who has Ownership access (or temporary access by breaking the glass) can transfer the ownership. To transfer ownership of a TrackedEntity-Program to another organisation unit, the following PUT request can be used:
 
-    /API/33/tracker/所有权/转让？trackedEntity=DiszpKrYNg8
+    /API/33/tracker/ownership/transfer?trackedEntity=DiszpKrYNg8
       &program=eBAyeGv0exc&ou=EJNxP3WreNP
 
 
-### 访问级别 { #webapi_nti_access_level }
+### Access Level { #webapi_nti_access_level }
 
-DHIS2 对跟踪器数据提供额外级别的保护。除了通过共享设置进行元数据和数据保护的标准功能外，Tracker 数据还通过额外的访问级别保护机制进行屏蔽。目前，可以为程序配置四种访问级别：开放、审核、受保护和关闭。
+DHIS2 treats Tracker data with an extra level of protection. In addition to the standard feature of metadata and data protection through sharing settings, Tracker data are shielded with additional access level protection mechanisms.  Currently, there are four access levels that can be configured for a Program: Open, Audited, Protected, and Closed.
 
-仅当用户尝试与程序数据（即注册和事件数据）交互时才会触发这些访问级别。程序的不同访问级别配置是程序数据的开放（或封闭）程度。请注意，仍然尊重所有其他共享设置，并且访问级别只是额外的访问控制层。以下是可以为程序配置的四个访问级别的简短描述。
+These access levels are only triggered when users try to interact with program data, namely Enrollments and Events data. The different Access Level configuration for Program is a degree of openness (or closedness) of program data. Note that all other sharing settings are still respected, and the access level is only an additional layer of access control. Here is a short description of the four access levels that can be configured for a Program.
 
-1. 开放：此访问级别是访问级别中限制最少的。如果所有者组织单位属于用户的搜索范围，则用户可以访问和修改 OPEN 程序内的数据。通过此访问级别，可以访问和修改捕获范围之外的数据，而无需任何理由或后果。
-2.  已审核：这与开放访问级别相同。这里的区别在于，系统会自动在特定用户访问的数据上添加审核日志条目。
-3.  受保护：此访问级别的限制稍微严格一些。仅当所有者组织单位属于用户的捕获范围时，用户才能访问受保护程序内的数据。但是，在搜索范围内仅拥有所有者组织单位的用户可以通过[打破玻璃](#webapi_nti_tracker_ownership_override) 获得临时所有权。用户必须提供他们访问手头数据的理由。然后系统将记录理由和访问审核的日志，并为用户提供 3 小时的临时访问权限。请注意，打破玻璃时，所有者组织单位保持不变，只有打破玻璃的用户才能获得临时访问权限。
-4.  关闭：这是最受限制的访问级别。如果所有者组织单位不属于用户的捕获范围，则配置为 CLOSED 访问级别的程序下记录的数据将无法访问。在此配置中也不可能打破玻璃或获得临时所有权。请注意，仍然可以将所有权转移给另一个组织单位。只有有权访问数据的用户才能将 TrackedEntity-Program 组合的所有权转让给另一个组织单位。如果所有权转移，则所有者组织单位会更新。
+1. Open: This access level is the least restricted among the access levels. Data inside an OPEN program can be accessed and modified by users if the Owner organisation unit falls under the user's search scope.  With this access level, accessing and modifying data outside the capture scope is possible without any justification or consequence.
+2.  Audited: This is the same as the Open access level. The difference here is that the system will automatically add an audit log entry on the data being accessed by the specific user.
+3.  Protected: This access level is slightly more restricted. Data inside a PROTECTED program can only be accessed by users if the Owner organisation unit falls under the user's capture scope. However, a user who only has the Owner organisation unit in the search scope can gain temporary ownership by [breaking the glass](#webapi_nti_tracker_ownership_override). The user has to provide a justification of why they are accessing the data at hand. The system will then put a log of both the justification and access audit and provide temporary access for 3 hours to the user. Note that when breaking the glass, the Owner Organisation Unit remains unchanged, and only the user who has broken the glass gains temporary access.
+4.  Closed: This is the most restricted access level. Data recorded under programs configured with access level CLOSED will not be accessible if the Owner Organisation Unit does not fall within the user's capture scope. It is also not possible to break the glass or gain temporary ownership in this configuration. Note that it is still possible to transfer the ownership to another organisation unit. Only a user who has access to the data can transfer the ownership of a TrackedEntity-Program combination to another Organisation Unit. If ownership is transferred, the Owner Organisation Unit is updated.
 
