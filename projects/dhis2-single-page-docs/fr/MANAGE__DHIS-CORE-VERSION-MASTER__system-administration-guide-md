@@ -1,5 +1,5 @@
 ---
-revision_date: '2024-02-08'
+revision_date: '2024-02-09'
 tags:
 - Gestion
 - Version Master de DHIS2 Central
@@ -1093,6 +1093,13 @@ system.program_rule.server_execution = on | off
 
 Active ou désactive l'exécution des règles de programme côté serveur. Il s'agit des règles de programme qui ont des actions d'attribution de valeurs, d'envoi de messages ou de programmation d'envoi de messages. Peut être `activé` ou `désactivé`. La valeur par défaut est `activé`.
 
+```properties
+system.remote_servers_allowed = https://server1.org/,https://server2.org/
+```
+
+Sets the allowed list of servers to be called in relation to the [metadata pull](../developer/web-api/synchronization.md#webapi_sync_metadata_pull) functionality. It accepts comma-separated values, and it's recommended that each server end with a `/` for enhanced security. Default value is empty.
+
+
 ## Configuration du proxy inverse { #install_reverse_proxy_configuration }
 
 Un proxy inverse est un serveur proxy qui agit pour le compte d'un autre serveur. L'utilisation d'un proxy inverse en combinaison avec un conteneur de servlets n'est pas obligatoire mais présente de nombreux avantages :
@@ -1103,12 +1110,12 @@ Un proxy inverse est un serveur proxy qui agit pour le compte d'un autre serveur
     modifier la configuration du serveur interne sans affecter les clients.
 
   - L'application DHIS2 peut être exécutée dans un mode autre que super-utilisateur sur un port
-    différent de 80, ce qui réduit la vulnérabilité face au piratage de
-    détournement.
+    autre que 80, ce qui réduit la vulnérabilité face au piratage de
+    sessions.
 
   - Le proxy inverse peut agir comme un serveur SSL unique et être configuré
     pour inspecter les demandes de contenu malveillant, enregistrer les demandes et
-    les réponses et fournir des messages d'erreur non sensibles qui
+    les réponses et fournir des messages d'erreur non sensibles, ce qui va
     améliorer la sécurité.
 
 ### Configuration de base de Nginx { #install_basic_nginx_setup }
@@ -1169,11 +1176,11 @@ Vous pouvez désormais accéder à votre instance DHIS2 à l'adresse *http://loc
 
 ### Activation de SSL avec nginx { #install_enabling_ssl_on_nginx }
 
-Afin d'améliorer la sécurité, il est recommandé de configurer le serveur qui exécute DHIS2 de manière à ce qu'il communique avec les clients via une connexion cryptée et de s'identifier auprès des clients à l'aide d'un certificat de confiance. Ceci peut être réalisé via SSL qui est un protocole de communication cryptographique fonctionnant sur TCP/IP. Tout d’abord, installez la bibliothèque *openssl* requise :
+Afin d'améliorer la sécurité, il est recommandé de configurer le serveur qui exécute DHIS2 de manière à ce qu'il communique avec les clients via une connexion cryptée et de s'identifier auprès des clients à l'aide d'un certificat de confiance. Ceci peut être réalisé via SSL qui est un protocole de communication cryptographique fonctionnant au-dessus de TCP/IP. Tout d’abord, installez la bibliothèque *openssl* requise :
 
     sudo apt-get install -y openssl
 
-Pour configurer nginx de manière à ce qu'il utilise SSL, vous aurez besoin d'un certificat SSL approprié provenant d'un fournisseur SSL. Le coût d'un certificat varie en fonction de la puissance du cryptage. Un certificat abordable de [Rapid SSL Online (http://www.rapidsslonline.com) devrait répondre à la plupart des besoins. Pour générer le CSR (demande de signature de certificat), vous pouvez appeler la commande ci-dessous. À l'invite du *Nom commun*, entrez le nom du domaine qualifié pour le site que vous sécurisez.
+Pour configurer nginx de manière à ce qu'il utilise SSL, vous aurez besoin d'un certificat SSL approprié provenant d'un fournisseur SSL. Le coût d'un certificat varie en fonction de la puissance du cryptage. Un certificat abordable de [Rapid SSL Online] (http://www.rapidsslonline.com) devrait répondre à la plupart des besoins. Pour générer le CSR (demande de signature de certificat), vous pouvez appeler la commande ci-dessous. À l'invite du *Nom commun*, entrez le nom du domaine qualifié pour le site que vous sécurisez.
 
     openssl req -new -newkey rsa:2048 -nodes -keyout server.key -out server.csr
 
@@ -1469,6 +1476,12 @@ system.sql_view_write_enabled = off
 # Disable server-side program rule execution, can be 'on', 'off'
 system.program_rule.server_execution = on
 
+# Remote servers which the server is allowed to call
+# Accepts comma-separated values
+# Servers should end with '/' for enhanced security
+# Default is empty
+system.remote_servers_allowed = https://server1.org/,https://server2.org/
+
 # ----------------------------------------------------------------------
 # Encryption [Optional]
 # ----------------------------------------------------------------------
@@ -1584,9 +1597,9 @@ apphub.api.url = https://apps.dhis2.org/api
 max.sessions.per_user = 10
 ```
 
-## Journal des modifications { #install_changelog }
+## Changelog { #install_changelog }
 
-Le DHIS2 écrit des entrées dans les changelogs lorsque certaines entités sont modifiées dans le système. Ces entités appartiennent à deux catégories : _Agrégat_ et _Tracker_. La catégorie _Agrégat_ comprend les modifications apportées aux valeurs des données agrégées. Quant à la catégorie _Tracker_, elle comprend les modifications apportées aux instances de programme, aux éléments de propriété temporaire du programme, aux valeurs des attributs des entités suivies et aux valeurs des données des entités suivies.
+DHIS2 écrit des entrées dans les changelogs lorsque certaines entités sont modifiées dans le système. Ces entités appartiennent à deux catégories : _Agrégat_ et _Tracker_. La catégorie _Agrégat_ comprend les modifications apportées aux valeurs des données agrégées. Quant à la catégorie _Tracker_, elle comprend les modifications apportées aux instances de programme, aux éléments de propriété temporaire du programme, aux valeurs des attributs des entités suivies et aux valeurs des données des entités suivies.
 
 Le changelog pour les deux catégories est activé par défaut. Vous pouvez contrôler l'activation ou la désactivation du changelog par catégorie par le biais du fichier de configuration `dhis.conf` en utilisant les propriétés décrites ci-dessous. Les options de propriétés sont `on`  (par défaut) et `off`.
 
@@ -1617,7 +1630,7 @@ Ensuite, la sortie du journal est écrite dans un répertoire "logs" sous le ré
     <DHIS2_HOME>/logs/dhis-data-exchange.log
     <DHIS2_HOME>/logs/dhis-data-sync.log
 
-### Configuration des journaux { #log-configuration }
+### Configuration du journal { #log-configuration }
 
 Pour remplacer la configuration du journal par défaut, vous pouvez spécifier une propriété de système Java avec le nom `log4j2.configurationFile` et une valeur orientée vers le fichier de configuration [Log4j version 2](https://logging.apache.org/log4j/2.x/manual/configuration.html)
  sur le système de fichiers comme ce qui suit :
@@ -1634,7 +1647,7 @@ Pour remplacer la configuration du journal, une deuxième approche consiste à s
 # Taille maximale des fichiers journaux, la valeur par défaut est '100Mo'
 journalisation.file.max_size = 250 Mo
 
-# Nombre maximum de fichiers d'archives de journaux glissants, la valeur par défaut est 0
+# Nombre maximum de fichiers d'archives de journaux évolutifs, la valeur par défaut est 0
 journalisation.file.max_archives = 2
 ```
 
@@ -1651,7 +1664,7 @@ Pour utiliser les variables de contexte dans le journal, ajoutez-les en utilisan
 
 ### Configuration du niveau de journalisation { #log-level-configuration }
 
-Pour définir le niveau de journalisation des packages individuels, vous pouvez spécifier des propriétés au format `logging.level.{noms-de-package}` dans `dhis.conf`. Par exemple, pour définir le niveau de journalisation pour l'ensemble du Spring Framework à DEBUG et plus, vous pouvez spécifier :
+Pour définir le niveau de journalisation des packages individuels, vous pouvez spécifier des propriétés au format `logging.level.{noms-de-package}` dans `dhis.conf`. Par exemple, pour définir le niveau de journalisation pour l'ensemble Spring Framework à DEBUG et plus, vous pouvez spécifier :
 
 ```
 logging.level.org.springframework = DEBUG
@@ -1670,7 +1683,7 @@ Les niveaux de journalisation courants sont `DEBUG`, `INFO`, `WARN` et `ERROR`.
 
 ## Travailler avec la base de données PostgreSQL { #install_working_with_the_postgresql_database }
 
-Les opérations courantes lors de la gestion d'une instance DHIS2 sont le vidage et la restauration des bases de données. Notez que lorsque vous effectuez des sauvegardes de la base de données DHIS 2, il est préférable d'exclure les tables générées par le système, telles que les tables de ressources et d'analyses. Pour effectuer un vidage (copie) de votre base de données dans un fichier, vous pouvez appeler la commande suivante.
+Les opérations courantes lors de la gestion d'une instance DHIS2 sont le vidage et la restauration des bases de données. Notez que lorsque vous effectuez des sauvegardes de la base de données DHIS 2, il est préférable d'exclure les tableaux générés par le système, telles que les tableaux de ressources et d'analyses. Pour effectuer un vidage (copie) de votre base de données dans un fichier, vous pouvez appeler la commande suivante :
 
 ```bash
 pg_dump {database} -U {user} -T "_*" -T "analytics*"  -f {filename}
@@ -2223,7 +2236,7 @@ Operations on tracked entities like instances, attributes and values are stored,
 |------------|-----------------------------|-------------|
 | trackedentityinstanceauditid | integer | Primary key. |
 | trackedentityinstance | texte  | Tracked entity instance name.  |
-| créé  | timestamp without time zone | Time of creation. |
+| créés  | timestamp without time zone | Time of creation. |
 | accessedby | texte | Username of the user performing the audited operation. |
 | audittype | texte | READ, CREATE, UPDATE, DELETE, SEARCH |
 | commentaire | texte | The code of the audited object. |
@@ -2237,7 +2250,7 @@ This data can be retrieved via [API](#webapi_tracked_entity_instance_audits).
 | trackedentityattributevalueauditid | integer | Primary key. |
 | trackedentityinstanceid | integer | Instance ID of which the attribute value belongs to.  |
 | trackedentityattributeid | integer | Attribute ID.  |
-| créé  | timestamp without time zone | Time of creation. |
+| créés  | timestamp without time zone | Time of creation. |
 | modifiedby  | texte | Username of the user performing the audited operation. |
 | audittype | texte  | READ, CREATE, UPDATE, DELETE, SEARCH |
 | valeur | texte | The value of the audited object. |
@@ -2253,7 +2266,7 @@ This data can be retrieved via [API](#webapi_tracked_entity_attribute_value_audi
 | trackedentitydatavalueauditid | integer | Primary key. |
 | programstageinstanceid | integer | Program stage ID of which the data value belongs to.  |
 | dataelementid | integer | ID of the data element.  |
-| créé | timestamp without time zone | Time of creation. |
+| créés | timestamp without time zone | Time of creation. |
 | modifiedby | texte | Username of the user performing the audited operation. |
 | audittype | texte | READ, CREATE, UPDATE, DELETE, SEARCH |
 | valeur | texte | The value of the audited object. |
@@ -2273,7 +2286,7 @@ The breaking the glass event is stored in the `programtempownershipaudit` table,
 | programtempownershipauditid | integer | Primary key. |
 | programid | integer | Program ID of which the tracked entity belongs to.  |
 | trackedentityinstanceid | integer | Instance ID of which the attribute value belongs to.  |
-| créé  | timestamp without time zone | Time of creation. |
+| créés  | timestamp without time zone | Time of creation. |
 | accessedby  | texte | Username of the user performing the audited operation. |
 | reason       | texte | The reason as inserted in the dialog. |
 
@@ -2543,3 +2556,4 @@ user impersonation.
 
 User impersonation events are logged in the following
 format: `Authentication event: AuthenticationSwitchUserEvent; username: USER_DOING_THE_IMPERSONATION; targetUser: USER_BEING_IMPERSONATED;`
+
