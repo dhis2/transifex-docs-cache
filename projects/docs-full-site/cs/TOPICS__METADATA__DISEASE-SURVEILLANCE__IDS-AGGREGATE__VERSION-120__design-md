@@ -1,0 +1,293 @@
+---
+edit_url: "https://github.com/dhis2-metadata/IDS_AGG/blob/master/docs/ids_agg-design-1.2.0.md"
+revision_date: "2022-11-09"
+tags:
+    - Metadata
+    - Verze 1.2.0
+---
+
+# Integrated Disease Surveillance aggregate system design { #ids-agg-design-120 }
+
+## Úvod { #introduction }
+
+Tento dokument popisuje návrh systému pro balíček digitálních dat souhrnného sledování nemocí. To zahrnuje následující:
+
+1. Nemoc zahrnutá v balíčku
+2. Datové Sady
+3. Mechanismy výměny dat
+4. Ovládací panely
+5. Pravidla ověření
+6. Oznámení o ověření
+7. Prediktory
+
+Metadata souhrnného sledovacího balíčku jsou poskytována v několika různých konfiguracích, aby země ukázaly možnosti konfigurace v jejich vlastním kontextu. To také umožňuje zemím vybrat si možnosti konfigurace, které nejvíce odpovídají jejich kontextu.
+
+## Zahrnuté nemoci { #diseases-covered }
+
+Nemoci zahrnuté v tomto balíčku jsou následující:
+
+|  |  |  |  |
+| --- | --- | --- | --- |
+| Akutní ochablá ochrnutí | Akutní vodnatý průjem | Cholera | Horečka dengue |
+| Průjem s krví (Shigella) | Záškrt | Spalničky | Meningitida |
+| Novorozenecký tetanus | Ne-novorozenecký tetanus | Černý kašel | Vzteklina |
+| Zarděnky | Virová hemoragická horečka | Žlutá zimnice |  |
+
+Všimněte si, že podle potřeby můžete do návrhu přidat nemoc.
+
+## Přehled datové sady { #data-set-overview }
+
+Konfigurační balíček dohledu pro souhrnné hlášení obsahuje 4 datové sady popsané níže.
+
+| **Název** | **Periodicita** | **Účel** |
+| --- | --- | --- |
+| IDS – Zpráva: Podezření, Potvrzeno, Smrt | Týdně | Hlášení sledovacích činností: podezřelé případy, potvrzené případy a úmrtí. Podezřelé případy a úmrtí jsou rozčleněny, údaje o potvrzených případech nejsou rozčleněny. |
+| IDS – Hlášení: Podezření, smrt | Týdně | Hlášení sledovacích činností: podezřelé případy a úmrtí. Tato data jsou rozčleněna. |
+| IDS - Aggregate Lab Weekly Report | Týdně | Hlášení potvrzených případů přímo z laboratoří. Tato data nejsou členěna. |
+| Populace týdně | Týdně | Týdenní údaje o populaci používané pro výstrahy. Je to týdenní, protože funkce prediktoru DHIS2 se používá ke generování prahových hodnot a v současné době nelze kombinovat data různé periodicity (v tomto případě týdenní data sledování s ročními údaji o populaci). |
+
+### IDS – Hlášení: Podezření, potvrzeno, úmrtí { #ids-report-suspected-confirmed-death }
+
+Datový soubor **IDS – Zpráva: Podezření, Potvrzeno, Smrt** obsahuje informace o podezřelých případech, potvrzených případech a úmrtích na nemoci uvedené v části [pokryté nemoci] (#pokryté nemoci). Řada nemocí má **rozdělené** podezřelé případy a úmrtí a formulář a používá **design vlastního formuláře**. Návrh vlastního formuláře je výsledkem kombinace nerozdělených a nerozdělených datových prvků, které patří ke stejnému onemocnění a je nutné je seskupit.
+
+![image-20200719115335917](resources/images/Screen01.png)
+
+Rozčlenění byly použity pomocí modelu kategorie v DHIS2. Tento model má při používání členění dvě klíčové výhody:
+
+-   Snižuje počet jedinečných datových prvků, které je třeba provést.
+-   V analýze to umožňuje rychlé přidání rozdělení podle věku, které lze podle potřeby řadit. Můžeme také vidět, že součty jsou docela užitečné k určení celkového počtu vztahujícího se k určité proměnné nebo období.
+
+![image-20200719115354457](resources/images/Screen14.png)
+
+Pokud potřebujete upravit tuto datovou sadu tak, aby nebyla rozčleněna podle věku, můžete tak učinit přímo před nebo po instalaci. Doporučuje se to provést před instalací podle kroků v instalační příručce o úpravě balíčku.
+
+Tato datová sada předpokládá vyspělou konfiguraci, ve které se shromažďují všechny podezřelé případy, potvrzené případy a úmrtí. Rovněž předpokládá, že každý, kdo pracuje s touto datovou sadou, by měl mít přístup k úpravě těchto informací (tj. zadávat data a upravovat existující datové hodnoty). To nemusí platit ve všech implementacích, pokud byste například chtěli oddělit, kdo může upravovat data o podezřelých a potvrzených případech.
+
+Stručně řečeno, pokud se jedná o případ, kdy **_zatím neshromažďujete údaje_** o potvrzených případech nebo **_chcete, aby samostatné skupiny měly možnost upravovat_** údaje o podezřelých a potvrzených případech, pak to nemusí být soubor údajů implementovat ve vašem kontextu. Pokud **_shromažďujete data_** o potvrzených případech a chcete **_stejný přístup pro všechny uživatele k úpravě_** údajů o podezřelých a potvrzených případech, pak by bylo vhodné tento typ návrhu datové sady implementovat ve vašem vlastním kontextu.
+
+### IDS – Hlášení: Podezření, úmrtí { #ids-report-suspected-death }
+
+The **IDS - Report: Suspected, Death** dataset contains information on suspected cases and deaths on the diseases outlined in the section [diseases covered](#diseases-covered). Note that it does not contain information on confirmed cases. This was done in the event that lab confirmation was a separate process, or that seperate access needs to be provided for those entering confirmed case data. This dataset therefore links to the IDS - Aggregate Lab Weekly Report in the event that cases are confirmed using a separate process. This form uses the same data elements and structure contained in the IDS - Aggregate Weekly Report dataset for cases and deaths. The custom form design from this dataset was therefore re-used such that a uniform design would be applied between this dataset and the IDS - Aggregate Lab Weekly Report dataset.
+
+![image-20200719115644641](resources/images/Screenx42.png)
+
+Tato datová sada je určena pro nastavení, kde buď
+
+1. Údaje o potvrzených případech se zatím prostřednictvím DHIS2 neshromažďují
+2. Údaje o potvrzených případech se shromažďují, ale jedná se buď o samostatný proces, nebo je třeba oddělit přístup k úpravě těchto údajů
+
+### IDS - Aggregate Lab Weekly Report { #ids-aggregate-lab-weekly-report }
+
+Zpráva IDS Aggregate Lab Weekly report obsahuje informace o potvrzených případech onemocnění uvedených v [Tabulce 1](#table-1). Upozorňujeme, že **neobsahuje informace o podezřelých případech a úmrtích**. Tato zpráva je určena k doplnění datové sady **IDS – Zpráva: Podezření, Potvrzeno, Smrt**, pokud je proces hlášení laboratorních potvrzených případů oddělen od hlášení podezřelých případů a úmrtí. To zahrnuje scénáře, ve kterých chcete, aby různí uživatelé měli možnost upravovat data potvrzených případů ve srovnání s údaji o podezřelých případech/úmrtích.
+
+Stejně jako datové sady `IDS – Zpráva: Podezření, Potvrzeno, Smrt` a `IDS – Zpráva: Podezření, Smrt` tato datová sada používá vlastní návrh formuláře, aby zůstala konzistentní ve svém vzhledu.
+
+### Population Weekly { #population-weekly }
+
+The Population weekly dataset is used to collect weekly population data. The main function of this is for thresholds for **_meningitis_**. It is a weekly data set as the DHIS2 predictor function is used to generate thresholds and currently can not combine data of different periodicity (in this case, weekly surveillance data with annual population data). The data element that it contains, population weekly, uses the aggregation type of "last value" and is meant to be equal to the estimated population total for a year within a given geographical region.
+
+As an example application of this, if your yearly population within District A is 1000, then the weekly population within District A would also be 1000. By using the "last value" aggregation type, these weekly values will not sum and will consistently be equal to 1000 throughout the year within this district.
+
+## Mechanismy výměny dat { #data-exchange-mechanisms }
+
+Kromě přímého použití rozhraní DHIS2 API jsou k dispozici dva mechanismy výměny dat:
+
+1. Pro země, které používají DHIS2, byla vytvořena aplikace pro výměnu dat k odesílání dat přímo z jejich systému DHIS2 do jiných systémů DHIS2
+2. Pro země, které nepoužívají DHIS2, byla vytvořena aplikace pro přijímání dat ve formátu Excel
+
+### Výměna dat z DHIS2 do DHIS2 { #dhis2-to-dhis2-data-exchange }
+
+Jako součást tohoto balíčku byla vyvinuta aplikace s názvem `dhis2 transfer`, která umožňuje přenášet data z jednoho systému DHIS2 do druhého. Jakmile je tato aplikace nakonfigurována, umožňuje jednomu systému DHIS2 odesílat svá data do jiného systému DHIS2 (například regionální systém shromažďující data z několika zemí). Počáteční konfiguraci je třeba provést pouze jednou a lze ji provést kompletně prostřednictvím dostupného uživatelského rozhraní. Konfigurace musí proběhnout pro dva samostatné prvky:
+
+1. Skutečná odesílaná data (tj. Proměnné / datové položky)
+2. Umístění odesílaných dat (tj. v organizačních jednotkách DHIS2)
+
+Tato shoda je nezbytná, protože dva systémy, které si vyměňují data, nemusí být přesně zarovnány, pokud jde o názvy, kódy nebo ID, které používá k identifikaci těchto různých objektů, které jsou synchronizovány mezi těmito dvěma systémy. Aplikace aktuálně odesílá agregovaná data prostřednictvím agregovaných indikátorů ze zdrojového systému do datových prvků v rámci cílového systému, takže relevantní indikátory budou muset být dostupné ze zdrojového systému (tj. ze systému, který data odesílá).
+
+Příklad odpovídajících proměnných je uveden níže:
+
+![image-20200719115734072](resources/images/Screen02.png)
+
+Jakmile je tato konfigurace uložena, můžete ji podle potřeby volat, vybrat období, za které chcete data odeslat, a data odeslat.
+
+![confirm_transfer](resources/images/Screen11.png)
+
+> **POZNÁMKA**
+>
+> Tento proces lze také naplánovat, pokud chcete data odesílat automaticky
+
+Další informace o aplikaci pro přenos dat naleznete v příručce k aplikaci.
+
+### Výměna dat mezi Excel a DHIS2 { #excel-to-dhis2-data-exchange }
+
+Jako součást tohoto balíčku byla zpřístupněna aplikace nazvaná „Průvodce importem dat“, aby systém DHIS2 mohl přijímat data Excel. Tento nástroj je také třeba jednou nakonfigurovat tak, aby mapování odpovídalo informacím v listu Excel s informacemi dostupnými v DHIS2. Všimněte si, že tuto aplikaci lze použít i mimo případy použití sledování.
+
+Můžete si prohlédnout náhled dat přenášených do systému a ověřit správnost mapování ze souboru Excel, jak je uvedeno níže.
+
+![image-20200719120021592](resources/images/Screen44.png)
+
+Jakmile jsou data zkontrolována a ověřena z listu aplikace Excel, mohou být importována přímo do systému DHIS2.
+
+Další informace o aplikaci Průvodce importem dat naleznete v příručce k aplikaci.
+
+## Ovládací panely { #dashboards }
+
+K dispozici jsou ovládací panely pro každou z nemocí uvedených v části [pokryté nemoci](#diseases-covered). Ovládací panel každého onemocnění má stejné rozložení:
+
+1. Kontingenční tabulka zobrazující oblasti podezřelé z ohniska za posledních 12 týdnů
+2. Mapa zobrazující oblasti podezřelé z ohniska za poslední týden
+3. Kontingenční tabulka zobrazující oblasti podezřelé z ohniska za posledních 12 týdnů
+4. Mapa zobrazující potvrzené oblasti ohniska za poslední týden ![dashboard_1](resources/images/dashboard_1.png)
+5. Kontingenční tabulka znázorňující celkový počet týdnů, v nichž byla oblast v posledním roce podezřelá z ohniska
+6. Mapa zobrazující oblasti podezřelé z ohniska v posledním roce
+7. Kontingenční tabulka ukazující celkový počet týdnů, v nichž se oblasti v posledním roce vyskytly v potvrzeném ohnisku
+8. Mapa znázorňující potvrzené oblasti ohniska za poslední rok ![dashboard_2](resources/images/dashboard_2.png)
+9. Mapa zobrazující míru výskytu za poslední týden
+10. Mapa zobrazující rozložení případů za poslední týden
+11. Graf zobrazující počet podezřelých případů a úmrtí za posledních 12 týdnů
+12. Kontingenční tabulka zobrazující počet podezřelých případů a úmrtí za posledních 12 týdnů ![dashboard_3](resources/images/dashboard_3.png)
+13. Graf znázorňující srovnání případů podle týdnů letošního a loňského roku ![dashboard_4](resources/images/dashboard_4.png)
+
+## Pravidla ověření { #validation-rules }
+
+Byla implementována validační pravidla, včetně jak logických kontrol konzistence, tak i detekce podezřelých a potvrzených ohnisek na základě různých kritérií.
+
+### Pravidla ověření – kontroly konzistence { #validation-rules-consistency-checks }
+
+Validační pravidla, která provádějí kontroly konzistence, porovnávají týdenní potvrzené případy s týdenními podezřelými případy. Předpokladem je, že potvrzené případy by měly být menší nebo rovné suspektním případům v daném týdnu u všech nemocí uvedených v části [pokryté nemoci](#pokryté nemocemi). Úplný seznam těchto pravidel ověřování naleznete v referenčním souboru metadat. Pokud tento předpoklad není ve vaší implementaci správný, budete je chtít upravit, protože se objeví během zadávání dat, kdykoli uživatel dokončí sadu dat a je zjištěno porušení, jak vidíme v příkladu níže.
+
+![validace_konzistence](resources/images/consitency_rule.png)
+
+### Pravidla ověření – prahové hodnoty { #validation-rules-thresholds }
+
+Pravidla ověření se také používají k určení, zda byl překročen práh. Tato ověřovací pravidla někdy používají výstup prediktoru k porovnání v závislosti na kritériích, která je třeba splnit. Při porušení těchto pravidel je zasláno upozornění.
+
+Spouštějí se následující pravidla ověřování a odesílají oznámení na základě kritérií uvedených níže:
+
+| Název | Aktivace popisu / oznámení | Použitý prediktor |
+| --- | --- | --- |
+| Podezření na ne-neonatální tetanus | 1 podezřelý případ | Ne |
+| Pravděpodobná žlutá zimnice | 1 případ s IgM pozitivní | Ne |
+| Potvrzené zarděnky | 1 potvrzený případ | Ne |
+| Cholera RDT pozitivní | 1 případ RDT pozitivní | Ne |
+| Podezření na mor | 1 podezřelý případ | Ne |
+| Potvrzená vzteklina | 1 potvrzený případ | Ne |
+| Podezření na spalničky / zarděnky | 5 podezřelých případů v jednom okrese za 30 dní | Yes <br> `IDS - Measles Suspected Outbreak` |
+| Potvrzen Anthrax | 1 potvrzený případ | Ne |
+| Potvrzená horečka dengue | 1 potvrzený případ | Ne |
+| Podezření na černý kašel | 1 podezřelý případ | Ne |
+| Potvrzené vypuknutí spalniček | 3 potvrzené případy v jednom okrese za 30 dní | Yes <br> `IDS - Measles Confirmed Outbreak` |
+| Dva nebo více akutních vodnatých průjmů (AWD) ve věku 2 let a starších (spojeno časem a místem) s těžkou dehydratací nebo umíráním | 2 nebo více AWD ve věku od 2 let (spojené časem a místem) s těžkou dehydratací nebo umíráním | Ne |
+| Podezření na neonatální tetanus | 1 podezřelý případ | Ne |
+| Varování proti meningitidě | 3 podezřelé případy / 100 000 obyvatel / týden (minimálně 2 případy za jeden týden) pro okresní / okresní populaci nad 30000 | Yes <br> `IDS - Meningitis alert` |
+| Podezření na virovou hemoragickou horečku | 1 podezřelý případ | Ne |
+| Akutní smrtelný vodnatý průjem  | Jedno úmrtí na těžký akutní vodnatý průjem u osoby ve věku nejméně 5 let | Ne |
+| Vypuknutí meningitidy | 10 podezřelých případů / 100 000 obyvatel / týden pro okresní / místní populaci nad 30000 <br> **NEBO** <br> 5 podezřelých případů za jeden týden <br> **NEBO** <br> zdvojnásobení počtu případů za období tří týdnů (výstraha epidemie) pro okresní / místní populaci pod 30000 | Yes <br> `IDS - Meningitis outbreak` |
+| Jedno úmrtí na těžký akutní vodnatý průjem u osoby v jakémkoli věku | 1 úmrtí na  akutní vodnatý průjem u osoby v jakémkoli věku | Ne |
+| Potvrzený AFP (VDPV) | 1 potvrzený případ | Ne |
+| Podezření na záškrt | 1 podezřelý případ | Ne |
+| Potvrzený AFP (WPV) | 1 potvrzený případ | Ne |
+| Podezření na průjem s krví (úplavice) | 1 podezřelý případ | Ne |
+
+Note the differentiation between `suspected cases` and `confirmed cases`. In the context of this surveillance package, suspected cases identify if an area is in alert while confirmed case identify if an area is in outbreak.
+
+These rules can be set to run automatically or can also be run manually. Configuration of the automated process is discussed within the installation guide.
+
+## Validation Notifications { #validation-notifications }
+
+In response to a threshold being surpassed, notifications can be sent out using any combination of 3 methods:
+
+-   The internal messaging service within DHIS2
+-   SMS
+-   E-mail
+
+For more information on setting these services up, refer to the documentation on [email](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/system-settings.html#system_email_settings) and [SMS](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/maintaining-the-system/configure-sms.html).
+
+Níže je uveden příklad e-mailu, který je odeslán, když je zjištěno ohnisko spalniček.
+
+![image-20200719115221225](resources/images/Screen34.png)
+
+For a full list of validation notifications, consult the metadata reference file. Validation notifications are available for each disease based on the criteria defined in the [validation rules thresholds](#validation-rules---thresholds) section.
+
+These can be sent out in response to either a manual or automated process of checking your data. Configuration of the automated process is discussed within the installation guide.
+
+## Predikce { #predictors }
+
+For more information on configuring predictors, please consult [the documentation](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/metadata.html#about-predictors).
+
+### Areas in outbreak { #areas-in-outbreak }
+
+Outside of predictors being used within validation rules, they are also used to visualize areas that are in outbreak. We can see examples of this in visualizations 1-8 within the [dashboards](#dashboards) section. While validation rules can be used to trigger validation notifications, the result of these rules is not stored in a data element and thus can not be used for visualization purposes. A full list of predictors can be found in the metadata reference file. Each disease has predictors that are labelled as either an "alert" -- used in situations where suspected cases are being checked; or an "outbreak" -- used in situations where confirmed cases are being checked.
+
+Predictors are defined to store values within companion data elements that can then be used to create visualizations to identify areas in alert or outbreak. The predictors are defined to identify alerts and outbreaks based on the [validation rules thresholds](#validation-rules---thresholds) section. Let us take two predictors and break them down into its component parts, as each predictor for each disease will need to be understood to be correctly used or altered if needed.
+
+#### Example 1: A disease where 1 suspected case is the threshold (ie. diptheria) { #example-1-a-disease-where-1-suspected-case-is-the-threshold-ie-diptheria }
+
+Let us take an example in which 1 suspected case is the threshold to identify if an area is in alert. Note that this same nomenclature would apply to an example in which 1 confirmed case is the threshold to identify if an area is in outbreak.
+
+We can use the example for `diptheria`; if we review the [validation rules thresholds](#validation-rules---thresholds) section we will see one suspected case of diptheria is our threshold.
+
+Within the predictor, we have the following fields:
+
+1. Název prediktoru
+2. Popis prediktoru
+3. The output data element - this is where the result of the predictor is stored
+4. Období, ve kterém je prediktor spuštěn
+5. The output organisation unit level of the predictor value
+
+![predictor_formula_1](resources/images/predictor_formula_1.png)
+
+After this is defined we have what is referred to as the `generator`. The generator is essentially the formula used to define the predictor. In this case, using diptheria as our example, we have a logical test stating the following
+
+If the number of suspected diptheria cases is >= 1 within a given org unit, return a value of 1. If this is not the case return a value of 0.
+
+These types of logical if statements are used in all of the predictors within this package. If you are not familiar with boolean logic, a broad overview can be found [here](https://www.lotame.com/what-is-boolean-logic/#:~:text=Boolean%20Logic%20is%20a%20form,are%20either%20true%20or%20false.).
+
+![predictor_formula_2](resources/images/predictor_formula_2.png)
+
+The last components of the predictor identify which period we will be getting data from to use within our generator. We have defined both the sequential sample count and annual sample count as 0. This means that the generator will only be obtaining data from the same week in which the threshold is being checked.
+
+![predictor_formula_3](resources/images/predictor_formula_3.png)
+
+#### Example 2: A disease where a specific threshold formula is used (ie. measles) { #example-2-a-disease-where-a-specific-threshold-formula-is-used-ie-measles }
+
+In example 2, we can review the threshold for a **_confirmed measles outbreak_**. This threshold is defined as `3 confirmed cases in one district in 30 days`. There are some key components that must be considered
+
+1. Celkem 3 případy v rámci okresu
+2. Tyto případy mohou nastat po dobu 30 dnů
+
+Pro spuštění našeho prediktoru máme stále stejná pole jako v příkladu 1
+
+1. Název prediktoru
+2. Popis prediktoru
+3. The output data element - this is where the result of the predictor is stored
+4. Období, ve kterém je prediktor spuštěn
+5. The output organisation unit level of the predictor value
+
+![predictor_formula_11](resources/images/predictor_formula_11.png)
+
+After this is defined we have what is referred to as the `generator`. The generator is essentially the formula used to define the predictor. In this case, using measles as our example, we have a logical test stating the following
+
+> If the sum of confirmed measles cases is greater then 3, return a value of 1. If this is not the case return a value of 0.
+
+Note that this sum is being taken from the level in which there is data, which in this example would be our facilities. Using the generator alone, we have also not met our second criteria which should examine this over a 30 day period.
+
+![predictor_formula_12](resources/images/predictor_formula_12.png)
+
+The last components of the predictor identifies which period we will be getting data from to use within our generator. We have defined the sequential sample count as 4 and the annual sample count as 0. This means that the generator will be obtaining data from the last 4 weeks (since the predictor period is set to weekly), including the current week, for the current year in which the threshold is being checked. This is to meet the criteria of our 30 day period as defined in our threshold.
+
+![predictor_formula_13](resources/images/predictor_formula_13.png)
+
+### Shrnutí prediktoru { #predictor-summary }
+
+**NB**: We use predictors to help us test our thresholds and store data values to identify areas in alert or outbreak. Areas in alert are based off thresholds using suspected cases, while areas in outbreak refer to thresholds using confirmed cases. To define these thresholds using a predictor we must consider
+
+1. Datový prvek, do kterého odešlete hodnotu prediktoru
+2. Období, ve kterém bude prediktor porovnávat data
+3. The organisation unit level you will output the predictor value to
+4. The generator formula, which will test our data against a defined threshold
+5. The sequential and annual sample counts, which will define which periods the predictor is obtaining data from
+
+Altering these components will allow you to alter the definition of the threshold.
+
+These predictors can be set to run automatically or can also be run manually. Configuration of the automated process is discussed within the installation guide.

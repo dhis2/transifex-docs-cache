@@ -1,0 +1,135 @@
+---
+edit_url: "https://github.com/dhis2-metadata/CRVS_COD/blob/master/docs/crvs_cod-installation.md"
+revision_date: "2022-09-19"
+tags:
+    - Metadata
+    - Verze 1.2.0
+---
+
+# WHO Cause of Death - Tracker Installation Guide { #crvs-cod-installation }
+
+## Úvod { #introduction }
+
+Tento dokument je určen k vedení správců procesem instalace modulu Příčina úmrtí do databáze DHIS 2. Je vyžadováno dobré porozumění DHIS 2, včetně funkce Tracker (na základě případů).
+
+Modul Příčina úmrtí se skládá ze souboru s metadaty DHIS 2. Konkrétněji obsahuje:
+
+Pro program Tracker:
+
+-   Program pro sledování s datovými prvky, sadami voleb, vlastním formulářem pro zadávání dat, pravidly programu, indikátory programu atd.
+-   Standardní zpráva pro validaci dat.
+-   Ovládací panel s grafy a tabulkami pro klíčová data.
+-   Tento dokument popisuje, jak nainstalovat tento modul a provádět běžnou údržbu. To zahrnuje zásadní úkol přizpůsobení a vylepšení slovníku diagnostických / lékařských termínů, který je nezbytný pro fungování modulu.
+
+Kromě toho [node.js](https://nodejs.org/en/) script for linking the Cause of Death module in DHIS 2 with the [IRIS software](https://www.dimdi.de/dynamic/en/classifications/iris-institute/index.html) pro poloautomatické kódování příčin úmrtí na plný ICD-10 a odeslání výsledku zpět do databáze DHIS 2. Jsou poskytnuty výstupy k opětovnému exportu těchto dat do nástroje pro analýzu dat ANACOD. Tato funkce je popsána v samostatném dokumentu.
+
+## Popis modulu { #description-of-the-module }
+
+Tato část poskytuje přehled o designu a struktuře modulu.
+
+### Formulář sběru dat { #the-data-collection-form }
+
+Formulář sběru dat je vytvořen na základě mezinárodního lékařského osvědčení příčin úmrtí. Jako takový používá vlastní formulář, který napodobuje rozložení tohoto certifikátu. Logika zabudovaná do formuláře pro kódování a ověřování však funguje i bez vlastního formuláře, což umožňuje použití modulu např. mobilní zařízení s aplikacemi pro Android DHIS 2.
+
+### Nakládání s „věkem“ { #dealing-with-age }
+
+Ke shromažďování údajů o věku zesnulého podporuje formulář pro shromažďování údajů jak datum narození, tak odhadovaný věk. Aby se usnadnila analýza dat, byl do formuláře přidán další datový prvek pro Věk v letech, ale jako zakázané pole / pole jen pro čtení. Na základě toho, co je zadáno jako datum narození nebo odhadovaný věk, pravidla programu vypočítají věk v letech a přiřadí tuto hodnotu datovému prvku Věk v letech.
+
+### Slovník { #dictionary }
+
+Kritickou součástí modulu je slovník (ICD -SMoL - místní slovník). Slovník funguje jako spojení mezi lékařskými termíny používanými při zadávání dat a kódem ICD-SMoL používaným pro hlášení a analýzu příčin úmrtí. V DHIS 2 je slovník implementován jako sada možností. Lékařský termín je název možnosti a kód možnosti se skládá ze tří složek: kód ICD-SMoL, kód ICD-10 a ID. ID je nezbytné, protože několik termínů může odkazovat na stejné kódy ICD-SMoL a ICD-10 a kódy musí být jedinečné. Samotné ID se skládá ze dvou částí: kódu země (nebo INT u kódů dodávaných s modulem) a počítadla. Sledování mezinárodních a specifických podmínek pro jednotlivé země v budoucnu usnadní např. identifikovat termíny používané v různých zemích, které by mohly být navrženy pro mezinárodní slovník.
+
+Plně lokalizovaný francouzský modul „Cause of Death“ používá místní slovník, který se liší od anglického ICD -SMoL - místního slovníku. Tento slovník je udržován v jiné sadě možností, která je zahrnuta pouze v souboru francouzského balíčku.
+
+Slovník je řazen podle délky termínu, přičemž jako první se zobrazují nejkratší termíny. Tím je zajištěno, že při vyhledávání ve slovníku se nejprve zobrazí výrazy, kde se největší část lékařského výrazu shoduje s hledaným výrazem.
+
+### Výběr základní příčiny úmrtí { #selecting-underlying-cause-of-death }
+
+Výběr základní příčiny úmrtí je klíčovou součástí modulu. To se provádí pomocí čtyř zaškrtávacích políček, která označují, která ze (až) čtyř příčin je základní příčinou. Pravidla programu se používají k zajištění toho, aby bylo možné vybrat pouze jedno ze zaškrtávacích políček a že každé zaškrtávací políčko lze použít pouze v případě, že byla pro daný řádek / příčinu vybrána diagnóza.
+
+Jakmile byla příčina vybrána jako základní, jsou přiřazena dvě pole pouze pro čtení s názvem a kódem ICD-SMoL pro vybranou příčinu.
+
+## Instalace { #installation }
+
+### Požadavky a příprava { #requirements-and-preparation }
+
+K instalaci modulu je vyžadován uživatelský účet správce na DHIS2. Postup popsaný v tomto dokumentu by měl být testován v testovacím / fázovém prostředí před provedením na produkční instanci DHIS2.
+
+Je třeba věnovat velkou pozornost tomu, aby byl samotný server a aplikace DHIS dobře zabezpečené, aby se omezil přístup ke shromažďovaným datům. I když použijete tento modul bez přímých identifikátorů pacienta, jako jsou ID nebo jména, věk, pohlaví a zdravotní zařízení by mohly být dostatečné k identifikaci jednotlivce. Podrobnosti o zabezpečení systému DHIS 2 jsou mimo rozsah tohoto dokumentu a odkazujeme na dokumentaci DHIS 2.
+
+### Výběr verze modulu { #choosing-a-version-of-the-module }
+
+### Import metadat { #importing-metadata }
+
+Modul je importován prostřednictvím souboru `.json` s metadaty DHIS 2 pomocí funkce importu metadat aplikace Import/Export DHIS 2. Při importu metadat do databáze DHIS 2 s existujícími metadaty se vám mohou zobrazit chyby, pokud se podíváte na podrobný souhrn importu. Ty mohou vyžadovat akci, například pokud v databázi, do které importujete modul, již existuje datový prvek se stejným názvem nebo kódem. V takovém případě budete muset buď změnit identifikátor (jméno, kód) v databázi, nebo upravit jméno/kód v importním souboru. Jakékoli takové úpravy by měly být provedeny nejprve v testovacím nebo pracovním prostředí, aby se zajistilo, že změny neovlivní jiné části systému.
+
+### Další konfigurace { #additional-configuration }
+
+Jakmile jsou všechna metadata úspěšně importována, je nutné provést několik kroků, než bude modul funkční.
+
+1. Předtím, než mohou uživatelé začít zadávat data, musí být program přiřazen k nové nebo existující uživatelské roli. Kromě toho musí uživatelé mít potřebná oprávnění, aby mohli zadávat a/nebo sledovat data sledovače. Další informace o konfiguraci rolí uživatelů najdete v dokumentaci DHIS 2.
+
+2. Program musí být přiřazen organizačním jednotkám, pro které budou zadávána data.
+
+3. Volitelně můžete také použít funkci Sdílení DHIS 2 ke konfiguraci, kteří uživatelé (skupiny uživatelů) by měli vidět metadata a data spojená s programem. Sdílení lze konfigurovat pro samotný program, datové prvky, programové indikátory, agregační indikátory, sady voleb a analytické výstupy.
+
+### Přizpůsobení trasovacího programu { #adapting-the-tracker-program }
+
+Jakmile byl program importován, možná budete chtít v programu provést určité úpravy. Mezi příklady místních úprav, které by bylo možné provést, patří:
+
+-   Přidání dalších proměnných do formuláře.
+-   Pro program trackeru propojení programu s existujícím typem trasované entity a/nebo úprava atributů trasované entity. V modulu je zahrnuta zástupná trasovaná entita.
+-   Přizpůsobení názvů datových prvků / možností podle národních konvencí.
+-   Přidávání překladů do proměnných nebo do formuláře pro zadávání údajů.
+-   Důrazně se však nedoporučuje měnit ani odebírat žádné ze zahrnutých formulářů/metadat. Je to jednak proto, že zahrnuté proměnné jsou standardními doporučenými proměnnými z mezinárodního formuláře oznámení o úmrtí, a jednak proto, že existuje nebezpečí, že by úpravy mohly narušit funkčnost, například pravidla programu a indikátory programu. Například téměř všechny proměnné ve formuláři jsou propojeny s jedním nebo více pravidly programu, která by přestala fungovat, pokud je proměnná odebrána nebo nahrazena. Změna výchozích proměnných by také mohla v budoucnu zkomplikovat aktualizace modulu.
+
+### Údržba { #maintenance }
+
+Údržba modulu má dva hlavní aspekty: údržbu slovníku lékařských termínů a údržbu související s novými verzemi DHIS 2. Každý z těchto aspektů bude popsán zde.
+
+#### Údržba slovníku { #dictionary-maintenance }
+
+Slovník lékařských termínů je klíčovou součástí modulu a je zásadní pro vytváření smysluplných dat. Tato část popisuje, jak zkontrolovat integritu slovníku (např. Že použité kódy jsou platné), seznam termínů, které byly shromážděny a které by neměly být zahrnuty do slovníku, a jak je přidat do slovníku . K usnadnění těchto úkolů je v modulu zahrnuto několik zobrazení SQL.
+
+#### Kontrola integrity slovníku { #checking-integrity-of-dictionary }
+
+Jak je popsáno výše, slovník je implementován jako možnost nastavená v DHIS 2, přičemž lékařský termín je jako název možnosti a speciální formát pro kód možnosti, který se skládá z kódu ICD-SMoL, kódu ICD-10 a ID odděleného | symbolem (svislá čárka),. Zahrnuty jsou pohledy SQL k ověření, že všechny položky ve slovníku mají tento formát:
+
+-   Záznamy ve slovníku s neplatným formátem kódu - položky seznamu, kde kód neodpovídá formátu `[obsah]|[obsah]|[obsah]`.
+-   Záznamy ve slovníku s neplatnou referencí ICD-SMoL-položky seznamu, kde část kódu ICD-SMoL není v seznamu ICD-SMoL, který je poskytován jako samostatná sada možností.
+-   Slovníkové položky mísící hlavní a podkategorie-položky seznamu, kde u stejného kódu ICD-SMoL některé položky odkazují na hlavní kód ICD-SMoL a některé na konkrétní kód (např. Některé na 5-4 a 5-4.1) . To může při analýze dat v DHIS 2 vytvářet zavádějící výstupy, protože úmrtí lze započítat dvakrát.
+
+#### Přidávání výrazů do slovníku { #adding-terms-to-the-dictionary }
+
+Zahrnuto je zobrazení SQL „Termíny nenalezené ve slovníku“, které bude obsahovat seznam všech lékařských termínů, které byly zadány jako volný text, tj. Které nebyly při zadávání dat nalezeny ve slovníku, a kolikrát byly zadány. Toto jsou výrazy, které by měly být zahrnuty do slovníku, pokud se vyskytují často a mají smysl.
+
+Před přidáním výrazu do slovníku je nutné identifikovat správný kód ICD-SMoL a ICD-10. Spolu s ID tvoří kód, který se má použít ve slovníku. Chcete-li zjistit ID, je zahrnuto indexové číslo dalšího slovníku pro zobrazení SQL, které zobrazí další ID, které se má použít. Má dva sloupce, termtype a nextvalue. Jak je uvedeno výše, doporučuje se, aby každá země používala pro místní doplnění slovníku kód země. V takovém případě bude tento kód uveden pod termtype a další číslo pro použití ve sloupci nextvalue. Pokud ještě nebyly přidány žádné místní výrazy, použijte jako první ID [kód země]00001, např. GH00001, pokud jako kód země používáte GH. Jakmile byl přidán první místní výraz, zobrazení SQL zobrazí další ID, které se má použít kdykoli.
+
+Aby se zajistilo, že se ve slovníku nejprve zobrazí správné výrazy, musí být seřazeny podle délky termínu. Po přidání nových výrazů do slovníku je nutné je znovu seřadit, aby nové termíny nebyly vždy poslední v seznamu. To lze provést pomocí následujícího dotazu SQL (pro databáze PostgreSQL):
+
+```sql
+    with ordered as (
+    select
+        uid,
+        name,
+        code,
+        row_number() OVER (ORDER BY length(name),name) AS sort_order
+    from optionvalue
+    where
+        optionsetid =
+            (select optionsetid from optionset where code = 'ICD_SMOL_DICTIONARY')
+    )
+    update optionvalue ov
+        set sort_order = ord.sort_order
+    from ordered ord
+    where
+        ov.uid = ord.uid and
+        ov.optionsetid =
+            (select optionsetid from optionset where code = 'ICD_SMOL_DICTIONARY');
+```
+
+**Poznámka**, že se jedná o dotaz UPDATE, který je nutné provést přímo v databázi, nikoli prostřednictvím uživatelského rozhraní DHIS2.
+
+Aktualizace DHIS
+
+Po vydání nových verzí DHIS2 je důležité před upgradem všech produkčních instancí systému vyzkoušet všechny funkce modulu na pracovním / testovacím serveru.
