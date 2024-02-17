@@ -1,0 +1,1064 @@
+---
+revision_date: '2024-01-30'
+tags:
+- Implement
+template: single.html
+---
+
+# Target audience { #target-audience } 
+
+This guide is tailored for individuals and entities navigating the process regarding the adoption of DHIS2 Tracker. It serves as a valuable resource for prospective system owners, project managers, decision-makers, and donors seeking clarity on whether DHIS2 Tracker aligns with their specific requirements. Additionally, this guide is instrumental for those actively engaged in planning, budgeting, and overseeing the implementation of DHIS2 Tracker.
+
+Whether you are exploring the feasibility of DHIS2 Tracker for your organization or actively managing its implementation, this guide provides insights to aid in informed decision-making. The intended readership encompasses a spectrum of roles, including system owners, project managers, decision-makers, donors, and professionals responsible for the configuration, training, and ongoing support of DHIS2 Tracker.
+
+The content of this document is rooted in practical experiences drawn from various use cases, which are explicitly referenced throughout the guide. For a comprehensive understanding of DHIS2 Tracker and its implementation, it is recommended to consult this guide in conjunction with the complete documentation available at docs.dhis2.org.
+
+
+Recommended changes and improvements to this guide can be made by following the process described [in the DHIS2 github](https://github.com/dhis2/dhis2-docs/blob/master/src/commonmark/en/content/common/submitting-a-doc-fix.md).
+
+
+
+# Introduction { #introduction } 
+
+Tracker is the app within the DHIS2 platform that enables the capture and use of individual, longitudinal data. The functionality of Tracker covers a wide spectrum of needs, from monitoring the quality and availability of water wells, to collecting student attendance in a classroom, to capturing patient data in a shared health record. For the purposes of this guide, many of the examples will come from health systems, although Tracker is also widely used for education systems, environmental systems, logistics, and more.
+
+Many countries and programs are making use of increased network availability and the widespread presence of mobile devices and other hardware to push information systems closer to the level where primary data are generated. Individual-level data adds granularity and nuance to datasets captured in routine information systems, providing opportunities for ad hoc analysis, shifting indicators over time, and improving data quality. Beyond its usefulness for reporting and analysis, individual-level data can also be used to eliminate reporting redundancies, empower lower level staff with better decision-making tools, and place the client at the center of the information system. In short, individual-level data is the smallest data unit, and as such can be repurposed in many ways to satisfy the various competing needs in national information systems.
+
+The purpose of this guide is to help determine if Tracker is the right fit for a potential use case and provide practical guidance for planning successful implementations. The use of Tracker at scale introduces additional factors that should be planned for beyond what may already be in place for an existing aggregate DHIS2 instance. The opportunities and potential benefits from information systems increase as a system goes from aggregate data → tracked anonymous data → data from identifiable individuals → real-time patient data at the point of care. Those planning for a Tracker implementation should recognize that the challenges increase along with the benefits. 
+
+This implementation guide will provide recommendations to help you:
+
+-  determine if Tracker will address your needs
+-  evaluate the readiness of your setting for the introduction of individual-level data collection
+-  understand how implementing Tracker differs from DHIS2 aggregate
+-  address concerns specific to individual-level data systems, including privacy and security
+-  review lessons learned and best practices derived from real-world use cases
+-  plan for the introduction of your Tracker program(s) at the desired scale
+-  set in place the infrastructure that will maintain a Tracker program over time
+
+The guide is broken into two basic sections:
+
+- **Is My Project Ready For Tracker?** describes five important contextual factors that should be well understood for your setting before proceeding with planning a Tracker implementation
+
+    - Institutional buy-in and support
+    - Funding
+    - Legislation and policies
+    - Capacity and competency
+    - Infrastructure
+
+- **Building your Tracker Program(s)** provides specific guidance and recommendations for nine different aspects of a Tracker implementation
+
+    - Determining scale
+    - Design and configuration process
+    - Determining your M&E framework
+    - Real-time vs. secondary data entry
+    - Mobile vs web
+    - Building supporting HR infrastructure
+    - Hosting
+    - Training and rollout
+    - Relating Tracker to your aggregate system
+
+Links of specific planning tools are provided throughout the document, and in the appendix.
+
+## What can Tracker be used for? { #what-can-tracker-be-used-for } 
+
+As with the rest of the DHIS2 platform, Tracker has a generic data model that allows it to be configured by the user for many different purposes. At its most basic, Tracker allows the user to define a particular kind of thing (person, commodity, lab sample, catchment area, etc.) that they want to follow over time (a tracked entity), define the data that they want to collect about this entity (attributes, data elements), place the data elements in a specific order with accompanying conditions or logic (program stages, program rules), and determine the analytics that should be produced (program indicators, event reports, data visualizations, etc.)
+
+An example of a simple Tracker program could be a program for collecting malaria case information at the point of care. The tracked entity would be a person, defined by attributes such as first name, last name, date of birth, or village. In general, attributes are data about the tracked entity (i.e. person) that are reasonably expected to stay the same over the period of follow-up and are often used to uniquely identify the entity (person). The program would contain data elements such as symptoms, test used and result, treatment provided, etc. These data elements might have pre-configured options for possible responses, such as possible tests available, or logic helping to ensure data quality, such as possible minimum and maximum values for a given data element. The data collected would be visible to the clinical user as a part of the malaria patient’s shared health record, but could also be used to generate monthly reports required by the national malaria control program, provide decision support to the clinician, generate SMS reminders to the patient to promote adherence to treatment, or populate a clinic-facing dashboard containing key performance indicators. For all these purposes, the data were collected only once -- during the patient visit -- but were reused many times for different needs.
+
+DHIS2 also supports the collection of individual data without longitudinal tracking using the Capture and Event apps. Non-longitudinal tracking (Event programs) will be referred to throughout this documentation as well. Event programs generally follow the same data model as Tracker, with the exception of defining a tracked entity which is not required for non-longitudinal tracking. An example of such an Event program could be the reporting of line-listing malaria case data. The line-listing data captured by an Event program would contain the same individual data as in the previous (tracked entity) program, but without linking these data to a tracked entity (patient) for longitudinal tracking over time. As such, the data would not become a part of a shared health record (or perhaps not used to generate SMS message reminders to the patient, or other features that rely on tracking an entity over time); however, the Event program would capture more granular data about malaria cases than an aggregate data model, in turn enhancing analytical capability. 
+
+As seen from the examples above, Tracker and the collection of individual data are quite different from traditional aggregate reporting for health management information systems (HMIS). Only one of the potential uses described above are satisfied by aggregate data collection -- that of monthly reporting -- whereas the patient-, clinician-, and facility-facing uses only become possible through the collection of individual data.
+
+Even with regards to routine reporting, the collection of individual data introduces opportunities for improved data interpretation and analysis, and -- crucially -- for action to be taken. For example, an aggregate report might show that overall immunization coverage is 80%, but lacks detail as to whether the remaining 20% reflects errors in reporting, unintentional exclusion of certain individuals/groups (i.e. due to geographic or demographic factors), or other factors. The aggregate numbers also do not allow for the specific identification of non-vaccinated children that could be followed up with through a targeted outreach program. The aggregate numbers in this example address a basic need of Ministries of Health to report national progress on a global indicator, but not the needs of immunization program managers or providers to take specific actions to improve coverage.
+
+One inherent benefit to using Tracker as an individual level system is the capacity for alignment with the existing aggregate DHIS2 system, which is already used in most lower- and middle-income countries as a national HMIS. Unlike a standalone Electronic Medical Record (EMR) or other application, Tracker encourages the collection of structured data that can natively aggregate upwards and be fed into the national HMIS, thus replacing secondary data entry and aggregation with primary source data.
+
+As a core component of the DHIS2 platform, Tracker is updated twice annually along with the rest of the DHIS2 software. The driving inputs for improvements to Tracker come from real-country implementations, and are aligned with global recommendations, notably the [WHO Guidelines on Digital Interventions for Health Systems Strengthening](https://www.who.int/reproductivehealth/publications/digital-interventions-health-system-strengthening/en/). Of the ten recommended interventions, Tracker has specific functionality to support the following:
+
+- Birth notification
+- Death notification
+- Stock notification and commodity management
+- Targeted client communication
+- Health worker decision support
+- Digital tracking of client’s health status and services combined with decision support
+- Digital tracking combined with decision support and targeted client communication
+- Digital provision of training and educational content for health workers
+
+Taking full advantage of such features requires that the data collected are systematic and adhere to normative standards. In health care, primary and public health services that are strongly driven by fixed guidelines and workflows are particularly suited for Tracker programs. For example in Antenatal Care (ANC), most countries have guidelines with algorithms for screening and patient management in response to test findings that can be incorporated in Tracker to follow a routine clinical workflow, supporting both the care provider and the reporting needs. In more complex areas of health care, with less documented and well-defined decision algorithms (such as in a referral hospital, for example) Tracker may be best used for simple data collection, allowing the clinician to determine the best use of the data for patient triage, and allowing the standardized data elements to be used for additional reporting or other purposes.
+
+
+## Example Tracker Use Cases { #example-tracker-use-cases } 
+
+Throughout this guide, we will refer to use cases to give real-world examples of planning principles, decision points, software and data utilization, common hurdles and issues, and lessons learned at different stages of the Tracker planning and implementation process. A short introductory summary of these individual use cases is provided here. Greater detail for some of the use cases can be found on www.dhis2.org.
+
+### Pre-configured Tracker Packages { #pre-configured-tracker-packages } 
+
+Under the [WHO’s Analysis and use of Health Facility Data toolkit](https://www.who.int/healthinfo/tools_data_analysis_routine_facility/en/), pre-configured Tracker programs have been created to cover a series of health topics. These packages are intended as the starting point for country programs, allowing for further configuration to match local context, while retaining global standards for indicators and practice. They can be added to existing DHIS2 systems, either together or individually. These packages can be accessed at the link above, as well as at who.dhis2.org. The current pre-configured packages cover the following topics:
+
+- Adverse Events for Immunization
+- Birth, Stillbirth and Death Notification for CRVS
+- Cause of Death (including ICD-10 codes from the start-up mortality list)
+- Malaria Breeding Site Investigation
+- Malaria Diagnosis, Treatment, Case and Household Investigation
+- Malaria Foci Investigation
+- Mass Immunization Campaigns
+- Routine Immunization Registry
+- TB Case Surveillance
+
+Additional packages that are still under development can be accessed at https://who.dhis2.org/documentation/work_in_progress.html.
+
+### Botswana: Nutrition and Immunization Program { #botswana-nutrition-and-immunization-program } 
+
+Botswana has created a combined nutrition and immunization program providing key services to young children receiving nutrition assistance, while ensuring that the children are hitting their growth indicators and receiving the full set of vaccines. Working with the Botswana team, the Tracker platform was enhanced to produce standardized z-scores providing quick assessment of weight-for-height, weight-for-age, and height-for-age. 
+
+### Ghana: HIV/ART and other eTracker modules { #ghana-hivart-and-other-etracker-modules } 
+
+Since 2012, Ghana Health Services has led a pioneering program in reporting patient-level data through DHIS2 Tracker programs ("eTrackers"). As of 2019, they were using 8 different eTracker modules. A prime example is their HIV/ART eTracker, which tracks individual patients through testing and treatment and makes it easier for health personnel to identify and follow up with defaulters, while also supporting the reporting flow for aggregate HIV data, which has been ongoing in Ghana since 2006.
+
+### Palestine: Maternal and Child Health eRegistry { #palestine-maternal-and-child-health-eregistry } 
+
+Every woman in Palestine is assigned a primary health care clinic, and if that clinic does not provide the services she needs, she is asked to visit a higher-level clinic. This referral system requires an eRegistry that controls access to clinical patient files, supports the continuity of care across different healthcare sites, allows for data entry from several different points, and provides analytics to help drive decisions under Palestine's antenatal care guidelines. Our collaboration with Palestine started in 2014. The development and implementation of the maternal and child health (MCH) eRegistry included an iterative approach and dynamic dialogue between the developers, policymakers, public health officials and health care providers. This implementation features extensive use of automated SMS messages to communicate with patients, as well as quality improvement dashboards to measure performance of clinics and support the delivery of quality care.
+
+### Zimbabwe: National Malaria Control Program { #zimbabwe-national-malaria-control-program } 
+
+The DHIS2 Android Tracker implementation in Zimbabwe started in 2014 as a collaborative project between the National Malaria Control Program (NMCP) and the University of Oslo, and has since been scaled to cover nearly half of the country's 60+ districts. This implementation features offline data collection, detailed location data, and near real-time data collection and analysis, and is an example of working with multiple stakeholders at a global level to develop a program with potential for expansion across geographic regions and disease areas.
+
+
+
+
+# Is My Project Ready For Tracker? { #is-my-project-ready-for-tracker } 
+
+## Readiness questions and key considerations { #readiness-questions-and-key-considerations } 
+
+This section is intended to describe some of the key landscape conditions that should be well understood before proceeding with a Tracker implementation. Due to the fact that many of the countries where Tracker is being introduced are already using DHIS2 for the national HMIS or other aggregate purposes, it is important to highlight some of the key differences between DHIS2 Tracker and Aggregate systems, in order to plan appropriately for the changes that may need to be made around implementation and administration. 
+
+Tracker programs often expand the reach of the information system, extending it to users that were not previously using an electronic information system of any kind. Inherently, individual data requires additional considerations around data privacy and security. These two factors mean that Tracker implementations typically require:
+
+- larger scale training efforts among cadres of workers that might also have high turnover rates; 
+- increased emphasis on user acceptance and mapping to existing work practices; 
+- additional hardware for data capture, including the management of that hardware over time;
+- reliable network coverage and/or strategies to address intermittent connectivity;
+- increased awareness of, and capacity for, privacy and security;
+- greater capacity for IT support that can solve solve problems for a much larger user basis; distributed across a larger geography. 
+
+These and other recommendations will be discussed in greater detail in the sections below. The following series of questions can be helpful when initially assessing readiness for a new Tracker implementation. **In particular, if your use case involves the collection of personally identifiable data (health-related or otherwise) you should review and reflect on the following questions before you begin.**
+
+- Is there *political and institutional will* to undertake implementation of point-of-service individual-level large-scale data collection?
+
+- Is it feasible to provide a system for actual point-of-care data collection, without creating additional documentation burden for the care providers?
+
+- What is the *added value* and *meaningful use* of patient-level data in this context? What are the specific questions that only this data can answer?
+
+- How will the data be used to make substantive decisions, by care providers, managers, and policymakers?
+
+- Are there laws, regulations in place for the collection, storage and use of individual-level and personally identifiable data? Alternatively, are there mechanisms for ensuring that such laws will be in place in the near future?
+
+- Is there sufficient and sustained funding, resources and human capacity for design, implementation (computer and internet), training, maintenance, data management and monitoring of the system?
+
+- Is there a way to uniquely identify clients in the health system setting? 
+
+- How are identifiable patient records currently collected and distributed on paper?
+
+- Are there clinical guidelines/clinical interventions or at least some form of guidance for clinical practice? Are there a list of reporting items in the HMIS and their detailed definitions?
+
+- How are facility-level and patient-level data currently collected, managed, and shared within the health system?
+
+*References*:
+
+1.  mERA checklist: [https://www.bmj.com/content/352/bmj.i1174](https://www.bmj.com/content/352/bmj.i1174)
+2.  Principles of Digital Development
+3.  Public Health Informatics – a developing country perspective: [https://global.oup.com/academic/product/public-health-informatics-9780198758778?cc=ps&lang=en&](https://global.oup.com/academic/product/public-health-informatics-9780198758778?cc=ps&lang=en&)
+
+
+## General considerations { #general-considerations } 
+
+### Institutional buy-in and support { #institutional-buy-in-and-support } 
+
+**Ensure there is institutional buy-in and support from the outset of your project** to create long term commitment. A tracker project ties closely work practice and data management and will take time, attention and resources. It will alter work practices at the ground level for the positive if done well and negatively if done poorly. Hence it is crucial that the project has solid support from key stakeholders such as program managers, IT units, heads of department, etc. From the outset, a diverse working group of the key stakeholders and users should be involved with designing the objectives and scope of the system, and this working group will be empowered to make decisions such as replacing some levels of paper reporting, or adapting supervision processes to respond to new key performance indicators made possible by the capture and analysis of individual level data.
+
+Identify the division/department within the health organization of interest (such as Ministry of Health, public health institute, etc) with sustainable growth potential for housing a long-term core administrative development team. Engage relevant departments that should be involved, such as those working with data collection and management and IT, as well as health policy makers and implementers who can provide input on the workflows of health workers. Obtain agreement that the working group is not meant to dissolve at the end of scale-up, but rather should transform to the long term administrators and system managers.
+
+Before committing to a large scale Tracker project, consider the funding landscape for the large and long term investments required for sustainability, particularly with device procurement, ongoing network costs, and training, both at the outset of the project, and routine training over time for new users. Are the goals and resource allocations from the funding mechanisms aligned with the group responsible for implementing tracker? Will the introduction of Tracker replace costs in other areas, such as printing reporting forms, that can be reprogrammed once the system is adopted and running well?
+
+Consider how tracker could affect and potentially bring improvements to all levels, not just the end users. For example, a Tracker program that matches the clinical workflow for antiretroviral treatment could be designed to bring benefits to the person on treatment, through appointment reminders and a shared clinical record between ART sites. It could bring benefits to the care provider by automating some aspect of their reporting and providing decision support. It could add benefits to the supervisor by providing concrete information about performance and challenges based on data; and could bring benefits to program managers by adding not only real time data, but also introducing new types of indicators, such as those based on timeliness or quality, due to the opportunities presented by individual level data. 
+
+Designing for these outcomes not only greatly enhances the value of the system, it helps to ensure user uptake and satisfaction, and can bring significant improvements in the provision of healthcare. These kinds of features can also help secure donor buy-in and cross-donor financing, as the system can satisfy multiple objectives.
+
+
+
+*References*:
+
+ - [Principles of Donor Alignment for Digital Health](https://www.ictworks.org/principles-donors-digital-health/#.XXtj2SiF7mE)
+  - [Principles for Digital Development](https://digitalprinciples.org/)
+
+
+### Funding { #funding } 
+
+**Ensure sustainable funding for development, implementation, training and continued support** to last throughout the life cycle of the tracker projects. A tracker implementation requires funding in the following phases:
+
+- Requirements gathering and development
+- Training of the core IT team, administrative staff and program managers, particularly if they are only familiar with aggregate reporting
+- Purchase and replacement of devices and backup solutions (alternative devices and paper)   
+- Roll out/scaling
+- End user training, including per diem and workers salariesmake sure
+- Connectivity (internet) and SMS costs, tracker may require investments in the infrastructure to sustain it in the field
+- IT support at the end-user level   
+- Hosting
+- Continued evaluation and maintenance of the tracker program
+- Refresher training(s)
+
+Experience from existing tracker implementations points to the initiation and rollout of Tracker projects to be the most resource intensive phase. A complex Tracker program modelling clinical workflows and replacing paper reporting can take a year to design and obtain proper buy-in and support. National trainings of thousands of users are resource intensive. Providing new hardware, such as Android devices or laptops, requires significant investment. Hiring and training additional staff in the IT unit to manage a large increase in users requires increased budgets.
+
+As time passes the largest costs are related to refresher training and ongoing user support. To ensure a sustainable tracker implementation it is crucial that funding is secured not only through to scale-up, but also for covering routine costs in the future. Typically projects fail to be sustainable when insufficient funds are allocated for a sufficiently staffed IT team and/or ongoing maintenance and refresher training.
+
+The costs associated with introducing individual systems can be somewhat offset by improved processes; reductions in budgets for printing and transporting paper forms; improved adherence to guidelines and referral mechanisms; etc. That said, digitizing current work processes is a long term investment and plans should be made from the beginning to see such projects as a change in routine practice, requiring ongoing support.
+
+*References*:
+
+ - Learning Package – Training ([http://eregistries.org/wp-content/uploads/2017/11/05-training.pdf](http://eregistries.org/wp-content/uploads/2017/11/05-training.pdf))
+ - Registries for Evaluating Patient Outcomes: A User's Guide [Internet]. 3rd edition.  [https://www.ncbi.nlm.nih.gov/books/NBK208631/](https://www.ncbi.nlm.nih.gov/books/NBK208631/)
+
+### Legislation and policies { #legislation-and-policies } 
+
+Before deploying Tracker, it is important to review relevant privacy and data management legislation and policies at the local, national and international level. Collecting individual data is categorically different from aggregate data and requires more attention to privacy and security. In the absence of clear national policies, data security and confidentiality guidelines - both technical and administrative - must be developed and agreed upon. The proper practices that must be clear and documented range from data access, to hosting requirements, to user practice.
+
+Many types of individual health data have the potential for serious consequences if privacy is not protected. For example, in countries where it is illegal or culturally unacceptable to be an unwed pregnant woman, a breach of this information could lead to harm for the individual and family. If the client is not confident that his or her data will be properly protected, they may not be open with their care provider about their health concerns, lowering quality of treatment. Personally identifiable data can be mined for political purposes, or for identifying individuals in systematically marginalized groups.
+
+There are several specific areas that should be reviewed during the planning phase of a Tracker implementation.  As covered in the [eRegistries Situation Analysis Tool](http://eregistries.org/wp-content/uploads/2017/06/Situation-Analysis.pdf), there are five areas to focus on:
+
+1. understanding the legal landscape
+2. existing governance surrounding health registries
+3. guidance, legislation and current practices associated with data collection and storage
+4. oversight and reporting requirements
+5. potential and existing ethical and social implications
+
+Policies can be drastically different between countries, and it is extremely important to assess these locally at the outset of each Tracker project. It is also critical to obtain local support for privacy policies. Experience has shown that even a well-crafted legal document developed externally, without local buy-in, can be shelved and not in use because the local organization(s) were not involved in its development and it was not translated to the local language. A Tracker implementation should consider the end user in all aspects – including legislation and policies.
+
+Individual level data has significant value for future research and analysis, long after it is collected. A [2018 IMIA Yearbook of Medical Informatics article](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6115206/?report=reader#!po=43.3333), it shows that the number of health record access requests is growing. To help ensure proper data management of sensitive data for the future, one should consider establishing procedures for data sharing agreements, if they are not already locally stipulated.  This will help to maintain a systematic and fair approach to requests for information and their use – whether from a research organization, donor or other interested party. In situations where there is no or limited guidance, it is recommended to address the concerns outlined in the [eRegistries Governance Toolkit](http://eregistries.org/wp-content/uploads/2017/08/eregistries-governance-toolkit.pdf) and receive appropriate governmental buy-in for routine policies regarding data sharing and access. 
+
+Proper project planning will include time and resources for identifying essential policies, procedures and protocols for privacy and security. The eRegistries Governance Toolkit provides practical guidance on how to move forward through these steps. A thorough review with local stakeholders of what data will be collected and how it could be misused can help to drive the process forward. It is also important to identify a timeframe to revisit your privacy plan as policies change over time. Keeping informed of these changes will help you to better plan when navigating development, implementation and maintenance of Tracker.
+
+Specific details about the Tracker software privacy features and guidance for proper configuration can be found in the [DHIS2 user and implementation guides](https://docs.dhis2.org/2.33/en/index.html).
+
+*References*:
+
+ - [Governance guidance toolkit](http://eregistries.org/wp-content/uploads/2017/08/eregistries-governance-toolkit.pdf)
+ - [Situation Analysis Toolkit](http://eregistries.org/wp-content/uploads/2017/06/Situation-Analysis.pdf)
+ - [Frost MJ, Tran JB, Khatun F, Friberg IK, Rodriguez, DC: What Does It Take to Be an Effective National Steward of  Digital Health Integration for Health Systems Strengthening in Low-and Middle-Income Countries? Global Health: Science and Practice 2018, Vol 6, Supplement 1](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6203416/pdf/S18.pdf)
+ - [Myhre SL, Kaye J, Bygrave LA, Aanestad M, Ghanem B, Mechael P, Frøen JF: eRegistries: governance for electronic maternal and child health registries. BMC pregnancy and childbirth 2016, 16(1):279](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5035445/)
+ - [Kloss L, Brodnik, M, Rinsehart-Thompson, L: Access and Disclosure of Personal Health Information: A Challenging Privacy Landscape in 2016-2018. IMIA Yearbook of Medical Informatics 2018, 60-66](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6115206/?report=reader#!po=43.3333)
+ -  The 2012 WHO and the International Telecommunication Union (ITU) National eHealth Strategy Toolkit http://apps.who.int/iris/handle/10665/75211 
+ - The 2015 Roadmap for Health Measurement and Accountability https://www.who.int/hrh/documents/roadmap4health-measurement_accountability.pdf?ua=1Foundations
+
+
+### Capacity and competence { #capacity-and-competence } 
+
+Given the increased reach of Tracker, both in terms of users and IT support, it is important to **assess and ensure sufficient capacity and relevant competence** to plan, design, develop, support and use the tracker program. It is possible that there are areas in the country where Tracker is suitable, and other areas where it is not, based on the capacity of the intended users and their access to appropriate hardware and network. In many cases it is beneficial to roll out Tracker in phases, rather than attempt to introduce it as a routine system in areas or with users that are not prepared. An assessment should be conducted before developing the rollout plan, to guide the scale-up and reach of the system based on appropriateness.
+
+The key stakeholder working group described in the section on **Institutional buy-in and support** should be engaged early on to assess what cadre of users the system will be aimed at, determine which department will be responsible for long-term support, who will be tasked with providing training, both initially and over time, etc.
+
+Additional training may be required for the IT unit, increasing their capacity to properly manage personally identifiable data, or provide support for any new hardware provided.
+
+The tools and dashboards configured in Tracker should be designed with the intended users in order to ensure that they are appropriate and accepted.
+
+Trainings for users may require not only specific curricula for the system, but also general training on the use,maintenance and troubleshooting of hardware and network access. Simple job aids and access to first-tier IT support should be developed and established in order to increase the number user needs that can be handled outside of the central level team.
+
+
+*References and Resources*:
+
+- Myhre SL, Kaye J, Bygrave LA, Aanestad M, Ghanem B, Mechael P, Frøen JF: eRegistries: governance for electronic maternal and child health registries. BMC pregnancy and childbirth 2016, 16(1):279
+- [Software Development learning package](http://eregistries.org/learning-packages/)
+- [Governance guidance toolkit](http://eregistries.org/learning-packages/)
+- [Principles of Digital Development](https://digitalprinciples.org/)
+
+
+### Infrastructure { #infrastructure } 
+
+It is important to ensure appropriate and sufficient infrastructure, which may be different for Tracker than for other existing digital systems. There are three groups of necessary infrastructure:
+
+**Electricity and network** In areas where the network is stable, using Tracker through the browser of a laptop or desktop computer is appropriate. Data from the browser client are sent instantly to the server, with no local storage outside of the browser cache. This ensures data fidelity and leverages the power of server-side computation. In areas of intermittent or low-connectivity, the DHIS2 Android app is required to make use of Tracker, as it creates a local copy of the database and allows the user to continue working without a direct connection to the central server. Android-based projects bring additional requirements with regards to access to electricity for charging; SMS and data costs; etc. Review the [DHIS2 Android App Implementation Guidelines](https://www.dhis2.org/android-documentation) for more information.
+
+**Servers and hosting** With the increase in numbers of users, the existing hosting solution for DHIS2 aggregate may not be adequate, and Android-based implementations bring even more strain on server resources. Whereas with monthly based reporting systems it is at times acceptable to expect low performing hosting options, Tracker programs that support daily work processes or clinical workflows require constant uptime and responsive IT support if problems arise. It is especially vital to establish a routine backup of Tracker data to a separate site, so that loss of critical data in the primary server can be quickly addressed. Conduct an evaluation of the current hosting approaches, including both hardware and available human resources, to develop an approach for your Tracker implementation. It is recommended that Tracker programs containing personally identifiable data be hosted in a separate environment from the aggregate system, in order to ensure greater security. Although many countries currently host local installations of DHIS2, it is worth considering a cloud-based hosting option for Tracker programs, where industry-standard hardware and technical support can be assured over time.
+
+**Hardware for end users** Given the wide scale adoption of digital health projects, it is possible that the existing hardware available to targeted users is sufficient for a new tracker implementation. An assessment should be conducted to review the availability of computers and Android devices, and determine where additional hardware may be necessary. Long-term agreements for maintenance and replacement of hardware should be established in order to ensure the sustainability of the Tracker system past the life of the originally purchased hardware. 
+
+### Security Considerations { #security-considerations } 
+
+Security is primarily about people.  The people who are the subjects of data collected; the people who use the data; the people who are responsible for implementing technical measures; and the people whose responsibility it is to manage the security of the particular tracker project.
+
+It is not sufficient to assume that technical implementers will have made a best effort to make the system as secure as possible.  In order to meet any level of regulatory compliance and avoid legal hazard it is usually necessary to be able to demonstrate that reasonable steps have been taken to secure the system.  At a minimum this implies that:
+
+1.  There is a role defined in the organisation whose responsibility it is to be concerned with security related issues.  This might be a chief security officer, a data protection officer or some other designation. The important thing is that there is an individual whose job it is to be concerned about, and to be accountable for addressing, security considerations.  Ideally this is not a technical role, but one closer to senior management.
+2.  There should be some documented security plan around the tracker program. This is sometimes referred to as a security posture. It should indicate the principles that are important to the organisation and the processes which are in place to identify, monitor and mitigate risk on an ongoing basis and various. The security plan can include other processes such as acceptable use policies (for employees); Non-Disclosure Agreements (for contracters); access policies; backup and disaster recovery plans; minimum standards for software deployment and configuration etc.
+
+In some organisations the role of security officer is already established and well defined.  In many others it is an evolving need which manifests itself in an environment characterised by the absence of strong regulation, weak IT institutions and management structures, and a lack of appropriate training.  There are existing standards and methodologies which can be useful in shaping such a role, such as the ISO27000 series (including useful free [online material](https://www.iso27001security.com/html/toolkit.html) and templates).  It is not an item frequently seen on funding and budget proposals, but security management training might well be one of the more important items to consider and budget for.
+
+A non-exhaustive list of high priority tasks to consider: 
+1.  Make sure the software setup is technically strong, documented and preferably automated.  There are various strategies that can satisfy security concerns, some of which are documented in the DHIS2 Installation Guide.  For system administrators, attending server academy is a good way of meeting peers and exchanging ideas.  Also interact with the server admin community via the community of practice.  There is also telegram group of DHIS2 system administrators, which can be a useful way to ask and answer questions. (to join, email Lamin - laminbjawara@gmail.com ).
+2. make sure you have a team (at least 2) of sysadmins that are responsible for the daily maintenance of the system.  Depending on a single person in this role is one of the biggest identified risks in many implementations.
+3.  As outlined above, somebody MUST be responsible for security.  That role should:
+- report directly to management
+- manage overall risk (the risk register is your friend)
+- make sure that sysadmins are doing their job
+- be aware of local law, constraints and SOPs regarding data handling and privacy.   In their absence, or where they are
+inadequate, develop and maintain good practice guidelines locally.
+4. Ensure that there is a backup plan, including off site, which is regularly tested.  Straightforward unrecoverable data loss has been the single most common security problem countries.
+5. DHIS2 Tracker systems should be audited regularly. This can be officially conducted by an auditor general; peer-to-peer within the DHIS2 community; or by engaging the services of an external auditor.  Audits are the best way to ensure that systems remain aligned with secuirty policies.
+
+
+
+
+
+# Planning your Tracker Implementation { #planning-your-tracker-implementation } 
+
+The purpose of this section is to give a high level overview of the considerations that will lead to success in your Tracker implementation, grouped by topic and with links to specific tools.
+
+This section will cover:
+
+1. Defining purpose, aim and scope
+2. Scale
+3. Design and Configuration process
+4. Real-time vs. Secondary Data Entry
+5. Mobile vs. Web
+6. Establishing a Core Team
+7. Hosting
+8. Training
+9. Roll-out
+
+## DEFINE PURPOSE, AIM AND SCOPE { #define-purpose-aim-and-scope } 
+
+A clear purpose and well-defined aims are the key to establishing a common understanding of the project's scope and limitations, and to being able to communicate the process of developing and running a Tracker program internally and externally.
+
+- Define the primary and secondary purposes of the Tracker program.
+- Identify the tracked entities, the scope of data collection, and the health cadres involved in data collection.
+- Determine how to uniquely identify members of the target population, (e.g., use of unique identification numbers or a combination of attributes).
+- Clarify initial expectations among the core team, as well as other stakeholders and system users.
+- Brainstorm and discuss key issues and areas of concern to be addressed during the development phase.
+- Prepare to conduct a development phase: Develop a timeline and incorporate contingency plans for unexpected events that incur delays. Articulate anticipated problems and discuss how to mitigate.
+
+## Determining Scale { #determining-scale } 
+
+Because individual-level data systems (i.e. Tracker) are aimed at the lowest levels of a system, Tracker programs can dramatically increase the number of users, hardware/devices, technical resources and organisational support required to implement and maintain the system. Countries often have limited personnel that are qualified to manage deployments and there are significant costs associated with the work. 
+
+Scale can refer to several dimensions: programmatic scale, functional scale or geographic scale, to mention a few. 
+
+Scaling geographically can thus take time and resources. There are different strategies to achieving geographical scale i.e. cover one region completely or start “small” in several regions at the same time and scale at a slightly slower pace in parallel.
+
+As implementations scale, a snowball effect tends to take place. When you start scaling things will happen faster; the number of users can increase exponentially, which requires more people and stronger support mechanisms. Hence, planners can ensure that support teams are equipped to handle an increased volume and speed by taking into consideration the following:
+
+**Finalize and pilot the tracker before scaling it**  
+Gather evidence and demonstrate impact before attempting to scale. Consider reduced investment in features that do not demonstrate impact, or resource-intensive features that have limited impact.  You should have a final design/configuration which is user tested and piloted and produces the targeted results in terms of information management and the wanted reports BEFORE you scale. When you start scaling, it is not the time for experimenting. In other words, test your design and set up with 100 rather than 5000 users.
+
+**Governance**  
+Ensure there are solid governance processes and a clear distribution of responsibilities before you attempt to scale. Make sure you audit this process to ensure the governance process is followed. Proper governance is also key to ensure the flexibility and adaptability of your tracker project, for example routines for adding new option sets or new clinics. Who makes these decisions and how do you document them and how do you communicate them to the users? 
+
+**Cost/financial considerations**  
+Consider your funding model, including revenue-generation options, social business models, the cost per user and financial paths to sustaining the initiative. Scaling leads to increased operational costs in terms of support, devices and connectivity. 
+
+**Scaling up infrastructure**  
+With increased scale you have to handle more connections that in turn requires increased resources in memory, processing power, storage and connectivity. 
+
+Part of the scaling process makes sure you have a sound plan for speedy recovery because more people depend on the system. 
+
+**Revise the process from the pilot**  
+Scaling up can often not be done with the exact same tool and approach as is done in a pilot, particularly when it comes to the level of human resources and expertise needed in training and support to attain the level of use achieved in a pilot. Consequently, review your tool and implementation approach and consider what aspects can be redesigned and simplified to achieve your core goal   
+
+
+*References*:    
+
+- Principles of Digital Development
+
+*Tools*:
+
+- Readiness Assessment
+
+
+## Design and configuration process { #design-and-configuration-process } 
+
+**Involve users closely in design and configuration of your Tracker program** to ensure that it improves and supports their work. In order to develop a Tracker program one needs to define what data to enter, define a workflow and define program rules. All of these definition decisions should be made in close collaboration with users, since they directly relate to -- and can affect -- how they do their work.
+
+We recommend to start the design process by asking the following questions to initiate discussions:
+
+1. What is the purpose of the data you collect? How do you intend to use the data?
+2. Who will benefit from the Tracker implementation?
+3. How will the users entering data benefit from the Tracker implementation?
+4. Do you currently collect this data today? How? What is the current data flow?
+5. Are there data elements you currently collect that you do not need?
+
+
+**FORMATIVE PHASE**
+
+Gain a clear understanding of the health system (or other system that the Tracker program will cover, for non-health implementations) to understand the "pain points” of the current system, identify opportunities for improvement, and ultimately develop a useful and suitable system that addresses these issues and opportunities. This includes understanding health workers, the data they collect, their clinical workflows, and their supervisory and reporting systems.
+
+- Prepare and undertake field visits to map clinical workflows and supervisory and reporting demands with the participation of all cadres of health staff who would use the Tracker.
+- Prepare and undertake stakeholder meetings to inform, explore and get feedback.
+- Verify existing national (clinical) guidelines relevant to the scope of the Tracker.
+- Map the existing documentation workflow: Document what workers currently do and ensure your design supports their work practices rather than making them more cumbersome.
+- Map indicators and associated data points for reporting.
+- Consider whether there is a need for revision of guidelines or reporting points. If so, make parallel plans for revision of guidelines and reporting.
+
+**DEVELOPMENT PHASE**
+
+- Get an overview of current clinical guidelines, interventions, indicators and algorithms.
+- Based on current guidelines -- as well as indicators and data points for reporting -- formulate algorithms and data points for electronic tracking.
+- Define the target groups and level of complexity of decision support. According to the level of workflow support, create rules for the support and communicate this to software developers in an agreed-upon requirements format.
+- Enable an iterative review process to ensure that the developers’ translation is consistent with the health care providers’ needs.
+
+**CUSTOMIZATION AND TEST PHASE**
+
+This phase is an iterative process of working with stakeholders, software developers, implementers and users and incorporating their feedback.
+
+- Establish a structured and easily accessible digital system for comprehensive and immediate feedback channels among the core working group.
+- Ensure that content development is in line with the expectations of stakeholders, system users and funders.
+- Maintain ongoing, open-minded discussions about translation, use of information buttons, etc., to avoid misinterpretation.
+- Make sure that there are continuous, parallel processes that involve and promote information flow among all user groups in these phases.
+- Define milestones for developers, implementers and users.
+- Establish a structured and easily accessible online digital system for comprehensive and detailed feedback from end users.
+
+**WHO DHIS2 Health Data Toolkit**
+
+DHIS2 works in partnership with the World Health Organization (WHO) on a variety of health-related initiatives, including the creation of standardized metadata packages to strengthen data use on a national and international level. The WHO-approved DHIS2 Health Data Toolkit provides a digital set of tools to support adoption of WHO routine health data standards into the national routine health information system. Aligned with the WHO Toolkit for Routine Health Information Systems Data, integrated analysis and program-specific DHIS2 modules are designed according to global data analysis guidance and standards for measurement. The DHIS2 toolkit provides a fully digitized reference implementation consisting of installable metadata packages, technical documentation, demo databases and implementation guidance. WHO-approved DHIS2 metadata packages can be installed in standalone DHIS2 systems or integrated into existing DHIS2 instances and adapted according to national context. The metadata packages bring together global standards and DHIS2’s evidence-based design practices for integrated health information systems in an installable toolkit that can be used for design reference or as a direct import for local use.
+
+For more information on the WHO DHIS2 Health Data Toolkit documentation and tools, [see here](https://dhis2.org/who/).
+
+## Determining your M&E Framework { #determining-your-me-framework } 
+
+A monitoring and evaluation (M&E) framework is an essential component of a DHIS2 Tracker implementation. It enables the assessment of the implementation's progress and success, and the identification of areas for improvement. A mature tracker implementation should have a robust M&E framework in place to ensure that data collection, use practices, DHIS2 version updates, user administration, security, hosting, user support, and training are all being effectively managed.
+
+**What does a mature tracker implementation look like?**
+
+A mature tracker implementation should have a comprehensive M&E framework that covers all aspects of the implementation. This includes regular evaluations of data collection, data use practices, DHIS2 version updates, user administration, security, hosting, user support, and training. The M&E framework should also include a process for identifying and addressing any issues that arise.
+
+**Maintain and evaluate data collection**
+
+It is important to regularly evaluate the data collection process to ensure that it is accurate, complete, and timely. This includes assessing the quality of data entered, the completeness of the data, and the timeliness of data submission. Identifying and addressing any issues with data collection will improve the overall quality of the data.
+
+**Maintain and evaluate data use practices**
+
+Regularly evaluating data use practices will ensure that the data is being used effectively to inform decision-making and that it is being used in a way that aligns with the organization's goals and objectives. This includes assessing the quality of data analysis, the use of data in decision-making, and the effectiveness of data dissemination.
+
+**Maintain and evaluate keep up with new DHIS 2 versions**
+
+Keeping up with new DHIS2 versions is important to ensure that the implementation is using the most up-to-date version of the software. This includes regularly assessing the version of DHIS2 being used, evaluating the benefits of upgrading to a new version, and implementing any necessary upgrades.
+
+**Maintain and evaluate user admin**
+
+Regularly evaluating user administration will ensure that users have the appropriate access to the system, that user roles and permissions are properly configured, and that user accounts are being managed effectively. This includes assessing the number of active users, the number of new users, and the number of inactive users.
+
+**Maintain and evaluate security**
+
+Regularly evaluating the implementation's security measures will ensure that the data is being protected and that the system is in compliance with security regulations. This includes assessing the effectiveness of the system's authentication and authorization processes, the security of the hosting environment, and the effectiveness of the system's disaster recovery plan.
+
+**Maintain and evaluate hosting**
+
+Regularly evaluating the hosting environment will ensure that the system is properly configured, that the system is performing well, and that the system is available to users. This includes assessing the stability and performance of the hosting environment, the security of the hosting environment, and the availability of the system.
+
+**Maintain and evaluate user support**
+
+Regularly evaluating user support will ensure that users are able to effectively use the system and that any issues are being resolved in a timely manner. This includes assessing the responsiveness of the user support team, the effectiveness of the user support team, and the quality of the user support documentation.
+
+**Maintain and evaluate training**
+
+Regularly evaluating the training program will ensure that users are properly trained and that the training program is meeting the needs of the organization. This includes assessing the effectiveness of the training program, the quality of the training materials, and the number of users who have completed the training program.
+
+It is important to note that the monitoring and evaluation framework should be regularly reviewed and updated to ensure that it is meeting the needs of the organization and that it is aligned with the organization's goals and objectives. It should also be compliant with any national and international regulations and standards related to data security and protection.
+
+
+## Real-time vs secondary data entry { #real-time-vs-secondary-data-entry } 
+
+**Carefully evaluate whether the data should be entered real time** as this has important implications for how you structure your project. Trackers are used to track individuals through defined programs with associated data elements and rules. The data can be captured by health personnel during the consultation (real-time point of care), or at the end of the day (or when they have time to enter it). The two different approaches naturally have consequences for what the Tracker is used for.
+
+Entering data in real-time allows for real-time decision support, validation of data, and the prevention of double data entry. However, it also requires a reliable internet connection, which may not be available in certain locations. Additionally, real-time data entry may require the use of mobile devices, which can introduce additional challenges such as device maintenance, power supply, and training for health personnel.
+
+If the data are entered at the end of the day or when the health personnel have time, it eliminates these challenges with real-time data entry. However, it also means that the data is not available in real-time and may not be as useful for real-time decision support.
+
+When deciding on the approach, it's important to consider the available resources, the local context, and the organization's goals and objectives. It's also important to have clear Standard Operating Procedures (SOPs) for backup paper files, easy navigation to find clients and mechanisms to prevent errors (such as rules that make it impossible to enter a date in the future).
+
+## Mobile vs Web { #mobile-vs-web } 
+
+**Consider how and when the people doing data entry can access the Internet** There are contexts or locations where accessing the online central DHIS2 server through a computer is challenging or even impossible. The DHIS2 Android Capture App has been designed and developed to respond to those situations. However, introducing mobile devices into a DHIS2 implementation will impact your project on many levels, so it is a decision that needs to be made in an informed and conscious manner.  
+
+**Web or Mobile?**  
+There are two main aspects that should be taken into account when considering a mobile component for your Tracker implementation: internet availability and the mobility of your health posts. A given Tracker implementation may need to address only one of these two aspects, or both at the same time. We will attempt to define them and help you analyse your situation in this section.  
+
+- **Mobility**: There are teams that provide their services in different locations through a mobile unit. In the locations visited by the mobile unit, there could be a facility with a proper work station for data collection, but sometimes data entry is done in a more dynamic environment or in the vehicle itself. In these cases it is not always easy to carry a laptop and it may be more suitable to use a mobile device instead.  
+
+- **Internet availability**: There are many locations where access to the Internet is challenging. The different possible scenarios can be summarized in two main cases: *Internet connection is unstable or limited*, and *Internet connection is not available*.  
+
+    - When the *Internet connection is unstable or limited* scenario is confined to certain moments in the day, it is possible to consider the use of either mobile or web for data entry. DHIS2 web data entry allows for the continuation of data entry when the Internet is interrupted. The data entered will be stored locally in the web browser cache, and the next time the user gets online the data, it will be automatically uploaded. Is important to note that this offline support depends on web browser storage and will only work while the browser window remains open. If a user is collecting data offline and closes the window where s/he is working while still offline, the data will unfortunately be lost. Offline support *absorbs* the impact of intermittent Internet connectivity interruptions to provide a smooth and stable work experience, but is not a full offline solution.
+
+    - When *Internet connection is not available*, you should consider using the DHIS2 Android Capture App, which provides full offline support for data collection. This app can be used with both mobile devices and tablets, and it is also possible to run it on other devices such as Chromebooks. The Android Capture App can thus be suitable for those cases where you have Internet availability challenges but not challenges to mobility of the individuals doing the data collection.    
+
+**Implications of the use the Android App**  
+The DHIS2 Android Capture App facilitates offline use of Tracker data collection, but also brings with it implications that must be considered from the early phases of the project. Having a mobile component in your implementation could impact your planning, budget, training, configuration and deployment strategy, among other aspects.  
+
+- **DHIS2 configuration:** When configuring Tracker for use with mobile devices you need to pay special attention to the configuration of mobile users, their access to data entry and organisation units. Mobile users are typically envisioned to be physically collecting data in the most remote and inaccessible areas, hence a mobile user is not expected to collect data from a high number of facilities, such as the organisation unit hierarchy of the entire country. While there is no maximum number of organisation units allowed in the App, large numbers can have impact in performance depending on the resources on the device (memory, processor). In general, below 250 organisation units should be safe, but that is still a very large number for a typical mobile use case.  
+It is also very important to pay attention to the configuration of program rules and program indicators. The Android App aims to support all Tracker web functionalities, however some of them might behave slightly differently in Android, or be in the app development roadmap awaiting implementation. A detailed list of the behavior of program rules and program indicators in Android can be found in the _Program Rules_ and _Program indicators_ sections of the [Android App documentation]([https://www.dhis2.org/android-documentation](https://www.dhis2.org/android-documentation)).  
+
+- **Visual representation of data collection:** The user experience of the Android App has been designed to be very visual and intuitive. Icons and colors can be used to configure the data entry forms and how they are displayed. Visual representation is configurable by the system administrator. There is an icon library of over four hundred images and a color palette, and both icons and colors are assignable to most metadata objects: Options, Data Elements, Attributes, Programs / Data Sets. More information for the visual configuration of DHIS2 can be found in the _Visual Configurations_ section of the [Android App documentation]([https://www.dhis2.org/android-documentation](https://www.dhis2.org/android-documentation)).  
+
+- **Testing :** Testing is a very important phase in any DHIS2 implementation. You should test the Android App in parallel with your server configuration, to make sure that all configuration made in the server is properly reflected and working in the app. This is especially important during the configuration of the program rules. More information on the different types of testing and how to plan testing phases for your project can be found in the _Testing_ section of the [DHIS2 Mobile Implementation Guidelines](https://s3-eu-west-1.amazonaws.com/content.dhis2.org/Publications/DHIS+2+Mobile+Implementation+Guidelines.pdf).  
+
+- **Security :** Depending on your Tracker configuration, you may be storing personal data on mobile devices, and there may be tension between the health system’s need for identifiable data, and the patient’s right to privacy. Ensuring that personal data is only accessible by authorized health staff is of utmost importance. Proper management of personal data is a critical component of user education, and it is vital to establish SOPs that describe the security measures to be applied, and to ensure these SOPs are shared with and followed by all users. System administrators also play an important role when configuring a user’s access level, by ensuring that data access is appropriate for each user and never unnecessarily excessive. Recommendations for an adequate security / privacy approach for any DHIS2 mobile implementation can be found in the _Data Security and Privacy_ section of the [DHIS 2 Mobile Implementation Guidelines](https://s3-eu-west-1.amazonaws.com/content.dhis2.org/Publications/DHIS+2+Mobile+Implementation+Guidelines.pdf).  
+TODO; add link to security section in this document!
+
+- **Purchasing mobile devices:** Mobile devices acquisition is a key aspect to a mobile deployment and needs to be considered for planning, budgeting and logistics. A good strategy is to get the best and newest devices that you can afford, such that they will last longer over the life of your project. In this sense, it is good practice to delay the bulk of the acquisition (in other words, any devices not required for initial testing and pilot phase) as much as possible, instead of purchasing all devices early in the planning process. Technology -- and particularly mobile devices -- evolves very rapidly. A given model is normally refreshed on an annual cycle, giving consumers access to significant technical improvements year-on-year at a similar price point. Specifications for mobile devices that can be used with the DHIS2 Capture Android App can be found [here](https://docs.google.com/document/d/1jZjw-hb1W8sszkPU9yPWrPoow91gEkTb0nyZJh3IJQQ/edit).  
+When you have performed all testing and completed your pilot, you are ready to scale up your deployment with the acquisition of hardware and necessary services. You can find guidance for your mobile acquisition in the _Scale Up_ section of the [DHIS2 Mobile Implementation Guidelines](https://s3-eu-west-1.amazonaws.com/content.dhis2.org/Publications/DHIS+2+Mobile+Implementation+Guidelines.pdf). We summarize below the key aspects to consider in this phase:  
+
+  1) Purchasing of devices vs BYOD (bring your own device): The advantage of BYOD is that it avoids the large initial cost for acquisition and reduces administrative costs and logistics considerations. On the other hand, using the BYOD model leads to the challenge of managing a very heterogeneous hardware environment, meaning different devices and Android OS versions, which can result in different end users having different capabilities for capturing and reviewing data, and can ultimately lead to challenges with upgrading the core Tracker instance, as newer versions may have limited backward compatibility with older app versions. The primary advantage of purchasing devices for end users is uniformity of devices and app versions, but this approach increases hardware costs and involves logistics challenges related to distributing the mobile devices, as well as maintaining and replacing them over time.
+
+  2) Distribution of the app: you can manually install the Android Capture App by using the APK available in [Github](https://github.com/dhis2/dhis2-android-capture-app/releases) or use the [Google Play](https://play.google.com/store/apps/details?id=com.dhis2) store. With Google Play it is easier to update the app on all your devices, however you are forced to automatically install all updates of the app. Installing the APK allows you to control when to update and to which version, but it requires a more complex process for updating all your devices and is not recommended for projects not using Mobile Device Management software (see next item).  
+
+  3) Telecommunication contracts: The process of selecting and signing a contract with a mobile provider varies by country, and will also depends on the procurement procedures of your organization.  
+
+- **Management and Maintenance of devices:** Mobile Device Management (MDM) refers to software used for the administration of mobile devices. MDM software is necessary to support hundreds of devices, control the APK file distribution across all of these devices, provide tech support and enforce institutional policies. More information on the desirable features of an MDM, available options and guidance on the selection of the right MDM for your project can be found in the _Mobile Device Management_ section of the [DHIS2 Mobile Implementation Guidelines](https://s3-eu-west-1.amazonaws.com/content.dhis2.org/Publications/DHIS+2+Mobile+Implementation+Guidelines.pdf).
+
+##  Human Resources and IT Support { #human-resources-and-it-support } 
+
+No Tracker implementation will be successful over time without the right people on board. Before starting a tracker project it is important to make sure the right personnel with the right competence are available.  
+
+Here are a few considerations when building your team:
+
+1. Aim for long-term engagement. The people that will maintain the Tracker implementation over time should be part of the project from the start
+
+2. In-country resources at all levels of the (health) system need to be involved from the very beginning. Handovers of project history, decisions and established routines from external consultants to permanent staff are often challenging.
+
+3. If you already have an aggregate DHIS2 instance, remember that the people who are managing aggregate are not automatically “qualified” for the Tracker project, as Tracker is different from aggregate reporting.
+
+
+|Role | Responsibilities/tasks |
+|:------|----------------------|
+|Project manager | Manage the Tracker project|
+|Config/development lead    | Lead development work|
+|Security manager | Responsible for security, policy ++|
+|Training manager   | Organize training|
+|Test lead | Lead test work|
+|Trainers | Conduct training with end users|
+|Support lead | Lead support efforts|
+|Distributed support staff| Receive requests for support and help users|
+
+### IT support unit { #it-support-unit } 
+
+Support should be available close to the user, which often requires creating a new IT support structure at the district or sub-district level. If Tracker is used in real time, technical support should always be available during business hours to resolve and report issues. If Tracker will support clinical decisions, the IT staff should understand clinical workflow, and its represented in the technical system. Therefore, the Tracker IT support team may have different skill sets and backgrounds than other health information officers, and may be an entirely new and different cadre of worker within your health system.
+
+**Team structure and administration**
+
+Each member of the IT support unit should be trained before the first end user, and must demonstrate a high level of knowledge of the system and how it works. Often, the IT support unit consists of the same people leading the end-user training. At the very least, support staff should be introduced to the end users during training to develop rapport and trust from the start. A large component of support staff work is “supportive supervision” on the job. Effective support staff must also be knowledgeable, respected, and respectful, but are generally not in a position of direct authority over the end user, as this might reduce a user’s willingness to ask technical questions and report problems with the system.
+
+Once the team is in place, an internal working hierarchy can be established, from increasing technical ability up the hierarchy (e.g. system administrator at top of the hierarchy), and increasing access to the end users down the hierarchy (e.g. direct supervisor of end user, field support staff). During this staffing organization phase, standard operating procedures for reporting and responding to issues from end users needs to be developed.
+
+**Essential tools for any IT support unit**
+
+- Frequently Asked Questions (FAQ) document: A simple paper depicting in graphics and/or local language the standard operating procedures for data entry and what to do in case of bugs. A FAQ should be distributed during all trainings, and it should be regularly updated by the IT support unit and shared with end users as the Tracker system evolves.
+
+- Mobile device management: To protect patient-level data, a separate case management system must be implemented for tracking which users have access to which device to identify lost/stolen devices and follow up the case. This system can be as simple as a spreadsheet, but in larger and more complex instances an enterprise-level MDM system can be used to track device location, and can wipe an individual device remotely if needed.
+
+- User management: The IT support unit should be able to document and manage basic system administration tasks such as creating new user accounts, de-activating inactive user accounts, or resetting passwords.
+
+- Monitoring platform to track key system indicators: These key indicators include new enrollments by organisation unit, inactive users, server downtime, etc. At a minimum, the IT support unit should have access to aggregated indicators in a dedicated DHIS2 dashboard, where they can view implementation progress by time and region.
+
+- Case management platform for registering bugs and tickets: These platforms (e.g. JIRA) allows members of the IT support staff to enter, edit, assign, track, and resolve bugs and other tickets, and allow supervisors to have oversight over important service-related factors, such as number of open tickets and unresolved bugs, average response time, etc.
+
+- Knowledge management platform: This is a repository where employees can learn from previous tickets (thus building a knowledge base). The IT support unit understands the user’s real-world experience with Tracker better than any other implementer or system administrator, and their perspective can be invaluable to adapting Tracker to better meet the user’s needs. A knowledge platform–either electronic, or regular meetings among staff–can share common experiences, frustrations, or ideas for potential improvements
+
+- Hotline to report bugs: This hotline can come in many forms. For example, it could be a phone number for support staff employees that is shared with each user, or an email address where users can send notes and screenshots. Regardless of format, there must be an SOP in place for entering bugs reported through the hotline into the case management platform mentioned above.
+
+- Public chat groups: Many support teams find creating chat groups between staff and end users can support peer-to-peer learning (e.g. Whatsapp or Wechat to share screenshots, voice messages, or creative solutions for common problems).
+
+*References*:  
+
+- [Principles of Digital Development](https://digitalprinciples.org/) 
+
+
+## Hosting { #hosting } 
+
+The DHIS2 Tracker program and collected data must be hosted on a server. This can be done locally (such as at the ministry of health or IT), through a local professional service provider, or in the cloud. Each option has its own advantages and disadvantages. For example, hosting a tracker implementation in the cloud means the administrator does not need to worry about server capacity and downtime, but there may be legal issues with hosting the data outside the country's borders unless a local provider is used. Regardless of the hosting strategy, security is a key consideration. This includes identity management, authentication and authorization (restricting access to data or services), and protecting servers.
+
+Additionally, it is important to decide whether to configure the tracker in a separate or the same instance as your aggregate system. A major advantage of having one instance is the ability to directly generate reports from tracker data. However, having the two in the same instance requires stricter standard operating procedures (SOPs) for maintaining user accounts to ensure proper access to patient data is restricted.
+
+**Key hosting and security principles that should be included in your hosting plan, regardless of whether the instance is local or in the cloud:**
+
+- The operating system is a Long-Term Service (LTS) edition
+- There is an automatic process for applying OS security patches
+- A host-based firewall is configured to allow minimal access
+- Access is via Secure Shell (SSH) according to agreed policy (keys, no root access, etc.)
+- The DHIS2 version is not more than 3 versions behind the latest release, and a process exists to apply patch releases regularly.
+- An automated backup system is in place and regularly tested, including offsite.
+- PostgreSQL database access controls allow minimal access
+- A Web-proxy server is properly (SSL Labs test A+) configured with Secure Sockets Layer (SSL)
+- All Database data is stored on a separate data partition (allowing encryption at rest, performance settings)
+- A monitoring and alerting system is in place
+      - There is a wide range of options available, depending on the environment. For example, boombox might be fine with email + logwatch + munin.
+- Enough/stable electricity to charge devices
+- If using Android, there must be a network with a certain amount of uptime to sync.
+- If web-based, a stable network is present
+
+
+**Management and sustainability of the IT systems:**
+
+Documentation exists on security plans and protocols, both at a high-level as well as technical procedures. Thi is especially critical for locally-hosted systems without a “security first” culture.
+
+One individual needs to be responsible for developing, maintaining, and implementing the security plan. Another security manager committed to identifying and mitigating risks. Both roles require experience, capacity, and incentives.
+
+Ensure that there is a documented set of technical controls mandated, and that there is an audit process against those controls
+
+Published and available SOPs for operational, network, and physical security (locking PCs, strong passwords, data encryption, etc.), as well as for monitoring and response if the system is down or system breach
+
+
+## Training and Rollout { #training-and-rollout } 
+
+**Plan for high-quality, continual training.** Capacity building is crucial for a Tracker program to succeed, and it must be both high quality and continue periodically throughout the lifetime of the program. It is not sufficient to provide user training only once -- your training plan should provide for initial and refresher training over time. Frontline Tracker users are typically ground level health workers who may be less comfortable with technology than district staff who work more often with aggregated data. A strong emphasis on training will include time for familiarizing trainees with the tools as well as how to integrate Tracker into their workflow.
+
+A key principle is to **develop training material in collaboration with users.** Working closely with users when you design the training material will allow you to understand what concepts are difficult for users to understand, so you can refine your material and timing for the training agenda. Do an initial entire training run with a group of real users to fine-tune your course.
+
+Identify the appropriate training approach: There are multiple options for delivering your training (e.g. video, online test, on-site, meetings), which can be used individually or in conjunction with each other.
+
+**Involve health staff** and not just IT staff in the trainings in order to explain and emphasise the health reasons behind the data entry processes. This is particularly relevant for configurations that involve decision support. Doing this helps end users to get a better understanding of why the Tracker program is significant, which can lead to more complete and accurate data entry, and thus a greater likelihood that the program will succeed in its goals.
+Revise the material based on feedback from those attending the course, or if there are revisions of the Tracker program that cause the old training materials to become inaccurate.
+
+**Logistics**  
+Plan training of Tracker users as a series of training steps, such that they receive refresher training after some time. The refresher training schedule should ideally align with revision cycles of the Tracker software, to facilitate the introduction of end users to changes and new features in the program. 
+
+Note that training a large group of users (especially spread out over a large geographical area) will often require that you first train other trainers (at a Training of Trainers, or ToT) early on, to help scale your training capacity.
+Keep track of which Tracker users have been trained in spreadsheet, list, or other centralized database, and establish an SOP to update this list when new staff members join, or when existing staff members quit or are relocated. New/untrained staff members should be provided with training at the earliest possible opportunity.
+Choose a training venue with care. Training can take place either on site (at or close to the users’ work environment) or in centralized trainings that bring larger groups of users from various workplaces to one centralized location. Both approaches have positive and negative aspects. Regardless of where the training takes place, the person responsible for planning the training will need to organize logistical details such as the venue, transport, food and drink, computers, Internet access, etc.
+
+If possible, train users on the devices they will use in their work. Don’t underestimate the time it takes for people to log in and familiarize themselves with the device -- it can take a significant amount of time at the beginning of the training program to get all participants ready from a technical standpoint. It is recommended to have several members of the training team available to help troubleshoot these issues as they arise.
+Schedule follow up regular/onsite training /refresher training
+
+**Training in low bandwidth settings**  
+If Internet connectivity is too slow, unreliable, or non-existent at your training location, you will need to install a local Tracker instance and configure it for training on a machine/local server, and set it up for the training such that participants can connect through a common local network environment, an IP address, or localhost client. Even in settings where Internet access is generally good, having a large number of users access the web-based Tracker instance through one WiFi network or Internet access point can lead to network issues. It is therefore generally advisable to have a training instance available as a backup in these cases.
+
+
+
+## Relating Tracker to your Aggregate Data System { #relating-tracker-to-your-aggregate-data-system } 
+
+When designing the tracker, it is important to consider the basic reporting requirements of the Health Management Information System (HMIS) to avoid double reporting. The data entered into the tracker forms the basis for generating aggregate numbers. For example, if there are 4 patient entries, 2 with condition X and 2 with condition Y. The tracker should support the aggregate system, rather than being an additional burden on data collectors. The system design should take into consideration how to meet aggregate data requirements using the data entered through the tracker.
+
+There are different options to consider, such as automation or manual methods with the help of tools. It is crucial to have a clear workflow, tools, and governance model for data quality and completeness assurance and the data authorization process. This includes determining who can approve and process data from individual to aggregate data and how this process occurs.
+
+When designing the integration with the HMIS, make sure to thoroughly review the indicators, create the reports, establish a governance model for data quality and publishing, and ensure that the data revision processes are working. It is important to involve care providers in the process to ensure they understand the indicators and are able to input into how they are calculated. Additionally, involve Ministry/policy-makers in the process so that they understand the fundamental differences between how reporting happened before vs. now in a tracker or eRegistry.
+
+**Feeding into the HMIS**
+
+The data entered into the tracker forms the basis for generating aggregate numbers. The tracker should support the aggregate system, rather than being an additional burden on data collectors. The system design should take into consideration how to meet aggregate data requirements using the data entered through the tracker. In other words, the workflow should avoid additional work for health workers and they should not have to aggregate data manually and enter it manually into the HMIS.
+
+The difference between aggregate data collection systems, where the final numbers are input into online reporting forms, and a tracker/eRegistry that does automated reporting is the significantly more effort required in software design to cover all reporting and indicator needs. It is important to define indicators and understand what is to be measured, including the numerator and denominator.
+
+Removing traditional paper reporting can be time-consuming and behavior-change takes time. It is important to make sure that care providers understand the indicators and are able to input into how they are calculated. Involve Ministry/policy-makers in the process so that they understand the fundamental differences between how reporting happened before vs. now in an eRegistry.
+
+> *References*:  
+>
+> Venkateswaran M: Attributes and consequences of health information systems data for antenatal care – health status, health system performance and policy, PhD dissertation, University of Bergen 
+>
+> Venkateswaran M, Mørkrid K, Khader KA, Awwad T, Friberg IK, Ghanem B, Hijaz T, Frøen JF: Comparing individual-level clinical data from antenatal records with routine health information systems indicators for antenatal care in the West Bank: A cross-sectional study. PloS one 2018, 13(11): e0207813 
+
+
+
+
+
+
+# Tracker performance at scale { #tracker-performance-at-scale } 
+
+This document describes approaches to optimizing DHIS2 tracker implementations for COVID-19 vaccine delivery at scale.
+
+## Executive summary { #executive-summary } 
+> **Server**
+>
+> * Appropriate software versions are used:
+>   * JDK11
+>   * PostgreSQL 12 or 13
+>   * DHIS2 version 2.35 or later, latest available patch
+> * Server monitoring is set up. Recommended: munin, glowroot
+> * Server is appropriately sized. For covax, at least:
+>   * 32 CPU cores
+>   * 32GB RAM
+>   * SSD/fast disk
+>   * Fast and stable internet and internal network connectivity
+> * In shared hosting environment, verify that the server has the
+> specified resources in practice
+> * Use dedicated server for database/postgresql if possible
+>
+>
+> **Tracker/Tracker Analytics**
+>
+> * Minimize the use of program indicators in dashboards, as this has cause performance issues.
+>   * Alternative: serving tracker analytics through the aggregate data model, using strategies described in this document.
+> * Limit access to dashboards that use program indicators, particularly those dashboards that load by default as the 'landing page' upon logging into DHIS2.
+>   * Alternative: Set up a text only/information landing dashboard that excludes tracker analytics to minimize impact. Limit dashboards based on program indicators only to those users/users groups who need them for analytical purposes (e.g. not for general data entry users)
+> * Enable analytics cache
+> * Do not use continuous analytics
+> * Tracker: Disable the "Display front page list" check in the
+> program details.
+> * Apply custom database indexes for frequently searched TEI
+> attributes.
+> * Ensure that system generated attributes don't use RANDOM pattern
+>
+>
+> **Android**
+>
+> * Ensure admins responsible for Android deployments are familiar with:
+>   * The use of the Android Settings App and the various sync strategies that can improve performance.
+>   * Specific configuration for users which will use Android is highly recommended.
+>   * Distribution of the Android App mechanisms and management of version updates.
+>
+> **Implementation Strategies**
+>
+> * Ensure there is an aggregate configuration available for reporting (e.g. daily reporting based on tally sheets) that can be used routinely, or as a back-up in the case of lag time in Tracker data entry during high-volume periods (e.g. COVAC Aggregate Package)
+> 16. Use the latest COVID-19 Immunization/EIR tracker package and related aggregate datasets (for serving the dashboard) as a reference; though we do not recommend 'updating' a package that has already been substantially customized for the country. 
+
+
+## السياق{ #background }
+
+### Audience  { #audience } 
+
+The primary audience for section are system administrators supporting MOH with their national COVID-19 vaccine delivery plans. However, while COVID-19 vaccine delivery is the specific use case presented here, much of the guidance is relevant for large-scale tracker implementations in general.
+
+
+### Purpose { #purpose } 
+
+- To share the 'best information available', real-time/emerging guidance, tips & tools to optimize DHIS2 implementations for anticipated scale of COVID-19 vaccines. This information is often sourced through the community of practice.
+- This is not intended to prescriptive guidance, but rather a series of recommendations that may evolve in real-time as we learn from real-world implementations; and update/improve the global products 
+- We aim to facilitate information sharing between country implementations that may face similar challenges and can benefit from common solutions
+
+## Guidance for implementers { #guidance-for-implementers } 
+
+### General Guidance { #general-guidance } 
+
+* Substantial performance improvements were introduced from V 2.35. We strongly recommend upgrading tracker instances to the latest patch version of 2.35 or 2.36, where performance improvements have also been added in the point releases. 
+* We strongly recommend to set up a server monitoring tool to identify when and why your server is struggling   
+    * Some recommendations include [https://glowroot.org](https://glowroot.org/) and    [https://munin-monitoring.org](https://munin-monitoring.org/) 
+    * Here is a [tutorial for installing glowroot on DHIS2](https://github.com/dhis2/dhis2-docs/blob/glowroot-tutorial/src/tutorials/glowroot.md)
+
+### Analytics Performance { #analytics-performance } 
+
+Recognizing that country demands for frequency of 'real time' analytics data for decision making may vary and timely data is crucial, we recommend to avoid running analytics during heavy data entry periods. We have seen major spikes in overall response times while analytics tables are being generated. **These seem to have the most impact when many users are accessing dashboards that contain program indicators calculating on the fly.**
+
+#### Dashboard Performance { #dashboard-performance } 
+
+Below are steps that can be taken to improve dashboard performance.
+
+* Users should **not** have dashboards with tracker-based analytics as the landing page after logging in.
+    a. Add a dashboard without analytics as the default/first dashboard that users land on after logging in. (i.e. ensure it is the first alphabetically. For example "\*\*NOTICE\*\* or \*\*INFO\*\*) 
+    b. This dashboard could be populated with text items to communicate key information, updates, standard operating procedures, etc. 
+    c. The dashboard should be shared with Public access
+
+![Example of dashboard without analytics used as landing page after logging in.](resources/images/covax_perf_image2.jpg)
+
+* Limit sharing dashboards only to only those analytics users who need to use data for decision making; restricting from data-entry users. This can be achieved with User Groups, combined with a Landing Dashboard for non-analytics users as above. 
+
+* Tracker analytics requests, in particular for certain program indicator configurations, can be slow and create performance problems. When extracting such data: 
+    a. Do it outside peak hours for vaccinators, to avoid any slowdowns hindering their work 
+    b. Work with smaller data sets at the time. For example, it may be  necessary to get figures for a subset of organisation units at the time (e.g. by region). 
+    c. Rather than several people downloading the same data (e.g. for the national level) from DHIS2, download once and share via for example excel.
+
+* Ensure caching is enabled in the dhis2 configuration, so that repeated requests for the same analytics resources are served from the cache and database queries are skipped. 
+    a. dhis.conf - `analytics.cache.expiration` set to at least 3600 (6 hours). 
+    b. System settings -\> analytics -\> cache strategy. Recommended value: at least CACHE_6AM_TOMORROW. Set cacheability to    "private" to avoid nginx cache.
+
+* Turn-off continuous analytics. If you turn off continuous analytics you will only see your analytics updated after your analytics tables run.
+
+* As a **last resort/blunt measure for poor performing dashboards, you may also:** a. Remove tracker analytics access for non-critical users. b. Set the default landing app through the system settings to the capture or data entry applications. This will mean that all users will first be directed to those apps. This may be disruptive for users that do not enter data, but it will minimize traffic to the dashboards.
+
+* Consider serving Tracker analytics from the COVID-19 EIR Tracker through the aggregate data model as described in the [Implementation Section](#implementation-strategies). In short:
+    a. Mapping PIs to aggregate data elements 
+    b. Pushing data values to aggregate data model (via a script) at a predetermined frequency 
+    c. Dashboards shared more widely based on the aggregate data model via indicators can be 100 times more performant (dashboard items load in 0.02-0.1 seconds vs 10-200 seconds on testing instance). In addition, they give greater analytical power through the use of dimensions (e.g. to represent and slice/dice CatCombos).
+
+#### Assessing Analytics/Program Indicator Performance { #assessing-analyticsprogram-indicator-performance } 
+
+An analysis of the dashboards originally included in the COVID-19 EIR Tracker Package (note: these tracker dashboards have now been removed from the package and are not recommended) revealed:
+
+* Dashboards are significantly slowed down by long queries for enrollment-type program indicators.
+
+* Dropout rates are good to know, but they take a long time to load even on our test db. We believe that drop out rates are unlikely to require daily monitoring, but rather can be analyzed weekly or even monthly at a higher level through the COVAC Core Module (aggregate datasets & monitoring dashboard for coverage, etc.)
+
+![](resources/images/covax_perf_image6.png)
+
+![](resources/images/covax_perf_image5.png)
+
+Other "heavy" visualizations should be removed from routine monitoring dashboards which are shared with lower-level users and will lead to performance stress. These could be moved to dashboards which are viewed less frequently, an HTML report, or another reporting tool:
+
+a. Maps at lower levels, or requesting unnecessary org units
+
+b. Event reports with more than 100 event rows or 50 enrollment rows
+
+c. Visualizations requesting lengthy periods of longitudinal data, e.g. last 12 months
+
+d. Any visualization with enrollment-type program indicators, such as dropout rates
+
+e. In tests of program indicators from the COVAC package, program indicators of "enrollment type" took the longest response time. Further, they have poorer scalability, as they take longer to serve data when requesting additional periods, org units, or TEI.
+
+### Tracker Performance { #tracker-performance } 
+
+* TEAs that generate a Unique system IDs using the SEQUENTIAL() pattern are much more performant than those using the "RANDOM()" pattern. **We recommend avoiding the RANDOM pattern** because:
+    * It's open for race conditions; 
+    * It will have a huge downward trend in performance the longer it\'s been used; and 
+    * It uses the reserved values table in the database to keep track of which values have been distributed already. This table has been known to be a pain point during tracker import.
+    * Note for implementations that use Android: reserving values to the devices for offline use may affect the user's perception of SEQUENTIAL generation as documented here: [https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_dhis2_config_reserved_id](https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_dhis2_config_reserved_id)
+
+* In early versions of the COVID-19 vaccine registry, some working lists caused performance issues. These were removed from the packages in the COVID IER package V 1.1.2. If you experience that tracker is showing slow load times, this may be related to the working lists and a large number of TEIs in one org unit. A solution is to disable the "Display front page list" check in the program details (this has the downside of also disabling working lists)
+
+* Searches on TEIs on attributes (especially non-unique ones like firstName, surname, phoneNumber) can significantly improve by adding partial trigram indexes for that particular tracked entity attribute. This has been done in Nigeria and Rwanda and the performance improvement was huge. This is yet to be added into the core, so implementations will have to create them manually for now. For adding trigram indexes and compounding it with primitive column types, two extensions have to be created. The extensions are already part of the default posgresql installation. Extensions:
+
+```
+create extension pg_trgm;
+create extension btree_gin;
+```
+
+Index example for trackedentityattributeid 1234 (eg: PhoneNumber). Has to be repeated for every attribute that is used heavily during searches (firstname, surname, etc)
+```
+create index concurrently in_gin_teavalue_1234 ON trackedentityattributevalue 
+using gin (trackedentityinstanceid,lower(value) gin_trgm_ops) 
+where trackedentityattributeid = 1234;
+```
+
+* Similarly, trigram indexes will also help if the system searches based on event data values. Nigeria had their QR code for completed vaccinations as an event data value which they searched on heavily (eg: passengers qr code checked before boarding). Depending on search patterns for the specific implementation's configuration, this trigram index can also be applied. Not all implementations will need this. Assuming the extensions mentioned above are already created, an example index creation for a data element (uid=​​LavUrktwH5D, qrCode), attached to a programstage. The dataelementid=233047 and programstageid=64527 in this example.
+
+```
+create index concurrently in_gin_psi_edv_64527_233047 on > programstageinstance 
+using gin (lower(eventdatavalues #>> '{LavUrktwH5D, value}') gin_trgm_ops);
+```
+
+* Usage of custom apps can have a positive or negative impact on performance. The apps can be a way of making more targeted functioanlity that prevents extra clicks and calls to the API. They are also a source of caution, and we have seen some custom apps use API functionalities that cause unnecessary stress on the system. Parameters to skip paging, counting the number of results in the paging, using LIKE operator to compare when EQ(equals) is more suitable are some of the notable culprits that cause some stress. If LIKE operator is used with unique attributes, trigram index as mentioned above should be created for it. SkipPaging should always be avoided. When using paging, the totalPages should always be avoided, as it makes the DB query get the full count of records to count them, instead of only fetching the given page. If feasible, a searchString minimum limit of 3 characters should be enforced on searchable attributes. Nigeria had a custom app that enforced the 3 character minimum search limit on the app side and that helped alleviate several heavy queries. Trigram indexes will only be used by the query optimizer if the search string has at least 3 characters.
+
+> **Note**
+>
+> The calls made by custom apps need extra attention, as the calls might be constructed in a way that has not been well tested and proven to be performant. The list of common performance culprits provided here is not exhaustive. It is important to have monitoring in place and keep an extra eye on the calls made from custom apps, integration middleware and external scripts.
+
+* Tracker Capture App updates event data values individually. In highly concurrent environment, this can cause database row level locking and waiting. Sri Lanka created a Custom Tracker Capture App using the core Tracker Capture App as a baseline. In the Custom App, they changed the flow so that all event data values are updated together in a single API on user clicking "Save and Complete". The button was "Complete" in the original core app. If the supporting HISP groups/administrators/implementers have the necessary skillset, they can maybe look into doing the same.
+
+### User Management { #user-management } 
+
+* We recommend against sharing user logins across multiple devices. This has resulted in some scenarios where the users are unintentionally logged out.
+    * Alternatives: one user per device (e.g. the user follows the device, i.e. vaccine site data entry staff; passwords could be recycled each day for added security)
+* Optimizing users for Android (described in Android section)
+* Restricting unnecessary access to tracker-based dashboards as described above
+
+## Guidance for Android Deployments { #guidance-for-android-deployments } 
+
+### DHIS2 Configuration recommendations { #dhis2-configuration-recommendations } 
+
+This subsection covers the specific recommendations that can be achieved by tweaking the DHIS2 server configuration directly.
+
+#### User access { #user-access } 
+
+Due to the nature of Android being able to work offline, the application will try to download as much information as possible in case the device goes offline. To reduce the amount of data transferred:
+
+- Set the Organisation Units, Programs and DataSets that users will have access to; this will greatly reduce the amount of data being transferred and the load of the server
+
+- Please see the recommendations on how to [create a user](https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_dhis2_config_creating_user)
+
+#### Auto-generated Values { #auto-generated-values } 
+
+Because of the offline nature Android will also download reserved values. The application will try to evaluate the amount of remaining values and retrieve more from the server whenever a synchronization happens.
+
+In implementations where users will be offline for long periods of time this value might need to be increased (explained in the section below). If the auto-generated values defined include the usage of dates in any of its forms (days, months, years) the system administrator should pay special attention while defining them and using the Android App. Also note, reserving values to devices for offline use with the SEQUENTIAL() pattern (e.g. for a TEI attribute 'System Generated ID') will take each of these values sequentially as they are *reserved in the devices*, which can be confusing for some users. This behavior is expected as documented [here](https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_dhis2_config_reserved_id).
+
+Please see more information about this topic in the [official documentation](https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_dhis2_config_reserved_id) and in [this post in the CoP.](https://community.dhis2.org/t/question-regarding-expiry-of-reserved-ids-of-an-auto-generated-unique-values-configured-with-a-text-pattern-containing-current-date-mm-yyyy/40761/2)
+
+### Android Settings WebApp { #android-settings-webapp } 
+
+The [Android Settings WebApp](https://apps.dhis2.org/app/a1bd6b5b-de8c-4998-8d34-56c18a139683) is an application that can be installed on any of the latest DHIS2 servers and allows the system administrator to define some settings that will be read by each mobile.
+
+#### Reserved Values { #reserved-values } 
+
+In the section above the usage of auto-generated values was briefly explained. With the Android Settings App the system administrator can define how many of those values will be retrieved by each mobile user. If your mobile users will be going offline for very long periods of time it might be a good idea to increment this value, however, setting a huge large number here can incur in the exhausting of values and an increase of the data transferred in the initial sync.
+
+![](resources/images/covax_perf_image4.png)
+
+As an example, imagine we have an implementation with mobile devices which will be going offline for a full week and then come back to a central location for the synchronization of data. Each user might see up to 50 patients per day and therefore during a week up to 350 patients. Setting the *Reserved values downloaded per TEI attribute* to at least 350 would ensure the users can work properly offline without risking exhausting the values.
+
+#### Metadata Sync { #metadata-sync } 
+
+![](resources/images/covax_perf_image1.png)
+
+If your program is very unlikely to be modified, setting a long period value for this setting will reduce the amount of connections towards the server. It is good to find a balance between how important it would be having devices without the metadata fully updated and the load the server can experience due to the number of devices.
+
+As an example, imagine we have an implementation with 10.000 devices and they are set to sync every 1 day. This means that the server should be ready to handle 10.000 metadata update pulls every day. Even though these requests will result in an empty response if no changes have been made, it might be smarter setting that value to 1 week or even manual (with a proper way of communicating with the field users) if no changes will be made in the package or changes are unlikely to be critical.
+
+You can even disable automatic metadata synchronization and rely on manual synchronizations triggered by your users if that is an option for your implementation.
+
+#### Data Sync { #data-sync } 
+
+Data sync follows the same principle as the one for metadata and it should be adjusted according to the implementation. For example, we can find implementations where users are going on the field where they will be working offline therefore it should be important to provide those users with all the data needed for their work. Or there can be implementations where users will be most likely registering patients on the field and transferring data from the devices to the server.
+
+See the following examples:
+
+* In an implementation where users will be working pretty much offline and they need to have as much data as possible on their device, the *data sync* could be set to *Manual* if the users are instructed to perform this before leaving to the field. Or daily if this process should be automated.
+
+* In an implementation where users are going to the field, and they are likely to be robbed, or a fear of devices being lost is present it might be interesting to set the *data sync* to the minimum (30 minutes) so the data is pushed to the server as soon as possible. Users could also be instructed to use [granular sync](https://docs.dhis2.org/en/full/use/dhis2-android-app.html#capture_app_generic_sync_info) every time they add or modify a patient but this might be more cumbersome.
+
+![](resources/images/covax_perf_image3.png)
+
+You can also disable automatic data synchronization and rely on manual synchronizations triggered by your users, however this puts more risk on data being recorded and not synced if users are not systematic.
+
+#### Download Settings { #download-settings } 
+
+These settings allow the users to define the amount of TEIs that will be downloaded when performing the data sync. It should probably be combined with the *Data Sync* setting explained above. It is important to understand how these settings work to define a targeted and valid approach. The official documentation, [synchronization settings](https://docs.dhis2.org/en/full/use/dhis2-android-app.html#capture_app_andoid_settings_webapp_synchronization), explains in detail what to expect when setting this up. The connectivity capabilities of the implementations should also play a big role while defining these, as in implementations with very good connectivity reducing this value to the maximum would decrease the load of the server during the *data sync* without having a big impact in the users (they will always be able to find the patients online). However, this could lead to a server overload while performing very broad searches. The way mobile users will connect to the server (i.e. using mobile data packages instead of wifi) also plays a role as downloading many patients that might not be used will incur in expending mobile data for no reason.
+
+See the following examples:
+
+*  In an implementation where the users will be mainly adding patients to the system (i.e. registering patients with COVID) there is no need to have many patients on the device. Therefore, setting a low value of download TEI would decrease the load of the server during the data sync and will reduce the amount of data transferred (to be taken into account when connecting with mobile data)
+
+*  In an implementation where users will be visiting patients offline without the possibility for an online search the system administrator might want to let the users download as many TEI as possible so they take with them all the patients' data that will need.
+
+*  In an implementation with very good connectivity the user administration could decide to decrease the download settings so the devices have as few TEI as possible relying completely on the online search. As the users will be searching by a unique id (i.e. National ID number) which is a low demanding task for the server the setup seems to be adequate. However, if users will not be able to search for patients by a unique id and will use a family name the server could suffer for an overload on the searches and therefore might be more interesting to allow the users downloading more patients and relying on the offline mode.
+
+### Application Updates { #application-updates } 
+
+![](resources/images/covax_perf_image8.jpg)
+
+The DHIS2 Android App is published via two channels: [Google Play Store](https://play.google.com/store/apps/details?id=com.dhis2) and [Github](https://github.com/dhis2/dhis2-android-capture-app/releases). We publish releases every 6 months and patch releases as often as it is needed. If implementations are using the Google Play Store as their provisioning source they could benefit from automatic updates, however, this might not be desirable in some scenarios where implementations want to test a newer version before making it available for their users. We recommend disabling automatic updates so the App can be heavily tested by administrators/testers before asking their users to do so.
+
+To disable the automatic updates, once the application has been installed in via the Google Play proceed as follows:
+
+- Select the 3-dot menu from the right corner of your screen. By default, "Enable auto-update" will be selected.
+- De-select this button. This will ensure that the Android app does not automatically update when an update is available.
+- When finished, the box "Enable auto update" should not be checked.
+
+System administrators could now benefit from checking the new versions and then letting the users know when they should update their App that they could do by going to the Play Store and clicking on the Update button that will be presented every time there is a new release.
+
+More information about roll-out plans and testing can be found in the [official guides](https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_testing).
+
+### Device and management recommendations { #device-and-management-recommendations } 
+
+In this section we cover briefly some recommendations related to the devices themselves and their management.
+
+#### Android device specifications { #android-device-specifications } 
+
+It is very hard to give general recommendations on which device to use. Implementations should test their final configuration on a set of devices to understand the user experience.
+
+For example if an implementation will have users going to the field and working offline with a large number of TEIs they should aim for higher end devices as the Android App will be more resource consuming. However, if implementations are very budget constraint and they will be having thousands of users but working with much smaller amounts of TEIs and data they might prefer using some middle end devices.
+
+More information on this process can be found in the [official guide](https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_mobile_specs).
+
+#### Mobile Device Management { #mobile-device-management } 
+
+We strongly recommend using a Mobile Device Management (MDM) in mobile implementations. Having an MDM will provide several advantages that can ease the implementation and support. However they usually incur higher costs.
+
+Implementations could opt for ready to use MDMs or deploy a solution in their own infrastructure. The latter might be a better solution in terms of budget but will require high technical skills like system administration and DB management.
+
+This [[official guide]{.ul}](https://docs.dhis2.org/en/full/implement/managing-mobile-devices.html) covers several MDM that have been tested listing their main advantages and disadvantages.
+
+### Mobile recommendations checklist { #mobile-recommendations-checklist } 
+
+
+| **DHIS2 Mobile Implementation at scale checklist** |  |
+| --- | --- |
+| User access configuration |  |
+| Auto-generated values pattern            |                           |
+| Android Settings Webapp:                  |                           |
+| *Number of reserved values*              |                           |
+| *Automatic metadata sync period*         |                           |
+| *Automatic data sync period*             |                           |
+| *Data download settings*                 |                           |
+| Management of Android App updates        |                           |
+| Mobile Devices Management                |                           |
+
+
+## Server hosting, administration and monitoring { #server-hosting-administration-and-monitoring } 
+
+There are two fundamental requirements related to server hosting:
+
+- There should be somebody - preferably two - people with the requisite training and experience to manage the server.
+- There should be a privacy/security policy to cover the storage of large proportion of population data
+
+### Server specifications { #server-specifications } 
+
+As indicated in the documentation on server [specifications](https://docs.dhis2.org/en/manage/performing-system-administration/dhis-core-version-237/installation.html#install_server_specifications), "DHIS2 scales linearly on the amount of RAM and number of CPU cores so the more you can afford, the better the application will perform". Covax implementations, generally targeting the total adult population of a country, will be large-scale even in smaller countries. Exact requirements will vary depending on the expected number of users and TEIs, but 32GB RAM and 32 CPUs could be considered a starting point for all but the smallest implementations. All implementations should be prepared to upgrade the hardware to support changing scale and growing data.
+
+SSD/disk performance is also critical for the overall performance, heavily influencing key activities such as searching for TEIs and analytics. The documentation suggests that "Minimum read speed is 150 Mb/s, 200 Mb/s is good, 350 Mb/s or better is ideal." Real disk performance can also be assessed by looking at disk latency. You can see these figures on munin, a simple one off assessment can be done with dd:
+
+```
+dd if=/dev/zero of=/root/testfile bs=512 count=1000 oflag=dsync
+```
+
+For a good disk this command should finish in a fraction of a second (\<0.5s). Anything over 5 seconds is probably going to be too slow to reach acceptable levels of performance.
+
+### Server architecture and infrastructure { #server-architecture-and-infrastructure } 
+
+The application (tomcat) and database (postgresql) *could* be hosted on the same server, but ideally the database should be set up on a dedicated server.
+
+Fast and stable internet is always required, but when the database is set up on a separate server, it is also important to ensure that there is a fast and stable *internal* network connection between the two.
+
+Special consideration must be taken when the server is hosted in a shared, virtualized environment. In these cases, the hosting provider may over-provision resources (e.g. CPUs, disks), meaning the server does not actually have the resources it appears to have. This also means that performance fluctuates based on the load on other systems. In some cases, countries have had to negotiate with the hosting provider to ensure the server used is not being over-provisioned, alternatively moving to a physical server.
+
+### Installation and configuration { #installation-and-configuration } 
+
+It is important to ensure that the right software versions are used to optimise performance:
+
+- JDK11
+- PostgreSQL version 12 or 13
+- DHIS2 version 2.35 or later, **the latest available patch version**
+
+Tomcat needs to be configured with enough memory. This will depend on the total available memory of the server, and whether this is shared with postgresql or if the database is running on a separate server. With a DHIS2 superuser account, you can verify the tomcat memory configuration by opening "About DHIS2" and looking at the "Memory info" field:
+
+![](resources/images/covax_perf_image7.png)
+
+It is also critically important to configure postgresql correctly for good performance. Instructions for this are available in the [server documentation](https://docs.dhis2.org/en/manage/performing-system-administration/dhis-core-version-237/installation.html#install_postgresql_performance_tuning).
+
+### Server monitoring { #server-monitoring } 
+
+We strongly recommend setting up a server monitoring tool to identify when and why your server is struggling. Key performance metrics should be monitored eg. RAM, CPU, disk performance on all nodes and application specific measures on proxy, database and tomcat. Some recommendations include [https://glowroot.org](https://glowroot.org/) and [https://munin-monitoring.org](https://munin-monitoring.org/). A [tutorial for installing glowroot on DHIS2](#glowroot_tutorial) has been written to support this.
+
+Other options which might require more configuration but allow significant customisation include prometheus/grafana and the ELK stack.
+
+## Implementation Strategies { #implementation-strategies } 
+
+Based on experiences from Sri Lanka, Indonesia, Nigeria, Rwanda and others, visualizations based on tracker analytics in large-scale COVID-19 vaccine deployments can result in very heavy TEI count queries, nearly rendering the system unusable. Blunt mitigation strategies taken in Rwanda (disabling of all Analytics apps), while Sri Lanka reverted to SQL queries.
+
+These challenges can be partially addressed with the guidance on performance optimization provided above. We also recognize that:
+
+* The unpredictability of Tracker performance at unprecedented scale, given the many varying factors at play in country implementation, configuration & customization
+* Capacities, resources and structures for server administration are highly variable across countries
+
+Meanwhile, daily aggregate reporting through DHIS2 was proven to be highly effective at large scale in the Measles-Rubella campaign in Bangladesh in 2020. Having an aggregate configuration can facilitate daily reporting on stocks and doses administered (e.g. from tally sheets), data which are largely sufficient to serve the purpose of "real-time daily" monitoring of the overall campaign via dashboards. In Uganda, an aggregate implementation was used side-by-side with the COVID EIR Tracker, to enable daily monitoring and check data completeness during high-volume periods when tracker data entry could not be sustained (not enough devices, etc).
+
+Based on feedback, we understand that most implementations require at least daily monitoring during the campaign phases of COVID-19 vaccine delivery, but the definition of 'real-time' is variable. There may be a time of day when campaign operations centers are monitoring the daily performance and should be considered for the country implementation & scheduling of analytics.
+
+### Use of Aggregate Data Model with Tracker Deployments { #use-of-aggregate-data-model-with-tracker-deployments } 
+
+We recommend incorporating aggregate data models into COVID-19 vaccine implementations for two separate functions.
+
+#### Parallel aggregate reporting: daily stock & tally sheets of vaccine doses administered at vaccination site level { #parallel-aggregate-reporting-daily-stock-tally-sheets-of-vaccine-doses-administered-at-vaccination-site-level } 
+
+The recommendation to ensure countries have an aggregate COVAC package in parallel to the Tracker Registry is an old one. Here we provide some reasons why think a country should be prepared with an aggregate configuration for reporting alongside their Tracker deployment:
+
+- For many country contexts, this will be necessary to ensure completeness of data for the purposes of monitoring the campaign: e.g. if the entire population cannot be covered by the Tracker Registry for any number of reasons
+
+- In some contexts, this reporting mechanism (e.g. based on daily tally sheets) can be used during high volume periods in the campaign where individual level data entry can lag (not enough devices, connectivity issues, not enough data entry staff etc).
+
+- Daily reporting from tally sheets is also often used for data quality comparisons to Tracker data, and helps the country to assess their Tracker deployment and make decisions about data sources/data flows
+
+The [COVAC 'Core' Aggregate Package](https://docs.dhis2.org/en/topics/metadata/covid-19-vaccine-delivery/covac-aggregate/version-110/design.html) contains a configuration to support this (aligned to WHO monitoring guidelines, WHO AFRO reporting tools and eJRF):
+
+- Daily dataset: COVIDVAC - Vaccination Delivery (e.g. doses administered, byt target groups)
+
+- Daily dataset: site level stock reporting (e.g. vials used, physical stock count, etc)
+
+- Annual dataset (could also be monthly/quarterly depending on country's plan): setting population targets, that may be disaggregated by priority groups etc
+
+- COVAC Monitoring dashboard that contains coverage rates, doses administered, key stock data, drop-out rates etc. This monitoring dashboard is generally tailored for higher level monitoring of the overall national COVID vaccine delivery plan; not all components of this dashboard are intended for 'real-time'/daily monitoring.
+
+#### Converting tracker data to aggregate data model → for the purpose of analysis (e.g. serving performant dashboards) { #converting-tracker-data-to-aggregate-data-model-for-the-purpose-of-analysis-eg-serving-performant-dashboards } 
+
+Due to the potential for performance issues with dashboards serving tracker-based data (e.g. heavy program indicators calculating on the fly every time the dashboard is loaded), we recommend that a daily/near real-time dashboard can be served using the aggregate data model. In our tests, this has shown to be far more performant and still capable of serving key metrics to analytics users. An additional benefit for analysis is the structuring of data into dimensions (category combos) for pivoting and slicing.
+
+In order to serve COVID-19 analytics from tracker source data (e.g. COVID vaccine registry), you will need:
+
+1. An aggregate data set (in the same instance as the Tracker program or in another instance) and a set of DEs and COCs to receive the data aggregated from tracker
+
+2. A dashboard to replace the tracker-based dashboard for campaign monitoring; the dashboard should be based entirely on indicators and/or data elements based on the aggregate domain.
+
+3. A set of Program Indicators that can aggregate the tracker data to push to the target aggregate DEs/COCs, with attributes mapped to the target aggregate metadata
+
+4. A script to push the tracker data (e.g. values of program indicators) target aggregate DEs. An example script is under development and will be shared soon.
+
+Generic [guidance for tracker-to-aggregate data is available](https://docs.dhis2.org/en/implement/maintenance-and-use/tracker-and-aggregate-data-integration.html#how-to-saving-aggregated-tracker-data-as-aggregate-data-values) and will continue to be updated.
+
+## List of Known Software Issues { #list-of-known-software-issues } 
+
+[COVAC: performance issues](https://docs.google.com/document/d/1NJoio5qkdtdljflbt3_AS6N2HgGTepW_TW2m4-qHlTE/edit#) 
+
