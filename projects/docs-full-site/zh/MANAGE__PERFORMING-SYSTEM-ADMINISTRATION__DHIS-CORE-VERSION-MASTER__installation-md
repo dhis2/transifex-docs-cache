@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/sysadmin/installation.md"
-revision_date: '2023-12-08'
+revision_date: '2024-02-16'
 tags:
-- Manage
 - DHIS核心 主版
+- Manage
 ---
 
 # 安装 { #installation } 
@@ -1321,6 +1321,13 @@ system.program_rule.server_execution = on | off
 
 启用或禁用服务器端项目规则的执行。这是指具有分配值、发送消息或安排要发送的消息的操作的项目规则。可以是`开`或`关`。默认为`开`。
 
+```properties
+system.remote_servers_allowed = https://server1.org/,https://server2.org/
+```
+
+Sets the allowed list of servers to be called in relation to the [metadata pull](../developer/web-api/synchronization.md#webapi_sync_metadata_pull) functionality. It accepts comma-separated values, and it's recommended that each server end with a `/` for enhanced security. Default value is empty.
+
+
 ## 反向代理配置 { #install_reverse_proxy_configuration } 
 
 反向代理是代表服务器运行的代理服务器。使用
@@ -1422,14 +1429,14 @@ http {
 
     sudo apt-get install -y openssl
 
-要将 nginx 配置为使用 SSL，您需要一个正确的 SSL 证书
-来自 SSL 提供商。证书的费用差异很大，具体取决于
-关于加密强度。来自 [Rapid SSL] 的经济实惠的证书
-在线](http://www.rapidsslonline.com) 应该可以满足大多数目的。到
-生成 CSR（证书签名请求），您可以调用
-下面的命令。当系统提示您输入*通用名称*时，请输入
-您所在网站的完全限定域名
-    确保。
+To configure nginx to use SSL you will need a proper SSL certificate
+from an SSL provider. The cost of a certificate varies a lot depending
+on encryption strength. An affordable certificate from [Rapid SSL
+Online](http://www.rapidsslonline.com) should serve most purposes. To
+generate the CSR (certificate signing request) you can invoke the
+command below. When you are prompted for the *Common Name*, enter the
+fully qualified domain name for the site you are
+    securing.
 
     openssl req -new -newkey rsa：2048 -nodes -keyout server.key -out server.csr
 
@@ -1561,7 +1568,7 @@ http {
 
 DHIS 2中的某些Web API调用,如`analytics` API,是计算密集型的。因此，最好对这些API进行速率限制，以允许系统的所有用户充分利用服务器资源。速率限制可以通过`nginx`实现。有多种实现速率限制的方法，这旨在记录基于nginx的方法。
 
-下面的 nginx 配置将限制 `analytics` Web API 的速率，并在 *http* 和 *location* 块级别具有以下元素（为了简洁起见，缩短了配置）：
+The below nginx configuration will rate limit the `analytics` web API, and has the following elements at the *http* and *location* block level (the configuration is shortened for brevity):
 
 ```text
 http {
@@ -1585,7 +1592,7 @@ http {
 - * limit_req_zone $ binary_remote_addr *：速率限制是针对每个请求IP进行的。
 - * zone = limit_analytics：20m *：Analytics API的速率限制区域，最多可容纳10 MB的请求IP地址。
 - * rate = 20r / s *：每个IP每秒被授予5个请求。
-- *location ~ ^/api/(\d+/)?analytics(.\*)$*：对分析 API 端点的请求受到速率限制。
+- *location ~ ^/api/(\d+/)?analytics(.\*)$*: Requests for the analytics API endpoint are rate limited.
 - *burst=20*: Bursts of up to 20 requests will be queued and serviced at a later point; additional requests will lead to a `503`.
 
 有关完整说明，请查阅[nginx文档]（https://www.nginx.com/blog/rate-limiting-nginx/）。
@@ -1643,7 +1650,7 @@ http {
 ```
 
 
-### 使用 nginx 阻止特定 Android 应用版本 { #install_block_android_versions }
+### Block specific Android App versions with nginx { #install_block_android_versions } 
 
 In some scenarios the system administrator might want to block certain Android clients based on its DHIS2 App version. For example, if the users on the field have not updated their Android App version to a specific one and the system administrator wants to block their access to force an update; or completely the opposite scenario when the system administrator wants to block new versions of the App as they have not been yet tested. This can be easily implemented by using specific *User-Agent* rules in the `nginx` configuration file.
 
@@ -1667,15 +1674,15 @@ http {
 }
 ```
 
-> **注意**
-> 对于上述方法的实现，请注意以下几点：
-> * 在版本 1.1.0 之前，不会发送 *User-Agent* 字符串。
-> * 从版本 1.1.0 到 1.3.2，*User-Agent* 遵循模式 Dhis2/AppVersion/AppVersion/Android_XX
-> * 从版本 2.0.0 及更高版本开始，*User-Agent* 遵循 com.dhis2/SdkVersion/AppVersion/Android_XX 模式
-> * Android_XX 指的是 Android API 级别，即[此处](https://developer.android.com/studio/releases/platforms)列出的 Android 版本。
-> * nginx 使用 [PCRE](http://www.pcre.org/) 进行正则表达式匹配。
+> **Note**
+> For the implementation of the method described above note the following: 
+> * Before version 1.1.0 the *User-Agent* string was not being sent.
+> * From version 1.1.0 to 1.3.2 the *User-Agent* followed the pattern Dhis2/AppVersion/AppVersion/Android_XX
+> * From version 2.0.0 and above the *User-Agent* follows the pattern com.dhis2/SdkVersion/AppVersion/Android_XX
+> * Android_XX refers to the Android API level i.e. the Android version as listed [here](https://developer.android.com/studio/releases/platforms).
+> * nginx uses [PCRE](http://www.pcre.org/) for Regular Expression matching .
 
-## DHIS2 配置参考 (dhis.conf) { #install_dhis2_configuration_reference }
+## DHIS2 configuration reference (dhis.conf) { #install_dhis2_configuration_reference } 
 
 The following describes the full set of configuration options for the `dhis.conf` configuration file. The configuration file should be placed in a directory which is pointed to by a `DHIS2_HOME` environment variable.
 
@@ -1741,6 +1748,17 @@ connection.pool.preferred.test.query=select 1
 #Configure the number of helper threads used by dhis2 for jdbc operations. (default: 3)
 connection.pool.num.helper.threads=3
 
+# Database datasource pool type. Supported pool types are: 
+#
+# * c3p0 (default): For information see https://www.mchange.com/projects/c3p0/
+# 
+# * hikari: For information see https://github.com/brettwooldridge/HikariCP
+#
+# * unpooled: Some implementations might want to have more control over the pooling and database cluster architecture 
+# (e.g., using PgBouncer as pool manager behind HAProxy for load balancing). In these cases, the internal pool is un-necessary 
+# and gets in the way.
+db.pool.type=c3p0
+
 # ----------------------------------------------------------------------
 # Server [Mandatory]
 # ----------------------------------------------------------------------
@@ -1769,6 +1787,12 @@ system.sql_view_write_enabled = off
 
 # Disable server-side program rule execution, can be 'on', 'off'
 system.program_rule.server_execution = on
+
+# Remote servers which the server is allowed to call
+# Accepts comma-separated values
+# Servers should end with '/' for enhanced security
+# Default is empty
+system.remote_servers_allowed = https://server1.org/,https://server2.org/
 
 # ----------------------------------------------------------------------
 # Encryption [Optional]
@@ -1850,6 +1874,10 @@ monitoring.cpu.enabled = on
 
 # Analytics server-side cache expiration in seconds
 analytics.cache.expiration = 3600
+
+# Analytics unlogged tables. Accepts on/off. It's `on` by default. If enabled, this will boost the analytics table export process significantly.
+# But this comes with a cost: "unlogged" tables cannot be replicated. It means that clustering won't be possible. Also, analytics tables will be automatically truncated if PostgreSQL is suddenly reset (abrupt reset/crash). If PostgreSQL is reset gracefully, it won't impact any table. In this case, the analytics tables will remain in place accordingly. If you cannot afford the costs mentioned above, you should disable it (set to `off`).
+analytics.table.unlogged = on
 
 # ----------------------------------------------------------------------
 # System telemetry [Optional]
@@ -1944,23 +1972,23 @@ logging.file.max_archives = 2
 
 DHIS2 will eventually phase out logging to standard out / catalina.out and as a result it is recommended to rely on the logs under `DHIS2_HOME`.
 
-DHIS2 将提供以下上下文值：
+DHIS2 will provide the following context values:
 
-* `sessionId`: 当前用户的会话 ID
-* `xRequestID`：由当前处理的请求的 `X-Request-ID` HTTP 标头发送的字母数字 ID；如果没有提供则为空
+* `sessionId`: Current user's session ID
+* `xRequestID`: An alphanumeric ID as send by the `X-Request-ID` HTTP header for the currently processed request; empty if not provided
 
 To use the context variables in the log add them using `-X{<name>}` to your log pattern as in this example:
 
-    * %-5p %d{ISO8601} %m (%F [%t]) %X{sessionId} %X {xRequestID}%n
+    * %-5p %d{ISO8601} %m (%F [%t]) %X{sessionId} %X{xRequestID}%n
 
-### 日志级别配置{ #log-level-configuration }
+### Log level configuration { #log-level-configuration } 
 
 To set the log level of individual packages you can specify properties on the format  `logging.level.{package-names}` in `dhis.conf`. For example, to set the the log level for the entire Spring Framework to DEBUG and up, you can specify:
 
 ```
 logging.level.org.springframework = DEBUG
 ```
-要将 DHIS2 服务的日志级别设置为 DEBUG，您可以指定：
+To set the log level to DEBUG for the DHIS2 services, you can specify:
 
 ```
 logging.level.org.hisp.dhis = DEBUG
@@ -1968,13 +1996,13 @@ logging.level.org.hisp.dhis = DEBUG
 
 常见的日志级别是`DEBUG`、`INFO`、`WARN`和`ERROR`。
 
-> **注意**
->
-> 嵌入式 DHIS2 Jetty 版本不支持日志级别配置。
+> **Note**
+> 
+> Log level configuration is not supported for the embedded DHIS2 Jetty version.
 
 ## 使用PostgreSQL数据库 { #install_working_with_the_postgresql_database } 
 
-管理 DHIS2 实例时的常见操作是转储和恢复数据库。请注意，在备份 DHIS 2 数据库时，最好排除系统生成的表，例如资源和分析表。要将数据库转储（副本）到文件中，可以调用以下命令。
+Common operations when managing a DHIS2 instance are dumping and restoring databases. Note that when making backups of the DHIS 2 database, it is good practise to exclude tables which are generated by the system, such as the resource and analytics tables. To make a dump (copy) of your database to a file,  you can invoke the following command.
 
 ```bash
 pg_dump {database} -U {user} -T "_*" -T "analytics*"  -f {filename}

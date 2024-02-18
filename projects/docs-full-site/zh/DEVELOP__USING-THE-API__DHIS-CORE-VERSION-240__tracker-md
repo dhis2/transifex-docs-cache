@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.40/src/developer/web-api/tracker.md"
-revision_date: '2024-01-19'
+revision_date: '2024-02-13'
 tags:
-- DHIS core version 2.40
 - Develop
+- DHIS core version 2.40
 ---
 
 # 追踪器 { #tracker } 
@@ -315,18 +315,19 @@ Capture 应用程序中的计划阶段工作列表功能旨在显示与特定计
 | 事件创建时间 | DateFilterPeriod 对象基于事件创建日期进行过滤。 | {“类型”：“绝对”，“开始日期”：“2020-03-01”，“结束日期”：“2022-12-30”} |
 | 预定时间 | DateFilterPeriod 对象根据事件预定日期进行过滤。 | {"type":"RELATIVE","period":"今天"} |
 | 入学状态 | 任何有效的计划状态。可能的值为“活动”、“已完成”和“已取消”。 | “注册状态”：“已完成” |
-| 注册于 | 基于事件注册日期的 DateFilterPeriod 对象过滤。 | "enrolledAt": {"type":"RELATIVE","period":"THIS_MONTH"} |
-| 注册发生时间 | DateFilterPeriod 对象根据事件发生日期进行过滤。 | {"type":"RELATIVE","period":"THIS_MONTH"} |
-| orgUnit | 有效的组织单位 UID | “orgUnit”：“Rp268JB6Ne4” |
-| 模式 | 有效的 OU 选择模式 | “ouMode”：“已选择” |
-| 分配的用户模式 | 事件的有效用户选择模式。可能的值为 CURRENT、PROVIDED、NONE、ANY 和 ALL。如果提供（或为空），则有效负载中将预期有非空的signedUsers。 | “分配的用户模式”：“已提供” |
-| 分配的用户 | 事件的指定用户列表。与上面提供的指定用户模式一起使用。 | “分配的用户”：[“DXyJmlo9rge”] |
-| 命令 | 字段列表及其方向（以逗号分隔值），结果将根据其排序。订单中的单个项目的形式为“orderDimension:direction”。 | “订单”：“w75KJ2mc4zz：asc” |
-| 显示列顺序 | 列的输出顺序 | "displayColumnOrder":["w75KJ2mc4zz","zDhUuAYrxNC"] |
-| 数据过滤器 | 包含查询事件时要使用的过滤器的项目列表 | “dataFilters”：[{“dataItem”：“GXNUsigphqK”，“ge”：“10”，“le”：“20”}] |
-| 属性值过滤器 | 属性值过滤器列表。这用于在列出跟踪的实体实例时指定属性值的过滤器 | "attributeValueFilters":[{"attribute": "ruQQnf6rswq","eq": "15"}] |
+| 跟进 | Indicates whether to filter enrollments marked for follow up or not | "followUp":true |
+| enrolledAt | DateFilterPeriod object filtering based on the event enrollment date. | "enrolledAt": {"type":"RELATIVE","period":"THIS_MONTH"} |
+| enrollmentOccurredAt | DateFilterPeriod object filtering based on the event incident date. | {"type":"RELATIVE","period":"THIS_MONTH"} |
+| orgUnit | A valid organisation unit UID | "orgUnit": "Rp268JB6Ne4" |
+| ouMode | A valid OU selection mode | "ouMode": "SELECTED" |
+| assignedUserMode | A valid user selection mode for events. Possible values are CURRENT, PROVIDED, NONE, ANY and ALL. If PROVIDED (or null), non-empty assignedUsers in the payload will be expected. | "assignedUserMode":"PROVIDED" |
+| assignedUsers | A list of assigned users for events. To be used along with PROVIDED assignedUserMode above. | "assignedUsers":["DXyJmlo9rge"] |
+| order | List of fields and its directions in comma separated values, the results will be sorted according to it. A single item in order is of the form "orderDimension:direction". | "order": "w75KJ2mc4zz:asc" |
+| displayColumnOrder | Output ordering of columns | "displayColumnOrder":["w75KJ2mc4zz","zDhUuAYrxNC"] |
+| dataFilters | A list of items that contains the filters to be used when querying events | "dataFilters":[{"dataItem": "GXNUsigphqK","ge": "10","le": "20"}] |
+| attributeValueFilters | A list of attribute value filters. This is used to specify filters for attribute values when listing tracked entity instances | "attributeValueFilters":[{"attribute": "ruQQnf6rswq","eq": "15"}] |
 
-请参阅下面的示例有效负载：
+See an example payload below:
 
 ```json
 {   
@@ -340,6 +341,7 @@ Capture 应用程序中的计划阶段工作列表功能旨在显示与特定计
             "eventCreatedAt":{"type":"ABSOLUTE","startDate":"2020-03-01","endDate":"2022-12-30"},
             "scheduledAt": {"type":"RELATIVE","period":"TODAY"},
             "enrollmentStatus": "COMPLETED",
+            "followUp" : true,
             "enrolledAt": {"type":"RELATIVE","period":"THIS_MONTH"},
             "enrollmentOccurredAt": {"type":"RELATIVE","period":"THIS_MONTH"},
             "orgUnit": "Rp268JB6Ne4",
@@ -364,41 +366,41 @@ Capture 应用程序中的计划阶段工作列表功能旨在显示与特定计
 
 The `POST /api/tracker` endpoint allows clients to import the following tracker objects into DHIS2:
 
-* **跟踪的实体**
-* **报名人数**
-* **活动**
-* **关系**
-* 嵌入其他[跟踪器对象](#webapi_nti_tracker_objects)中的数据
+* **Tracked entities**
+* **Enrollments**
+* **Events**
+* **Relationships**
+* Data embedded in other [tracker objects](#webapi_nti_tracker_objects)
 
-与跟踪器导入的其他端点相比，主要变化是：
+Main changes compared to the other endpoints for tracker import are:
 
-1. 导入有效负载可以是***嵌套***或***扁平***
-2. 调用可以是***同步***或***异步***
-3. 导入***CSV***事件负载
+1. Import payload can be ***nested*** or ***flat***
+2. Invocation can be ***synchronous*** or ***asynchronous***
+3. Import ***CSV*** events payload
 
-### 请求参数{ #request-parameters }
+### Request parameters { #request-parameters } 
 
-目前，Tracker导入端点支持以下参数：
+Currently, the tracker import endpoint supports the following parameters:
 
-| 参数名称 | 描述 | 类型 | 允许值 |
+| Parameter name | 描述 | 类型 | Allowed values |
 |---|---|---|---|
-| 异步 | 指示导入应该异步还是同步进行。 | Boolean | `TRUE`, `FALSE` |
-| 报告模式 | 仅在执行同步导入时。有关详细信息，请参阅 importSummary。 | 枚举 | `FULL`, `ERRORS`, `WARNINGS` |
-| 导入模式 | 表示导入方式。可以仅验证（试运行）或提交（默认） | 枚举 | `验证`、`提交` |
-| 方案 | 指示导入时用于元数据引用的整体 idScheme。默认为 UID。可以覆盖特定元数据（如下所列） | 枚举 | `UID`、`代码`、`名称`、`属性` |
-| 数据元素标识方案 | 指示导入时用于数据元素的 idScheme。 | 枚举 | `UID`、`代码`、`名称`、`属性` |
-| 组织单位 ID 方案 | 指示导入时用于组织单位的 idScheme。 | 枚举 | `UID`、`代码`、`名称`、`属性` |
-| 程序标识方案 | 指示导入时用于程序的 idScheme。 | 枚举 | `UID`、`代码`、`名称`、`属性` |
-| 程序阶段标识方案 | 指示导入时用于程序阶段的 idScheme。 | 枚举 | `UID`、`代码`、`名称`、`属性` |
-| 类别选项组合 ID 方案 | 指示导入时用于类别选项组合的 idScheme。 | 枚举 | `UID`、`代码`、`名称`、`属性` |
-| 类别选项Id方案 | 指示导入时用于类别选项的 idScheme。 | 枚举 | `UID`、`代码`、`名称`、`属性` |
-| 导入策略 | Indicates the effect the import should have. Can either be `CREATE`, `UPDATE`, `CREATE_AND_UPDATE` and `DELETE`, which respectively only allows importing new data, importing changes to existing data, importing any new or updates to existing data, and finally deleting data. | 枚举 | `CREATE`, `UPDATE`, `CREATE_AND_UPDATE`, `DELETE` |
-| 原子模式 | Indicates how the import responds to validation errors. If `ALL`, all data imported must be valid for any data to be committed. For `OBJECT`, only the data committed needs to be valid, while other data can be invalid. | 枚举 | `ALL`, `OBJECT` |
-| 冲洗模式 | 指示冲洗频率。这与导入期间将数据推入数据库的频率有关。主要用于调试原因，不应在生产设置中更改 | 枚举 | `AUTO`, `OBJECT` |
-| 验证模式 | 指示验证步骤的完整性。它可以被跳过，设置为快速失败（返回第一个错误）或完整（默认），这将返回发现的任何错误 | 枚举 | `FULL`, `FAIL_FAST`, `SKIP` |
-| 跳过模式验证 | 如果为 true，它将跳过验证生成属性的模式。 | Boolean | `TRUE`, `FALSE` |
-| 跳过副作用 | 如果为 true，它将跳过运行导入的任何副作用 | Boolean | `TRUE`, `FALSE` |
-| 跳过规则引擎 | 如果为 true，它将跳过运行导入的任何程序规则 | Boolean | `TRUE`, `FALSE` |
+| async | Indicates whether the import should happen asynchronously or synchronously. | Boolean | `TRUE`, `FALSE` |
+| reportMode | Only when performing synchronous import. See importSummary for more info. | Enum | `FULL`, `ERRORS`, `WARNINGS` |
+| importMode | Indicates the mode of import. Can either be validate only (dry run) or commit (Default) | Enum | `VALIDATE`, `COMMIT` |
+| 方案 | Indicates the overall idScheme to use for metadata references when importing. Default is UID. Can be overridden for specific metadata (Listed below) | Enum | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
+| 数据元素标识方案 | Indicates the idScheme to use for data elements when importing. | Enum | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
+| orgUnitIdScheme | Indicates the idScheme to use for organisation units when importing. | Enum | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
+| 程序标识方案 | Indicates the idScheme to use for programs when importing. | Enum | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
+| 程序阶段标识方案 | Indicates the idScheme to use for program stages when importing. | Enum | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
+| categoryOptionComboIdScheme | Indicates the idScheme to use for category option combos when importing. | Enum | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
+| categoryOptionIdScheme | Indicates the idScheme to use for category options when importing. | Enum | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
+| importStrategy | Indicates the effect the import should have. Can either be `CREATE`, `UPDATE`, `CREATE_AND_UPDATE` and `DELETE`, which respectively only allows importing new data, importing changes to existing data, importing any new or updates to existing data, and finally deleting data. | Enum | `CREATE`, `UPDATE`, `CREATE_AND_UPDATE`, `DELETE` |
+| atomicMode | Indicates how the import responds to validation errors. If `ALL`, all data imported must be valid for any data to be committed. For `OBJECT`, only the data committed needs to be valid, while other data can be invalid. | Enum | `ALL`, `OBJECT` |
+| flushMode | Indicates the frequency of flushing. This is related to how often data is pushed into the database during the import. Primarily used for debugging reasons, and should not be changed in a production setting | Enum | `AUTO`, `OBJECT` |
+| validationMode | Indicates the completeness of the validation step. It can be skipped, set to fail fast (Return on the first error), or full(Default), which will return any errors found | Enum | `FULL`, `FAIL_FAST`, `SKIP` |
+| skipPatternValidation | If true, it will skip validating the pattern of generated attributes. | Boolean | `TRUE`, `FALSE` |
+| skipSideEffects | If true, it will skip running any side effects for the import | Boolean | `TRUE`, `FALSE` |
+| skipRuleEngine | If true, it will skip running any program rules for the import | Boolean | `TRUE`, `FALSE` |
 
 **NOTE**: idScheme and its metadata specific idScheme parameters like
 orgUnitIdScheme, programIdScheme, ... used to allow and use the default `AUTO`.
@@ -406,23 +408,23 @@ orgUnitIdScheme, programIdScheme, ... used to allow and use the default `AUTO`.
 requests sent with idScheme `AUTO` will see the same behavior as before, namely
 matching done using `UID`.
 
-### 扁平和嵌套有效负载 { #flat-and-nested-payloads }
+### Flat and nested payloads { #flat-and-nested-payloads } 
 
-导入器支持平面和嵌套负载。主要区别在于客户要求如何构建数据。
+The importer support both flat and nested payloads. The main difference is how the client requires their data to be structured.
 
-**平坦的**
-：扁平结构的有效负载很简单。它可以包含我们拥有的每个核心跟踪器对象的集合。这可以与已分配 UID 的现有数据无缝协作。但是，对于新数据，客户端必须为对象之间的任何引用提供新的 UID。例如，如果您导入具有新注册的新跟踪实体，则跟踪实体要求客户端提供 UID，以便可以将注册链接到该 UID。
+**Flat**
+:   The flat-structured payload is straightforward. It can contain collections for each of the core tracker objects we have. This works seamlessly with existing data, which already have UIDs assigned. However, for new data, the client will have to provide new UIDs for any references between objects. For example, if you import a new tracked entity with a new enrollment, the tracked entity requires the client to provide a UID so that the enrollment can be linked to that UID.
 
-**嵌套**
-：嵌套有效负载是最常用的结构。在这里，跟踪器对象嵌入到其父对象中；例如，跟踪实体内的注册。此结构的优点是客户端不需要为这些连接提供 UID，因为它们嵌套在一起，因此在导入过程中将为其提供此连接。
+**Nested**
+:   Nested payloads are the most commonly used structure. Here, tracker objects are embedded within their parent object; For example, an enrollment within a tracked entity. The advantage of this structure is that the client does not need to provide UIDs for these connections since they will be given this connection during the import process since they are nested together.
 
-> **注意**
+> **NOTE**
 >
-> 虽然嵌套有效负载对于客户端来说可能更容易处理，但有效负载在导入之前始终会被展平。这意味着对于大型导入，提供扁平结构的有效负载将为导入过程本身提供更多的控制和更低的开销。
+> While nested payloads might prove simpler for clients to deal with, the payload will always be flattened before the import. This means that for large imports, providing a flat structured payload will provide both more control and lower overhead for the import process itself.
 
-下面列出了有效负载的 **FLAT** 和 **NESTED** 版本的示例。两种情况都使用相同的数据。
+Examples for the **FLAT** and the **NESTED** versions of the payload are listed below. Both cases use the same data.
 
-#### ***扁平*** 有效负载 { #flat-payload }
+#### ***FLAT*** payload { #flat-payload } 
 
 ```json
 {
@@ -519,7 +521,7 @@ matching done using `UID`.
 }
 ```
 
-#### ***嵌套***有效负载 { #nested-payload }
+#### ***NESTED*** payload { #nested-payload } 
 
 ```json
 {
@@ -619,13 +621,13 @@ matching done using `UID`.
 }
 ```
 
-### 同步和异步 { #sync-and-async }
-对于用户来说，同步导入与异步导入的主要区别在于 API 的立即响应。对于同步导入，导入完成后将立即返回响应并包含 importSummary。但是，对于异步导入，响应将是立即的，并且包含一个引用，客户端可以在其中轮询导入的更新。
+### SYNC and ASYNC { #sync-and-async } 
+For the user, the main difference between importing synchronously rather than asynchronously is the immediate response from the API. For the synchronous import, the response will be returned as soon as the import finishes with the importSummary. However, for asynchronous imports, the response will be immediate and contain a reference where the client can poll for updates to the import.
 
-对于重要的导入，客户端使用异步导入可能有益，以避免等待响应太长时间。
+For significant imports, it might be beneficial for the client to use the asynchronous import to avoid waiting too long for a response.
 
 
-**ASYNC** 响应的示例如下所示。对于 **SYNC** 响应，请查看 [importSummary 部分](#webapi_nti_import_summary)。
+Examples of the **ASYNC** response is shown below. For **SYNC** response, look at the [importSummary section](#webapi_nti_import_summary).
 
 ```json
 {
@@ -641,7 +643,7 @@ matching done using `UID`.
 }
 ```
 
-### CSV 事件负载 { #csv-events-payload }
+### CSV Events payload { #csv-events-payload } 
 
 In order to maintain compatibility with older versions of tracker, the API allows to import events using the CSV format.
 As this format does not allow list as field, every row of the CSV payload represents an event and a data value.
@@ -649,34 +651,34 @@ So for events with multiple data values, the CSV file will have `x` rows per eve
 Other fields that are lists as ***relationships*** and ***notes*** are not supported.
 To import a CSV payload, the content type of the request must be set to ***application/csv*** or ***text/csv***.
 
-#### ***CSV 有效负载*** 示例 { #csv-payload-example }
+#### ***CSV PAYLOAD*** example { #csv-payload-example } 
 
-|事件|地位|程序|节目阶段|注册|orgUnit|发生于|预定时间|数据元素|价值|存储者|在别处提供
+|event|status|program|programStage|enrollment|orgUnit|occurredAt|scheduledAt|dataElement|价值|storedBy|providedElsewhere
 |---|---|---|---|---|---|---|---|---|---|---|---|
-|V1CerIi3sdL|完全的|IPHINAT79UW|A03MvHHogjR|CCBLMntFuzb|DiszpKrYNg8|2020-02-26T23:00:00Z|2020-02-27T23:00:00Z|a3kGcGDCuk6|11|行政|假
-|V1CerIi3sdL|完全的|IPHINAT79UW|A03MvHHogjR|CCBLMntFuzb|DiszpKrYNg8|2020-02-26T23:00:00Z|2020-02-27T23:00:00Z|mB2QHw1tU96|[-11.566044,9.477801]|行政|假
+|V1CerIi3sdL|COMPLETED|IpHINAT79UW|A03MvHHogjR|CCBLMntFuzb|DiszpKrYNg8|2020-02-26T23:00:00Z|2020-02-27T23:00:00Z|a3kGcGDCuk6|11|admin|假
+|V1CerIi3sdL|COMPLETED|IpHINAT79UW|A03MvHHogjR|CCBLMntFuzb|DiszpKrYNg8|2020-02-26T23:00:00Z|2020-02-27T23:00:00Z|mB2QHw1tU96|[-11.566044,9.477801]|admin|假
 
-### 导入摘要 { #webapi_nti_import_summary }
+### Import Summary { #webapi_nti_import_summary }
 
-Tracker API 有两个主要端点，供消费者从其进口产品中获取反馈。这些端点与异步导入作业最相关，但也可用于同步作业。这些端点将返回与导入相关的日志或导入摘要本身。
+The Tracker API has two primary endpoints for consumers to acquire feedback from their imports. These endpoints are most relevant for async import jobs but are available for sync jobs as well. These endpoints will return either the log related to the import or the import summary itself.
 
-> **注意**
+> **Note**
 >
-> 这些端点依赖于应用程序内存中存储的信息。这意味着在某些情况下，例如应用程序重新启动或在此之后启动大量导入请求后，该信息将不可用。
+> These endpoints rely on information stored in the application memory. This means the information will be unavailable after certain cases, as an application restart or after a large number of import requests have started after this one.
 
-提交跟踪器导入请求后，我们可以访问以下端点，以便根据日志监控作业进度：
+After submitting a tracker import request, we can access the following endpoints in order to monitor the job progress based on logs:
 
-`获取/tracker/jobs/{uid}`
+`GET /tracker/jobs/{uid}`
 
-| 范围|描述|例
+| Parameter|描述|例
 |---|---|---|
-|`{uid}`| 现有跟踪器导入作业的 UID | ABCDEF12345
+|`{uid}`| The UID of an existing tracker import job | ABCDEF12345
 
-#### ***请求*** 示例 { #request-example }
+#### ***REQUEST*** example { #request-example } 
 
-`获取/tracker/jobs/mEfEaFSCKCC`
+`GET /tracker/jobs/mEfEaFSCKCC`
 
-#### ***响应*** 示例 { #response-example }
+#### ***RESPONSE*** example { #response-example } 
 
 ```json
 [
@@ -746,28 +748,28 @@ Tracker API 有两个主要端点，供消费者从其进口产品中获取反�
 ]
 ```
 
-此外，以下端点将返回导入作业的导入摘要。此导入摘要仅在导入完成后才可用：
+Additionally, the following endpoint will return the import summary of the import job. This import summary will only be available after the import has completed:
 
-`获取 /tracker/jobs/{uid}/report`
+`GET /tracker/jobs/{uid}/report`
 
-| 范围|描述|例
+| Parameter|描述|例
 |---|---|---|
-|路径`/{uid}`| 现有跟踪器导入作业的 UID | ABCDEF12345
-|`报告模式`| 返回的报告级别 | `FULL`&#124;`ERRORS`&#124;`WARNINGS`|
+|path `/{uid}`| The UID of an existing tracker import job | ABCDEF12345
+|`reportMode`| The level of the report to return | `FULL`&#124;`ERRORS`&#124;`WARNINGS`|
 
-#### ***请求*** 示例 { #request-example }
+#### ***REQUEST*** example { #request-example } 
 
-`获取 /tracker/jobs/mEfEaFSCKCC/report`
+`GET /tracker/jobs/mEfEaFSCKCC/report`
 
-#### ***响应*** 示例 { #response-example }
+#### ***RESPONSE*** example { #response-example } 
 
-[响应负载](#sample-responses) 与同步导入请求后返回的响应负载相同。
+The [response payload](#sample-responses) is the same as the one returned after a sync import request.
 
 > **Note**
 >
 > Both endpoints are used primarily for async import; however, `GET /tracker/jobs/{uid}` would also work for sync requests as it eventually uses the same import process and logging as async requests.
 
-### 导入摘要结构 { #import-summary-structure }
+### Import Summary Structure { #import-summary-structure } 
 
 Import summaries have the following overall structure, depending on the requested `reportMode`:
 ```json
@@ -781,7 +783,7 @@ Import summaries have the following overall structure, depending on the requeste
 }
 ```
 
-***地位***
+***status***
 
 The property, `status`, of the import summary indicates the overall status of the import. If no errors or warnings were raised during the import, the `status` is reported as `OK`. The presence of any error or warnings in the import will result in a status of type `ERROR` or `WARNING`.
 
@@ -791,7 +793,7 @@ The property, `status`, of the import summary indicates the overall status of th
 >
 > If the import is performed using the AtomicMode "OBJECT", where the import will import any data without validation errors, the overall status will still be `ERROR` if any errors were found.
 
-***验证报告***
+***validationReport***
 
 The `validationReport` might include `errorReports` and `warningReports` if any errors or warnings were present during the import. When present, they provide a detailed list of any errors or warnings encountered.
 
@@ -823,9 +825,9 @@ The report contains a message and a code describing the actual error (See the [e
 >
 > Errors represent issues with the payload which the importer can not circumvent. Any errors will block that data from being imported. Warnings, on the other hand, are issues where it's safe to circumvent them, but the user should be made aware that it happened. Warnings will not block data from being imported.
 
-***统计***
+***stats***
 
-统计数据提供了导入的快速概览。导入完成后，这些将是代表创建、更新、删除或忽略的数据量的实际计数。
+The stats provide a quick overview of the import. After an import is completed, these will be the actual counts representing how much data was created, updated, deleted, or ignored.
 
 例：
 ```json
@@ -847,9 +849,9 @@ The report contains a message and a code describing the actual error (See the [e
 
 `ignored` refers to objects that were not persisted. Objects can be ignored for several reasons, for example trying to create something that already exists. Ignores should always be safe, so if something was ignored, it was not necessary, or it was due to the configuration of the import.
 
-***计时统计***
+***timingsStats***
 
-`timingStats` 表示导入的不同步骤所花费的时间。这些统计数据并不提供准确的导入总时间，而是提供不同步骤的代码所花费的时间。
+`timingStats` represents the time elapsed in different steps of the import. These stats do not provide an accurate overall time for the import but rather the time spent in the code for different steps.
 
 The `timingStats` are primarily helpful in debugging imports that are causing issues to see which part of the import is having issues.
 ```json
@@ -866,7 +868,7 @@ The `timingStats` are primarily helpful in debugging imports that are causing is
 }
 ```
 
-***捆绑报告***
+***bundleReport***
 
 When the import is completed, the `bundleReport` contains all the [tracker objects](#tracker-objects) imported.
 
@@ -900,99 +902,99 @@ For example, `TRACKED_ENTITY`:
 ```
 As seen, each type of tracker object will be reported, and each has its own stats and `objectReports`. These `objectReports` will provide details about each imported object, like their type, their uid, and any error or warning reports is applicable.
 
-***信息***
+***message***
 
 If the import ended abruptly, the `message` would contain further information in relation to what happened.
 
-### 导入摘要报告级别 { #import-summary-report-level }
+### Import Summary Report Level { #import-summary-report-level } 
 
 As previously stated, `GET /tracker/jobs/{uid}/report` can be retrieved using a specific `reportMode` parameter. By default the endpoint will return an `importSummary` with `reportMode` `ERROR`.
 
-| 范围 | 描述 |
+| Parameter | 描述 |
 |---|---|
-| `已满` | Returns everything from `WARNINGS`, plus `timingsStats` |
-| `警告` | Returns everything from `ERRORS`, plus `warningReports` in `validationReports` |
-| `错误`（默认） | Returns only `errorReports` in `validationReports` |
+| `FULL` | Returns everything from `WARNINGS`, plus `timingsStats` |
+| `WARNINGS` | Returns everything from `ERRORS`, plus `warningReports` in `validationReports` |
+| `ERRORS` (default) | Returns only `errorReports` in `validationReports` |
 
 In addition, all `reportModes` will return `status`, `stats`, `bundleReport` and `message` when applicable.
 
-### 错误代码 { #webapi_nti_error_codes }
+### Error Codes { #webapi_nti_error_codes }
 
-不同的错误场景有不同的错误代码。下表列出了新 Tracker API 抛出的错误代码以及错误消息和一些附加说明。除非另有说明，错误消息中的占位符（`{0}`、`{1}`、`{2}`..）通常是 uid。
+There are various error codes for different error scenarios. The following table has the list of error codes thrown from the new Tracker API, along with the error messages and some additional descriptions. The placeholders in the error messages (`{0}`,`{1}`,`{2}`..) are usually uids unless otherwise specified.
 
-| 错误代码 | 错误信息 | 描述 |
+| Error Code | Error Message | 描述 |
 |:--|:----|:----|
 | E1000 | User: `{0}`, has no write access to OrganisationUnit: `{1}`. | This typically means that the OrganisationUnit `{1}` is not in the capture scope of the user `{0}` for the write operation to be authorized. |
-| E1001 | User: `{0}`, has no data write access to TrackedEntityType: `{1}`. | 当用户无权创建或修改 TrackedEntityType `{1}` 的数据时，会发生错误
-| E1002 | TrackedEntityInstance: `{0}`, already exists. | 当尝试使用已存在的 uid 创建新的 TrackedEntity 时，会引发此错误。确保添加新的 TrackedEntity 时使用新的 uid。 |
-| E1005 | 找不到 TrackedEntityType：`{0}`。 | 尝试使用 uid `{0}` 获取不存在的 TrackedEntityType 时抛出错误。这也可能意味着用户没有对 TrackedEntityType 的读取访问权限。 |
+| E1001 | User: `{0}`, has no data write access to TrackedEntityType: `{1}`. | The error occurs when the user is not authorized to create or modify data of the TrackedEntityType `{1}`  
+| E1002 | TrackedEntityInstance: `{0}`, already exists. | This error is thrown when trying to create a new TrackedEntity with an already existing uid. Make sure a new uid is used when adding a new TrackedEntity. |
+| E1005 | Could not find TrackedEntityType: `{0}`. | Error thrown when trying to fetch a non existing TrackedEntityType with uid `{0}` . This might also mean that the user does not have read access to the TrackedEntityType. |
 | E1006 | Attribute: `{0}`, does not exist. | Error thrown when the system was not able to find a matching TrackedEntityAttribute with uid `{0}`. This might also mean that the user does not have access to the TrackedEntityAttribute. |
 | E1007 | Error validating attribute value type: `{0}`; Error: `{1}`. | Mismatch between value type of a TrackedEntityAttribute and its provided attribute value. The actual validation error will be displayed in `{1}`. |
-| E1009 | 文件资源：`{0}`，已分配给不同的对象。 | 文件资源 uid `{0}` 已分配给系统中的另一个对象。 |
+| E1009 | File resource: `{0}`, has already been assigned to a different object. | The File resource uid `{0}` is already assigned to another object in the system. |
 | E1010 | Could not find Program: `{0}`, linked to Event. | The system was unable to find a Program with the uid `{0}` specified inside the Event payload. This might also mean that the specific Program is not accessible by the logged in user. |
 | E1011 | Could not find OrganisationUnit: `{0}`, linked to Event. | The system was unable to find a OrganisationUnit with uid `{0}` specified inside the Event payload.  |
-| E1012 | Geometry does not conform to FeatureType: `{0}`. | 提供的要素类型要么是“无”，要么是与所提供的几何值不兼容的类型。 |
+| E1012 | Geometry does not conform to FeatureType: `{0}`. | FeatureType provided is either NONE or an incompatible one for the provided geometry value. |
 | E1013 | Could not find ProgramStage: `{0}`, linked to Event. | The system was unable to find a ProgramStage with uid `{0}` specified inside the Event payload. This might also mean that the ProgramStage is not accessible to the logged in user.  |
-| E1014 | 提供的程序：`{0}`，是一个无需注册的程序。未经注册，无法将注册创建到计划中。 | 只能为已注册的计划创建注册。 |
-| E1015 | TrackedEntityInstance: `{0}`, already has an active Enrollment in Program `{1}`. | 如果该计划已存在另一个有效注册，则无法注册该计划。至少必须首先完成主动注册。 |
+| E1014 | Provided Program: `{0}`, is a Program without registration. An Enrollment cannot be created into Program without registration. | Enrollments can only be created for Programs with registration. |
+| E1015 | TrackedEntityInstance: `{0}`, already has an active Enrollment in Program `{1}`. | Cannot enroll into a Program if another active enrollment already exists for the Program. The active enrollment will have to be completed first atleast. |
 | E1016 | TrackedEntityInstance: `{0}`, already has an active enrollment in Program: `{1}`, and this program only allows enrolling one time. | As per the Program `{1}` configuration, a TrackedEntity can only be enrolled into that Program once. It looks like the TrackedEntity `{0}` already has either an ACTIVE or COMPLETED enrollment in that Program. Hence another enrollment cannot be added. |
-| E1018 | Attribute: `{0}`, is mandatory in program `{1}` but not declared in enrollment `{2}`. | 对于定义为程序强制的属性，有效负载中缺少属性值。确保有效负载中提供了强制属性的属性值。  |
+| E1018 | Attribute: `{0}`, is mandatory in program `{1}` but not declared in enrollment `{2}`. | Attribute value is missing in payload, for an attribute that is defined as mandatory for a Program. Make sure that attribute values for mandatory attributes are provided in the payload.  |
 | E1019 | Only Program attributes is allowed for enrollment; Non valid attribute: `{0}`. | Attribute uid `{0}` specified in the enrollment payload is not associated with the Program.  |
-| E1020 | Enrollment date: `{0}`, can`t be future date. | 除非本程序在其配置中允许，否则无法注册未来的日期。 |
-| E1021 | Incident date: `{0}`, can`t be future date. | 事件日期不能是未来的日期，除非程序在其配置中允许。 |
-| E1022 | TrackedEntityInstance: `{0}`, must have same TrackedEntityType as Program `{1}`. | 本程序配置为接受与注册有效负载中提供的不同的 TrackedEntityType uid。 |
-| E1023 | DisplayIncidentDate 为 true，但属性genesisAt 为 null 或格式无效：`{0}`。 | 程序配置了 DisplayIncidentDate，但其负载中的日期为空或无效。 |
-| E1025 | Property enrolledAt is null or has an invalid format: `{0}`. | 注册日期对于注册是强制性的。确保它不为空并且具有有效的日期格式。 |
+| E1020 | Enrollment date: `{0}`, can`t be future date. | Cannot enroll into a future date unless the Program allows for it in its configuration. |
+| E1021 | Incident date: `{0}`, can`t be future date. | Incident date cannot be a future date unless the Program allows for it in its configuration. |
+| E1022 | TrackedEntityInstance: `{0}`, must have same TrackedEntityType as Program `{1}`. | The Program is configured to accept TrackedEntityType uid that is different from what is provided in the enrollment payload. |
+| E1023 | DisplayIncidentDate is true but property occurredAt is null or has an invalid format: `{0}`. | Program is configured with DisplayIncidentDate but its either null or an invalid date in the payload. |
+| E1025 | Property enrolledAt is null or has an invalid format: `{0}`. | EnrolledAt Date is mandatory for an Enrollment. Make sure it is not null and has a valid date format. |
 | E1029 | Event OrganisationUnit: `{0}`, and Program: `{1}`, don't match. | The Event payload uses a Program `{1}` which is not configured to be accessible by OrganisationUnit `{0}`. |
-| E1030 | Event: `{0}`, already exists. | 尝试使用已存在的 uid 添加新事件时会引发此错误。确保添加新事件时使用新的 uid。 |
-| E1031 | 缺少事件发生日期。 | OccuredAt 属性要么为 null，要么在负载中具有无效的日期格式。 |
-| E1032 | 事件：`{0}`，不存在。 | |
-| E1033 | 事件：`{0}`，注册值为 NULL。 | |
-| E1035 | 事件：`{0}`，ProgramStage 值为 NULL。 | |
-| E1036 | 事件：`{0}`，TrackedEntityInstance 未指向现有对象。 | 系统无法找到具有事件负载中指定的 uid 的 TrackedEntity。这也可能意味着用户没有对 TrackedEntity 的读取访问权限。 |
-| E1039 | ProgramStage: `{0}`, is not repeatable and an event already exists. | 特定注册的 ProgramStage 已存在一个事件。由于 ProgramStage 配置为不可重复，因此无法添加同一 ProgramStage 的另一个事件。  |
+| E1030 | Event: `{0}`, already exists. | This error is thrown when trying to add a new Event with an already existing uid. Make sure a new uid is used when adding a new Event. |
+| E1031 | Event OccurredAt date is missing. | OccuredAt property is either null or has an invalidate date format in the payload. |
+| E1032 | Event: `{0}`, do not exist. | |
+| E1033 | Event: `{0}`, Enrollment value is NULL. | |
+| E1035 | Event: `{0}`, ProgramStage value is NULL. | |
+| E1036 | Event: `{0}`, TrackedEntityInstance does not point to a existing object. | The system was unable to find a TrackedEntity with the uid specified inside the event payload. This might also mean that the user does not have read access to the TrackedEntity. |
+| E1039 | ProgramStage: `{0}`, is not repeatable and an event already exists. | An Event already exists for the ProgramStage for the specific Enrollment. Since the ProgramStage is configured to be non-repeatable, another Event for the same ProgramStage cannot be added.  |
 | E1041 | Enrollment OrganisationUnit: `{0}`, and Program: `{1}`, don't match. | The Enrollment payload contains a Program `{1}` which is not configured to be accessible by the OrganisationUnit  `{0}`. |
-| E1042 | 事件：`{0}`，需要有完成日期。 | 如果程序配置为具有completeExpiryDays，则CompletedDate 对于COMPLETED 事件负载是必需的。状态为“已完成”的事件应具有非空的completedDate 属性和有效的日期格式。 |
+| E1042 | Event: `{0}`, needs to have completed date. | If the program is configured to have completeExpiryDays, then CompletedDate is mandatory for a COMPLETED event payload. An Event with status as COMPLETED should have completedDate property as non-null and a valid date format. |
 | E1048 | Object: `{0}`, uid: `{1}`, has an invalid uid format. | 有效的 uid 有 11 个字符。第一个字符必须是字母（a-z 或 A-Z），其余 10 个字符可以是字母数字（a-z 或 A-Z 或 0-9）。 |
 | E1049 | Could not find OrganisationUnit: `{0}`, linked to Tracked Entity. | The system could not find an OrganisationUnit with uid `{0}`. |
-| E1050 | 缺少活动计划日期。 | 事件负载中的 ScheduledAt 属性丢失或日期格式无效。 |
-| E1055 | 不允许使用默认 AttributeOptionCombo，因为程序具有非默认 CategoryCombo。 | 该程序配置为包含非默认 CategoryCombo，但请求使用默认 AttributeOptionCombo。 |
-| E1056 | Event date: `{0}`, is before start date: `{1}`, for AttributeOption: `{2}`. | CategoryOption 配置了开始日期，负载中的事件日期不能早于该开始日期。 |
-| E1057 | Event date: `{0}`, is after end date: `{1}`, for AttributeOption; `{2}`. | CategoryOption 配置了结束日期，负载中的事件日期不能晚于该结束日期。  |
-| E1063 | TrackedEntityInstance: `{0}`, does not exist. | 尝试使用 uid `{0}` 获取不存在的 TrackedEntity 时抛出错误。这也可能意味着用户没有对 TrackedEntity 的读取访问权限。 |
-| E1064 | Non-unique attribute value `{0}` for attribute `{1}` | 属性值在定义的范围内必须是唯一的。该错误表明另一个 TrackedEntity 的属性值已存在。 |
-| E1068 | Could not find TrackedEntityInstance: `{0}`, linked to Enrollment. | 系统找不到注册有效负载中指定的 TrackedEntity。这也可能意味着用户没有对 TrackedEntity 的读取访问权限。 |
-| E1069 | Could not find Program: `{0}`, linked to Enrollment. | 系统找不到注册有效负载中指定的程序。这也可能意味着用户没有本程序的读取权限。 |
-| E1070 | Could not find OrganisationUnit: `{0}`, linked to Enrollment. | 系统找不到注册有效负载中指定的 OrganizationUnit。 |
-| E1074 | 缺少功能类型。 | |
+| E1050 | Event ScheduledAt date is missing. | ScheduledAt property in the Event payload is either missing or an invalid date format. |
+| E1055 | Default AttributeOptionCombo is not allowed since program has non-default CategoryCombo. | The Program is configured to contain non-default CategoryCombo but the request uses the Default AttributeOptionCombo. |
+| E1056 | Event date: `{0}`, is before start date: `{1}`, for AttributeOption: `{2}`. | The CategoryOption has a start date configured , the Event date in the payload cannot be earlier than this start date. |
+| E1057 | Event date: `{0}`, is after end date: `{1}`, for AttributeOption; `{2}`. | The CategoryOption has an end date configured, the Event date in the payload cannot be later than this end date.  |
+| E1063 | TrackedEntityInstance: `{0}`, does not exist. | Error thrown when trying to fetch a non existing TrackedEntity with uid `{0}` . This might also mean that the user does not have read access to the TrackedEntity. |
+| E1064 | Non-unique attribute value `{0}` for attribute `{1}` | The attribute value has to be unique within the defined scope. The error indicates that the attribute value already exists for another TrackedEntity. |
+| E1068 | Could not find TrackedEntityInstance: `{0}`, linked to Enrollment. | The system could not find the TrackedEntity specified in the Enrollment payload. This might also mean that the user does not have read access to the TrackedEntity. |
+| E1069 | Could not find Program: `{0}`, linked to Enrollment. | The system could not find the Program specified in the Enrollment payload. This might also mean that the user does not have read access to the Program. |
+| E1070 | Could not find OrganisationUnit: `{0}`, linked to Enrollment. | The system could not find the OrganisationUnit specified in the Enrollment payload. |
+| E1074 | FeatureType is missing. | |
 | E1075 | Attribute: `{0}`, is missing uid. | |
-| E1076 | `{0}` `{1}` 是必需的，不能为空 | |
-| E1077 | 属性：`{0}`，文本值超过允许的最大长度：`{0}`。 | |
-| E1080 | Enrollment: `{0}`, already exists. | 当尝试使用已存在的 uid 创建新的 Enrollmentt 时，会引发此错误。确保添加新注册时使用新的 uid。 |
-| E1081 | 注册：`{0}`，不存在。 | 尝试使用 uid `{0}` 获取不存在的注册时抛出错误。这也可能意味着用户没有注册的读取权限。 |
-| E1082 | 事件：`{0}`已被删除且无法修改。 | 如果事件被软删除，则不允许对其进行修改。 |
-| E1083 | User: `{0}`, is not authorized to modify completed events. | 只有超级用户或具有“F_UNCOMPLETE_EVENT”权限的用户才能修改已完成的事件。已完成的事件是指状态为“已完成”的事件。 |
-| E1084 | 文件资源：`{0}`，找不到参考。 | |
-| E1085 | Attribute: `{0}`, value does not match value type: `{1}`. | 属性的值类型与其提供的属性值不匹配。 |
-| E1089 | Event: `{0}`, references a Program Stage `{1}` that does not belong to Program `{2}`. | 事件负载中的 ProgramStage uid 和 Program uid 不兼容。 |
-| E1090 | Attribute: `{0}`, is mandatory in tracked entity type `{1}` but not declared in tracked entity `{2}`. | 有效负载缺少强制 TrackedEntityTypeAttributes 值。 |
-| E1091 | User: `{0}`, has no data write access to Program: `{1}`. | 程序共享配置使得用户没有该程序的写入权限。 |
-| E1095 | User: `{0}`, has no data write access to ProgramStage: `{1}`. | ProgramStage 共享配置使得用户没有对此 ProgramStage 的写访问权限。  |
-| E1096 | User: `{0}`, has no data read access to Program: `{1}`. | 程序共享配置使得用户没有该程序的读取访问权限。 |
-| E1099 | User: `{0}`, has no write access to CategoryOption: `{1}`. | CategoryOption 共享配置使得用户没有对此 CategoryOption 的写入权限 |
-| E1100 | User: `{0}`, is lacking 'F_TEI_CASCADE_DELETE' authority to delete TrackedEntityInstance: `{1}`. | 此 TrackedEntity 存在未删除的注册。如果用户没有“F_TEI_CASCADE_DELETE”权限，则必须首先显式删除这些注册才能删除 TrackedEntity。 |
-| E1102 | User: `{0}`, does not have access to the tracked entity: `{1}`, Program: `{2}`, combination. | 当用户的 OrganizationUnit 不具有此特定程序的此 TrackedEntity 的所有权时，会引发此错误。 TrackedEntity-Program 组合的所属 OrganizationUnit 应落入用户的捕获范围（在某些情况下为搜索范围）。 |
-| E1103 | User: `{0}`, is lacking 'F_ENROLLMENT_CASCADE_DELETE' authority to delete Enrollment : `{1}`. | 此注册存在未删除的事件。如果用户没有“F_ENROLLMENT_CASCADE_DELETE”权限，则必须首先显式删除这些事件才能删除注册。 |
-| E1104 | User: `{0}`, has no data read access to program: `{1}`, TrackedEntityType: `{2}`. | 与程序关联的 TrackedEntityType 的共享配置使得用户没有数据读取权限。 |
+| E1076 | `{0}` `{1}` is mandatory and can't be null | |
+| E1077 | Attribute: `{0}`, text value exceed the maximum allowed length: `{0}`. | |
+| E1080 | Enrollment: `{0}`, already exists. | This error is thrown when trying to create a new Enrollmentt with an already existing uid. Make sure a new uid is used when adding a new Enrollment. |
+| E1081 | Enrollment: `{0}`, do not exist. | Error thrown when trying to fetch a non existing Enrollment with uid `{0}` . This might also mean that the user does not have read access to the Enrollment. |
+| E1082 | Event: `{0}`, is already deleted and can't be modified. | If the event is soft deleted, no modifications on it are allowed. |
+| E1083 | User: `{0}`, is not authorized to modify completed events. | Only a super user or a user with the authority "F_UNCOMPLETE_EVENT" can modify completed events. Completed Events are those Events with status as COMPLETED. |
+| E1084 | File resource: `{0}`, reference could not be found. | |
+| E1085 | Attribute: `{0}`, value does not match value type: `{1}`. | Mismatch between value type of an attribute and its provided attribute value. |
+| E1089 | Event: `{0}`, references a Program Stage `{1}` that does not belong to Program `{2}`. | The ProgramStage uid and Program uid in the Event payload is incompatible. |
+| E1090 | Attribute: `{0}`, is mandatory in tracked entity type `{1}` but not declared in tracked entity `{2}`. | The payload has missing values for mandatory TrackedEntityTypeAttributes. |
+| E1091 | User: `{0}`, has no data write access to Program: `{1}`. | The Program sharing configuration is such that, the user does not have write access for this Program. |
+| E1095 | User: `{0}`, has no data write access to ProgramStage: `{1}`. | The ProgramStage sharing configuration is such that, the user does not have write access for this ProgramStage.  |
+| E1096 | User: `{0}`, has no data read access to Program: `{1}`. | The Program sharing configuration is such that, the user does not have read access for this Program. |
+| E1099 | User: `{0}`, has no write access to CategoryOption: `{1}`. | The CategoryOption sharing configuration is such that, the user does not have write access for this CategoryOption |
+| E1100 | User: `{0}`, is lacking 'F_TEI_CASCADE_DELETE' authority to delete TrackedEntityInstance: `{1}`. | There exists undeleted Enrollments for this TrackedEntity. If the user does not have 'F_TEI_CASCADE_DELETE' authority, then these Enrollments has to be deleted first explicitly to be able to delete the TrackedEntity. |
+| E1102 | User: `{0}`, does not have access to the tracked entity: `{1}`, Program: `{2}`, combination. | This error is thrown when the user's OrganisationUnit does not have the ownership of this TrackedEntity for this specific Program. The owning OrganisationUnit of the TrackedEntity-Program combination should fall into the capture scope (in some cases the search scope) of the user. |
+| E1103 | User: `{0}`, is lacking 'F_ENROLLMENT_CASCADE_DELETE' authority to delete Enrollment : `{1}`. | There exists undeleted Events for this Enrollment. If the user does not have 'F_ENROLLMENT_CASCADE_DELETE' authority, then these Events has to be deleted first explicitly to be able to delete the Enrollment. |
+| E1104 | User: `{0}`, has no data read access to program: `{1}`, TrackedEntityType: `{2}`. | The sharing configuration of the TrackedEntityType associated with the Program is such that, the user does not have data read access to it. |
 | E1112 | Attribute value: `{0}`, is set to confidential but system is not properly configured to encrypt data. | Either JCE files is missing or the configuration property `encryption.password` might be missing in `dhis.conf`. |
-| E1113 | 注册：`{0}`，已删除且无法修改。 | 如果注册被软删除，则不允许对其进行修改。 |
-| E1114 | TrackedEntity：`{0}`，已被删除且无法修改。 | 如果 TrackedEntity 被软删除，则不允许对其进行任何修改。 |
-| E1115 | 找不到 CategoryOptionCombo：`{0}`。 | |
-| E1116 | 找不到 CategoryOption：`{0}`。 | 这也可能意味着用户无法访问 CategoryOption。|
+| E1113 | Enrollment: `{0}`, is already deleted and can't be modified. | If the Enrollment is soft deleted, no modifications on it are allowed. |
+| E1114 | TrackedEntity: `{0}`, is already deleted and can't be modified. | If the TrackedEntity is soft deleted, no modifications on it are allowed. |
+| E1115 | Could not find CategoryOptionCombo: `{0}`. | |
+| E1116 | Could not find CategoryOption: `{0}`. | This might also mean the CategoryOption is not accessible to the user.|
 | E1117 | CategoryOptionCombo does not exist for given category combo and category options: `{0}`. | |
 | E1118 | Assigned user `{0}` is not a valid uid. | |
 | E1119 | A Tracker Note with uid `{0}` already exists. | |
-| E1120 | ProgramStage `{0}` 不允许用户分配 | 事件负载已分配用户 ID，但 ProgramStage 未配置为允许用户分配。 |
+| E1120 | ProgramStage `{0}` does not allow user assignment | Event payload has assignedUserId but the ProgramStage is not configured to allow user assignment. |
 | E1121 | Missing required tracked entity property: `{0}`. | |
 | E1122 | Missing required enrollment property: `{0}`. | |
 | E1123 | Missing required event property: `{0}`. | |
@@ -1000,22 +1002,22 @@ In addition, all `reportModes` will return `status`, `stats`, `bundleReport` and
 | E1125 | Value `{0}` is not a valid option for `{1}` `{2}` in option set `{3}` | |
 | E1017 | Attribute: `{0}`, does not exist. | |
 | E1093 | User: `{0}`, has no search access to OrganisationUnit: `{1}`. | |
-| E1094 | Not allowed to update Enrollment: `{0}`, existing Program `{1}`. | 现有注册的注册有效负载具有与其最初注册时不同的计划 uid。 |
-| E1110 | Not allowed to update Event: `{0}`, existing Program `{1}`. | 现有事件的事件负载具有与最初创建时不同的程序 uid。  |
+| E1094 | Not allowed to update Enrollment: `{0}`, existing Program `{1}`. | The Enrollment payload for an existing Enrollment has a different Program uid than the one it was originally enrolled with. |
+| E1110 | Not allowed to update Event: `{0}`, existing Program `{1}`. | The Event payload for an existing Event has a different Program uid than the one it was originally created with.  |
 | E1111 | We have a generated attribute: `{0}`, but no pattern. | |
-| E1043 | Event: `{0}`, completeness date has expired. Not possible to make changes to this event. | 没有“F_EDIT_EXPIRED”权限的用户无法更新已超过其程序中配置的到期日的事件。 |
-| E1046 | 事件：`{0}`，需要至少有一个（事件或时间表）日期。 | occurredAt 或 ScheduledAt 属性应出现在事件负载中。 |
-| E1047 | 事件：`{0}`，日期属于过期期限。不可能创建此类事件。 | 事件“occurredAt”或“scheduledAt”的值早于“PeriodType”开始日期。  |
-| E1300 | 由程序规则 (`{0}`) 生成 - `{1}` | |
+| E1043 | Event: `{0}`, completeness date has expired. Not possible to make changes to this event. | A user without 'F_EDIT_EXPIRED' authority cannot update an Event that has passed its expiry days as configured in its Program. |
+| E1046 | Event: `{0}`, needs to have at least one (event or schedule) date. | Either of occuredAt or scheduledAt property should be present in the Event payload. |
+| E1047 | Event: `{0}`, date belongs to an expired period. It is not possible to create such event. | Event occuredAt or scheduledAt has a value that is earlier than the PeriodType start date.  |
+| E1300 | Generated by program rule (`{0}`) - `{1}` | |
 | E1302 | Generated by program rule (`{0}`) - DataElement `{1}` is not valid: `{2}` | |
 | E1303 | Generated by program rule (`{0}`) - Mandatory DataElement `{1}` is not present | |
 | E1304 | Generated by program rule (`{0}`) - DataElement `{1}` is not a valid data element | |
 | E1305 | Generated by program rule (`{0}`) - DataElement `{1}` is not part of `{2}` program stage | |
-| E1306 | 由程序规则 (`{0}`) 生成 - 强制属性 `{1}` 不存在 | |
+| E1306 | Generated by program rule (`{0}`) - Mandatory Attribute `{1}` is not present | |
 | E1307 | Generated by program rule (`{0}`) - Unable to assign value to data element `{1}`. The provided value must be empty or match the calculated value `{2}` | |
 | E1308 | Generated by program rule (`{0}`) - DataElement `{1}` is being replaced in event `{2}` | |
 | E1309 | Generated by program rule (`{0}`) - Unable to assign value to attribute `{1}`. The provided value must be empty or match the calculated value `{2}` | |
-| E1310 | 由程序规则 (`{0}`) 生成 - 属性 `{1}` 在 tei `{2}` 中被替换 | |
+| E1310 | Generated by program rule (`{0}`) - Attribute `{1}` is being replaced in tei `{2}` | |
 | E4000 | Relationship: `{0}` cannot link to itself | |
 | E4001 | Relationship Item `{0}` for Relationship `{1}` is invalid: an Item can link only one Tracker entity. | |
 | E4006 | Could not find relationship Type: `{0}`. | |
@@ -1026,132 +1028,132 @@ In addition, all `reportModes` will return `status`, `stats`, `bundleReport` and
 | E4013 | Relationship Type `{0}` constraint is missing {1}. | |
 | E4014 | Relationship Type `{0}` constraint requires a Tracked Entity having type `{1}` but `{2}` was found. | |
 | E4062 | Start date or end date not specified with ABSOLUTE date period type for item `{0}` | |
-| E4063 | 当分配用户模式设置为 PROVIDED 时，分配的用户不能为空 | |
+| E4063 | Assigned users cannot be empty when assigned user mode is set to PROVIDED | |
 | E4064 | Organisation unit cannot be empty with `{0}` org unit mode | |
-| E4065 | 过滤器中缺少数据项 UID | |
+| E4065 | Data item UID is missing in filter | |
 | E4066 | No data element found for item: `{0}` | |
-| E4067 | 过滤器中缺少属性 UID | |
+| E4067 | Attribute UID is missing in filter | |
 | E4068 | No tracked entity attribute found for attribute: `{0}` | |
-| E9999 | 不适用 | 未定义的错误消息。 |
+| E9999 | 不适用 | Undefined error message. |
 
 ### 验证方式 { #webapi_nti_validation }
 
-使用跟踪器导入器导入数据时，会执行一系列验证以确保数据的有效性。本节将描述所执行的一些不同类型的验证，以便更好地了解导入验证是否失败。
+While importing data using the tracker importer, a series of validations are performed to ensure the validity of the data. This section will describe some of the different types of validation performed to provide a better understanding if validation fails for your import.
 
-#### 所需属性 { #required-properties }
+#### Required properties { #required-properties } 
 
-每个跟踪器对象都有一些导入数据时需要提供的必需属性。有关所需属性的详尽列表，请查看 [Tracker Object 部分](#webapi_nti_tracker_objects)。
+Each of the tracker objects has a few required properties that need to be present when importing data. For an exhaustive list of required properties, have a look at the [Tracker Object section](#webapi_nti_tracker_objects).
 
-在验证所需属性时，我们通常谈论对其他数据或元数据的引用。在这些情况下，有三个主要标准：
+When validating required properties, we are usually talking about references to other data or metadata. In these cases, there are three main criteria:
 
-1. 该引用在有效负载中存在且不为空。
-2. 引用指向正确的数据类型并且存在于数据库中
-3. 用户有权查看参考
+1. The reference is present and not null in the payload.
+2. The reference points to the correct type of data and exists in the database
+3. The user has access to see the reference
 
-如果第一个条件失败，导入将失败，并显示一条有关缺少引用的消息。但是，假设引用指向不存在或用户无法访问的内容。在这种情况下，这两种情况都会导致一条有关未找到引用的消息。
+If the first condition fails, the import will fail with a message about a missing reference. However, suppose the reference points to something that doesn't exist or which the user cannot access. In that case, both cases will result in a message about the reference not being found.
 
-#### 格式 { #formats }
+#### Formats { #formats } 
 
-跟踪器对象的某些属性需要特定的格式。导入数据时，每个属性都会根据预期格式进行验证，并将根据哪个属性的格式错误返回不同的错误。以这种方式验证的属性的一些示例：
+Some of the properties of tracker objects require a specific format. When importing data, each of these properties is validated against the expected format and will return different errors depending on which property has a wrong format. Some examples of properties that are validated this way:
 
-- UID（涵盖对 DHIS2 中其他数据或元数据的所有引用。）
-- 日期
-- 几何（坐标必须与其类型指定的格式匹配）
+- UIDs (These cover all references to other data or metadata in DHIS2.)
+- Dates
+- Geometry (The coordinates must match the format as specified by its type)
 
-#### 用户访问 { #user-access }
-所有导入的数据都将根据数据中引用的元数据 ([Sharing](#webapi_nti_metadata_sharing)) 和组织单位 ([组织单位范围](#webapi_nti_ou_scope)) 进行验证。您可以在以下部分中找到有关共享和组织单位范围的更多信息。
+#### User access { #user-access } 
+All data imported will be validated based on the metadata  ([Sharing](#webapi_nti_metadata_sharing)) and the organisation units ([Organisation Unit Scopes](#webapi_nti_ou_scope)) referenced in the data. You can find more information about sharing and organisation unit scopes in the following sections.
 
-在数据库中查找参考文献的同时验证共享。用户访问权限之外的元数据将被视为不存在。导入将验证数据中引用的任何元数据。
+Sharing is validated at the same time as references are looked up in the database. Metadata outside of the user's access will be treated as if it doesn't exist. The import will validate any metadata referenced in the data.
 
-另一方面，组织单位有双重目的。它主要确保只有在为用户“捕获范围”内的组织单位导入数据时才能导入数据。其次，组织单位还用于限制可用的程序。这意味着，如果您尝试为无权访问您正在导入的程序的组织单位导入数据，则导入将无效。
+Organisation units, on the other hand, serve a dual purpose. It will primarily make sure that data can only be imported when imported for an organisation unit the user has within their "capture scope". Secondly, organisation units are also used to restrict what programs are available. That means if you are trying to import data for an organisation unit that does not have access to the Program you are importing, the import will be invalid.
 
 Users with the `ALL` authority will ignore the limits of sharing and organisation unit scopes when they import data. However, they can not import enrollments in organisation units that do not have access to the enrollment program.
 
-#### 属性和数据值 { #attribute-and-data-values }
+#### Attribute and Data values { #attribute-and-data-values } 
 
-属性和数据值分别是跟踪实体和事件的一部分。但是，属性可以通过其类型 (TrackedEntityType) 或其程序 (Program) 链接到跟踪实体。此外，属性也可以是唯一的。
+Attributes and data values are part of a tracked entity and an event, respectively. However, attributes can be linked to a tracked entity either through its type (TrackedEntityType) or its Program (Program). Additionally, attributes can also be unique.
 
-导入中完成的初始验证是为了确保为属性或数据元素提供的值符合预期值的类型。例如，假设您导入数值类型的数据元素的值。在这种情况下，该值应为数字。与类型和值之间不匹配相关的任何错误都将导致相同的错误代码，但带有与违规类型相关的特定消息。
+The initial validation done in the import is to make sure the value provided for an attribute or data element conforms to the type of value expected. For example, suppose you import a value for a data element with a numeric type. In that case, the value is expected to be numeric. Any errors related to a mismatch between a type and a value will result in the same error code but with a specific message related to the type of violation.
 
 Mandatory attributes and data values are also checked. Currently, removing mandatory attributes is not allowed. Some use-cases require values to be sent separately, while others require all values to be sent as one. Programs can be configured to either validate mandatory attributes `ON_COMPLETE` or `ON_UPDATE_AND_INSERT` to accommodate these use-cases.
 
-导入将在导入时验证唯一属性。这意味着只要提供的值对于整个系统中的属性来说是唯一的，它就会通过。但是，如果发现该唯一值被除导入实体之外的任何其他跟踪实体使用，则该操作将会失败。
+The import will validate unique attributes at the time of import. That means as long as the provided value is unique for the attribute in the whole system, it will pass. However, if the unique value is found used by any other tracked entity other than the one being imported, it will fail.
 
 #### 组态 { #configuration } 
 
-导入器中验证的最后一部分是基于用户对相关元数据的配置进行验证。有关每种配置的更多信息，请查看相关部分。可配置验证的一些示例：
-- 特征类型（对于几何）
-- 用户可分配的事件
-- 允许未来的日期
-- 报名一次
-- 和更多。
+The last part of validations in the importer are validations based on the user's configuration of relevant metadata. For more information about each configuration, check out the relevant sections. Some examples of configurable validations:
+- Feature type (For geometry)
+- User-assignable events
+- Allow future dates
+- Enroll once
+- And more.
 
-这些配置将进一步改变导入期间执行验证的方式。
+These configurations will further change how validation is performed during import.
 
-### 计划规则 { #webapi_nti_program_rules }
+### Program Rules { #webapi_nti_program_rules }
 
-用户可以配置[程序规则](#webapi_program_rules)，这会向跟踪器表单添加条件行为。除了在跟踪器应用程序中运行这些规则之外，跟踪器导入器还将运行这些规则的选择。由于进口商也在运行这些规则，因此我们可以确保额外的验证级别。
+Users can configure [Program Rules](#webapi_program_rules), which adds conditional behavior to tracker forms. In addition to running these rules in the tracker apps, the tracker importer will also run a selection of these rules. Since the importer is also running these rules, we can ensure an additional level of validation.
 
-并非所有程序规则操作都受支持，因为它们仅适合前端演示。下面列出了受支持的程序规则操作的完整列表。
+Not all program rule actions are supported since they are only suitable for a frontend presentation. A complete list of the supported program rule actions is presented below.
 
-  |程序规则动作|支持的|
+  |Program Rule Action|支持的|
   |---|:---:|
-  |**显示文本**| |
-  |**显示键值对**| |
-  |**海德菲尔德**||
-  |**隐藏部分**||
-  |**分配**|**X**|
-  |**显示警告**|**X**|
-  |**淋浴间**|**X**|
-  |**完成警告**|**X**|
-  |**完成错误**|**X**|
-  |**创建事件**||
-  |**设置强制字段**|**X**|
-  |**发信息**|**X**|
-  |**安排消息**|**X**|
+  |**DISPLAYTEXT**| |
+  |**DISPLAYKEYVALUEPAIR**| |
+  |**HIDEFIELD**||
+  |**HIDESECTION**||
+  |**ASSIGN**|**X**|
+  |**SHOWWARNING**|**X**|
+  |**SHOWERROR**|**X**|
+  |**WARNINGONCOMPLETION**|**X**|
+  |**ERRORONCOMPLETION**|**X**|
+  |**CREATEEVENT**||
+  |**SETMANDATORYFIELD**|**X**|
+  |**SENDMESSAGE**|**X**|
+  |**SCHEDULEMESSAGE**|**X**|
 
-程序规则在导入器中的评估方式与在 Tracker 应用程序中的评估方式相同。总而言之，执行计划规则时会考虑以下条件：
+Program rules are evaluated in the importer in the same way they are evaluated in the Tracker apps. To summarize, the following conditions are considered when enforcing the program rules:
 
-* 程序规则必须链接到正在导入的数据。例如，程序阶段或数据元素。
-* 计划规则的条件必须评估为 true
+* The program rule must be linked to the data being imported. For example, a program stage or a data element.
+* The Program rule's condition must be evaluated to true
 
-程序规则的结果取决于这些规则中定义的操作：
+The results of the program rules depend on the actions defined in those rules:
 
-* 程序规则操作可能以 2 种不同的结果结束：警告或错误。
-  * 错误将使验证失败，而警告将在导入摘要中作为消息报告。
-    * SHOWWARNING 和 WARNINGONCOMPLETION 操作只能生成警告。
-    * SHOWERROR、ERRORONCOMPLETION 和 SETMANDATORYFIELD 操作只能生成错误。
-    * ASSIGN 操作可以生成警告和错误。
-      * 当操作为空属性/数据元素分配值时，会生成警告。
-      * 当操作正在为已具有要分配的相同值的属性/数据元素分配值时，会生成警告。
+* Program rule actions may end in 2 different results: Warnings or Errors.
+  * Errors will make the validation fail, while the warnings will be reported as a message in the import summary.
+    * SHOWWARNING and WARNINGONCOMPLETION actions can generate only Warnings.
+    * SHOWERROR, ERRORONCOMPLETION, and SETMANDATORYFIELD actions can generate only Errors.
+    * ASSIGN action can generate both Warnings and Errors.
+      * When the action is assigning a value to an empty attribute/data element, a warning is generated.
+      * When the action is assigning a value to an attribute/data element that already has the same value to be assigned, a warning is generated.
       * When the action is assigning a value to an attribute/data element that already has a value and the value to be assigned is different, an error is generated unless the `RULE_ENGINE_ASSIGN_OVERWRITE` system setting is set to true.
 
-此外，程序规则还可能导致副作用，例如发送和安排消息。有关副作用的更多信息可以在以下部分中找到。
+Additionally, program rules can also result in side-effects, like send and schedule messages. More information about side effects can be found in the following section.
 
-> **注意**
+> **NOTE**
 >
-> 可以使用 `skipProgramRules` 参数在导入过程中跳过程序规则。
+> Program rules can be skipped during import using the `skipProgramRules` parameter.
 
-### 副作用 { #webapi_nti_side_effects }
+### Side Effects { #webapi_nti_side_effects }
 
-导入完成后，导入可能会触发特定任务。这些任务就是我们所说的“副作用”。这些任务执行的操作不会影响导入本身。
+After an import has been completed, specific tasks might be triggered as a result of the import. These tasks are what we refer to as "Side effects". These tasks perform operations that do not affect the import itself.
 
-副作用是与导入分离运行但始终由导入触发的任务。由于副作用与导入无关，因此即使导入成功，副作用也可能会失败。此外，副作用仅在导入成功时运行，因此它们不会以相反的方式失败。
+Side effects are tasks running detached from the import but are always triggered by an import. Since side effects are detached from the import, they can fail even when the import is successful. Additionally, side effects are only run when the import is successful, so they cannot fail the other way around.
 
-目前支持以下副作用：
+The following side effects are currently supported:
 
-  |副作用|支持的|描述|
+  |Side Effects|支持的|描述|
   |---|:---:|---|
-  |**追踪器通知**|**X**| 更新可以触发通知。触发通知的更新是**注册**、**事件更新**、**事件或注册完成**。 |
-  |**程序规则通知**|**X**| 程序规则可以触发通知。请注意，这些通知是通过 DHIS2 规则引擎生成的程序规则效果的一部分。|
+  |**Tracker Notification**|**X**| Updates can trigger notifications. Updates which trigger notifications are **enrollment**, **event update**, **event or enrollment completion**. |
+  |**ProgramRule Notification**|**X**| Program rules can trigger notifications. Note that these notifications are part of program rule effects which are generated through the DHIS2 rule engine.|
 
   > **NOTE**
   >
   > Certain configurations can control the execution of side effects. `skipSideEffects` flag can be set during the import to skip side effects entirely. This parameter can be useful if you import something you don't want to trigger notifications for, as an example.
 
-### 将用户分配给事件 { #webapi_nti_user_event_assignment }
+### Assign user to events { #webapi_nti_user_event_assignment }
 
-特定工作流受益于像任务一样处理事件，因此，您可以将用户分配给事件。
+Specific workflows benefit from treating events like tasks, and for this reason, you can assign a user to an event.
 
 Assigning a user to an event will not change the access or permissions for users but will create a link between the Event and the user.
 When an event has a user assigned, you can query events from the API using the `assignedUser` field as a parameter.
@@ -1176,38 +1178,38 @@ When you want to assign a user to an event, you simply provide the UID of the us
 
 In this example, the user with uid `M0fCOxtkURr` will be assigned to the Event with uid `ZwwuwNp6gVd`. Only one user can be assigned to a single event.
 
-要使用此功能，相关程序阶段需要启用用户分配，并且为用户提供的 uid 必须引用有效的现有用户。
+To use this feature, the relevant program stage needs to have user assignment enabled, and the uid provided for the user must refer to a valid, existing user.
 
-## 跟踪器导出 { #webapi_nti_export }
+## Tracker Export { #webapi_nti_export }
 
-跟踪器导出端点允许您检索以前导入的对象，这些对象是：
+Tracker export endpoints allow you to retrieve the previously imported objects which are:
 
-- **跟踪实体**
-- **活动**
-- **注册人数**
-- **关系**
+- **tracked entities**
+- **events**
+- **enrollments**
+- **relationships**
 
 > **NOTE**
 >
 > - All these endpoints currently support `JSON`. `CSV` is only supported by tracked entities and events.
 
-### 常用请求参数 { #common-request-parameters }
+### Common request parameters { #common-request-parameters } 
 
-以下端点支持分页的标准参数。
+The following endpoint supports standard parameters for pagination.
 
 - **Tracked Entities** `GET /api/tracker/trackedEntities`
 - **Events** `GET /api/tracker/events`
 - **Enrollments** `GET /api/tracker/enrollments`
 - **Relationships** `GET /api/tracker/relationships`
 
-#### 分页请求参数 { #request-parameters-for-pagination }
+#### Request parameters for pagination { #request-parameters-for-pagination } 
 
-|请求参数|类型|允许值|描述|
+|Request parameter|类型|Allowed values|描述|
 |---|---|---|---|
-|`页面`|`整数`| 任意正整数 |要返回的页码。如果缺失则默认为 1|
-|`页面大小`|`整数`| 任意正整数 |页面大小。默认为 50。 |
-|`总页数`|`Boolean`| `true`&#124;`false` |指示是否返回响应中的总页数 |
-|`跳过分页`|`Boolean`| `true`&#124;`false` |Indicates whether paging should be ignored and all rows should be returned. Defaults to `false`, meaning that by default all requests are paginated, unless `skipPaging=true`|
+|`page`|`Integer`| Any positive integer |Page number to return. Defaults to 1 if missing|
+|`pageSize`|`Integer`| Any positive integer |Page size. Defaults to 50. |
+|`totalPages`|`Boolean`| `true`&#124;`false` |Indicates whether to return the total number of pages in the response |
+|`skipPaging`|`Boolean`| `true`&#124;`false` |Indicates whether paging should be ignored and all rows should be returned. Defaults to `false`, meaning that by default all requests are paginated, unless `skipPaging=true`|
 
 > **Caution**
 >
@@ -1264,28 +1266,28 @@ The endpoint returns a list of tracked entities that match the request parameter
 |Request parameter|类型|Allowed values|描述|
 |---|---|---|---|
 |`query`|`String`|`{operator}:{filter-value}`|Creates a filter over tracked entity attributes. Only the filter value is mandatory. The `EQ` operator is used if `operator` is not specified.|
-|`attribute`|`字符串`|Comma separated values of attribute `UID`s |For each tracked entity in the response, only returns specified attributes |
-|`filter`|`字符串`|Comma separated values of attribute filters|Narrows response to TEIs matching given filters. A filter is a colon separated property or attribute UID with optional operator and value pairs. Example: `filter=H9IlTX2X6SL:sw:A` with operator starts with `sw` followed by a value. Special characters like `+` need to be percent-encoded so `%2B` instead of `+`. Characters such as `:` (colon) or `,` (comma), as part of the filter value, need to be escaped by `/` (slash). Likewise, `/` needs to be escaped. Multiple operator/value pairs for the same property/attribute like `filter=AuPLng5hLbE:gt:438901703:lt:448901704` are allowed. Repeating the same attribute UID is not allowed. User needs access to the attribute to filter on it.|
-|`orgUnit`|`字符串`|semicolon-delimited list of organisational unit `UID`|Only return tracked entity instances belonging to provided organisational units|
-|`ouMode` see [ouModes](#Request-parameters-for-Organisational-Unit-selection-mode)|`字符串`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|The mode of selecting organisation units, can be. Default is `SELECTED`, which refers to the selected organisation units only.|
-|`program`|`字符串`|Program `UID`| a Program `UID` for which instances in the response must be enrolled into|
-|`programStatus`|`字符串`|`ACTIVE`&#124;`COMPLETED`&#124;`CANCELLED`|The ProgramStatus of the Tracked Entity Instance in the given program|
-|`programStage`|`字符串`|`UID`|a Program Stage `UID` for which instances in the response must have events for|
+|`attribute`|`String`|Comma separated values of attribute `UID`s |For each tracked entity in the response, only returns specified attributes |
+|`filter`|`String`|Comma separated values of attribute filters|Narrows response to TEIs matching given filters. A filter is a colon separated property or attribute UID with optional operator and value pairs. Example: `filter=H9IlTX2X6SL:sw:A` with operator starts with `sw` followed by a value. Special characters like `+` need to be percent-encoded so `%2B` instead of `+`. Characters such as `:` (colon) or `,` (comma), as part of the filter value, need to be escaped by `/` (slash). Likewise, `/` needs to be escaped. Multiple operator/value pairs for the same property/attribute like `filter=AuPLng5hLbE:gt:438901703:lt:448901704` are allowed. Repeating the same attribute UID is not allowed. User needs access to the attribute to filter on it.|
+|`orgUnit`|`String`|semicolon-delimited list of organisational unit `UID`|Only return tracked entity instances belonging to provided organisational units|
+|`ouMode` see [ouModes](#Request-parameters-for-Organisational-Unit-selection-mode)|`String`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|The mode of selecting organisation units, can be. Default is `SELECTED`, which refers to the selected organisation units only.|
+|`program`|`String`|Program `UID`| a Program `UID` for which instances in the response must be enrolled into|
+|`programStatus`|`String`|`ACTIVE`&#124;`COMPLETED`&#124;`CANCELLED`|The ProgramStatus of the Tracked Entity Instance in the given program|
+|`programStage`|`String`|`UID`|a Program Stage `UID` for which instances in the response must have events for|
 |`followUp`|`Boolean`|`true`&#124;`false`|Indicates whether the Tracked Entity Instance is marked for follow up for the specified Program|
 |`updatedAfter`|`DateTime`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | Start date for last updated|
-|`updatedBefore`|`日期时间`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | End date for last updated|
+|`updatedBefore`|`DateTime`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | End date for last updated|
 |`updatedWithin`|`Duration`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601#Durations) | Returns TEIs not older than specified Duration|
 |`enrollmentEnrolledAfter`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|Start date for enrollment in the given program|
-|`enrollmentEnrolledBefore`|`日期时间`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|End date for enrollment in the given program|
-|`enrollmentOccurredAfter`|`日期时间`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|Start date for incident in the given program|
-|`enrollmentOccurredBefore`|`日期时间`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|End date for incident in the given program|
+|`enrollmentEnrolledBefore`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|End date for enrollment in the given program|
+|`enrollmentOccurredAfter`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|Start date for incident in the given program|
+|`enrollmentOccurredBefore`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|End date for incident in the given program|
 |`trackedEntityType`|`String`|UID of tracked entity type|Only returns Tracked Entity Instances of given type|
-|`trackedEntity`|`字符串`|semicolon-delimited list of tracked entity instance `UID`|Filter the result down to a limited set of tracked entities using explicit uids of the tracked entity instances by using `trackedEntity=id1;id2`. This parameter will, at the very least, create the outer boundary of the results, forming the list of all tracked entities using the uids provided. If other parameters/filters from this table are used, they will further limit the results from the explicit outer boundary.|
-|`assignedUserMode`|`字符串`|`CURRENT`&#124;`PROVIDED`&#124;`NONE`&#124;`ANY`|Restricts result to tracked entities with events assigned based on the assigned user selection mode. See table below "Assigned user modes" for explanations. |
-|`assignedUser`|`字符串`|Semicolon-delimited list of user UIDs to filter based on events assigned to the users.|Filter the result down to a limited set of tracked entities with events that are assigned to the given user IDs by using `assignedUser=id1;id2`.This parameter will only be considered if assignedUserMode is either `PROVIDED` or `null`. The API will error out, if for example, `assignedUserMode=CURRENT` and `assignedUser=someId`|
-|`eventStatus`|`字符串`|`ACTIVE`&#124;`COMPLETED`&#124;`VISITED`&#124;`SCHEDULE`&#124;`OVERDUE`&#124;`SKIPPED`|Status of any events in the specified program|
+|`trackedEntity`|`String`|semicolon-delimited list of tracked entity instance `UID`|Filter the result down to a limited set of tracked entities using explicit uids of the tracked entity instances by using `trackedEntity=id1;id2`. This parameter will, at the very least, create the outer boundary of the results, forming the list of all tracked entities using the uids provided. If other parameters/filters from this table are used, they will further limit the results from the explicit outer boundary.|
+|`assignedUserMode`|`String`|`CURRENT`&#124;`PROVIDED`&#124;`NONE`&#124;`ANY`|Restricts result to tracked entities with events assigned based on the assigned user selection mode. See table below "Assigned user modes" for explanations. |
+|`assignedUser`|`String`|Semicolon-delimited list of user UIDs to filter based on events assigned to the users.|Filter the result down to a limited set of tracked entities with events that are assigned to the given user IDs by using `assignedUser=id1;id2`.This parameter will only be considered if assignedUserMode is either `PROVIDED` or `null`. The API will error out, if for example, `assignedUserMode=CURRENT` and `assignedUser=someId`|
+|`eventStatus`|`String`|`ACTIVE`&#124;`COMPLETED`&#124;`VISITED`&#124;`SCHEDULE`&#124;`OVERDUE`&#124;`SKIPPED`|Status of any events in the specified program|
 |`eventOccurredAfter`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|Start date for Event for the given Program|
-|`eventOccurredBefore`|`日期时间`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|End date for Event for the given Program|
+|`eventOccurredBefore`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|End date for Event for the given Program|
 |`skipMeta`|`Boolean`|`true`&#124;`false`|Indicates whether not to include metadata in the response.|
 |`includeDeleted`|`Boolean`|`true`&#124;`false`|Indicates whether to include soft-deleted elements|
 |`includeAllAttributes`|`Boolean`|`true`&#124;`false`|Indicates whether to include all TEI attributes|
@@ -2034,6 +2036,7 @@ Unlike other tracked objects endpoints, relationships only expose one endpoint:
 |`event`|`String`|`uid`| Identifier of an Event|
 |`fields`|`String`| Any valid field filter (default `relationship,relationshipType,from[trackedEntity[trackedEntity],enrollment[enrollment],event[event]],to[trackedEntity[trackedEntity],enrollment[enrollment],event[event]]`) |Include specified sub-objects in the response| 
 |`order`|`String`|comma-delimited list of property name and sort direction pairs in format `propName:sortDirection`.|Supported fields: `createdAt`.|
+|`includeDeleted`|`Boolean`|`true`&#124;`false`| whether to include soft-deleted elements in your query result|
 
 The following rules apply to the query parameters.
 

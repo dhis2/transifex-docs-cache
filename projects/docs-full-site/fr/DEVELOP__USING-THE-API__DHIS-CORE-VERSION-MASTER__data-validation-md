@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/data-validation.md"
-revision_date: '2023-07-31'
+revision_date: '2024-02-14'
 tags:
 - Version Master de DHIS2 Central
 - Développement
@@ -670,16 +670,17 @@ Tout comme avec le résumé, il est possible d'obtenir les noms des contrôles d
 
 ### Custom Data Integrity Checks { #custom_data_integrity_checks } 
 
-Users of DHIS2 can now create and supply their own Data Integrity Checks. This can be useful if users 
-want to avail of this functionality and extend upon the supplied set of core data integrity checks.  
+Users of DHIS2 can now create and supply their own Data Integrity Checks. This can be useful if users
+want to avail of this functionality and extend upon the supplied set of core data integrity checks.
 
-An example of a custom check could be for determining if certain users are members of specific user groups. This 
-type of check would be very specific to an implementation, and not generally applicable across all installs.  
+An example of a custom check could be for determining if certain users are members of specific user groups.
+This type of check would be very specific to an implementation, and not generally applicable across all installs.
+These types of metadata checks can be used to extend the default checks which are included with DHIS2.
 
-Custom checks can be implemented by satisfying the following requirements, each of which we will go into detail:  
+Custom checks can be implemented by satisfying the following requirements, each of which we will go into detail:
 - Supplying your own list of custom data integrity checks in a list file named `custom-data-integrity-checks.yaml`
  in your `DHIS2_HOME` directory
-- Having a directory named `custom-data-integrity-checks` in your `DHIS2_HOME` directory 
+- Having a directory named `custom-data-integrity-checks` in your `DHIS2_HOME` directory
 - Supplying your valid custom data integrity check yaml files
 
 #### Custom Data Integrity Check List File { #custom-data-integrity-check-list-file } 
@@ -690,7 +691,7 @@ data integrity checks:
     GET /api/dataIntegrity
 
 DHIS2 will look for a file named `custom-data-integrity-checks.yaml` in your `DHIS2_HOME` directory when loading
-data integrity files. If you are not using custom checks and the file is not present, a warning log like this will 
+data integrity files. If you are not using custom checks and the file is not present, a warning log like this will
 be present:
 
 ```text
@@ -698,11 +699,11 @@ be present:
 ```
 
 If you are implementing custom data integrity checks then this file must be present. To see what the core data integrity checks
-file looks like as an example, check out [this file](https://github.com/dhis2/dhis2-core/blob/master/dhis-2/dhis-services/dhis-service-administration/src/main/resources/data-integrity-checks.yaml). 
+file looks like as an example, check out [this file](https://github.com/dhis2/dhis2-core/blob/master/dhis-2/dhis-services/dhis-service-administration/src/main/resources/data-integrity-checks.yaml).
 
 
 The `custom-data-integrity-checks.yaml` file should list all of your custom data integrity checks.
-As an example, it could look something like this: 
+As an example, it could look something like this:
 
 ```yaml
 checks:
@@ -737,7 +738,7 @@ check will not be loaded.
 > custom checks will not affect these core system checks.
 
 An example data integrity check yaml file is located [here](https://github.com/dhis2/dhis2-core/blob/master/dhis-2/dhis-services/dhis-service-administration/src/main/resources/data-integrity-checks/orgunits/orgunits_orphaned.yaml)
-for reference. Note the `name` property.  
+for reference. Note the `name` property.
 
 The data integrity `code` is calculated dynamically by using the first letter of each word in the `name`. Some examples:
 
@@ -796,13 +797,50 @@ Details of the data integrity check yaml file, taken from the JSON schema file
 | introduction    | yes      | outlining the objective of the check                                                                                          |
 | recommendation  | yes      | outlining how to resolve identified issues                                                                                    |
 
-## Enregistrements des ensembles de données complets{ #webapi_complete_data_set_registrations }
+### Example custom data integrity check { #example-custom-data-integrity-check } 
+
+
+An example of a custom check could be for determining if users have an email. Emails are useful to be
+able to communicate with users and sent them notifications, as well as password recovery. So, in some
+instllations of DHIS2, it could be a policy that all users should have emails. An example of this type
+of custom check is shown below.
+
+```
+---
+name: users_should_have_emails
+description: Users should have emails.
+section: Users
+section_order: 6
+summary_sql: >-
+  WITH users_no_email as (
+  SELECT uid,username from
+  userinfo where email IS NULL)
+  SELECT COUNT(*) as value,
+  100*COUNT(*) / NULLIF( ( select COUNT(*) from userinfo), 0) as percent
+  from users_no_email;
+details_sql: >-
+  WITH users_no_email as (
+  SELECT uid,username from
+  userinfo where email IS NULL)
+  SELECT uid,username as from users_no_email;
+severity: WARNING
+introduction: >
+  Users should have defined emails. This is important for password recovery and to be able
+  to send notifications to users.
+recommendation: >
+  Make sure that all users have defined emails.
+details_id_type: users
+```
+
+More examples of different types of metadata integrity checks can be found in the DHIS2 source code [here](https://github.com/dhis2/dhis2-core/tree/master/dhis-2/dhis-services/dhis-service-administration/src/main/resources/data-integrity-checks).
+
+## Complete data set registrations { #webapi_complete_data_set_registrations }
 
 Cette section traite de l'enregistrement d'ensembles de données complétés en tant qu'ensembles de données. Un enregistrement marque un ensemble de données comme étant complètement capturé.
 
-### Compléter les ensembles de données { #webapi_completing_data_sets }
+### Completing data sets { #webapi_completing_data_sets }
 
-Cette section explique comment enregistrer des ensembles de données comme étant complets. Cela s'obtient en interagissant avec la ressource *completeDataSetRegistrations*:
+Cette section explique comment enregistrer des ensembles de données comme étant complets. Cela s'obtient en interagissant avec la ressource *completeDataSetRegistrations* (Enregistrements d'ensembles de données complets):
 
     GET /api/33/completeDataSetRegistrations
 
@@ -829,14 +867,14 @@ Tableau : Paramètres de requête d'enregistrement d'ensembles de données com
 
 | Paramètre | Valeurs | Description |
 |---|---|---|
-| dataSetIdScheme (Schéma de l'identifiant de l'ensemble de données) | identifiant &#124; nom &#124; code &#124; attribut:ID | Propriété de l'ensemble de données permettant de mettre en correspondance les enregistrements complets. |
-| orgUnitIdScheme (Schéma de l'identifiant de l'unité d'organisation) | identifiant &#124; nom &#124; code &#124; attribut:ID | Propriété de l'unité d'organisation permettant de mettre en correspondance les enregistrements complets. |
-| attributOptionComboIdScheme (Schéma de l'identifiant de la combinaison d'options de catégorie) | identifiant &#124; nom &#124; code &#124; attribut:ID | Propriété de la combinaison d'options d'attribut permettant de mettre en correspondance les enregistrements complets. |
-| idScheme | identifiant &#124; nom &#124; code &#124; attribut:ID | Propriété de tous les objets, y compris les ensembles de données, les unités d'organisation et les combinaisons d'options d'attribut, qui permettent de mettre en correspondance enregistrements complets. |
+| dataSetIdScheme (Schéma de l'identifiant de l'ensemble de données) | identifiant &#124; nom &#124; code &#124; attribut:ID | Propriété de l'ensemble de données à utiliser pour mettre en correspondance les enregistrements complets. |
+| orgUnitIdScheme (Schéma de l'identifiant de l'unité d'organisation) | identifiant &#124; nom &#124; code &#124; attribut:ID | Propriété de l'unité d'organisation à utiliser pour mettre en correspondance les enregistrements complets. |
+| attributOptionComboIdScheme (Schéma de l'identifiant de la combinaison d'options d'attribut) | identifiant &#124; nom &#124; code &#124; attribut:ID | Propriété de la combinaison d'options d'attribut à utiliser pour mettre en correspondance les enregistrements complets. |
+| idScheme (schéma d'identifiants) | identifiant &#124; nom &#124; code &#124; attribut:ID | Propriété de tous les objets, y compris les ensembles de données, les unités d'organisation et les combinaisons d'options d'attribut, à utiliser pour mettre en correspondance enregistrements complets. |
 | preheatCache | faux &#124; vrai | Pour sauvegarder les modifications sur le serveur ou pour renvoyer le résumé de l'importation. |
-| dryRun | faux &#124; vrai | Si l'enregistrement s'applique aux sous-unités |
+| dryRun (essai) | faux &#124; vrai | Si l'enregistrement s'applique aux sous-unités |
 | importStrategy (stratégie d'importation) | CRÉER &#124; METTRE À JOUR &#124; CRÉER _ET_METTRE À JOUR &#124; SUPPRIMER | Sauvegarde des objets de tous les statuts d'importation, nouveaux ou mis à jour, sur le serveur. |
-| skipExistingCheck (ignorer les contrôles existants) | faux &#124; vrai | Ne contrôle pas les enregistrements complets existants. Améliore les performances. À utiliser uniquement pour les bases de données vides ou lorsque les enregistrements à importer n'existent pas encore. |
+| skipExistingCheck (ignorer les contrôles) | faux &#124; vrai | Ne contrôle pas les enregistrements complets existants. Améliore les performances. À utiliser uniquement pour les bases de données vides ou lorsque les enregistrements à importer n'existent pas encore. |
 | async | faux &#124; vrai | Indique si l'importation doit être effectuée de manière asynchrone ou synchrone. La première option (asynchrone) est adapté aux importations très volumineuses car il garantit que la requête n’expire pas, bien qu’il entraîne une surcharge de performances. La deuxième (synchrone) est plus rapide mais nécessite que la connexion soit maintenue jusqu'à la fin du processus. |
 
 Les éléments `idScheme` (schéma de l'identifiant), `dataSetIdScheme`  (schéma de l'identifiant de l'ensemble de données), `orgUnitIdScheme` (schéma de l'identifiant de l'unité d'organisation), `attributeOptionComboIdScheme` (schéma de l'identifiant de la combinaison d'options d'attribut),
@@ -866,19 +904,19 @@ Tableau : Paramètres de requête d'ensemble de valeurs de données
 | Paramètre | Description |
 |---|---|
 | dataSet (ensemble de données) | Identifiant de l'ensemble de données, plusieurs ensembles de données sont autorisés |
-| période | Identifiant de la période au format ISO. Plusieurs périodes sont autorisées. |
+| période | Identifiant de période au format ISO. Plusieurs périodes sont autorisées. |
 | date de début | Date de début de la période des valeurs à exporter |
 | date de fin | Date de fin de la période des valeurs à exporter |
-| créé | Inclut uniquement les enregistrements créées depuis l'horodatage donné |
-| Durée de la création | Inclut uniquement les enregistrements créées pendant la durée indiquée. Le format est <value\><unité-de-temps\>, où les unités de temps prises en charge sont "d", "h", "m", "s " *(jours, heures, minutes, secondes).* L'unité de temps est liée à l'heure actuelle. |
+| créés | Inclut uniquement les enregistrements créés depuis l'horodatage donné |
+| Durée de la création | Inclut uniquement les enregistrements créés pendant la durée indiquée. Le format est <value\><unité-de-temps\>, où les unités de temps prises en charge sont "d", "h", "m", "s " *(jours, heures, minutes, secondes).* L'unité de temps est liée à l'heure actuelle. |
 | orgUnit (Unité d'organisation) | Identifiant de l'unité d'organisation ; peut être spécifié plusieurs fois. Non applicable si un groupe d'unités d'organisation est fourni. |
 | orgUnitGroup (groupe d'unités d'organisation) | Identifiant du groupe d’unités d’organisation ; peut être spécifié plusieurs fois. Non applicable si une unité d'organisation est fournie. |
 | subordonnées | Permet de spécifier s'il faut inclure les unités d’organisation subordonnées dans la hiérarchie des unités d'organisation |
 | limite | Le nombre maximum d'enregistrements à inclure dans la réponse. |
-| idScheme | Propriété d'identifiant utilisée pour les objets de métadonnées dans la réponse. |
+| idScheme (schéma d'identifiants) | Propriété d'identifiant utilisée pour les objets de métadonnées dans la réponse. |
 | dataSetIdScheme (Schéma de l'identifiant de l'ensemble de données) | Propriété d'identifiant utilisée pour les ensembles de données dans la réponse. Elle remplace le schéma de l'identifiant. |
 | orgUnitIdScheme (Schéma de l'identifiant de l'unité d'organisation) | Propriété d'identifiant utilisée pour les unités d'organisation dans la réponse. Elle remplace le schéma de l'identifiant. |
-| attributOptionComboIdScheme (Schéma de l'identifiant de la combinaison d'options de catégorie) | Propriété d'identifiant utilisée pour les combinaisons d'options d'attribut dans la réponse. Elle remplace le schéma de l'identifiant. |
+| attributOptionComboIdScheme (Schéma de l'identifiant de la combinaison d'options d'attribut) | Propriété d'identifiant utilisée pour les combinaisons d'options d'attribut dans la réponse. Elle remplace le schéma de l'identifiant. |
 Les paramètres `ensemble de données` et `unité d'organisation` peuvent être répétés afin d'inclure plusieurs ensembles de données et unités d'organisation.
 
 Les paramètres `période`, `date de début`, `date de fin`, `créé` et `durée de création` fournissent plusieurs façons de définir la dimension temporelle de la requête, donc un seul peut être utilisé. Par exemple, cela n'a pas de sens de définir à la fois la date de début/fin et les périodes.
@@ -886,7 +924,7 @@ Les paramètres `période`, `date de début`, `date de fin`, `créé` et `durée
 Voici donc un exemple de requête :
 
 ```bash
-GET /api/33/completeDataSetRegistrations?dataSet=pBOMPrpg1QX&dataSet=pBOMPrpg1QX
+GET /api/33/completeDataSetRegistrations?dataSet=pBOMPrpg1QX
   &startDate=2014-01-01&endDate=2014-01-31&orgUnit=YuQRtpLP10I
   &orgUnit=vWbkYPRmKyS&children=true
 ```
@@ -910,7 +948,7 @@ Tableau : Paramètres de requête d'enregistrement d'ensembles de données com
 | ds | Oui | Identifiant de l'ensemble de données |
 | pe | Oui | Identifiant de période |
 | ou | Oui | Identifiant de l'unité d'organisation |
-| cc | Non (doit combiner avec cp) | Identifiant de la combinaison d'attributs (pour la vérification du verrouillage) |
+| cc | Non (doit combiner avec cp) | Identifiant de la combinaison d'attributs (pour le contrôle du verrouillage) |
 | cp | Non (doit combiner avec cp) | Identifiants d'options d'attribut, séparés par ; pour plusieurs valeurs (pour le contrôle du verrouillage) |
 | multiOu (unités d'organisation multiples) | Non (faux par défaut) | Si l'enregistrement s'applique aux sous-unités |
 

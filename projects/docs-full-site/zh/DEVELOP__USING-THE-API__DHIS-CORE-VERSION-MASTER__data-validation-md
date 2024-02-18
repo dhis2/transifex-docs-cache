@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/data-validation.md"
-revision_date: '2023-07-31'
+revision_date: '2024-02-14'
 tags:
 - DHIS核心 主版
 - Develop
@@ -741,16 +741,17 @@ The cache will store the result of each completed check for one hour.
 
 ### 自定义数据完整性检查{ #custom_data_integrity_checks }
 
-DHIS2 用户现在可以创建并提供自己的数据完整性检查。如果用户
-希望利用此功能并扩展所提供的一组核心数据完整性检查。
+Users of DHIS2 can now create and supply their own Data Integrity Checks. This can be useful if users
+want to avail of this functionality and extend upon the supplied set of core data integrity checks.
 
-自定义检查的一个示例是确定某些用户是否是特定用户组的成员。这
-检查类型对于实施来说是非常具体的，并且通常不适用于所有安装。
+An example of a custom check could be for determining if certain users are members of specific user groups.
+This type of check would be very specific to an implementation, and not generally applicable across all installs.
+These types of metadata checks can be used to extend the default checks which are included with DHIS2.
 
-可以通过满足以下要求来实施自定义检查，我们将详细介绍每一项要求：
+Custom checks can be implemented by satisfying the following requirements, each of which we will go into detail:
 - Supplying your own list of custom data integrity checks in a list file named `custom-data-integrity-checks.yaml`
  在你的`DHIS2_HOME`目录中
-- Having a directory named `custom-data-integrity-checks` in your `DHIS2_HOME` directory 
+- Having a directory named `custom-data-integrity-checks` in your `DHIS2_HOME` directory
 - 提供有效的自定义数据完整性检查 yaml 文件
 
 #### 自定义数据完整性检查列表文件 { #custom-data-integrity-check-list-file }
@@ -761,19 +762,19 @@ DHIS2 仅在需要时尝试加载数据完整性文件。例如拨打电话查�
     获取 /api/dataIntegrity
 
 DHIS2 will look for a file named `custom-data-integrity-checks.yaml` in your `DHIS2_HOME` directory when loading
-data integrity files. If you are not using custom checks and the file is not present, a warning log like this will 
+data integrity files. If you are not using custom checks and the file is not present, a warning log like this will
 be present:
 
 ```text
 08:29:57.729  WARN o.h.d.d.DataIntegrityYamlReader: Failed to load data integrity check from YAML. Error message `{DHIS2_HOME}/custom-data-integrity-checks.yaml (No such file or directory)
 ```
 
-如果您要实施自定义数据完整性检查，则必须存在此文件。查看核心数据完整性检查有哪些
-文件看起来像一个例子，查看[此文件](https://github.com/dhis2/dhis2-core/blob/master/dhis-2/dhis-services/dhis-service-administration/src/main/资源/数据完整性检查.yaml）。
+If you are implementing custom data integrity checks then this file must be present. To see what the core data integrity checks
+file looks like as an example, check out [this file](https://github.com/dhis2/dhis2-core/blob/master/dhis-2/dhis-services/dhis-service-administration/src/main/resources/data-integrity-checks.yaml).
 
 
-`custom-data-integrity-checks.yaml` 文件应列出所有自定义数据完整性检查。
-例如，它可能看起来像这样：
+The `custom-data-integrity-checks.yaml` file should list all of your custom data integrity checks.
+As an example, it could look something like this:
 
 ```yaml
 checks:
@@ -808,7 +809,7 @@ check will not be loaded.
 > 自定义检查不会影响这些核心系统检查。
 
 An example data integrity check yaml file is located [here](https://github.com/dhis2/dhis2-core/blob/master/dhis-2/dhis-services/dhis-service-administration/src/main/resources/data-integrity-checks/orgunits/orgunits_orphaned.yaml)
-for reference. Note the `name` property.  
+for reference. Note the `name` property.
 
 The data integrity `code` is calculated dynamically by using the first letter of each word in the `name`. Some examples:
 
@@ -867,18 +868,55 @@ If there is a `code` clash, a warning log like this will be present:
 | 介绍    | 是的      | 概述检查的目标                                                                                          |
 | 推荐  | 是的      | 概述如何解决已发现的问题                                                                                    |
 
-## 完整的数据集注册 { #webapi_complete_data_set_registrations } 
+### Example custom data integrity check { #example-custom-data-integrity-check } 
+
+
+An example of a custom check could be for determining if users have an email. Emails are useful to be
+able to communicate with users and sent them notifications, as well as password recovery. So, in some
+instllations of DHIS2, it could be a policy that all users should have emails. An example of this type
+of custom check is shown below.
+
+```
+---
+name: users_should_have_emails
+description: Users should have emails.
+section: Users
+section_order: 6
+summary_sql: >-
+  WITH users_no_email as (
+  SELECT uid,username from
+  userinfo where email IS NULL)
+  SELECT COUNT(*) as value,
+  100*COUNT(*) / NULLIF( ( select COUNT(*) from userinfo), 0) as percent
+  from users_no_email;
+details_sql: >-
+  WITH users_no_email as (
+  SELECT uid,username from
+  userinfo where email IS NULL)
+  SELECT uid,username as from users_no_email;
+severity: WARNING
+introduction: >
+  Users should have defined emails. This is important for password recovery and to be able
+  to send notifications to users.
+recommendation: >
+  Make sure that all users have defined emails.
+details_id_type: users
+```
+
+More examples of different types of metadata integrity checks can be found in the DHIS2 source code [here](https://github.com/dhis2/dhis2-core/tree/master/dhis-2/dhis-services/dhis-service-administration/src/main/resources/data-integrity-checks).
+
+## 完整的数据集注册 { #webapi_complete_data_set_registrations }
 
 本节是关于数据集的完整数据集注册。一种
 注册标记作为完全捕获的数据集。
 
-### 完成数据集 { #webapi_completing_data_sets } 
+### 完成数据集 { #webapi_completing_data_sets }
 
 本节说明如何将数据集注册为完整。这是
 通过与 *completeDataSetRegistrations* 交互实现
 资源：
 
-    获取 /api/33/completeDataSetRegistrations
+    GET /api/33/completeDataSetRegistrations
 
 端点支持*POST*方法注册数据集
 完成。端点在功能上非常类似于
@@ -907,25 +945,25 @@ If there is a `code` clash, a warning log like this will be present:
 
 
 
-表：完整数据集注册查询参数
+Table: Complete data set registrations query parameters
 
-| 范围 | 价值观 | 描述 |
+| Parameter | Values | 描述 |
 |---|---|---|
-| 数据集IdScheme | 身份证号名字&#124;代码&#124;属性：ID | 用于映射完整注册的数据集的属性。 |
-| 组织单位 ID 方案 | 身份证号名字&#124;代码&#124;属性：ID | 用于映射完整注册的组织单位的属性。 |
-| attributeOptionComboIdScheme | 身份证号名字&#124;代码&#124;属性：ID | 用于映射完整注册的属性选项组合的属性。 |
-| 方案 | 身份证号名字&#124;代码&#124;属性：ID | 所有对象的属性，包括数据集、组织单位和属性选项组合，用于映射完整的注册。 |
-| 预热缓存 | 假的&#124;真的 | 是否在服务器上保存更改或仅返回导入摘要。 |
-| 干运行 | 假的&#124;真的 | 子单位是否适用登记 |
-| 导入策略 | CREATE &#124; UPDATE &#124; CREATE_AND_UPDATE &#124; DELETE | 在服务器上保存所有对象、新对象或更新导入状态。 |
-| 跳过现有检查 | 假的&#124;真的 | 跳过对现有完整注册的检查。提高性能。仅用于空数据库或要导入的注册尚不存在时使用。 |
-| 异步 | 假的&#124;真的 | 指示导入应该异步还是同步完成。前者适用于非常大的导入，因为它确保请求不会超时，尽管它具有显着的性能开销。后者速度更快，但需要持续连接直到该过程完成。 |
+| dataSetIdScheme | id &#124; name &#124; code &#124; attribute:ID | Property of the data set to use to map the complete registrations. |
+| orgUnitIdScheme | id &#124; name &#124; code &#124; attribute:ID | Property of the organisation unit to use to map the complete registrations. |
+| attributeOptionComboIdScheme | id &#124; name &#124; code &#124; attribute:ID | Property of the attribute option combos to use to map the complete registrations. |
+| 方案 | id &#124; name &#124; code &#124; attribute:ID | Property of all objects including data sets, org units and attribute option combos, to use to map the complete registrations. |
+| preheatCache | false &#124; true | Whether to save changes on the server or just return the import summary. |
+| dryRun | false &#124; true | Whether registration applies to sub units |
+| importStrategy | CREATE &#124; UPDATE &#124; CREATE_AND_UPDATE &#124; DELETE | Save objects of all, new or update import status on the server. |
+| skipExistingCheck | false &#124; true | Skip checks for existing complete registrations. Improves performance. Only use for empty databases or when the registrations to import do not exist already. |
+| async | false &#124; true | Indicates whether the import should be done asynchronous or synchronous. The former is suitable for very large imports as it ensures that the request does not time out, although it has a significant performance overhead. The latter is faster but requires the connection to persist until the process is finished. |
 
-`idScheme`、`dataSetIdScheme`、`orgUnitIdScheme`、`attributeOptionComboIdScheme`、
-`dryRun` 和 `strategy` （注意参数 `importStrategy` 的不同命名）
-也可以设置为有效负载的一部分。
-对于 XML，这些是属性，对于 JSON，这些是成员
-`completeDataSetRegistrations` 节点。
+The `idScheme`, `dataSetIdScheme`, `orgUnitIdScheme`, `attributeOptionComboIdScheme`, 
+`dryRun` and `strategy` (note the dissimilar naming to parameter `importStrategy`) 
+can also be set as part of the payload.
+In case of XML these are attributes, in case of JSON these are members in the
+`completeDataSetRegistrations` node.
 
 例如：
 ```xml
@@ -936,7 +974,7 @@ If there is a `code` clash, a warning log like this will be present:
 </completeDataSetRegistrations>
 ```
 
-如果 URL 参数和有效负载都设置了方案，则有效负载优先。
+Should both URL parameter and payload set a scheme the payload takes precedence. 
 
 ### 读取完整的数据集注册 { #webapi_reading_complete_data_sets } 
 
@@ -946,33 +984,33 @@ If there is a `code` clash, a warning log like this will be present:
 
 
 
-表：数据值设置查询参数
+Table: Data value set query parameters
 
-| 范围 | 描述 |
+| Parameter | 描述 |
 |---|---|
-| 数据集 | 数据集标识符，允许多个数据集 |
-| 时期 | ISO 格式的周期标识符。允许多个句点。 |
-| 开始日期 | 要导出的值的时间跨度的开始日期 |
-| 结束日期 | 要导出的值的时间跨度的结束日期 |
-| 已创建 | 仅包含自给定时间戳以来创建的注册 |
-| 创建持续时间 | 仅包括在给定持续时间内创建的注册。格式为 <value\><time-unit\>，其中支持的时间单位为“d”、“h”、“m”、“s” " *(天、小时、分钟、秒)。*时间单位是相对于当前时间的。 |
-| orgUnit | 组织单位标识符，可以指定多次。如果给出 orgUnitGroup，则不适用。 |
-| 组织单位组 | 组织单位组标识符，可以指定多次。如果给出 orgUnit，则不适用。 |
-| 孩子们 | 是否将子级包含在组织单位的层次结构中 |
-| 限制 | 响应中包含的最大注册数。 |
-| 方案 | 用于响应中元数据对象的标识符属性。 |
-| 数据集IdScheme | 用于响应中数据集的标识符属性。覆盖 idScheme。 |
-| 组织单位 ID 方案 | 用于响应中组织单位的标识符属性。覆盖 idScheme。 |
-| attributeOptionComboIdScheme | 用于响应中属性选项组合的标识符属性。覆盖 idScheme。 |
+| dataSet | Data set identifier, multiple data sets are allowed |
+| period | Period identifier in ISO format. Multiple periods are allowed. |
+| 开始日期 | Start date for the time span of the values to export |
+| 结束日期 | End date for the time span of the values to export |
+| created | Include only registrations which were created since the given timestamp |
+| createdDuration | Include only registrations which were created within the given duration. The format is <value\><time-unit\>, where the supported time units are "d", "h", "m", "s" *(days, hours, minutes, seconds).* The time unit is relative to the current time. |
+| orgUnit | Organisation unit identifier, can be specified multiple times. Not applicable if orgUnitGroup is given. |
+| orgUnitGroup | Organisation unit group identifier, can be specified multiple times. Not applicable if orgUnit is given. |
+| children | Whether to include the children in the hierarchy of the organisation units |
+| limit | The maximum number of registrations to include in the response. |
+| 方案 | Identifier property used for meta data objects in the response. |
+| dataSetIdScheme | Identifier property used for data sets in the response. Overrides idScheme. |
+| orgUnitIdScheme | Identifier property used for organisation units in the response. Overrides idScheme. |
+| attributeOptionComboIdScheme | Identifier property used for attribute option combos in the response. Overrides idScheme. |
 The `dataSet` and `orgUnit` parameters can be repeated in order to include multiple data sets and organisation units.
 
-`period`、`startDate`、`endDate`、`created` 和 `createdDuration` 参数提供了多种方式来设置请求的时间维度，因此只需
-可以使用一个。例如，同时设置开始/结束日期和时间段是没有意义的。
+The `period`, `startDate`,  `endDate`, `created` and `createdDuration` parameters provide multiple ways to set the time dimension for the request, thus only
+one can be used. For example, it doesn't make sense to both set the start/end date and to set the periods.
 
 请求示例如下所示：
 
 ```bash
-GET /api/33/completeDataSetRegistrations?dataSet=pBOMPrpg1QX&dataSet=pBOMPrpg1QX
+GET /api/33/completeDataSetRegistrations?dataSet=pBOMPrpg1QX
   &startDate=2014-01-01&endDate=2014-01-31&orgUnit=YuQRtpLP10I
   &orgUnit=vWbkYPRmKyS&children=true
 ```
@@ -988,21 +1026,21 @@ GET /api/33/completeDataSetRegistrations?dataSet=pBOMPrpg1QX&dataSet=pBOMPrpg1QX
 放。要取消完成数据集，您将与
 completeDataSetRegistrations 资源：
 
-    获取 /api/33/completeDataSetRegistrations
+    GET /api/33/completeDataSetRegistrations
 
 此资源支持*DELETE* 取消注册。以下查询
 支持参数：
 
 
 
-表：完整数据集注册查询参数
+Table: Complete data set registrations query parameters
 
 | 查询参数 | 需要 | 描述 |
 |---|---|---|
-| ds | 是的 | 数据集标识符 |
+| ds | 是的 | Data set identifier |
 | 聚乙烯 | 是的 | 期间标识符 |
-| 欧 | 是的 | 组织单位标识符 |
-| 抄送 | 否（必须与 cp 结合） | 属性组合标识符（用于锁定检查） |
-| CP | 否（必须与 cp 结合） | 属性选项标识符，用 ; 分隔对于多个值（用于锁定检查） |
-| 多欧 | 否（默认 false） | 子单位是否适用登记 |
+| 欧 | 是的 | Organisation unit identifier |
+| cc | No (must combine with cp) | Attribute combo identifier (for locking check) |
+| cp | No (must combine with cp) | Attribute option identifiers, separated with ; for multiple values (for locking check) |
+| multiOu | No (default false) | Whether registration applies to sub units |
 

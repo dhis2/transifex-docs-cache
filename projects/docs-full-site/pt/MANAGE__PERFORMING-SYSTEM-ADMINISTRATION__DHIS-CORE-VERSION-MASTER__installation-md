@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/sysadmin/installation.md"
-revision_date: '2023-12-08'
+revision_date: '2024-02-16'
 tags:
-- Gerir
 - DHIS core version master
+- Gerir
 ---
 
 # Instalação { #installation } 
@@ -1320,6 +1320,13 @@ system.program_rule.server_execution = on | off
 
 Enables or disables execution of server-side program rules. This refers to program rules which have actions for assigning values, sending messages or scheduling messages to be sent. Can be `on` or `off`. Default is `on`.
 
+```properties
+system.remote_servers_allowed = https://server1.org/,https://server2.org/
+```
+
+Sets the allowed list of servers to be called in relation to the [metadata pull](../developer/web-api/synchronization.md#webapi_sync_metadata_pull) functionality. It accepts comma-separated values, and it's recommended that each server end with a `/` for enhanced security. Default value is empty.
+
+
 ## Configuração de proxy reverso { #install_reverse_proxy_configuration } 
 
 A reverse proxy is a proxy server that acts on behalf of a server. Using
@@ -1740,6 +1747,17 @@ connection.pool.preferred.test.query=select 1
 #Configure the number of helper threads used by dhis2 for jdbc operations. (default: 3)
 connection.pool.num.helper.threads=3
 
+# Database datasource pool type. Supported pool types are: 
+#
+# * c3p0 (default): For information see https://www.mchange.com/projects/c3p0/
+# 
+# * hikari: For information see https://github.com/brettwooldridge/HikariCP
+#
+# * unpooled: Some implementations might want to have more control over the pooling and database cluster architecture 
+# (e.g., using PgBouncer as pool manager behind HAProxy for load balancing). In these cases, the internal pool is un-necessary 
+# and gets in the way.
+db.pool.type=c3p0
+
 # ----------------------------------------------------------------------
 # Server [Mandatory]
 # ----------------------------------------------------------------------
@@ -1768,6 +1786,12 @@ system.sql_view_write_enabled = off
 
 # Disable server-side program rule execution, can be 'on', 'off'
 system.program_rule.server_execution = on
+
+# Remote servers which the server is allowed to call
+# Accepts comma-separated values
+# Servers should end with '/' for enhanced security
+# Default is empty
+system.remote_servers_allowed = https://server1.org/,https://server2.org/
 
 # ----------------------------------------------------------------------
 # Encryption [Optional]
@@ -1849,6 +1873,10 @@ monitoring.cpu.enabled = on
 
 # Analytics server-side cache expiration in seconds
 analytics.cache.expiration = 3600
+
+# Analytics unlogged tables. Accepts on/off. It's `on` by default. If enabled, this will boost the analytics table export process significantly.
+# But this comes with a cost: "unlogged" tables cannot be replicated. It means that clustering won't be possible. Also, analytics tables will be automatically truncated if PostgreSQL is suddenly reset (abrupt reset/crash). If PostgreSQL is reset gracefully, it won't impact any table. In this case, the analytics tables will remain in place accordingly. If you cannot afford the costs mentioned above, you should disable it (set to `off`).
+analytics.table.unlogged = on
 
 # ----------------------------------------------------------------------
 # System telemetry [Optional]
