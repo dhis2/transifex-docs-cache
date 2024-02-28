@@ -1,0 +1,409 @@
+---
+edit_url: "https://github.com/dhis2-metadata/IMM_EIR/blob/master/docs/imm_eir-design.md"
+revision_date: '2024-02-23'
+tags:
+- Implementace
+---
+
+# Immunization eRegistry - Tracker System Design { #imm-eir-design }
+
+## Účel { #purpose } 
+
+Dokument o návrhu systému Immunization eRegistry Tracker System poskytuje přehled koncepčního návrhu použitého ke konfiguraci programu trackeru pro registraci dětí k imunizaci a jejich sledování prostřednictvím plánu imunizace. Tento dokument je určen k použití implementátory DHIS2 na úrovni země a regionu, aby bylo možné podpořit implementaci a lokalizaci balíčku. Při lokalizaci a přizpůsobení tohoto konfiguračního balíčku je třeba vzít v úvahu místní pracovní toky a národní směrnice.
+
+## Pozadí { #background } 
+
+Balíček digitálních dat Immunization eRegistry byl vyvinut v reakci na vyjádřenou potřebu zemí a partnerů zlepšit včasnost, přesnost údajů, rozšířit pokrytí, účinnost a účinnost prostřednictvím rozšířeného programu pro imunizaci (EPI). eRegistries pro imunizaci zlepšují rutinní sběr a analýzu dat s cílem zvýšit pokrytí imunizací a snížit počet neimunizovaných nebo nedostatečně imunizovaných dětí. eRegistry si klade za cíl poskytovat poskytovatelům zdravotní péče klinický návod k očkovacím plánům a kontraindikacím na základě globálních standardů a také generovat spolehlivá data pro rozhodování na všech úrovních zdravotního systému.
+
+The Immunization eRegistry tracker is designed based on the [WHO recommendations for routine immunization of children](https://www.who.int/teams/immunization-vaccines-and-biologicals/policies/who-recommendations-for-routine-immunization---summary-tables) (2018), and resources from collaborating institutions; such as, the Norwegian Institute of Public Health. These resources can be found in the References section. The design also draws on immunization country use cases from Zambia, Botswana, and Rwanda, as well as published literature from PAHO. Note that national guidelines and policies may vary and it is highly recommended to adapt this package to local context.
+
+## Přehled návrhu systému { #system-design-overview } 
+
+### Případ použití { #use-case } 
+
+Datový model trackeru v DHIS2 umožňuje registraci jednotlivce a sledování v řadě zdravotnických služeb v průběhu času. Tento model lze využít k zajištění toho, aby každé dítě ve zdravotnickém systému dostalo úplný očkovací plán v souladu s národní politikou. Balíček eRegistry imunizace proto obsahuje metadata pro zachycování dat o rutinních i nerutinních vakcinačních plánech.
+
+Data na individuální úrovni také umožňují zachycování a analýzu vysoce granulárních dat a dodávají nuanci informačním systémům, poskytují příležitosti pro ad hoc analýzu, měnící se ukazatele v průběhu času a zlepšují kvalitu dat. Tento balíček sledovačů je jako takový navržen tak, aby optimalizoval jak sběr dat, tak proces analýzy dat, a to nabídkou podpory klinického rozhodování, usnadněním monitorování a sledování dětí v rámci imunizačního plánu a generováním standardních indikátorů WHO vyvinutých pro monitorování rozšířeného imunizačního programu (EPI).
+
+Program Immunization eRegistry je navíc nakonfigurován tak, aby podporoval propojení s národními systémy civilní registrace a životně důležitých statistik (CRVS) generováním oznámení o narození, pokud dítě navštěvující imunizační službu ještě nebylo zaregistrováno do národního CRVS. Tyto komponenty jsou volitelné a lze je odebrat, pokud nejsou relevantní pro kontext země.
+
+### Určení uživatelé { #intended-users } 
+
+Immunization eRegistry je navržen tak, aby podporoval uživatele na úrovni kliniky/zařízení, posílil personál lepšími rozhodovacími nástroji a umístil klienta do středu informačního systému a zároveň eliminoval jejich nadbytečnost hlášení. V závislosti na infrastruktuře a dostupnosti zdrojů v zemi však lze zadávání dat dokončit na úrovni okresu na základě papírových registrů.
+
+* Kliničtí uživatelé: Program Immunization eRegistry tracker je optimalizován pro zadávání dat z místa péče s podporou rozhodování pro očkování ve věku 0-18 měsíců, aby lékařům kliniky pomohl dodržovat očkovací schémata.
+* Zaměstnanci zařízení: Údaje mohou do eRegistry vkládat také pracovníci pro zadávání údajů, pokud není možné zadávat údaje na místě péče. Pracovní seznamy jsou navrženy tak, aby podporovaly pracovníky zařízení a monitorovaly pacienty, kteří potřebují následná opatření nebo mají zpožděné plány očkování.
+* Správci zařízení, okresní zdravotní úřady a pracovníci národních programů: Údaje generované prostřednictvím eRegistry jsou navrženy tak, aby poskytovaly standardní ukazatele programu EPI za účelem zlepšení kvality a analýzy dat. Zachycením dat eRegistry imunizace na úrovni jednotlivce a zařízení lze data rozdělit podle hierarchické úrovně a zobrazit na řídicích panelech odpovídajících úrovni zařízení, okresu a státu. Dále lze analyzovat trendy v poskytování služeb podle charakteristik klienta (pohlaví, věk v měsících atd.). Dohled nad zdravím a programoví manažeři mohou také použít data k dohledu a sledování kvality péče a požadavků na dokumentaci.
+
+### Pracovní postup { #workflow } 
+
+Na základě recenzí literatury a konzultací se zeměmi byly identifikovány čtyři společné body vstupu do Imunization eRegistry. Program je navržen tak, aby podporoval více vstupních bodů pro dítě do programu, jak je uvedeno níže:
+
+![Pracovní postup](resources/images/epi_tracker_01.png)
+
+### Immunization eRegistry Program Structure { #immunization-eregistry-program-structure } 
+
+![Zápis](resources/images/epi_tracker_02.png)
+
+![Fáze programu](resources/images/epi_tracker_03.png)
+
+![Oznámení](resources/images/epi_tracker_04.png)
+
+#### Routine Immunization Schedule { #routine-immunization-schedule } 
+
+Program Immunization eRegistry tracker je ve výchozím nastavení nakonfigurován tak, aby používal následující očkovací plán, podrobně popsaný v [Poziční dokumenty WHO-doporučení pro běžnou imunizaci](https://www.who.int/immunization/policy/Immunization_routine_table2.pdf?ua=1) (2018). V závislosti na národních směrnicích mohou být přidány nebo pozměněny další vakcíny a upravené imunizační plány. Výchozí plán, který je nakonfigurován v tomto programu, je následující:
+
+| Věk dítěte | Vyžadováno očkování |
+|-|-|
+| Narození | BCG 0.05mg, bOPV0, Hep B1 |
+| 6 týdnů | bOPV1, Penta1, PCV1, RV1 |
+| 10 týdnů | bOPV2, Penta2, PCV2, RV2 |
+| 14 týdnů | bOPV3, IPV1, Penta3, PCV3 |
+| 9 měsíců | Spalničky 1, zarděnky 1 |
+| 18 měsíců | Spalničky 2 |
+
+#### Non Routine Immunizations { #non-routine-immunizations } 
+
+Program Immunization eRegistry tracker také obsahuje seznam nerutinních imunizací podle pokynů WHO, což umožňuje uživatelům imunizačního programu dokumentovat jakákoli imunizace poskytovaná mimo plán rutinní imunizace. Při lokalizaci a přijímání rutinních imunizací je třeba vzít v úvahu národní směrnice.
+
+Nestandardní imunizace zahrnutá v tomto programu jsou následující:
+
+* MR [2 dávky]
+* MMR [2 dávky]
+* Japonská encefalitida (odvozená z inaktivovaných buněk vero) [2 dávky]
+* Japonská encefalitida (živá atenuovaná) [2 dávky]
+* Žlutá horečka [1 dávka]
+* Klíšťová encefalitida [3 dávky]
+* Tyfus TCV (Typbar) [1 dávka]
+* Tyfus (Vi PS) [1 dávka]
+* Tyfus (Ty21a) [4 dávky]
+* Cholera [3 dávky]
+* Meningokokové [2 dávky]
+* Hepatitida A [1 dávka]
+* Vzteklina [2 dávky]
+* Dengue [3 dávky]
+* Varicella [2 dávky]
+* mOPV
+* DPT (Booster) 1
+* DTwP (obsahující Td) 1
+* DTap (obsahující Td) 1
+* Tdap (obsahující Td a ap) 1
+* Hepatitida B2
+* Hepatitida B3
+
+### Odůvodnění struktury programu { #rationale-for-program-structure } 
+
+**Údaje o narození [neopakovatelné]**: Tato fáze slouží k zachycení údajů o porodu, jako je způsob porodu, porodní hmotnost atd., Které je třeba zadat pouze jednou. Z tohoto důvodu není fáze podrobností porodu opakovatelná. Bylo rozhodnuto nepřidávat jako atributy datové body podrobností o narození, protože to nejsou relevantní identifikátory případů a nejsou nutné pro podélnou analýzu.
+
+**Imunizace [opakovatelná]**: Jedna opakovatelná fáze se používá k zachycení všech údajů o imunizaci (na rozdíl od více fází programu na dávku/plán vakcíny), protože:
+
+* Umožňuje programovým pravidlům definovat, jaká vakcína je povinná pro dítě na základě věku a předchozí historie očkování;
+* Je to lepší pro kvalitu údajů, protože jediné dostupné vakcíny pro zadávání údajů jsou očkovací látky, které jsou splatné, a celkový očkovací cyklus je integrován prostřednictvím pravidel programu;
+* Pro uživatele je snadnější provádět zadávání údajů, zejména pokud nejsou podány všechny vakcíny pro určitý věk společně; a,
+* Je snazší spravovat připomenutí plánování podle pravidel programu.
+
+## Konfigurace trasovacího programu { #tracker-program-configuration } 
+
+| Struktura | Popis |
+|-|-|
+| Struktura  | Popis |
+| Zápis | A child is registered and enrolled into the immunization program as a Tracked Entity Instance (TEI) and data about the child are captured in the Enrollment as attributed. The enrollment date is configured to display the "Registration date" to the user. TEI Attributes: <br> <br> Unique System Identifier (EPI) <br> National ID First name <br> Middle name <br> Surname <br> Date of birth* <br> Sex <br> Village/Neighbourhood  <br> Home address <br> Primary contact's first name* <br> Primary contact's last name* <br> Primary contact's ID <br> Primary contact's number <br> Caregiver's first name <br> Caregiver's last name <br> Caregiver's ID <br> Caregiver's contact number <br> Photo <br> <br> The program uses the date of birth extensively in program rules (e.g. to determine which vaccine should be displayed) and is configured as mandatory. <br> *Mandatory attributes |
+| Program Fáze 1: Podrobnosti o narození <br> (neopakovatelné) | This is a non-repeatable stage that captures information regarding the child’s birth/delivery. <br> <br> Birth weight <br> Gestational age <br> Parity <br> Birth type <br> Attendant at birth <br> Place of birth <br> Place of birth <br> Facility of birth <br> Village of birth <br> Mode of delivery |
+| Programová Fáze 2: Imunizace <br> (opakovatelné) | Toto je opakovatelná fáze. Data pro tuto fázi se zadávají pokaždé, když dítě obdrží očkovací službu. Fáze programu je nakonfigurována tak, aby zobrazovala příslušná očkování pomocí pravidel programu na základě data narození a předchozí historie očkování. <br> Datum události = datum poskytnutých služeb |
+| Oddíl 2.1: Oznámení o narození (nepovinné) | Informace o tom, zda bylo dítě zaregistrováno v národním systému CRVS. Tato část nemusí být vyžadována u všech implementací v dané zemi. |
+| Oddíl 2.2: Otázky před imunizací | Zahrnuje informace o tom, kde dítě dostalo toto očkování, a také identifikaci, zda existují potenciální alergie a kontraindikace v době poskytování očkování. |
+| Oddíl 2.3: Očkování - rutina | Zahrnuje podrobnosti týkající se poskytování očkovacích látek pro děti do 18 měsíců věku (tj. Končící 2. dávkou spalniček/zarděnky) podle pravidel WHO doporučeného rutinního očkování uvedeného výše. Pokud nejsou vakcíny poskytnuty, mělo by být v této fázi zaznamenáno odůvodnění. |
+| Část 2.4: Přepsání plánu očkování | Tato část obsahuje dva datové prvky, které spouští programová pravidla, aby přepsala programová pravidla, která generují očkovací plán pro každou očkovací událost na základě data narození TEI. „Přepsáním“ pravidel programu na základě data narození a historie imunizace bude mít uživatel přístup k úplnému seznamu rutinních a nerutinních imunizací pro zadávání dat. |
+| Část 2.5: Nerutinní imunizace | Tato část zachycuje očkování, které není součástí plánu rutinní imunizace (např. Žlutá zimnice, japonská encefalitida atd.). Tato část se zobrazuje pouze tehdy, když uživatel zaškrtne políčko „Zobrazit nerutinní vakcíny“ v části Přepsání plánu očkování. |
+
+### Detaily programu { #program-details } 
+
+**Typ trasované entity** pro tento program je „osoba“. Trasované typy entit jsou často sdíleny mezi programy v integrované instanci DHIS2. Atributy zahrnují příslušné identifikátory případů a registrační údaje, jako je jméno dítěte, datum narození, místo, jméno matky a otce a kontaktní informace. Jiné atributy byly vybrány na základě kontroly zdrojů uvedených v referencích.
+
+Program je nakonfigurován tak, aby **vyžadoval, aby uživatel před registrací nového potomka vyhledal minimálně 2 atributy**. Tuto konfiguraci lze upravit podle požadavků země.
+
+#### Přístup { #access } 
+
+Úroveň **přístupu** je nakonfigurována jako **chráněna** za účelem ochrany osobních údajů před neoprávněným přístupem.
+
+Uživatel může vyhledávat a číst instance sledovaných entit, které jsou ve vlastnictví organizační jednotky, ke které je uživateli přiřazen přístup k zachycení dat. Pokud uživatel hledá TEI, který existuje mimo jeho organizační jednotku, je mu nabídnuta možnost přístupu k záznamu pacienta nejprve zaznamenáním důvodu. Tento přístup k soukromí je známý jako „rozbití skla“, protože umožňuje uživateli vykonávat svou práci bez svolení nebo pomoci zvenčí, ale ponechává jasnou stopu, kterou je třeba auditovat. Jakmile uživatel uvede důvod pro rozbití skla, pak získejte dočasné vlastnictví instance sledované entity (viz [Uživatelská příručka Tracker]](https://docs.dhis2.org/2.34/en/dhis2_user_manual_en/using-the-tracker-capture-app.html#breaking-the-glass) pro více informací.)
+
+_Všimněte si, že funkce ‚rozbití skla‘ zatím není podporována v aplikaci DHIS2 Android Capture od verze 2.2.0; pro země, které chtějí implementovat sledovač imunizace pomocí aplikace pro Android, může být nutné změnit konfiguraci úrovně přístupu, pokud uživatelé musí mít přístup a číst TEI zapsané mimo svou organizační jednotku pro sběr dat._
+
+**Příklad:** Dítě je zaregistrováno v zařízení A a dostane první dávku BCG v zařízení A, poté přejde do zařízení B pro dávku PCV 1. Pokud je úroveň přístupu v programu chráněna, uživatel bude mít přístup k rekord dítěte po zadání důvodu rozbití skla.
+
+![Rozbití skla](resources/images/epi_tracker_05.png)
+
+### Detaily zápisu { #enrollment-details } 
+
+Popis data zápisu je ‘Datum registrace‘. Je zamýšleno, aby uživatel zadal datum zápisu jako datum, kdy je dítě zapsáno do programu Immunization eRegistry.
+
+### Atributy { #attributes } 
+
+Protože imunizační program k určení, která vakcína má být zobrazena, ve velké míře využívá datum narození, je povinná. Pokud uživatel není schopen zadat všechna datová pole, jsou povinná omezená pole, aby se snížilo riziko zadávání nepravdivých údajů. Zatímco informace o zápisu mají být vyplněny při prvním zapsání případu, hodnoty atributů lze aktualizovat kdykoli během aktivní registrace, pokud budou k dispozici nové informace (např. Kontaktní informace).
+
+### Identifikátory { #identifiers } 
+
+Program je konfigurován se dvěma typy jedinečných identifikátorů. Do programu lze přidat další identifikátory na základě kontextu země.
+
+* [Unikátní identifikátor]: An automatically generated ID which is unique to the entire system (e.g. the instance of DHIS2 being used). This TEI attribute is configured to generate the attribute value based on a pattern: CURRENT_DATE(yyyy-MM-dd)-"-"-SEQUENTIAL(#####).
+* Všimněte si toho, že to lze použít pouze jako způsob lokalizace pacienta v systému, pokud matka/dítě dostane kartu s číslem, které ji uživateli pomůže identifikovat při dalších návštěvách.
+* [Občanský průkaz]: This ID is manually entered. In many countries, the National ID is the identification number given to the child by the National Civil Registry and Vital Events (CRVS) system once the child’s birth has been registered.
+
+_*Android considerations: [Reserved IDs](https://docs.dhis2.org/2.34/en/implementer/html/dhis2_android_implementation_guideline_full.html#configuration_reserved_id) and [Expiry of Reserved IDs](https://community.dhis2.org/t/question-regarding-expiry-of-reserved-ids-of-an-auto-generated-unique-values-configured-with-a-text-pattern-containing-current-date-mm-yyyy/40761/2)_
+
+![Zápis](resources/images/epi_tracker_06.png)
+
+### Program Stage 1: Birth Details [non-repeatable] { #program-stage-1-birth-details-non-repeatable } 
+
+Informace shromážděné v této fázi se zadávají jednorázově. Tato fáze je volitelná a nemusí být vyžadována pro všechny kontexty země. V některých kontextech mohou být tyto informace zaznamenány v jiných programech (např. Jako dětský program, doručovací program, výživový program atd.). Tyto informace jsou důležité pro dlouhodobá zdravotní data dítěte.
+
+Datový prvek ‘Zařízení / porodnice‘ je nakonfigurován jako typ ‘hierarchie organizačních jednotek‘, což uživateli umožňuje vybrat si zdravotnické zařízení v hierarchii organizačních jednotek. [^1]
+
+### Program Stage 2: Immunization [repeatable] { #program-stage-2-immunization-repeatable } 
+
+#### Scheduling events { #scheduling-events } 
+
+Fáze je nakonfigurována tak, aby „Požádala uživatele o vytvoření nové události po dokončení fáze“, což spustí vyskakovací okno pro naplánování následné schůzky. „Standardní intervalové dny“ jsou aktuálně nastaveny na 30, takže datum příští schůzky (události) je standardně naplánováno na 30 dní od aktuálního data události. Uživatel může podle potřeby změnit datum naplánované události.
+
+#### Section 2.1 Birth notification { #section-21-birth-notification } 
+
+Sekce oznámení o narození umožňuje oznámení do národního systému civilního registru a životně důležitých statistik (CRVS). Tato část je volitelná a nemusí být vyžadována v závislosti na rozhodnutích a pracovních postupech v dané zemi. Podrobné informace najdete v dokumentaci k [Birth Notification Tracker Program](https://drive.google.com/file/d/1MQwYspJQe3jY3ja-DaVL7GUc7nwRGW5q/view?usp=sharing).
+
+![Oznámení o narození](resources/images/epi_tracker_07.png)
+
+#### Section 2.2 Pre Immunization Questions { #section-22-pre-immunization-questions } 
+
+Zahrnuje informace o tom, kde dítě dostalo toto očkování, a také identifikaci, zda existují potenciální alergie a kontraindikace v době poskytování očkování. Tyto otázky byly navrženy na základě [Poziční dokumenty WHO-doporučení pro rutinní imunizaci](https://www.who.int/immunization/policy/Immunization_routine_table2.pdf?ua=1) (2018).
+
+Otázky před imunizací mají být vyplněny během každé „události“, která představuje imunizační službu. Na základě vybraných odpovědí se spustí pravidla programu, aby poskytla podporu při rozhodování, monitorování zařízení a následná opatření. Ty jsou zobrazeny na řídicím panelu TEI (např. Alergie, vysoce rizikový stav) a slouží také ke spouštění varování a kontraindikací během poskytování imunizační služby, jako na následujícím obrázku:
+
+![Otázky před imunizací](resources/images/epi_tracker_08.png)
+
+#### Section 2.3 Immunization - Routine { #section-23-immunization-routine } 
+
+Tato část zachycuje dodané imunizační služby. Pravidla programu se používají k ukázání očkování, které je dítě naplánováno na očkování podle očkovacího plánu WHO. Pravidla programu jsou založena na datu narození dítěte a předchozí historii očkování, podmínkách a alergiích. Pokud není vakcína podána, jsou zahrnuty datové prvky, které uživateli umožňují zaznamenat, proč nebyla podána, a vakcína, která nebyla podána, se objeví v následujících událostech/návštěvách, dokud nebude služba zaznamenána.
+
+![Imunizace - rutina](resources/images/epi_tracker_09.png)
+
+#### Section 2.4: Immunization Schedule Override { #section-24-immunization-schedule-override } 
+
+Tato část obsahuje datové prvky, které spouští pravidla programu, aby uživateli zobrazila všechny dostupné vakcíny a dávky, místo aby zobrazovala pouze vakcíny a dávky, které by měly být podávány na základě věku dítěte a historie imunizace.
+
+##### [DE] Show all routine immunization doses { #de-show-all-routine-immunization-doses } 
+
+Pokud je toto DE zaškrtnuto a uživatel zadá volný text (alespoň 4 znaky) pro datový prvek _'Zobrazit všechny dávky imunizace (vysvětlení)'_, programové pravidlo zobrazí celý seznam rutinních plánů imunizace v 'Rutinní imunizaci' sekci pro uživatele, aby dokončil zadávání dat. Při prvním odemčení celého imunizačního plánu se datum události zaznamená jako datový prvek a zapíše se do všech následných událostí pro pacienta, dokud se znovu neotevře. Při dalších návštěvách se v horní liště zobrazuje také datum odemčení plánu. Toto funguje jako varování pro budoucí uživatele, že dávky byly poskytnuty mimo plán při předchozí návštěvě.
+
+##### [DE] Show Non-routine Immunization { #de-show-non-routine-immunization } 
+
+If this DE is checked an provides an explanation (at least 4 characters) in the data element ‘[Please explain why you need to show all possible non routine doses’ as free text, then all non-routine vaccines are shown for the user to complete data entry](https://who-dev.dhis2.org/tracker_dev/dhis-web-tracker-capture/index.html) in the section ‘Non-routine Immunizations’. The first time non-routine immunization is unlocked, the event date is recorded as a data element, and written to all subsequent events for the patient. This acts as a warning to future users that non-routine doses were provided during the prior visit.
+
+Rutinní imunizace zmapovaná v přepisovací sekci bude vidět v tabulkovém záznamu dat „očkovací karta“. Při dalších návštěvách nebude vakcína mapovaná přepsáním v plánu k dispozici. Pravidla programu jsou nastavena tak, aby zobrazovala další dávku v sérii na základě předem nakonfigurovaného časového intervalu a doručení předchozí dávky při předchozích návštěvách [
+
+[viz Pravidla programu](#epi-tracker-program-rules)
+
+![Očkovací karta](resources/images/epi_tracker_10.png)
+
+![Přepsání plánu očkování](resources/images/epi_tracker_11.png)
+
+![Imunizace - rutina](resources/images/epi_tracker_12.png)
+
+#### Section 2.5: Immunization - Non-Routine { #section-25-immunization-non-routine } 
+
+Tato část obsahuje datové prvky pro zadávání nerutinních imunizací, jako je žlutá zimnice, klíšťová encefalitida atd. Ve výchozím nastavení je celá sekce skrytá podle pravidel programu a je zobrazena pouze tehdy, když uživatel zaškrtne políčko „Zobrazit rutinní vakcíny“ v část Přepsání plánu očkování a vyplní datový prvek vysvětlení.
+
+Ve výchozím nastavení se na očkovací kartě nebudou zobrazovat všechny rutinní očkování. Během implementace by programoví manažeři EPI měli zkontrolovat „neobvyklé“ dávky, které jsou nejčastěji poskytovány, a zvážit jejich zahrnutí do očkovací karty.
+
+![Přepsání plánu očkování](resources/images/epi_tracker_13.png)
+
+![Imunizace - nerutinní](resources/images/epi_tracker_14.png)
+
+### Program Stage Notifications { #program-stage-notifications } 
+
+Oznámení ve fázi programu byla nakonfigurována na základě pravidel programu, aby bylo možné povolit oznámení o narození pro CRVS a připomenutí schůzek rodičům/pečovatelům, jak je popsáno v případě použití. Tato oznámení lze odesílat systémovými zprávami (interní do DHIS2), externím e -mailem nebo pomocí SMS.
+
+#### SMS Reminders: Next Appointment { #sms-reminders-next-appointment } 
+
+V níže uvedeném příkladu bude pečovatelce dítěte odeslána připomenutí s textem na snímku obrazovky dva dny před plánovaným termínem. Text a data těchto připomenutí lze nakonfigurovat na základě požadavků země.
+
+Po vytvoření naplánované schůzky se vygeneruje nová naplánovaná zpráva s atributy ze záznamu imunizace. Tato zpráva je odeslána prostřednictvím brány SMS na telefonní číslo matky/pečovatele dva dny před schůzkou.
+
+![Další schůzka](resources/images/epi_tracker_15.png)
+
+![Oznámení fáze programu](resources/images/epi_tracker_16.png)
+
+#### System Messages: CRVS Workflow { #system-messages-crvs-workflow } 
+
+Pravidla programu mohou také spouštět zprávy prostřednictvím systému zasílání zpráv DHIS2. To může být zvláště užitečné pro integraci dat imunizačního registru do každodenní práce správců CRVS.
+
+Níže uvedený příklad ilustruje příklad odpovědi „Ano“ na oznámení o narození doručující okamžitou zprávu manažerům CRVS prostřednictvím systému zpráv DHIS2. V rámci standardního balíčku metadat mohou být zprávy odesílány také po nahlášeném doručení nebo nedoručení rodného listu.
+
+Příklad: CRVS narození -> rodný list
+
+1. New birth notification entered in the Immunization stage.
+ CRVS notification has been completed, but a certificate has not been received.
+![Birth notification](resources/images/epi_tracker_17.png)
+
+2. A message is immediately generated within DHIS2 for this new notification, and delivered to CRVS administrators user group.
+![Message](resources/images/epi_tracker_18.png)
+
+3. The message is delivered to the DHIS2 inbox (emails to the user can also be sent if configured).
+ The message provides the location of report and child’s name.
+![Inbox](resources/images/epi_tracker_19.png)
+
+4. Birth details can be viewed by CRVS user in the Immunization Registry “program summary” report, and followed up for birth certificate delivery.
+![Program summary report](resources/images/epi_tracker_20.png)
+
+More information on how to configure program notifications can be found at [docs.dhis2.org](https://docs.dhis2.org/2.33/en/dhis2_user_manual_en/configure-programs-in-the-maintenance-app.html#create-program-notifications_1). To enable SMS notifications, an SMS gateway is required and the connection configured to DHIS2. More information on DHIS2 and SMS gateways can be found [here](https://docs.dhis2.org/master/en/developer/html/webapi_sms.html ).
+
+### Pravidla programu { #epi-tracker-program-rules }
+
+Program rules are used extensively to show data elements for routine vaccinations on the Routine Immunization event based on the date of birth (attribute) and previous vaccination history (data elements). **For this reason, entering the child’s date of birth in the enrollment is mandatory**.[^2] For example, when the date of birth matches the date on which services were provided (e.g. the child is a newborn), only the first two vaccinations (BCG and bOPV 0) appear on the routine immunization form, in alignment with the standard WHO vaccination schedule. 
+
+_Rutinní imunizační formulář pro dítě při narození (počítáno podle času mezi aktuálním datem události a atributem TEI Datum narození):_
+
+![Rutinní imunizační formulář - narození](resources/images/epi_tracker_21.png)
+
+_Rutinní imunizační formulář pro dítě ve věku 6 týdnů (počítáno podle času mezi aktuálním datem události a atributem TEI Datum narození):_
+
+![Rutinní imunizační formulář - stáří 6 týdnů](resources/images/epi_tracker_22.png)
+
+When vaccinations that are part of the routine schedule are missed, the next vaccine in the series does not appear. For example, if RV1 dose is not recorded, this vaccination will continue to appear on the Routine Immunization form -- regardless of the age of the child -- in subsequent events until it is recorded as administered. 
+
+### Další funkce konfigurované pro podporu programu { #additional-features-configured-to-support-the-program }
+
+#### Tabular Data Entry: “Immunization card” { #tabular-data-entry-immunization-card } 
+
+Tabulkové zobrazení zadávání dat zobrazuje elektronický imunizační průkaz pro poskytovatele zdravotní péče nebo úředníka pro zadávání údajů, který odpovídá formátu typického imunizačního průkazu založeného na žlutém papíře, který jsou rodiče obecně povinni přinést na očkovací návštěvu dítěte. Karta obsahuje historii všech očkování dětí. Standardní legenda je přístupná pomocí tlačítka i, které ukazuje: Událost je dokončena (šedá), událost je otevřená (žlutá), událost je naplánována (zelená), událost je po splatnosti (červená).
+
+![Imunizační karta](resources/images/epi_tracker_23.png)
+
+Stav vakcíny zobrazený jako tabulka v tabulkových záznamech (vakcinační karta) **nyní zobrazuje pouze rutinní vakcíny**. Do seznamu lze přidat nebo odebrat více vakcín na základě požadavků uživatele. To lze provést výběrem zobrazení v možnostech sestav na konfigurační stránce fáze programu.
+
+![Zobrazení stavu vakcíny](resources/images/epi_tracker_24.png)
+
+Pokud dojde k přepsání vakcíny u neobvyklých vakcín, „Ano“ se na očkovací kartě nezobrazí. Pokud je u běžných očkovacích látek provedeno přepsání očkovací látky, pak je na kartě očkovací látky pro tuto událost a dávku uvedeno „Ano“. „Ano“ se přenáší na další události, což ukazuje, že dávka již byla podána. Nepřerušuje však plán pro následné dávky v plánu. Například při 8týdenní návštěvě se bOPV 1 podává jako obvykle a bOPV 2 se poskytuje „přepsáním“ plánu. Obě tyto dávky se na očkovací kartě při 8týdenní návštěvě zobrazí jako „Ano“. bOPV 2 se při budoucí 10týdenní návštěvě znovu nezobrazí (normální plánovaný čas pro dávku). Mezitím bude bOPV 3 stále k dispozici při 14týdenní návštěvě.
+
+![Přepsání vakcíny](resources/images/epi_tracker_25.png)
+
+#### Top Bar Settings { #top-bar-settings } 
+
+Nastavení na horním panelu poskytuje poskytovatelům zdravotní péče / úředníkům zadávajícím údaje rychlý přehled nejdůležitějších informací o dítěti, včetně atributů (jméno, příjmení, jedinečný identifikátor), věku při návštěvě, zpětné vazby (rizikový stav, alergie) a indikátory (vypočítaný věk). Nastavení horní lišty lze definovat/přidávat/měnit na základě kontextu země kliknutím na ikonu nastavení v pravé části lišty. Kliknutím na tlačítko nastavení se dostanete do zobrazení „Nastavení horní lišty“ (viz snímek obrazovky níže), kde může uživatel změnit informace o pacientovi, které se zobrazují na horní liště.
+
+_Top bar settings screenshot:_
+
+![Top bar](resources/images/epi_tracker_26.png)
+
+![Nastavení horní lišty](resources/images/epi_tracker_27.png)
+
+### Predefined Working Lists { #predefined-working-lists } 
+
+Pro podporu rychlého vyhledávání pacientů na úrovni zařízení jsou v „Seznamech“ předdefinovány [čtyři samostatné „pracovní seznamy“](https://docs.dhis2.org/master/en/user/html/dhis2_user_manual_en_full.html#simple_tracked_entity_instance_search) na vstupní stránce Tracker Capture. Každý z těchto pracovních seznamů zobrazuje TEI, které splňují určitá kritéria, například nadcházející schůzky nebo zmeškané schůzky. Každý zobrazuje pět klíčových atributů: jedinečný systémový identifikátor, křestní jméno, příjmení, datum narození, pohlaví a kontaktní údaje matky.
+
+![Pracovní seznamy](resources/images/epi_tracker_28.png)
+
+The following table describes the filter for each list, which can be altered through the API (See documentation for “[Tracked Entity Instance Filters](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker-deprecated.html#webapi_tei_filters)”).
+
+| Název | Popis | Konfigurace |
+|-|-|-|
+| Všichni současní imunizační pacienti | Toto poskytuje seznam všech pacientů registrovaných v imunizačním programu na aktuální organizační jednotce | Stav zápisu: AKTIVNÍ |
+| Plánované schůzky na tento týden | Toto poskytuje seznam pacientů s plánovanou schůzkou na tento týden (dnes a dalších 6 dní) na aktuální organizační jednotce | Enrollment status: ACTIVE <br> Event status (Immunization: 's53RFfXA75f'): SCHEDULE <br> Period (related to current date in days): 0-6 |
+| Plánované schůzky na dnešek | Toto poskytuje seznam pacientů s plánovanou schůzkou dnes na aktuální organizační jednotce | Enrollment status: ACTIVE <br> Event status (Immunization: 's53RFfXA75f'): SCHEDULE <br> Period (related to current date in days): 0-0 |
+| Zmeškané schůzky | Toto poskytuje seznam pacientů, kteří zmeškali schůzku v současné organizační jednotce | Enrollment status: ACTIVE <br> Event status (Immunization: 's53RFfXA75f'): OVERDUE <br> Period (related to current date in days): -1000;0 |
+
+## Analytics & Indicators { #analytics-indicators } 
+
+The indicators are based on the [WHO EPI aggregate program](https://dhis2.org/who-package-downloads/#epi), with the intention that the relevant data collected in the Tracker program can be reported to the aggregate HMIS indicators. Note that the Immunization Tracker program can only calculate a subset of the [recommended aggregate indicators](https://who.dhis2.org/documentation/pck/EPI_DASHBOARD_V0_DHIS2.29/reference.html), including “doses given”, “dropout rate”. Indicators of immunization wastage rates and coverage rates would need to be sourced on data from logistics systems and population statistics, respectively.
+
+Navíc mnoho indikátorů z programu Immunization Tracker je založeno spíše na kohortách než na hrubých počtech. Toto je důležité rozlišení, které může vést k významným nesrovnalostem mezi hodnotami indikátorů založenými na Tracker a Agregate, zejména pro výpočet míry výpadku, jak je znázorněno níže.
+
+Při odhadování míry předčasného ukončení s agregovanými měsíčními údaji mnoho zemí porovnává celkový počet dávek podaných pro první a poslední dávku daného očkovacího režimu v daném časovém období.
+
+Zde jsou jmenovatelem všechny první dávky za měsíc. To předpokládá stabilní míru zápisu. Ale porovnejte dávky DPT1 podané v únoru a o 12 měsíců později. Pokud se rychlost registrace v průběhu času zvyšuje, vždy je více pacientů, kteří dostávají první dávku, než pacientů způsobilých pro konečnou dávku. To zkresluje indikátor míry výpadku.
+
+![Míra odpadu - podle dávek a měsíce](resources/images/epi_tracker_29.png)
+
+Pro srovnání data trackeru vyhodnocují věk všech zařazených pacientů s DPT1 a vypočítají kohortu kojenců, kteří mají každý měsíc dávku DPT3.
+
+If a cohort of infants pass 6 months of age and have DPT1, then they are considered due for DPT3. If they are due for DPT3 but do not have DPT3 at 6 months, they are considered dropouts. To avoid double counting, an infant can only be “due” for DPT3 in the time period when they pass 6 months of age.
+
+Zatímco počet přihlášených dětí se zvyšuje, většina dětí, které dosáhly věku, kdy mají nárok na DPT3, již poslední dávku obdržela.
+
+![Dropout rate - by cohort and month](resources/images/epi_tracker_30.png)
+
+### Ovládací panely { #dashboards } 
+
+Součástí balíčku metadat jsou čtyři ovládací panely založené na programových ukazatelích a ukazatelích odvozených výhradně z údajů imunizačního programu. Ve výchozím nastavení jsou ovládací panely přístupné všem uživatelům s přístupem k imunizačnímu programu, včetně uživatelů v "Immunization admin",. "Pořizování údajů o očkování" a uživatelských skupin "Imunizační program".
+
+Každý z těchto ovládacích panelů je popsán v tabulce níže.
+
+* EPI Celkové vydání
+* EPI Věkové rozpětí
+* EPI Míry odpadu
+* EPI Dávky Vax
+
+#### EPI Overall Rollout { #epi-overall-rollout } 
+
+Celkový počet registrovaných kojenců a dávky podané během tohoto roku a předchozího kalendářního roku; věk při zápisu a návštěvě; umístění dodání služby; a imunizační blokády (např. kontraindikace a zásoby).
+
+* Jak se program EPI v průběhu času rozšiřuje? Kolik dětí program dosáhl?
+* Kdy se začínají očkovat kojenci? Kde se očkují?
+* Jaké jsou nejčastější překážky očkování dětí, které přijdou na očkování?
+
+![Overall rollout](resources/images/epi_tracker_31.png)
+
+#### EPI Age Ranges { #epi-age-ranges } 
+
+Podíl registrovaných kojenců, kteří právě prošli klíčovými měřítky věku (6 týdnů, 14 týdnů, 18 měsíců atd.) A do té doby obdrželi celý svůj plán očkování.
+
+* Jaká část novorozenců dostává bOPV, HepB1 a BCG0.05 před 6 týdny? Existuje regionální rozdíl? (Podrobný rozbor podle organizační jednotky?)
+* Kolik registrovaných kojenců dosáhlo věku 18 měsíců? Kolik jich do tohoto věku absolvovalo všechna povinná očkování?
+* Existuje zásadní „pokles“ mezi věkovými skupinami? Která dávka by mohla způsobit změnu pokrytí mezi 10 a 14 týdny?
+
+![Věkové skupiny](resources/images/epi_tracker_32.png)
+
+#### EPI Dropout Rates { #epi-dropout-rates } 
+
+Percent of the target population that has received the last recommended dose for each recommended vaccine. Includes monthly rates for DPT1-3, BCG-MCV, and MCV1-2, by number of doses delivered and eligible “cohorts”.
+
+* Dostává většina kojenců všechny požadované dávky pro každou vakcínu?
+* Jaký je rozdíl v mírách předčasných ukončení podle konzistentní věkové kohorty a jejich sentinelových dávek? Čím by se dal rozpor popsat?
+
+![Dropout rates](resources/images/epi_tracker_33.png)
+
+#### EPI Vax Doses { #epi-vax-doses } 
+
+* Počet dávek OPV/IPV, Penta, PCV a RV dodaných za posledních 12 měsíců a poslední 4 čtvrtletí.
+* Které vakcíny se používají nejčastěji? Která dávka z těch, které se očkují více dávkami, zaostává?
+* Jak se program EPI postupem času rozšířil, podle vakcín?
+
+![alt_text](resources/images/epi_tracker_34.png)
+
+### Programové Indikátory { #program-indicators } 
+
+Podrobnosti o datových prvcích, programových indikátorech a indikátorech najdete zde:
+
+Here is the link of showing program [data elements overview with descriptions and indicators](https://docs.google.com/spreadsheets/d/12XceAnwhofnShvE-_HTCXDCVX3VqoVMdSd8Gy2uZRUc/edit?usp=sharing)
+
+## Android Compatibility { #android-compatibility } 
+
+Balíčky digitálních dat jsou optimalizovány pro sběr dat Android pomocí aplikace DHIS2 Capture, kterou lze zdarma stáhnout v [obchodu Google Play](https://play.google.com/store/apps/details?id=com.dhis2&hl=en) . Níže jsou známá omezení aplikace DHIS2 Android Capture v 2.2.0 s důsledky pro tento balíček sledování:
+
+**Access level ‘protected’:** The ‘breaking the glass’ feature is not yet supported in DHIS2 Android Capture App as of v. 2.2.0. If the program is configured as ‘Protected’, the default behavior for Android will be the same as if the program is configured as ‘closed.’ This means that an Android user will not be able to read or edit enrollments of a TEI outside of their org unit. TEIs registered in a Search OU will be returned by the TE Type search but if the program is closed or protected the user will not be allowed to see or create a new enrollment. If Android users must be able to access TEI outside of their data capture org unit, the program should be configured with access level ‘Open.’
+
+## Reference { #references } 
+
+Pan American Health Organization. Electronic Immunization Registry: Practical Considerations for Planning, Development, Implementation and Evaluation. Washington, D.C.: PAHO; 2017. [https://iris.paho.org/handle/10665.2/34865](https://iris.paho.org/handle/10665.2/34865)
+
+WHO (2018). Analysis and use of health facility data: Guidance for immunization programme managers. Retrieved from:
+
+[https://www.who.int/healthinfo/FacilityAnalysisGuide_Immunization.pdf?ua=1](https://www.who.int/healthinfo/FacilityAnalysisGuide_Immunization.pdf?ua=1)
+
+[WHO Position Papers-Recommendations for Routine Immunization](https://www.who.int/immunization/policy/Immunization_routine_table2.pdf?ua=1) (2018). Retrieved from: [https://www.who.int/immunization/policy/immunization_tables/en/](https://www.who.int/immunization/policy/immunization_tables/en/)
+
+DHIS2 digital data package for aggregate EPI Aggregate. Retrieved from: [https://dhis2.org/who-package-downloads/#epi](https://dhis2.org/who-package-downloads/#epi)
+
+[^1]: The available facilities to select for this data element depend on the “search org unit” configured for the end user. If a clinician only has access to search for and view records within her province, then she will not be able to select a facility outside her province as the “facility of birth”. System admins generally do not have this restriction and can enter all facilities within the system.
+
+[^2]: Date of birth is mandatory by default for end users to ensure the child’s vaccination schedule is properly presented. However, date of birth is non-mandatory for system administrators to create test data without, for example to troubleshoot program rules..
+

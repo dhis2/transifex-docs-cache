@@ -1,0 +1,2360 @@
+---
+revision_date: '2021-02-02'
+template: single.html
+---
+
+# Installation { #installation }
+
+<!--DHIS2-SECTION-ID:installation-->
+
+Le chapitre sur l'installation fournit des informations sur comment installer DHIS2 dans différents contextes, notamment sur le serveur central en ligne, le réseau local hors ligne, l'application autonome et le package autonome appelé DHIS2 Live.
+
+## Présentation { #install_introduction }
+
+<!--DHIS2-SECTION-ID:install_introduction-->
+
+DHIS2 runs on all platforms for which there exists a Java Runtime
+Environment version 8 or higher, which includes most popular operating
+systems such as Windows, Linux and Mac. DHIS2 runs on the PostgreSQL
+database system. DHIS2 is packaged as a standard Java Web Archive
+(WAR-file) and thus runs on any Servlet containers such as Tomcat and
+Jetty.
+
+The DHIS2 team recommends Ubuntu 16.04 LTS operating system, PostgreSQL
+database system and Tomcat Servlet container as the preferred
+environment for server installations.
+
+Ce chapitre fournit un guide pour la configuration de la teck stack (pile technologique) ci-dessus. Il doit cependant être lu comme un guide opérationnel et non comme une documentation complète pour l'environnement mentionné. Nous nous référons à la documentation officielle d'Ubuntu, PostgreSQL et Tomcat pour des informations détaillées.
+
+The dhis2-tools Ubuntu package automates many of the tasks described in
+the guide below and is recommended for most users, especially those who
+are not familiar with the command line or administration of servers. It
+is described in detail in a separate chapter in this guide.
+
+## Spécifications du serveur { #install_server_specifications }
+
+<!--DHIS2-SECTION-ID:install_server_specifications-->
+
+DHIS2 est une application très exigeante en matière de base de données et nécessite que votre serveur ait suffisamment de mémoire vive, de cœurs d'unité centrale et de disques rapides. Ces recommandations doivent être considérées comme des règles de base et non comme des mesures exactes. DHIS2 évolue de façon linéaire en fonction de la quantité de RAM et du nombre de cœurs de CPU. Plus vous en avez, mieux l'application performe.
+
+  - *RAM :* Au moins 2 Go pour une petite instance, 12 Go pour une instance moyenne, 64 Go ou plus pour une grande instance.
+
+  - *CPU cores:* 4 CPU cores for a small instance, 8 CPU cores or more for a medium or large instance.
+
+  - *Disque :* Le SSD est recommandé comme périphérique de stockage. La vitesse de lecture
+    minimum est de 150 Mb/s ; 200 Mb/s est bon ; 350 Mb/s ou plus est
+    ideal. In terms of disk space, at least 100 GB is recommended, but
+    cela dépendra entièrement de la quantité de données contenues dans le
+    tableaux des valeurs de données. Les tables d'analyse nécessitent une quantité importante
+    disk space. Plan ahead and ensure that your server can be upgraded
+    avec plus d'espace disque si nécessaire.
+
+## Configuration logicielle requise { #install_software_requirements }
+
+<!--DHIS2-SECTION-ID:install_software_requirements-->
+
+Les versions ultérieures de DHIS2 nécessitent les versions logicielles suivantes pour fonctionner.
+
+  - Java JDK or JRE version 8 or later. OpenJDK is recommended.
+
+  - An operating system for which a Java JDK or JRE version 8 exists. Linux is recommended.
+
+  - PostgreSQL database version 9.6 or later. The latest PostgreSQL version is recommended.
+
+  - Extension de base de données PostGIS version 2.2 ou plus.
+
+  - Conteneur de servlet Tomcat version 8.5.50 ou plus, ou autre API de servlet
+    Conteneurs de servlets compatibles 3.1.
+
+  - Configuration du cluster uniquement (facultatif) : entrepôt de données Redis version 4 ou ultérieure.
+
+## Configuration du serveur { #install_server_setup }
+
+<!--DHIS2-SECTION-ID:install_server_setup-->
+
+Cette section décrit la configuration d'une instance de serveur DHIS2 sur Ubuntu 18.04 64 bit avec PostgreSQL comme système de base de données et Tomcat comme conteneur Servlet. Ce guide n'est pas un guide étape par étape, mais plutôt une référence sur la façon dont DHIS2 peut être installé sur un serveur. Il existe plusieurs stratégies d'installation possibles, qui diffèrent en fonction du système d'exploitation et de la base de données que vous utilisez, ainsi que d'autres facteurs. Le terme *invoquer* fait référence à l'exécution d'une commande donnée dans un terminal.
+
+For this guide we assume that 8 Gb RAM is allocated for PostgreSQL and 8
+GB RAM is allocated for Tomcat/JVM, and that a 64-bit operating system
+is used. *If you are running a different configuration please adjust the
+suggested values accordingly\!* We recommend that the available memory
+is split roughly equally between the database and the JVM. Remember to
+leave some of the physical memory to the operating system for it to
+perform its tasks, for instance around 2 GB. The steps marked as
+*optional*, like the step for performance tuning, can be done at a later
+stage.
+
+### Création d'un utilisateur pour exécuter DHIS2 { #install_creating_user }
+
+<!--DHIS2-SECTION-ID:install_creating_user-->
+
+Vous devriez créer un utilisateur dédié pour lancer DHIS2
+
+> **Important**
+>
+> Vous ne devez pas exécuter le serveur DHIS2 en tant qu'utilisateur privilégié tel que super-utilisateur.
+
+Créez un nouvel utilisateur appelé "dhis" en appelant :
+
+```sh
+sudo useradd -d /home/dhis -m dhis -s /bin/false
+```
+
+Ensuite, pour définir le mot de passe de votre compte, appelez :
+
+```sh
+sudo passwd dhis
+```
+
+Créez un mot de passe sécurisé comportant au moins 15 caractères aléatoires.
+
+### Création du répertoire de configuration { #install_creating_config_directory }
+
+<!--DHIS2-SECTION-ID:install_creating_config_directory-->
+
+Commencez par créer un répertoire adapté aux fichiers de configuration de DHIS2. Ce répertoire sera également utilisé pour les applications, les fichiers et les fichiers journaux. Voici un exemple de répertoire :
+
+```sh
+mkdir /home/dhis/config
+chown dhis:dhis /home/dhis/config
+```
+
+DHIS2 will look for an environment variable called *DHIS2\_HOME* to
+locate the DHIS2 configuration directory. This directory will be
+referred to as *DHIS2\_HOME* in this installation guide. We will define
+the environment variable in a later step in the installation process.
+
+### Définition du fuseau horaire et de l'emplacement du serveur { #install_setting_server_tz }
+
+<!--DHIS2-SECTION-ID:install_setting_server_tz-->
+
+Il peut être nécessaire de reconfigurer le fuseau horaire du serveur pour qu'il corresponde au fuseau horaire de l'endroit que le serveur DHIS2 couvrira. Si vous utilisez un serveur privé virtuel, le fuseau horaire par défaut peut ne pas correspondre au fuseau horaire de l'emplacement de votre DHIS2. Vous pouvez facilement reconfigurer le fuseau horaire en appelant la commande ci-dessous et en suivant les instructions.
+
+```sh
+sudo dpkg-reconfigure tzdata
+```
+
+PostgreSQL est sensible aux paramètres régionaux. Vous devrez donc installer votre emplacement en premier. Pour vérifier les paramètres régionaux existants et en installer de nouveaux (par exemple, Norvégien):
+
+```sh
+locale -a
+sudo locale-gen nb_NO.UTF-8
+```
+
+### Installation de PostgreSQL { #install_postgresql_installation }
+
+<!--DHIS2-SECTION-ID:install_postgresql_installation-->
+
+Install PostgreSQL by
+    invoking:
+
+```sh
+sudo apt-get install postgresql-12 postgresql-12-postgis-3
+```
+
+Créez un utilisateur non privilégié appelé *dhis* en appelant :
+
+```sh
+sudo -u postgres createuser -SDRP dhis
+```
+
+Entrez un mot de passe sécurisé à l'invite. Créez une base de données en appelant :
+
+```sh
+sudo -u postgres createdb -O dhis dhis2
+```
+
+Revenez à votre session en appelant `exit` (sortir). Vous avez maintenant un utilisateur PostgreSQL appelé *dhis* et une base de données appelée *dhis2*.
+
+L'extension *PostGIS* est nécessaire au fonctionnement de plusieurs fonctions SIG/cartographie. DHIS 2 tentera d'installer l'extension PostGIS lors du démarrage. Si l'utilisateur de la base de données DHIS 2 n'a pas l'autorisation de créer des extensions, vous pouvez la créer à partir de la console en utilisant l'utilisateur *postgres* avec les commandes suivantes :
+
+```sh
+sudo -u postgres psql -c "create extension postgis;" dhis2
+```
+
+Quittez la console et revenez à votre utilisateur précédent en entrant *\\q* suivi de *exit* (quitter).
+
+### Optimisation des performances de PostgreSQL { #install_postgresql_performance_tuning }
+
+<!--DHIS2-SECTION-ID:install_postgresql_performance_tuning-->
+
+Tuning PostgreSQL is necessary to achieve a high-performing system but
+is optional in terms of getting DHIS2 to run. PostgreSQL is configured
+and tuned through the *postgresql.conf* file which can be edited like
+this:
+
+```sh
+sudo nano /etc/postgresql/12/main/postgresql.conf
+```
+
+et modifez la propriété suivante:
+
+```properties
+max_connections = 200
+```
+
+Détermine le nombre maximum de connexions autorisées par PostgreSQL.
+
+```properties
+shared_buffers = 3200MB
+```
+
+Détermine la quantité de mémoire à allouer exclusivement à la mise en cache de PostgreSQL. Ce paramètre contrôle la taille de la mémoire partagée du noyau qui doit être réservée à PostgreSQL. Il doit être fixé à environ 40% de la mémoire totale dédiée à PostgreSQL.
+
+```properties
+work_mem = 20MB
+```
+
+Détermine la quantité de mémoire utilisée pour les opérations internes de tri et de hachage. Ce paramètre s'applique à chaque connexion et à chaque requête, de sorte qu'une grande quantité de mémoire peut être consommée si cette valeur est trop élevée. Il est essentiel de définir correctement cette valeur pour optimiser les performances d'agrégation de DHIS2.
+
+```properties
+maintenance_work_mem = 512MB
+```
+
+Détermine la quantité de mémoire que PostgreSQL peut utiliser pour les opérations de maintenance telles que la création d'index, l'exécution du vacuum et l'ajout de clés étrangères. Augmenter cette valeur peut améliorer les performances de création d'index pendant les processus de génération d'analyses.
+
+```properties
+effective_cache_size = 8000MB
+```
+
+An estimate of how much memory is available for disk caching by the
+operating system (not an allocation) and isdb.no used by PostgreSQL to
+determine whether a query plan will fit into memory or not. Setting it
+to a higher value than what is really available will result in poor
+performance. This value should be inclusive of the shared\_buffers
+setting. PostgreSQL has two layers of caching: The first layer uses the
+kernel shared memory and is controlled by the shared\_buffers setting.
+PostgreSQL delegates the second layer to the operating system disk cache
+and the size of available memory can be given with the
+effective\_cache\_size setting.
+
+```properties
+checkpoint_completion_target = 0.8
+```
+
+Définit la mémoire utilisée pour la mise en mémoire tampon pendant le processus d'écriture WAL. Augmenter cette valeur peut améliorer le débit dans les systèmes à forte densité d'écriture.
+
+```properties
+synchronous_commit = off
+```
+
+Spécifie si les transactions doivent attendre que les enregistrements WAL soient écrits sur le disque avant d'être renvoyées au client ou non. Si cette option est désactivée, les performances seront considérablement améliorées. Cela implique également qu'il y aura un léger décalage entre le moment où la transaction au client est déclarée réussie et le moment où elle est réellement sûre, mais l'état de la base de données ne peut pas être corrompu et c'est une bonne alternative pour les systèmes exigeants en termes de performances et d'écriture comme DHIS2.
+
+```properties
+wal_writer_delay = 10000ms
+```
+
+Spécifie le décalage entre les opérations d'écriture WAL. Y définir une valeur élevée permettra d'améliorer les performances des systèmes à forte densité d'écriture, car de nombreuses opérations d'écriture peuvent être exécutées en un seul vidage sur le disque.
+
+```properties
+random_page_cost = 1.1
+```
+
+*SSD uniquement*: Définit l'estimation par le planificateur de requêtes du coût d'une page de disque non extraite de manière séquentielle. Une valeur faible incitera le système à préférer les scans d'index aux scans séquentiels. Une valeur faible convient aux bases de données qui fonctionnent sur des disques SSD ou qui sont massivement mises en cache dans la mémoire. La valeur par défaut est 4.0, ce qui est raisonnable pour les disques traditionnels.
+
+```properties
+max_locks_per_transaction = 96
+```
+
+Spécifie le nombre moyen de verrous d'objets alloués pour chaque transaction. Cette valeur est principalement définie pour permettre la réalisation des mises à niveau de routine qui touchent un grand nombre de tableaux.
+
+Redémarrez PostgreSQL en appelant la commande suivante :
+
+```sh
+sudo /etc/init.d/postgresql restart
+```
+
+### Installation de Java { #install_java_installation }
+
+<!--DHIS2-SECTION-ID:install_java_installation-->
+
+The recommended Java JDK for DHIS 2 is OpenJDK 8. OpenJDK is licensed under 
+the GPL license and can be run free of charge. You can install it with the
+following command:
+
+```
+sudo apt-get install openjdk-8-jdk
+```
+
+Vérifiez que votre installation est correcte en appelant :
+
+```
+java -version
+```
+
+### Configuration de DHIS2 { #install_database_configuration }
+
+<!--DHIS2-SECTION-ID:install_database_configuration-->
+
+The database connection information is provided to DHIS2 through a
+configuration file called `dhis.conf`. Create this file and save it in
+the `DHIS2\_HOME` directory. As an example this location could be:
+
+```sh
+/home/dhis/config/dhis.conf
+```
+
+Un fichier de configuration pour PostgreSQL correspondant à la configuration ci-dessus a les propriétés suivantes :
+
+```properties
+# ---------------------------------------------------------------------- { #- } 
+# Database connection { #database-connection } 
+# ---------------------------------------------------------------------- { #- } 
+
+# JDBC driver class { #jdbc-driver-class } 
+connection.driver_class = org.postgresql.Driver
+
+# Database connection URL { #database-connection-url } 
+connection.url = jdbc:postgresql:dhis2
+
+# Database username { #database-username } 
+connection.username = dhis
+
+# Database password { #database-password } 
+connection.password = xxxx
+
+# ---------------------------------------------------------------------- { #- } 
+# Server { #server } 
+# ---------------------------------------------------------------------- { #- } 
+
+# Enable secure settings if deployed on HTTPS, default 'off', can be 'on' { #enable-secure-settings-if-deployed-on-https-default-off-can-be-on } 
+# server.https = on { #serverhttps-on } 
+
+# Server base URL { #server-base-url } 
+# server.base.url = https://server.com/ { #serverbaseurl-httpsservercom } 
+```
+
+Il est fortement recommandé d'activer le paramètre `server.https` et de déployer DHIS 2 avec un protocole HTTPS crypté. Ce paramètre activera par exemple des cookies sécurisés. Le déploiement HTTPS est requis lorsque ce paramètre est activé.
+
+Le paramètre `server.base.url` fait référence à l'URL à laquelle les utilisateurs finaux accèdent au système sur le réseau.
+
+Notez que le fichier de configuration prend en charge les variables d'environnement. Cela signifie que vous pouvez définir certaines propriétés comme variables d'environnement et les résoudre. C'est le cas de l'exemple suivant où `DB_PASSWD` est le nom de la variable d'environnement :
+
+```properties
+connection.password = ${DB_PASSWD}
+```
+
+Notez que ce fichier contient le mot de passe de votre base de données DHIS2 en texte clair et qu'il doit donc être protégé contre tout accès non autorisé. Pour ce faire, appelez la commande suivante qui garantit que seul l'utilisateur *dhis* est autorisé à le lire :
+
+```sh
+chmod 600 dhis.conf
+```
+
+### Installation de Tomcat et DHIS2 { #install_tomcat_dhis2_installation }
+
+<!--DHIS2-SECTION-ID:install_tomcat_dhis2_installation-->
+
+Pour installer le conteneur de servlet Tomcat, nous utiliserons le package utilisateur de Tomcat en appelant :
+
+```sh
+sudo apt-get install tomcat8-user
+```
+
+This package lets us easily create a new Tomcat instance. The instance
+will be created in the current directory. An appropriate location is the
+home directory of the *dhis* user:
+
+```sh
+cd /home/dhis/
+sudo tomcat8-instance-create tomcat-dhis
+sudo chown -R dhis:dhis tomcat-dhis/
+```
+
+This will create an instance in a directory called *tomcat-dhis*. Note
+that the tomcat7-user package allows for creating any number of dhis
+instances if that is desired.
+
+Next edit the file *tomcat-dhis/bin/setenv.sh* and add the lines below.
+The first line will set the location of your Java Runtime Environment,
+the second will dedicate memory to Tomcat and the third will set the
+location for where DHIS2 will search for the *dhis.conf* configuration
+file. Please check that the path the Java binaries are correct as they
+might vary from system to system, e.g. on AMD systems you might see
+*/java-8-openjdk-amd64* Note that you should adjust this to your
+environment:
+
+```sh
+export JAVA_HOME='/usr/lib/jvm/java-1.8.0-openjdk-amd64/'
+export JAVA_OPTS='-Xmx7500m -Xms4000m'
+export DHIS2_HOME='/home/dhis/config'
+```
+
+The Tomcat configuration file is located in
+*tomcat-dhis/conf/server.xml*. The element which defines the connection
+to DHIS is the *Connector* element with port 8080. You can change the
+port number in the Connector element to a desired port if necessary. 
+The *relaxedQueryChars* attribute is necessary to allow certain characters 
+in URLs used by the DHIS2 front-end.
+
+```xml
+<Connector port="8080" protocol="HTTP/1.1"
+  connectionTimeout="20000"
+  redirectPort="8443"
+  relaxedQueryChars="[]" />
+```
+
+The next step is to download the DHIS2 WAR file and place it into the
+webapps directory of Tomcat. You can download the DHIS2 version 2.31 WAR
+release like this (replace 2.31 with your preferred version if
+necessary):
+
+```sh
+wget https://releases.dhis2.org/2.33/dhis.war
+```
+
+Alternatively, for patch releases, the folder structure is based on the patch
+release ID in a subfolder under the main release. E.g. you can download
+the DHIS2 version 2.31.1 WAR release like this (replace 2.31 with your
+preferred version, and 2.31.1 with you preferred patch, if necessary):
+
+```
+wget https://releases.dhis2.org/2.33/2.33.1/dhis.war
+```
+
+Move the WAR file into the Tomcat webapps directory. We want to call the
+WAR file ROOT.war in order to make it available at localhost directly
+without a context path:
+
+```sh
+mv dhis.war tomcat-dhis/webapps/ROOT.war
+```
+
+DHIS2 should never be run as a privileged user. After you have modified
+the setenv.sh file, modify the startup script to check and verify that the
+script has not been invoked as root.
+
+```sh
+#!/bin/sh { #binsh } 
+set -e
+
+if [ "$(id -u)" -eq "0" ]; then
+  echo "This script must NOT be run as root" 1>&2
+  exit 1
+fi
+
+export CATALINA_BASE="/home/dhis/tomcat-dhis"
+/usr/share/tomcat8/bin/startup.sh
+echo "Tomcat started"
+```
+
+### Fonctionnement de DHIS2 { #install_running_dhis2 }
+
+<!--DHIS2-SECTION-ID:install_running_dhis2-->
+
+DHIS2 peut désormais être lancé en appelant :
+
+    sudo -u dhis tomcat-dhis/bin/startup.sh
+
+> **Important**
+>
+> Le serveur DHIS2 ne doit jamais être exécuté en mode super-utilisateur ou autre utilisateur privilégié.
+
+DHIS2 peut être arrêté en appelant :
+
+    sudo -u dhis tomcat-dhis/bin/shutdown.sh
+
+Pour surveiller le comportement de Tomcat, le journal est la principale source d'information. Le journal peut être consulté avec la commande suivante :
+
+    tail -f tomcat-dhis/logs/catalina.out
+
+En supposant que le fichier WAR s'appelle ROOT.war, vous pouvez maintenant accéder à votre instance DHIS2 à l'URL suivante :
+
+    http://localhost:8080
+
+## Configuration de l'entrepôt de fichiers { #install_file_store_configuration }
+
+<!--DHIS2-SECTION-ID:install_file_store_configuration-->
+
+DHIS2 is capable of capturing and storing files. By default, files will
+be stored on the local file system of the server which runs DHIS2 in a *files*
+directory under the *DHIS2\_HOME* external directory location. 
+
+You can also configure DHIS2 to store files on cloud-based storage
+providers. AWS S3 is the only supported provider currently. To enable
+cloud-based storage you must define the following additional properties
+in your *dhis.conf* file:
+
+```properties
+# File store provider. Currently 'filesystem' and 'aws-s3' are supported. { #file-store-provider-currently-filesystem-and-aws-s3-are-supported } 
+filestore.provider = 'aws-s3'
+
+# Directory in external directory on local file system and bucket on AWS S3 { #directory-in-external-directory-on-local-file-system-and-bucket-on-aws-s3 } 
+filestore.container = files
+
+# The following configuration is applicable to cloud storage only (AWS S3) { #the-following-configuration-is-applicable-to-cloud-storage-only-aws-s3 } 
+
+# Datacenter location. Optional but recommended for performance reasons. { #datacenter-location-optional-but-recommended-for-performance-reasons } 
+filestore.location = eu-west-1
+
+# Username / Access key on AWS S3 { #username-access-key-on-aws-s3 } 
+filestore.identity = xxxx
+
+# Password / Secret key on AWS S3 (sensitive) { #password-secret-key-on-aws-s3-sensitive } 
+filestore.secret = xxxx
+```
+
+Cette configuration est un exemple qui reflète les paramètres par défaut et doit être modifiée en fonction de vos besoins. En d'autres termes, vous pouvez l'omettre complètement si vous prévoyez d'utiliser les valeurs par défaut. Si vous voulez utiliser un fournisseur externe, le dernier bloc de propriétés doit être défini, et la propriété *fournisseur* doit être réglée sur un fournisseur pris en charge (actuellement, c'est uniquement AWS S3).
+
+> **Remarque**
+>
+> Si vous avez configuré le stockage SUR cloud dans dhis.conf, tous les fichiers que vous téléchargez
+> ou les fichiers générés par le système utiliseront le stockage sur cloud.
+
+Pour un système de production, la configuration initiale de l'entrepôt de fichiers doit être soigneusement étudiée, car le déplacement des fichiers entre les fournisseurs de stockage tout en conservant l'intégrité des références de la base de données peut s'avérer complexe. Gardez à l'esprit que le contenu de l'entrepôt de fichiers peut contenir des informations sensibles et intégrales et qu'il est recommandé de protéger l'accès au dossier et de s'assurer qu'un plan de sauvegarde est prévu dans le cadre d'une implémentation de production.
+
+> **Remarque**
+>
+> AWS S3 est le seul fournisseur pris en charge, mais d'autres fournisseurs devraient
+> être ajoutés à l'avenir, comme Google Cloud Store et Azure Blob Storage.
+> Faites-nous savoir si vous avez un cas d'utilisation pour des fournisseurs supplémentaires.
+
+## Configuration du compte de service Google { #install_google_service_account_configuration }
+
+<!--DHIS2-SECTION-ID:install_google_service_account_configuration-->
+
+DHIS2 peut se connecter à plusieurs API de services Google. Par exemple, le SIG de DHIS2 peut utiliser l'API de Google Earth Engine pour charger des couches de cartes. Pour fournir des jetons d'accès à l'API, vous devez configurer un compte de service Google et créer une clé privée :
+
+  - Créez un compte de service Google. Veuillez consulter la [plateforme d'identification
+    plateforme](https://developers.google.com/identity/protocols/OAuth2ServiceAccount#overview)
+     
+
+  - Visitez la [Console Google Cloud](https://console.cloud.google.com)
+    et allez dans API Manager \> Identifiants \> Créer des identifiants \>
+    Clé du compte de service. Sélectionnez votre compte de service et JSON comme type de
+    clé et cliquez sur Créer.
+
+  - Renommez la clé JSON en *dhis-google-auth.json*.
+
+After downloading the key file, put the *dhis-google-auth.json* file in
+the DHIS2\_HOME directory (the same location as the *dhis.conf* file).
+As an example this location could be:
+
+    /home/dhis/config/dhis-google-auth.json
+
+## Configuration d'OpenID Connect (OIDC) { #install_oidc_configuration } 
+
+<!--DHIS2-SECTION-ID:install_oidc_configuration-->
+
+DHIS2 prend en charge la couche d'identité de l'OpenID Connect (OIDC) pour une identification unique (IU). L'OIDC est un protocole d'authentification standard qui permet aux utilisateurs de se connecter à un fournisseur d'identité (IdP) comme Google. Une fois que les utilisateurs parviennent à se connecter à leur IdP, ils sont donc automatiquement connectés à DHIS2.
+
+Cette section présente des informations générales sur l'utilisation du DHIS2 avec l'OIDC, ainsi que les options de configuration de l'IdP et du DHIS2. Le déroulement de l'authentification se présente comme suit.
+
+1. Un utilisateur tente de se connecter à DHIS2 à partir d'un ordinateur client.
+
+2. Le DHIS2 redirige la requête d'authentification vers la passerelle IdP.
+
+3. Le système demande à l'utilisateur de fournir des informations d'identification et l'authentifie auprès de l'IdP. L'IdP répond par une URL permettant de rediriger l'utilisateur vers le DHIS2. L'URL de redirection comprend un code d'autorisation spécifique destiné à l'utilisateur.
+
+4. Le client est redirigé vers le DHIS2 et présente le code d'autorisation.
+
+5. Le DHIS2 présente le code d'autorisation du client à l'IdP en même temps que ses propres références client.
+
+6. L'IdP renvoie un jeton d'accès et un jeton d'identification au DHIS2.
+
+* Validation du JSON Web Token (JWT) : Le DHIS2 procède à une validation du JWT de l'IdP.
+* Le jeton d'identification est un ensemble de paires de clés d'attributs de l'utilisateur. Les paires de clés sont appelées des requêtes.
+
+7. Le DHIS2 identifie l'utilisateur à partir des requêtes d'IdP et complète la demande d'authentification à partir de l'étape 1. Le système DHIS2 recherche un utilisateur qui correspond à la requête par "courriel" de l'IdP. On peut configurer le système DHIS2 de manière à utiliser différentes requêtes pour ce processus.
+
+8. Le DHIS2 autorise l'utilisateur.
+
+### Exigences requises pour l'OIDC { #requirements-for-oidc } 
+
+#### Compte IdP { #idp-account } 
+
+Vous devez avoir accès à un fournisseur d'identité (IdP) pris en charge par le DHIS2.
+
+Voici donc les IdP actuellement pris en charge :
+
+* Google
+
+* Azure AD
+* WSO2
+* "Generic"
+
+#### Compte de l'utilisateur local { #local-user-account } 
+
+Vous devez créer expressément des utilisateurs dans l'instance DHIS2. L'importation à partir d'un répertoire externe tel qu'Active Directory n'est actuellement pas prise en charge. La gestion des utilisateurs avec un magasin d'identité externe n'est pas prise en charge par l'OIDC.
+
+#### Requêtes d'IdP et cartographie des utilisateurs { #idp-claims-and-mapping-of-users } 
+
+Pour se connecter au DHIS2, l'utilisateur doit être enregistré dans l'IdP et ensuite connecté à un compte d'utilisateur dans le DHIS2. L'OIDC utilise une méthode basée sur les requêtes pour partager les attributs des comptes utilisateurs avec d'autres applications. Les requêtes comportent des attributs de compte d'utilisateur tels que l'adresse électronique, le numéro de téléphone, le nom, etc. DHIS2 utilise les requêtes IdP pour établir des liens de correspondance entre les comptes d'utilisateurs de l'IdP et ceux hébergés dans DHIS2. Par défaut, DHIS2 exige que l'IdP transmette la requête _email_. En fonction de votre IdP, vous devrez peut-être configurer DHIS2 de manière à ce qu'il utilise une requête IdP différente.
+
+If you are using Google or Azure AD as an IdP, the default behavior is to use the email claim to map IdP identities to DHIS2 user accounts.
+
+> **Note**
+
+>
+
+> In order for a DHIS2 user to be able to login with an IdP, the user profile checkbox "**External authentication only (OpenID or LDAP)**" must be checked and "**OpenID**" field must match the claim (mapping claim) returned by the IdP. Email is used by default by both Google and Azure AD.
+
+
+
+### Configurer le fournisseur d'identité pour l'OIDC { #configure-the-identity-provider-for-oidc } 
+
+Cette rubrique fournit des informations sur comment configurer un fournisseur d'identité (IdP) de manière à utiliser l'OIDC avec le DHIS2. Il s'agit d'une étape d'un processus en plusieurs étapes. Les rubriques suivantes sont consacrées à la configuration et à l'utilisation de l'OIDC avec le DHIS2.
+
+#### Configuration de l'IdP { #configure-the-idp } 
+
+Avant de pouvoir utiliser l'OIDC avec le DHIS2, vous devez disposer d'un compte chez un fournisseur d'identité pris en charge (IdP) et d'un projet ou d'une application avec l'IdP. Lorsque vous configurez le DHIS2, vous devez fournir les informations suivantes :
+
+* **Identifiant du client du fournisseur :** Il s'agit de l'identifiant que l'IdP a attribué à votre demande.
+
+* **Client secret du fournisseur :** Cette valeur est un secret et doit être gardée en toute sécurité.
+
+#### Rediriger l'URL { #redirect-url } 
+
+Certains IdP nécessitent une URL de redirection pour votre instance DHIS2. Vous pouvez définir votre URL pour l'IdP en utilisant la syntaxe suivante :
+
+```
+(protocole):/(votre hébergeur DHIS2)/oauth2/code/(code IdP)
+```
+
+Voici donc un exemple :
+
+```
+https://dhis2.org/oauth2/code/google
+```
+
+#### Exemple de procédure IdP (Google) { #example-idp-process-google } 
+
+La procédure ci-après présente un aperçu des étapes à suivre avec le prestataire. À titre d'exemple, la procédure explique comment utiliser Google comme fournisseur d'identité. Cependant, chaque fournisseur a un flux quelque peu différent, de sorte que les détails des étapes ( ainsi que leur ordre) peuvent varier en fonction de votre fournisseur.
+
+1. Inscrivez-vous sur le site des développeurs du fournisseur et connectez-vous. Pour Google, par exemple, vous pouvez vous rendre sur la console des développeurs à l'adresse suivante : https://console.developers.google.com.
+
+2. Créer un nouveau projet ou une nouvelle application.
+
+3. Dans le tableau de bord du développeur, suivez les étapes de création d'un client ID et d'un client secret OAuth 2.0. Enregistrez ces valeurs pour une utilisation ultérieure.
+
+4. Set your Authorized redirect URIs to: `(protocol):/(host)/oauth2/code/google` Keep the client secret in a secure place.
+
+
+
+Suivez les instructions de votre service IdP pour la configuration de votre IdP :
+
+* Google: https://developers.google.com/identity/protocols/oauth2/openid-connect
+
+* Azure AD: https://medium.com/xebia-engineering/authentication-and-authorization-using-azure-active-directory-266980586ab8
+
+> **Note**
+>
+> Azure AD Authorized redirect URIs must have this form: `(protocol):/(host)/oauth2/code/my_azure_ad_tenant_id`
+
+### Configurer le DHIS2 pour l'OIDC { #configure-dhis2-for-oidc } 
+
+> **N.B.**
+>
+> Avant d'effectuer les étapes décrites ici, vous devez configurer le fournisseur d'identité (IdP) de l'OIDC tel que décrit dans Configuration du fournisseur d'identité de l'OIDC.
+
+Cette rubrique présente les options de configuration à définir dans `dhis.conf`. N'oubliez pas de redémarrer DHIS 2 pour que les changements prennent effet.
+
+#### Google { #google } 
+
+```properties
+# ---------------------------------------------------------------------- { #- } 
+# Example of Google OIDC Configuration { #example-of-google-oidc-configuration } 
+# ---------------------------------------------------------------------- { #- } 
+
+# Generic config parameters (applied to all configured providers): { #generic-config-parameters-applied-to-all-configured-providers } 
+# DHIS 2 instance URL, do not end with a slash, not all IdPs support logout (Where to end up after calling end_session_endpoint on the IdP) { #dhis-2-instance-url-do-not-end-with-a-slash-not-all-idps-support-logout-where-to-end-up-after-calling-end_session_endpoint-on-the-idp } 
+oidc.logout.redirect_url = (protocol)://(host)/(optional app context)
+
+# Google specific parameters: { #google-specific-parameters } 
+oidc.provider.google.client_id = my_client_id
+oidc.provider.google.client_secret = my_client_secret
+
+# DHIS 2 instance URL, do not end with a slash, e.g.: https://dhis2.org/demo { #dhis-2-instance-url-do-not-end-with-a-slash-eg-httpsdhis2orgdemo } 
+oidc.provider.google.redirect_baseurl = (protocol)://(host)/(optional app context)
+
+# Optional, defaults to 'email' { #optional-defaults-to-email } 
+oidc.provider.google.mapping_claim = email
+
+```
+
+#### Azure AD { #azure-ad } 
+
+Note that Azure AD supports having multiple tenants, hence the numbering scheme `oidc.provider.azure.NUMBER.VARIABLE` below.
+
+Make sure your Azure AD account in the Azure portal is configured with a redirect URL like `(protocol):/(host)/oauth2/code/my_azure_ad_tenant_id`. To register DHIS 2 as an "app" in the Azure portal, follow these steps:
+
+
+1. Recherchez et sélectionnez *Inscriptions d’applications*.
+
+2. Cliquez sur *Nouvelle inscription*.
+
+3. In the *Name* field, enter a descriptive name for your DHIS 2 instance.
+
+4. Dans le champ *URI de redirection*, entrez l'URL de redirection tel que spécifié ci-dessus.
+
+5. Cliquez sur *S'inscrire*.
+
+
+```properties
+# ---------------------------------------------------------------------- { #- } 
+# Example of Azure OIDC Configuration { #example-of-azure-oidc-configuration } 
+# ---------------------------------------------------------------------- { #- } 
+
+# Generic config parameters (applied to all configured providers): { #generic-config-parameters-applied-to-all-configured-providers } 
+# DHIS 2 instance URL, do not end with a slash, not all IdPs support logout (Where to end up after calling end_session_endpoint on the IdP) { #dhis-2-instance-url-do-not-end-with-a-slash-not-all-idps-support-logout-where-to-end-up-after-calling-end_session_endpoint-on-the-idp } 
+oidc.logout.redirect_url = (protocol)://(host)/(optional app context)
+
+# Azure AD specific parameters: { #azure-ad-specific-parameters } 
+
+# First provider (0) { #first-provider-0 } 
+oidc.provider.azure.0.tenant = my_azure_ad_tenant_id
+oidc.provider.azure.0.client_id = my_azure_ad_client_id
+oidc.provider.azure.0.client_secret = my_azure_ad_client_secret
+
+# DHIS 2 instance URL, do not end with a slash, e.g.: https://dhis2.org/demo { #dhis-2-instance-url-do-not-end-with-a-slash-eg-httpsdhis2orgdemo } 
+oidc.provider.azure.0.redirect_baseurl = (protocol)://(host)/(optional app context)
+
+# Optional, defaults to 'email' { #optional-defaults-to-email } 
+oidc.provider.azure.0.mapping_claim = email
+
+# Optional, defaults to 'true' { #optional-defaults-to-true } 
+oidc.provider.azure.0.support_logout = true
+
+# Second provider (1) { #second-provider-1 } 
+oidc.provider.azure.1.tenant = my_other_azure_ad_tenant_id
+...
+
+
+```
+
+#### Generic Providers { #generic-providers } 
+
+The "generic" provider can be used to configure any OIDC provider that uses the "default" features in Spring Security.
+
+In the example below we configure the Norwegian governmental health service OIDC provider.
+
+The client name here is "helseid" and will automatically show up on the login page as a button with the same name or the name of the "display_alias" if defined.
+
+
+The DHIS2 generic providers uses the following hard coded defaults for:
+
+* Client Authentication: https://tools.ietf.org/html/rfc6749#section-2.3 > ClientAuthenticationMethod.BASIC
+
+* Authenticated Requests: https://tools.ietf.org/html/rfc6750#section-2 > AuthenticationMethod.HEADER
+
+
+> **Note**
+>
+> The following client names are reserved for non-generic provider use and can not be used here: "google","azure","wso2".
+
+
+```properties
+# ---------------------------------------------------------------------- { #- } 
+# Example of Generic OIDC Configuration { #example-of-generic-oidc-configuration } 
+# ---------------------------------------------------------------------- { #- } 
+
+# Generic config parameters (applied to all configured providers): { #generic-config-parameters-applied-to-all-configured-providers } 
+# DHIS 2 instance URL, do not end with a slash, not all IdPs support logout (Where to end up after calling end_session_endpoint on the IdP) { #dhis-2-instance-url-do-not-end-with-a-slash-not-all-idps-support-logout-where-to-end-up-after-calling-end_session_endpoint-on-the-idp } 
+oidc.logout.redirect_url = (protocol)://(host)/(optional app context)
+
+
+# This is the name displayed on the DHIS2 login page { #this-is-the-name-displayed-on-the-dhis2-login-page } 
+oidc.provider.helseid.display_alias = HelseID
+
+oidc.provider.helseid.client_id = CLIENT_ID
+oidc.provider.helseid.client_secret = CLIENT_SECRET
+oidc.provider.helseid.mapping_claim = helseid://claims/identity/email
+oidc.provider.helseid.authorization_uri = https://helseid.no/connect/authorize
+oidc.provider.helseid.enable_logout = true
+oidc.provider.helseid.token_uri = https://helseid.no/connect/token
+oidc.provider.helseid.user_info_uri = https://helseid.no/connect/userinfo
+oidc.provider.helseid.jwk_uri = https://helseid.no/.well-known/openid-configuration/jwks
+oidc.provider.helseid.end_session_endpoint = https://helseid.no/connect/endsession
+oidc.provider.helseid.scopes = helseid://scopes/identity/email
+oidc.provider.helseid.redirect_url = {baseUrl}/oauth2/code/{registrationId}
+
+# (You can link to an url for any logo here as long as it is served from the same domain as the DHIS2 server.) { #you-can-link-to-an-url-for-any-logo-here-as-long-as-it-is-served-from-the-same-domain-as-the-dhis2-server } 
+oidc.provider.helseid.logo_image = ../security/btn_helseid.svg
+oidc.provider.helseid.logo_image_padding = 0px 1px
+
+# (These values are appended to the request, they must be key/value pairs like: "KEY1 VALUE1,KEY2 VALUE2,...") { #these-values-are-appended-to-the-request-they-must-be-keyvalue-pairs-like-key1-value1key2-value2 } 
+oidc.provider.helseid.extra_request_parameters = acr_values lvl4
+
+# (This is for optional PKCE support see: https://oauth.net/2/pkce/) Default value is: FALSE { #this-is-for-optional-pkce-support-see-httpsoauthnet2pkce-default-value-is-false } 
+oidc.provider.helseid.enable_pkce = true
+
+```
+
+
+## Configuration de LDAP { #install_ldap_configuration }
+
+<!--DHIS2-SECTION-ID:install_ldap_configuration-->
+
+DHIS2 peut utiliser un serveur LDAP pour l'authentification des utilisateurs.
+L'authentification LDAP nécessite que chaque entrée corresponde à un utilisateur dans la base de données DHIS2. L'utilisateur DHIS2 sera utilisé pour représenter des autorités / rôles d’utilisateur.
+
+To set up LDAP authentication you need to configure the LDAP server URL,
+a manager user and an LDAP search base and search filter. This
+configuration should be done in the main DHIS 2 configuration file
+(dhis.conf). LDAP users, or entries, are identified by distinguished
+names (DN from now on). An example configuration looks like this:
+
+```properties
+# LDAP server URL { #ldap-server-url } 
+ldap.url = ldaps://domain.org:636
+
+# LDAP manager entry distinguished name { #ldap-manager-entry-distinguished-name } 
+ldap.manager.dn = cn=johndoe,dc=domain,dc=org
+
+# LDAP manager entry password { #ldap-manager-entry-password } 
+ldap.manager.password = xxxx
+
+# LDAP base search { #ldap-base-search } 
+ldap.search.base = dc=domain,dc=org
+
+# LDAP search filter { #ldap-search-filter } 
+ldap.search.filter = (cn={0})
+```
+
+Les propriétés de configuration LDAP sont expliquées ci-dessous :
+
+  - *ldap.url :* L'URL du serveur LDAP avec lequel s'authentifier
+    L'utilisation du SSL ou du cryptage est fortement recommandée afin de
+    sécuriser l’authentification. Prenons l'exemple de l'URL suivant
+    *ldaps://domain.org:636*, où ldaps fait référence au protocole,
+    *domain.org* fait référence au nom de domaine ou à l'adresse IP, et *636*
+    fait référence au port (636 est la valeur par défaut pour LDAPS).
+
+  - *ldap.manager.dn:* Un utilisateur du gestionnaire LDAP doit être relié au 
+    serveur LDAP pour permettre le processus d'authentification des utilisateurs. 
+    fait référence au DN de cette entrée, c'est à dire que ce n'est pas l'utilisateur qui va
+    authentifié lors de la connexion à DHIS2, mais plutôt l'utilisateur qui
+    est relié au serveur LDAP afin d'effectuer l'authentification.
+
+  - *ldap.manager.password :* Le mot de passe de l'utilisateur du gestionnaire LDAP.
+
+  - *ldap.search.base :* La base de recherche ou le nom unique de
+    l'objet de la base de recherche, qui définit l'emplacement dans le répertoire
+    à partir duquel commence la recherche LDAP.
+
+  - *ldap.search.filter :* Le filtre permettant de faire correspondre les DN des entrées dans le
+    répertoire LDAP. La variable {0} sera remplacée par le nom d'utilisateur DHIS2,
+    ou autrement, l'identifiant LDAP défini pour l'utilisateur
+    avec le nom d'utilisateur fourni.
+
+DHIS2 utilisera le nom d'utilisateur et le mot de passe fournis pour essayer de s'authentifier avec une entrée du serveur LDAP, puis recherchera des rôles/autorités d'utilisateur auprès d'un utilisateur DHIS2 correspondant. Cela implique qu'un utilisateur doit avoir une entrée correspondante dans le répertoire LDAP ainsi qu'un utilisateur DHIS2 pour pouvoir se connecter.
+
+Lors de l'authentification, DHIS2 essaiera de se connecter au serveur LDAP en utilisant l'URL du serveur LDAP configuré ainsi que le DN et le mot de passe du gestionnaire. Une fois la connexion établie, il recherche une entrée dans le répertoire à l'aide de la base de recherche LDAP et du filtre de recherche configurés.
+
+La variable {0} du filtre configuré sera remplacée avant l'application du filtre. Par défaut, elle sera remplacée par le nom d'utilisateur fourni. Vous pouvez également définir un identifiant LDAP personnalisé pour le compte utilisateur DHIS2 concerné. Vous pouvez le faire via l'interface utilisateur du module utilisateur DHIS2 sur l'écran d'ajout ou d'édition en définissant la propriété "Identifiant LDAP". Une fois définie, l'identifiant LDAP remplacera la variable {0} dans le filtre. Cette fonction est utile lorsque le nom commun LDAP ne convient pas ou ne peut pas, pour une raison quelconque, être utilisé comme nom d'utilisateur DHIS2.
+
+## Configuration du cryptage{ #install_encryption_configuration }
+
+<!--DHIS2-SECTION-ID:install_encryption_configuration-->
+
+DHIS2 allows for encryption of data. Enabling it requires some extra
+setup. To provide security to the encryption algorithm you will have to set a
+password in the *dhis.conf* configuration file through the
+*encryption.password* property:
+
+```properties
+encryption.password = xxxx
+```
+
+The *encryption.password* property is the password (key) used when encrypting
+and decrypting data in the database. Note that the password must not be
+changed once it has been set and data has been encrypted, as the data can
+then no longer be decrypted. 
+
+Le mot de passe doit comporter au moins **24 caractères**. Une combinaison de chiffres et de lettres minuscules et majuscules est recommandé. Le mot de passe de cryptage doit être gardé secret.
+
+> **Important**
+>
+> Il n'est pas possible de récupérer les données cryptées si le mot de passe de cryptage est perdu ou modifié. Si le mot de passe est perdu, les données cryptées le seront également. A l’inverse, le cryptage n’offre aucune sécurité si le mot de passe est compromis. Il faut donc s'assurer que le mot de passe est conservé dans un endroit sûr.
+>
+
+Note that encryption support depends on the *Java Cryptography Extension* (JCE) policy files to be available.  These are included in all versions of OpenJDK and Oracle JDK 8 Update 144 or later.
+
+## Configuration de la base de données réplica en lecture { #install_read_replica_configuration }
+
+<!--DHIS2-SECTION-ID:install_read_replica_configuration-->
+
+DHIS 2 permet d'utiliser des réplicas en lecture seule de la base de données principale (la base de données principale de DHIS 2). L'objectif des réplicas en lecture est d'améliorer les performances des requêtes en lecture de la base de données et d'augmenter les capacités au-delà des contraintes d'une seule base de données. Les opérations à forte intensité de lecture en bénéficieront, notamment les requêtes d'analyse et les requêtes d'événements.
+
+La configuration exige que vous ayez créé une ou plusieurs instances répliquées de la base de données principale de DHIS 2. PostgreSQL permet de le faire grâce à un concept appelé *réplication en flux*. La configuration des réplicas en lecture pour PostgreSQL n'est pas abordée dans ce guide.
+
+Read replicas can be defined in the *dhis.conf* configuration file. You
+can specify up to 5 read replicas per DHIS 2 instance. Each read replica
+is denoted with a number between 1 and 5. The JDBC connection URL must
+be defined per replica. The username and password can be specified; if
+not, the username and password for the master database will be used
+instead.
+
+The configuration for read replicas in *dhis.conf* looks like the below.
+Each replica is specified with the configuration key *readN* prefix,
+where N refers to the replica number.
+
+```properties
+# Read replica 1 configuration { #read-replica-1-configuration } 
+
+# Database connection URL, username and password { #database-connection-url-username-and-password } 
+read1.connection.url = jdbc:postgresql://127.0.0.11/dbread1
+read1.connection.username = dhis
+read1.connection.password = xxxx
+
+# Read replica 2 configuration { #read-replica-2-configuration } 
+
+# Database connection URL, username and password { #database-connection-url-username-and-password } 
+read2.connection.url = jdbc:postgresql://127.0.0.12/dbread2
+read2.connection.username = dhis
+read2.connection.password = xxxx
+
+# Read replica 3 configuration { #read-replica-3-configuration } 
+
+# Database connection URL, fallback to master for username and password { #database-connection-url-fallback-to-master-for-username-and-password } 
+read3.connection.url = jdbc:postgresql://127.0.0.13/dbread3
+```
+
+Vous devez redémarrer votre conteneur de servlets pour que les modifications s'appliquent. DHIS 2 répartira automatiquement la charge entre les réplicas en lecture. L'ordre des réplicas n'a pas d'importance.
+
+## Configuration du cluster de serveur Web { #install_web_server_cluster_configuration }
+
+<!--DHIS2-SECTION-ID:install_web_server_cluster_configuration-->
+
+Cette section décrit comment configurer l'application  DHIS 2 pour qu'elle s'exécute dans un cluster.
+
+### Présentation du clustering { #install_cluster_configuration_introduction }
+
+<!--DHIS2-SECTION-ID:install_cluster_configuration_introduction-->
+
+Le clustering est une technique courante permettant d'améliorer l'évolutivité et la disponibilité du système. Elle consiste à installer plusieurs serveurs web, par exemple des instances Tomcat, pour qu'ils servent une seule application. Le clustering permet d'*étendre* une application de manière à ce que de nouveaux serveurs puissent être ajoutés afin d'améliorer ses performances. Elle garantit également une *grande disponibilité*, car le système peut tolérer que des instances tombent en panne sans pour autant rendre le système inaccessible aux utilisateurs.
+
+Quelques paramètres doivent être configurés pour que DHIS 2 s'exécute dans un cluster.
+
+* Each DHIS 2 instance must specify the other DHIS 2 instance members of 
+the cluster in *dhis.conf*.
+
+* Un entrepôt de données Redis doit être installé et les informations de connexion doivent
+be provided for each DHIS 2 application instance in *dhis.conf*.
+
+* Les instances et les serveurs DHIS 2 doivent partager le même dossier *fichiers* utilisé pour 
+les applications et les téléchargements de fichiers, soit par l'intermédiaire de l'option de *stockage de fichiers cloud AWS S3*, 
+soit par un lecteur réseau partagé.
+
+* A load balancer such as nginx must be configured to distribute Web requests
+dans les instances du cluster.
+
+### DHIS 2 instance cluster configuration { #install_cluster_configuration } 
+
+<!--DHIS2-SECTION-ID:install_cluster_configuration-->
+
+When setting up multiple Tomcat instances there is a need for making the
+instances aware of each other. This awareness will enable DHIS 2 to keep
+the local data (Hibernate) caches in sync and in a consistent state.
+When an update is done on one instance, the caches on the other
+instances must be notified so that they can be invalidated and avoid
+becoming stale.
+
+A DHIS 2 cluster setup is based on manual configuration of each
+instance. For each DHIS 2 instance one must specify the public
+*hostname* as well as the hostnames of the other instances participating
+in the cluster.
+
+The hostname of the server is specified using the *cluster.hostname*
+configuration property. Additional servers which participate in the
+cluster are specified using the *cluster.members* configuration
+property. The property expects a list of comma separated values where
+each value is of the format *host:port*.
+
+The hostname must be visible to the participating servers on the network
+for the clustering to work. You might have to allow incoming and
+outgoing connections on the configured port numbers in the firewall.
+
+The port number of the server is specified using the *cluster.cache.port*
+configuration property. The remote object port used for registry receive
+calls is specified using *cluster.cache.remote.object.port*. Specifying
+the port numbers is typically only useful when you have multiple cluster
+instances on the same server or if you need to explicitly specify the ports 
+to match a firewall configuration. When running cluster instances on separate 
+servers it is often appropriate to use the default port number and omit 
+the ports configuration properties. If omitted, 4001 will be assigned as 
+the listener port and a random free port will be assigned as the remote 
+object port.
+
+An example setup for a cluster of two web servers is described below.
+For *server A* available at hostname *193.157.199.131* the following can
+be specified in *dhis.conf*:
+
+```properties
+# Cluster configuration for server A { #cluster-configuration-for-server-a } 
+
+# Hostname for this web server { #hostname-for-this-web-server } 
+cluster.hostname = 193.157.199.131
+
+# Ports for cache listener, can be omitted { #ports-for-cache-listener-can-be-omitted } 
+cluster.cache.port = 4001
+cluster.cache.remote.object.port = 5001
+
+# List of Host:port participating in the cluster { #list-of-hostport-participating-in-the-cluster } 
+cluster.members = 193.157.199.132:4001
+```
+
+For *server B* available at hostname *193.157.199.132* the following can
+be specified in *dhis.conf* (notice how port configuration is omitted):
+
+```properties
+# Cluster configuration for server B { #cluster-configuration-for-server-b } 
+
+# Hostname for this web server { #hostname-for-this-web-server } 
+cluster.hostname = 193.157.199.132
+
+# List of servers participating in cluster { #list-of-servers-participating-in-cluster } 
+cluster.members = 193.157.199.131:4001
+```
+
+You must restart each Tomcat instance to make the changes take effect.
+The two instances have now been made aware of each other and DHIS 2 will
+ensure that their caches are kept in sync.
+
+### Configuration du cluster de stockage de données partagé Redis { #install_cluster_configuration_redis }
+
+<!--DHIS2-SECTION-ID:install_cluster_configuration_redis-->
+
+In a cluster setup, a *Redis* instance is required and will handle
+shared user sessions, application cache and cluster node leadership.
+
+For optimum performance, *Redis Keyspace events* for _generic commands_ 
+and _expired events_ need to be enabled in the Redis Server. If you are 
+using a cloud platform-managed Redis server (like *AWS ElastiCache for Redis* 
+or *Azure Cache for Redis*) you will have to enable keyspace event notifications 
+using the respective cloud console interfaces. If you are setting up a standalone 
+Redis server, enabling keyspace event notifications can be done in the 
+*redis.conf* file by adding or uncommenting the following line:
+
+```
+notify-keyspace-events Egx
+```
+
+DHIS2 will connect to Redis if the *redis.enabled* configuration
+property in *dhis.conf* is set to *true* along with the following properties:
+
+- *redis.host* : Spécifie où le serveur Redis est exécuté. La valeur par défaut est *localhost*. Obligatoire.
+
+- *redis.port* : Spécifie le port sur lequel le serveur Redis écoute. La valeur par défaut est *6379*. Facultatif.
+
+- *redis.password* : Spécifie le mot de passe d'authentification. Si un mot de passe n'est pas nécessaire, il peut rester vide.
+
+- *redis.use.ssl* : Spécifie si SSL est activé sur le serveur Redis. La valeur par défaut est *faux*. Facultatif.
+
+When Redis is enabled, DHIS2 will automatically assign one of the
+running instances as the leader of the cluster. The leader instance will
+be used to execute jobs or scheduled tasks that should be run
+exclusively by one instance. Optionally you can configure the
+*leader.time.to.live.minutes* property in *dhis.conf* to set up how
+frequently the leader election needs to occur. It also gives an
+indication of how long it would take for another instance to take over
+as the leader after the previous leader has become unavailable. The
+default value is 2 minutes. Note that assigning a leader in the cluster
+is only done if Redis is enabled. An example snippet of the *dhis.conf*
+configuration file with Redis enabled and leader election time
+configured is shown below.
+
+```properties
+# Redis Configuration { #redis-configuration } 
+
+redis.enabled = true
+
+redis.host = 193.158.100.111
+
+redis.port = 6379
+
+redis.password = <your password>
+
+redis.use.ssl = false
+
+# Optional, defaults to 2 minutes { #optional-defaults-to-2-minutes } 
+leader.time.to.live.minutes=4 
+```
+
+### Configuration du dossier de fichiers { #files-folder-configuration }
+
+DHIS 2 va stocker plusieurs types de fichiers hors de l'application elle-même, tels que des applications, des fichiers sauvegardés lors de saisies de données et des avatars d'utilisateurs. Lorsqu'il est déployé dans un cluster, l'emplacement de ces fichiers doit être partagé entre toutes les instances. Sur le système de fichiers local, l'emplacement est le suivant :
+
+```
+{DHIS2_HOME}/files
+```
+
+Ici, `DHIS2_HOME` fait référence à l'emplacement du fichier de configuration DHIS 2 tel que spécifié par la variable d'environnement DHIS 2, et `fichiers` est le dossier de fichiers immédiatement en dessous.
+
+Il existe deux manières d'obtenir un emplacement partagé :
+
+* Utiliser l'option *Stockage de fichiers cloud AWS S3*. Les fichiers seront stockés dans un
+compartiment S3 qui est automatiquement partagé entre toutes les instances DHIS 2 présentes dans le cluster.
+Consulter la section *Configuration de l'entrepôt de fichiers* pour obtenir des conseils.
+* Configurer un dossier partagé entre toutes les instances et tous les serveurs DHIS 2 
+présents dans le cluster. Sur Linux, cela peut être réalisé avec *NFS* (Network File System)
+qui est un protocole de système de fichiers en réseau. Notez que seuls les sous-dossiers `fichiers`
+sous `DHIS2_HOME` doit être partagé, pas le dossier parent.
+
+### Configuration de l'équilibreur de charge { #install_load_balancing }
+
+<!--DHIS2-SECTION-ID:install_load_balancing-->
+
+Lorsqu'un cluster d'instances Tomcat est installé, un *équilibreur de charge* peut être utilisé pour acheminer les requêtes web entrantes vers les instances backend du cluster. Un équilibreur de charge veille à ce que la charge soit répartie uniformément entre les instances du cluster. Il détectera également l'indisponibilité d'une instance et, le cas échéant, arrêtera les requêtes de routine vers cette instance et utilisera les autres instances disponibles.
+
+L'équilibrage de la charge peut être réalisé de plusieurs manières. *nginx* est une approche simple. En l'utilisant, vous devrez définir un élément *upstream* qui énumère l'emplacement des instances backend, puis utiliser cet élément dans le bloc d'emplacement *proxy*.
+
+```text
+http {
+
+  # Upstream element with sticky sessions
+
+  upstream dhis_cluster {
+    ip_hash;
+    server 193.157.199.131:8080;
+    server 193.157.199.132:8080;
+  }
+
+  # Proxy pass to backend servers in cluster
+
+  server {
+    listen 80;
+
+    location / {
+      proxy_pass   http://dhis_cluster/;
+    }
+  }
+}  
+```
+
+DHIS 2 conserve l'état des sessions utilisateur côté serveur dans une certaine mesure. L'utilisation de "sessions persistantes" est une approche simple qui permet d'éviter de reproduire l'état de la session du serveur en acheminant les demandes d'un même client vers le même serveur. La directive *ip\_hash* de l'élément upstream garantit cette fonction.
+
+Plusieurs instructions ont été omises par souci de concision dans l'exemple ci-dessus. Consultez la section proxy inverse pour obtenir un guide détaillé.
+
+## Surveillance { #monitoring }
+
+DHIS 2 peut exporter des métriques compatibles avec Prometheus pour la surveillance des instances DHIS2. L'infrastructure de surveillance de DHIS2 est conçue pour exposer les métriques liées à l'exécution de l'application et d'autres informations relatives à l'application.
+
+Les métriques liées à l'infrastructure (telles que les métriques de l'hôte, Tomcat ou Postgres) ne sont pas directement exposées par le moteur de surveillance de l'application et doivent être collectées séparément. Les métriques actuellement exposées par l'application sont :
+
+- API DHIS 2 (temps de réponse, nombre d'appels, etc.)
+- JVM (taille du tas, récupération de l'espace mémoire, etc.)
+- Mise en veille prolongée (requêtes, cache, etc.)
+- C3P0 Database pool
+- Disponibilité des applications
+- CPU
+
+La surveillance peut être activé dans `dhis.conf` avec les propriétés suivantes (la valeur par défaut est `désactivé` pour toutes les propriétés) :
+
+```propriétés
+surveillance.api.enabled = activé
+surveillance.jvm.enabled = activé
+surveillance.dbpool.enabled = activé
+surveillance.hibernate.enabled = désactivé
+surveillance.uptime.enabled = activé
+surveillance.cpu.enabled = activé
+```
+
+L'approche recommandée pour collecter et visualiser ces métriques est Prometheus et Grafana.
+
+For more information, see the [monitoring infrastructure](https://github.com/dhis2/wow-backend/blob/master/guides/monitoring.md) page and the [Prometheus and Grafana install](https://docs.dhis2.org/master/en/dhis2_system_administration_guide/monitoring.html) chapter.
+
+## Configuration du système { #install_system_configuration }
+
+<!--DHIS2-SECTION-ID:install_system_configuration-->
+
+Cette section aborde diverses propriétés de configuration du système.
+
+```propriétés
+system.read_only_mode = on | désactivé
+```
+
+Définit le système sur le mode lecture seule. Ceci est utile lorsque vous exécutez DHIS 2 sur une base de données réplica en lecture seule, afin d'éviter que DHIS 2 n'effectue des opérations d'écriture sur la base de données. Peut être `activé` ou `désactivé`. La valeur par défaut est `désactivé`.
+
+```properties
+system.session.timeout = (seconds)
+```
+
+Définit le délai d'expiration de la session utilisateur en secondes. La valeur par défaut est 3 600 secondes (1 heure).
+
+```properties
+system.sql_view_table_protection = on | off
+```
+
+Active ou désactive la protection des tables de base de données sensibles pour les vues SQL. Grâce à cette protection, les tables de base de données contenant des données sensibles ne pourront pas être interrogées par le biais des vues SQL. La désactivation n'est pas recommandée. Peut être `activé` ou `désactivé`. La valeur par défaut est `on`.
+
+```properties
+system.program_rule.server_execution = on | off
+```
+
+Active ou désactive l'exécution des règles de programme côté serveur. Il s'agit des règles de programme qui ont des actions d'attribution de valeurs, d'envoi de messages ou de programmation d'envoi de messages. Peut être `activé` ou `désactivé`. La valeur par défaut est `activé`.
+
+## Configuration du proxy inverse { #install_reverse_proxy_configuration }
+
+<!--DHIS2-SECTION-ID:install_reverse_proxy_configuration-->
+
+Un proxy inverse est un serveur proxy qui agit pour le compte d'un autre serveur. L'utilisation d'un proxy inverse en combinaison avec un conteneur de servlets n'est pas obligatoire mais présente de nombreux avantages :
+
+  - Les requêtes peuvent être mises en correspondance et transmises à plusieurs conteneurs de servlets.
+    Cela rend le système plus flexible et facilite l'exécution de plusieurs
+    instances DHIS2 sur un même serveur. Cela permet également de
+    modifier la configuration du serveur interne sans affecter les clients.
+
+  - L'application DHIS2 peut être exécutée dans un mode autre que super-utilisateur sur un port
+    différent de 80, ce qui réduit la vulnérabilité face au piratage de
+    détournement.
+
+  - Le proxy inverse peut agir comme un serveur SSL unique et être configuré
+    pour inspecter les demandes de contenu malveillant, enregistrer les demandes et
+    les réponses et fournir des messages d'erreur non sensibles qui
+    améliorer la sécurité.
+
+### Configuration de base de Nginx { #install_basic_nginx_setup }
+
+<!--DHIS2-SECTION-ID:install_basic_nginx_setup-->
+
+Nous vous recommandons d'utiliser [nginx](http://www.nginx.org) comme proxy inverse en raison de sa faible empreinte mémoire et sa facilité d'utilisation. Pour l'installer, appelez la commande suivante :
+
+    sudo apt-get install nginx
+
+nginx peut maintenant être lancé, rechargé et arrêté avec les commandes suivantes :
+
+    sudo /etc/init.d/nginx start
+    sudo /etc/init.d/nginx reload
+    sudo /etc/init.d/nginx stop
+
+Now that we have installed nginx we will now continue to configure
+regular proxying of requests to our Tomcat instance, which we assume
+runs at *http://localhost:8080*. To configure nginx you can open the
+configuration file by invoking:
+
+    sudo nano /etc/nginx/nginx.conf
+
+La configuration de nginx se fait autour d'une hiérarchie de blocs représentant le http, le serveur et l'emplacement, où chaque bloc hérite des paramètres des blocs parents. L'extrait suivant va configurer nginx pour qu'il passe (redirige) les requêtes du port 80 (qui est le port sur lequel nginx écoute par défaut) vers notre instance Tomcat. Ajoutez la configuration suivante dans le fichier nginx.conf :
+
+```text
+http {
+  gzip on; # Enables compression, incl Web API content-types
+  gzip_types
+    "application/json;charset=utf-8" application/json
+    "application/javascript;charset=utf-8" application/javascript text/javascript
+    "application/xml;charset=utf-8" application/xml text/xml
+    "text/css;charset=utf-8" text/css
+    "text/plain;charset=utf-8" text/plain;
+
+  server {
+    listen               80;
+    client_max_body_size 10M;
+
+    # Proxy pass to servlet container
+
+    location / {
+      proxy_pass                http://localhost:8080/;
+      proxy_redirect            off;
+      proxy_set_header          Host               $host;
+      proxy_set_header          X-Real-IP          $remote_addr;
+      proxy_set_header          X-Forwarded-For    $proxy_add_x_forwarded_for;
+      proxy_set_header          X-Forwarded-Proto  http;
+      proxy_buffer_size         128k;
+      proxy_buffers             8 128k;
+      proxy_busy_buffers_size   256k;
+      proxy_cookie_path         ~*^/(.*) "/$1; SameSite=Lax";
+    }
+  }
+}
+```
+
+Vous pouvez désormais accéder à votre instance DHIS2 à l'adresse *http://localhost*. Etant donné que le proxy inverse a été installé, nous pouvons améliorer la sécurité en configurant Tomcat pour qu'il n'écoute que les connexions locales. Dans */conf/server.xml*, vous pouvez ajouter un attribut *address* avec la valeur *localhost* à l'élément Connector pour HTTP 1.1 comme suit :
+
+```xml
+<Connector address="localhost" protocol="HTTP/1.1" />
+```
+
+### Activation de SSL avec nginx { #install_enabling_ssl_on_nginx }
+
+<!--DHIS2-SECTION-ID:install_enabling_ssl_on_nginx-->
+
+Afin d'améliorer la sécurité, il est recommandé de configurer le serveur qui exécute DHIS2 de manière à ce qu'il communique avec les clients via une connexion cryptée et de s'identifier auprès des clients à l'aide d'un certificat de confiance. Ceci peut être réalisé via SSL qui est un protocole de communication cryptographique fonctionnant sur TCP/IP. Tout d’abord, installez la bibliothèque *openssl* requise :
+
+    sudo apt-get install openssl
+
+Pour configurer nginx de manière à ce qu'il utilise SSL, vous aurez besoin d'un certificat SSL approprié provenant d'un fournisseur SSL. Le coût d'un certificat varie en fonction de la puissance du cryptage. Un certificat abordable de [Rapid SSL Online (http://www.rapidsslonline.com) devrait répondre à la plupart des besoins. Pour générer le CSR (demande de signature de certificat), vous pouvez appeler la commande ci-dessous. À l'invite du *Nom commun*, entrez le nom du domaine qualifié pour le site que vous sécurisez.
+
+    openssl req -new -newkey rsa:2048 -nodes -keyout server.key -out server.csr
+
+Après avoir reçu vos fichiers de certificat (.pem ou .crt), vous devez les placer avec le fichier server.key généré, dans un emplacement accessible par nginx. Le répertoire où se trouve votre fichier nginx.conf peut servir d'emplacement à cet effet.
+
+Below is an nginx server block where the certificate files are named
+server.crt and server.key. Since SSL connections usually occur on port
+443 (HTTPS) we pass requests on that port (443) on to the DHIS2 instance
+running on *http://localhost:8080* The first server block will rewrite
+all requests connecting to port 80 and force the use of HTTPS/SSL. This
+is also necessary because DHIS2 is using a lot of redirects internally
+which must be passed on to use HTTPS. Remember to replace
+*\<server-ip\>* with the IP of your server. These blocks should replace
+the one from the previous section.
+
+```text
+http {
+  gzip on; # Enables compression, incl Web API content-types
+  gzip_types
+    "application/json;charset=utf-8" application/json
+    "application/javascript;charset=utf-8" application/javascript text/javascript
+    "application/xml;charset=utf-8" application/xml text/xml
+    "text/css;charset=utf-8" text/css
+    "text/plain;charset=utf-8" text/plain;
+
+  # HTTP server - rewrite to force use of SSL
+
+  server {
+    listen     80;
+    rewrite    ^ https://<server-url>$request_uri? permanent;
+  }
+
+  # HTTPS server
+
+  server {
+    listen               443 ssl;
+    client_max_body_size 10M;
+
+    ssl                  on;
+    ssl_certificate      server.crt;
+    ssl_certificate_key  server.key;
+
+    ssl_session_cache    shared:SSL:20m;
+    ssl_session_timeout  10m;
+
+    ssl_protocols              TLSv1 TLSv1.1 TLSv1.2;
+    ssl_ciphers                RC4:HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers  on;
+
+    # Proxy pass to servlet container
+
+    location / {
+      proxy_pass                http://localhost:8080/;
+      proxy_redirect            off;
+      proxy_set_header          Host               $host;
+      proxy_set_header          X-Real-IP          $remote_addr;
+      proxy_set_header          X-Forwarded-For    $proxy_add_x_forwarded_for;
+      proxy_set_header          X-Forwarded-Proto  https;
+      proxy_buffer_size         128k;
+      proxy_buffers             8 128k;
+      proxy_busy_buffers_size   256k;
+      proxy_cookie_path         ~*^/(.*) "/$1; SameSite=Lax";
+    }
+  }
+}
+```
+
+Notez la dernière valeur de l'en-tête `https` qui est nécessaire pour informer le conteneur de servlets que la requête arrive par HTTPS. Pour que Tomcat produise correctement les en-têtes d'URL d'`Emplacement` en utilisant HTTPS, vous devez également ajouter deux autres paramètres au Connector dans le fichier `server.xml` de Tomcat :
+
+```xml
+<Connector scheme="https" proxyPort="443" />
+```
+
+### Activation de la mise en cache avec nginx { #install_enabling_caching_ssl_nginx }
+
+<!--DHIS2-SECTION-ID:install_enabling_caching_ssl_nginx-->
+
+Les demandes de rapports, de graphiques, de cartes et d'autres ressources liées à l'analyse mettent souvent un certain temps avant de recevoir des réponses et peuvent utiliser une grande partie des ressources du serveur. Afin d'améliorer les temps de réponse, de réduire la charge sur le serveur et d'éviter d'éventuels temps d'arrêt, nous pouvons introduire un proxy de cache dans notre configuration de serveur. Le contenu mis en cache sera stocké dans le répertoire /var/cache/nginx, et jusqu'à 250 Mo de stockage y seront alloués. Nginx créera ce répertoire automatiquement.
+
+```text
+http {
+  ..
+  proxy_cache_path  /var/cache/nginx  levels=1:2  keys_zone=dhis:250m  inactive=1d;
+
+
+  server {
+    ..
+
+    # Proxy pass to servlet container and potentially cache response
+
+    location / {
+      proxy_pass                http://localhost:8080/;
+      proxy_redirect            off;
+      proxy_set_header          Host               $host;
+      proxy_set_header          X-Real-IP          $remote_addr;
+      proxy_set_header          X-Forwarded-For    $proxy_add_x_forwarded_for;
+      proxy_set_header          X-Forwarded-Proto  https;
+      proxy_buffer_size         128k;
+      proxy_buffers             8 128k;
+      proxy_busy_buffers_size   256k;
+      proxy_cookie_path         ~*^/(.*) "/$1; SameSite=Lax";
+      proxy_cache               dhis;
+    }
+  }
+}
+```
+
+**Important**
+> >>>>>>>>
+Sachez qu'un cache côté serveur court-circuite les fonctions de sécurité de DHIS2 dans le sens où les requêtes qui atteignent le cache côté serveur seront servies directement à partir du cache hors de contrôle de DHIS2 et du conteneur de servlets. Cela signifie que les URL des requêtes peuvent être devinées de même que les rapports récupérés dans le cache par des utilisateurs non autorisés. Par conséquent, si vous collectez des informations sensibles, la mise en place d'un cache côté serveur n'est pas recommandée.
+
+### Limitation de débit avec nginx { #install_rate_limiting }
+
+<!--DHIS2-SECTION-ID:install_rate_limiting-->
+
+Certains appels d'API web dans DHIS 2, tels que les API d'`analyses`, nécessitent beaucoup de calculs. Par conséquent, il est préférable de limiter le débit de ces API afin d'équilibrer l'utilisation des ressources du serveur par les utilisateurs du système. La limitation de débit peut être effectuée avec `nginx`. Il existe plusieurs approches pour effectuer la limitation de débit et ceci est destiné à documenter l'approche basée sur nginx.
+
+La configuration nginx ci-dessous limitera le débit de l'API Web des `analyses` et comporte les éléments suivants au niveau des blocs *http* et *emplacement* (la configuration est abrégée par souci de concision) :
+
+```text
+http {
+  ..
+  limit_req_zone $binary_remote_addr zone=limit_analytics:10m rate=5r/s;
+
+  server {
+    ..
+
+    location ~ ^/api/(\d+/)?analytics(.*)$ {
+      limit_req    zone=limit_analytics burst=20;
+      proxy_pass   http://localhost:8080/api/$1analytics$2$is_args$args;
+      ..
+    }
+  }
+}
+```
+
+Les différents éléments de la configuration peuvent être décrits comme suit :
+
+- *limit_req_zone $binary_remote_addr* : la limitation du débit est effectuée par adresse IP de requête.
+- *zone=limit_analytics:20m* : une zone de limite de débit pour l'API des analyses qui peut contenir jusqu'à 10 Mo d'adresses IP de requête.
+- *taux=20r/s* : Chaque IP reçoit 5 requêtes par seconde.
+- *emplacement ~ ^/api/(\d+/)?analytics(.\*)$* : les requêtes pour le point d'extrémité de l'API des analyses sont limitées en débit.
+- *burst=20* : des rafales contenant jusqu'à 20 requêtes seront mises en file d'attente et traitées ultérieurement ; des demandes supplémentaires conduiront à un `503`.
+
+Pour obtenir une explication complète, veuillez consulter la [documentation nginx](https://www.nginx.com/blog/rate-limiting-nginx/).
+
+### Rendre les ressources disponibles avec nginx { #install_making_resources_available_with_nginx }
+
+<!--DHIS2-SECTION-ID:install_making_resources_available_with_nginx-->
+
+Dans certains cas, il est souhaitable de rendre certaines ressources accessibles au public sur le web sans exiger une quelconque authentification. C'est le cas, par exemple, lorsque vous souhaitez rendre les ressources liées à l'analyse des données de l'API Web disponibles dans un portail Web. L'exemple suivant permet d'accéder aux graphiques, aux cartes, aux rapports, aux tableaux de rapports et aux ressources documentaires par le biais d'une authentification de base en insérant un en-tête HTTP d'*Autorisation* dans la demande. Il supprimera l'en-tête Cookie de la requête et l'en-tête Set-Cookie de la réponse afin d'éviter de modifier l'utilisateur connecté. Il est recommandé de créer un utilisateur à cette fin, en ne lui accordant que les autorisations minimales requises. La valeur d'autorisation peut être construite en codant le nom d'utilisateur avec base64, suivi de deux points et le mot de passe et en lui ajoutant le préfixe "Basic", plus précisément "Basic base64_encode(nom d'utilisateur:mot de passe)". Il vérifiera la méthode HTTP utilisée pour les requêtes et renverra *405 Method Not Allowed* s'il détecte autre chose que GET.
+
+En utilisant cette approche, il peut être avantageux de créer un domaine séparé pour les utilisateurs publics. En effet, nous ne voulons pas modifier les informations d'identification des utilisateurs déjà connectés lorsqu'ils accèdent aux ressources publiques. Par exemple, si votre serveur est déployé à l'adresse somedomain.com, vous pouvez créer un sous-domaine dédié à api.somedomain.com et orienter les URL de votre portail vers ce sous-domaine.
+
+```text
+http {
+  ..
+
+  server {
+    listen       80;
+    server_name  api.somedomain.com;
+
+    location ~ ^/(api/(charts|chartValues|reports|reportTables|documents|maps|organisationUnits)|dhis-web-commons/javascripts|images|dhis-web-commons-ajax-json|dhis-web-mapping|dhis-web-visualizer) {
+    if ($request_method != GET) {
+        return 405;
+      }
+
+      proxy_pass         http://localhost:8080;
+      proxy_redirect     off;
+      proxy_set_header   Host               $host;
+      proxy_set_header   X-Real-IP          $remote_addr;
+      proxy_set_header   X-Forwarded-For    $proxy_add_x_forwarded_for;
+      proxy_set_header   X-Forwarded-Proto  http;
+      proxy_set_header   Authorization      "Basic YWRtaW46ZGlzdHJpY3Q=";
+      proxy_set_header   Cookie             "";
+      proxy_hide_header  Set-Cookie;
+    }
+  }
+}
+```
+
+
+### Block specific Android App versions with nginx { #install_making_resources_available_with_nginx } 
+
+<!--DHIS2-SECTION-ID:install_making_resources_available_with_nginx-->
+
+Dans certains cas, l'administrateur du système peut vouloir bloquer certains clients Android sur la base de leur version de l'application DHIS2 ; par exemple, si les utilisateurs sur le terrain n'ont pas mis à jour leur version de l'application Android vers une version spécifique et que l'administrateur du système veut bloquer leur accès pour forcer une mise à jour, ou à l'inverse, si l'administrateur du système veut bloquer les nouvelles versions de l'application car elles n'ont pas encore été testées. Ceci peut être facilement implémenté en utilisant des règles spécifiques *User-Agent* dans le fichier de configuration `nginx`.
+
+```text
+http {
+
+  server {
+    listen       80;
+    server_name  api.somedomain.com;
+
+    # Block the latest Android App as it has not been tested
+    if ( $http_user_agent ~ 'com\.dhis2/1\.2\.1/2\.2\.1/' ) {
+        return 403;
+    }
+
+    # Block Android 4.4 (API is 19) as all users should have received new tablets
+    if ( $http_user_agent ~ 'com\.dhis2/.*/.*/Android_19' ) {
+        return 403;
+    }
+  }
+}
+```
+
+For the implementation of the method described above note the following: 
+* Before version 1.1.0 the *User-Agent* string was not being sent.
+* From version 1.1.0 to 1.3.2 the *User-Agent* followed the pattern Dhis2/AppVersion/AppVersion/Android_XX
+* From version 2.0.0 and above the *User-Agent* follows the pattern com.dhis2/SdkVersion/AppVersion/Android_XX
+* Android_XX refers to the Android API level i.e. the Android version as listed [here](https://developer.android.com/studio/releases/platforms).
+* nginx uses [PCRE](http://www.pcre.org/) for Regular Expression matching .
+
+## DHIS2 configuration reference { #install_dhis2_configuration_reference } 
+
+<!--DHIS2-SECTION-ID:install_dhis2_configuration_reference-->
+
+The following describes the full set of configuration options for the *dhis.conf* configuration file. The configuration file should be placed in a directory which is pointed to by a *DHIS2\_HOME* environment variable.
+
+> **Remarque**
+>
+> Vous ne devez pas utiliser ce fichier de configuration directement, mais plutôt comme référence pour les options de configuration disponibles. Plusieurs propriétés sont facultatives.
+
+```properties
+# ---------------------------------------------------------------------- { #- } 
+# Database connection for PostgreSQL [Mandatory] { #database-connection-for-postgresql-mandatory } 
+# ---------------------------------------------------------------------- { #- } 
+
+# Hibernate SQL dialect { #hibernate-sql-dialect } 
+connection.dialect = org.hibernate.dialect.PostgreSQLDialect
+
+# JDBC driver class { #jdbc-driver-class } 
+connection.driver_class = org.postgresql.Driver
+
+# Database connection URL { #database-connection-url } 
+connection.url = jdbc:postgresql:dhis2
+
+# Database username { #database-username } 
+connection.username = dhis
+
+# Database password (sensitive) { #database-password-sensitive } 
+connection.password = xxxx
+
+# Database schema behavior, can be 'validate', 'update', 'create', 'create-drop' { #database-schema-behavior-can-be-validate-update-create-create-drop } 
+connection.schema = update
+
+# Max size of connection pool (default: 40) { #max-size-of-connection-pool-default-40 } 
+connection.pool.max_size = 40
+
+# ---------------------------------------------------------------------- { #- } 
+# Server [Mandatory] { #server-mandatory } 
+# ---------------------------------------------------------------------- { #- } 
+
+# Base URL to the DHIS 2 instance { #base-url-to-the-dhis-2-instance } 
+server.base.url = https://play.dhis2.org/dev 
+
+# Enable secure settings if system is deployed on HTTPS, can be 'off', 'on' { #enable-secure-settings-if-system-is-deployed-on-https-can-be-off-on } 
+server.https = off
+
+# ---------------------------------------------------------------------- { #- } 
+# System [Optional] { #system-optional } 
+# ---------------------------------------------------------------------- { #- } 
+
+# System mode for database read operations only, can be 'off', 'on' { #system-mode-for-database-read-operations-only-can-be-off-on } 
+system.read_only_mode = off
+
+# Session timeout in seconds, default is 3600 { #session-timeout-in-seconds-default-is-3600 } 
+system.session.timeout = 3600
+
+# SQL view protected tables, can be 'on', 'off' { #sql-view-protected-tables-can-be-on-off } 
+system.sql_view_table_protection = on
+
+# Disable server-side program rule execution, can be 'on', 'off' { #disable-server-side-program-rule-execution-can-be-on-off } 
+system.program_rule.server_execution = on
+
+# ---------------------------------------------------------------------- { #- } 
+# Encryption [Optional] { #encryption-optional } 
+# ---------------------------------------------------------------------- { #- } 
+
+# Encryption password (sensitive) { #encryption-password-sensitive } 
+encryption.password = xxxx
+
+# ---------------------------------------------------------------------- { #- } 
+# File store [Optional] { #file-store-optional } 
+# ---------------------------------------------------------------------- { #- } 
+
+# File store provider, currently 'filesystem' and 'aws-s3' are supported { #file-store-provider-currently-filesystem-and-aws-s3-are-supported } 
+filestore.provider = filesystem
+
+# Directory / bucket name, folder below DHIS2_HOME on file system, 'bucket' on AWS S3 { #directory-bucket-name-folder-below-dhis2_home-on-file-system-bucket-on-aws-s3 } 
+filestore.container = files
+
+# Datacenter location (not required) { #datacenter-location-not-required } 
+filestore.location = eu-west-1
+
+# Public identity / username { #public-identity-username } 
+filestore.identity = dhis2-id
+
+# Secret key / password (sensitive) { #secret-key-password-sensitive } 
+filestore.secret = xxxx
+
+# ---------------------------------------------------------------------- { #- } 
+# LDAP [Optional] { #ldap-optional } 
+# ---------------------------------------------------------------------- { #- } 
+
+# LDAP server URL { #ldap-server-url } 
+ldap.url = ldaps://300.20.300.20:636
+
+# LDAP manager user distinguished name { #ldap-manager-user-distinguished-name } 
+ldap.manager.dn = cn=JohnDoe,ou=Country,ou=Admin,dc=hisp,dc=org
+
+# LDAP manager user password (sensitive) { #ldap-manager-user-password-sensitive } 
+ldap.manager.password = xxxx
+
+# LDAP entry distinguished name search base { #ldap-entry-distinguished-name-search-base } 
+ldap.search.base = dc=hisp,dc=org
+
+# LDAP entry distinguished name filter { #ldap-entry-distinguished-name-filter } 
+ldap.search.filter = (cn={0})
+
+# ---------------------------------------------------------------------- { #- } 
+# Node [Optional] { #node-optional } 
+# ---------------------------------------------------------------------- { #- } 
+
+# Node identifier, optional, useful in clusters { #node-identifier-optional-useful-in-clusters } 
+node.id = 'node-1'
+
+# ---------------------------------------------------------------------- { #- } 
+# Monitoring [Optional] { #monitoring-optional } 
+# ---------------------------------------------------------------------- { #- } 
+
+# DHIS2 API monitoring { #dhis2-api-monitoring } 
+monitoring.api.enabled = on
+
+# JVM monitoring { #jvm-monitoring } 
+monitoring.jvm.enabled = on
+
+# Database connection pool monitoring { #database-connection-pool-monitoring } 
+monitoring.dbpool.enabled = on
+
+# Hibernate monitoring, do not use in production { #hibernate-monitoring-do-not-use-in-production } 
+monitoring.hibernate.enabled = off
+
+# Uptime monitoring { #uptime-monitoring } 
+monitoring.uptime.enabled = on
+
+# CPU monitoring { #cpu-monitoring } 
+monitoring.cpu.enabled = on
+
+# ---------------------------------------------------------------------- { #- } 
+# Analytics [Optional] { #analytics-optional } 
+# ---------------------------------------------------------------------- { #- } 
+
+# Analytics server-side cache expiration in seconds { #analytics-server-side-cache-expiration-in-seconds } 
+analytics.cache.expiration = 3600
+
+# ---------------------------------------------------------------------- { #- } 
+# System telemetry [Optional] { #system-telemetry-optional } 
+# ---------------------------------------------------------------------- { #- } 
+
+# System monitoring URL { #system-monitoring-url } 
+system.monitoring.url = 
+
+# System monitoring username { #system-monitoring-username } 
+system.monitoring.username = 
+
+# System monitoring password (sensitive) { #system-monitoring-password-sensitive } 
+system.monitoring.password = xxxx
+```
+
+## Journal des modifications { #install_changelog }
+
+<!--DHIS2-SECTION-ID:install_changelog-->
+
+Le DHIS2 écrit des entrées dans les changelogs lorsque certaines entités sont modifiées dans le système. Ces entités appartiennent à deux catégories : _Agrégat_ et _Tracker_. La catégorie _Agrégat_ comprend les modifications apportées aux valeurs des données agrégées. Quant à la catégorie _Tracker_, elle comprend les modifications apportées aux instances de programme, aux éléments de propriété temporaire du programme, aux valeurs des attributs des entités suivies et aux valeurs des données des entités suivies.
+
+Le changelog pour les deux catégories est activé par défaut. Vous pouvez contrôler l'activation ou la désactivation du changelog par catégorie par le biais du fichier de configuration `dhis.conf` en utilisant les propriétés décrites ci-dessous. Les options de propriétés sont `on`  (par défaut) et `off`.
+
+L'avantage du changelog réside dans le fait qu'il permet de voir les modifications effectuées sur les données. L'avantage que présente la désactivation du changelog est une amélioration mineure des performances en évitant le coût d'écriture des éléments du changelog dans la base de données, et une réduction de la capacité de stockage de la base de données utilisée. Il est donc recommandé d'activer le changelog, et il faudra faire preuve d'une grande prudence en le désactivant.
+
+```properties
+# Aggregate changelog, can be 'on', 'off' { #aggregate-changelog-can-be-on-off } 
+changelog.aggregate = on
+
+# Tracker changelog, can be 'on', 'off' { #tracker-changelog-can-be-on-off } 
+changelog.tracker = on
+```
+
+## Journalisation des applications { #install_application_logging }
+
+<!--DHIS2-SECTION-ID:install_application_logging-->
+
+Cette section traite de la journalisation des applications dans DHIS 2.
+
+### Fichiers journaux { #log-files }
+
+La sortie du journal de l'application DHIS2 est dirigée vers plusieurs fichiers et emplacements. Tout d'abord, la sortie du journal est envoyée à la sortie standard. Le conteneur de servlets Tomcat envoie généralement la sortie standard vers un fichier sous "logs" (journaux) :
+
+    <tomcat-dir>/logs/catalina.out
+
+Second, log output is written to a "logs" directory under the DHIS2 home directory as defined by the DHIS2\_HOME environment variables. There is a main log file for all output, and separate log files for various
+background processes. The main file includes the background process logs as well. The log files are capped at 50 Mb and log content is continuously appended.
+
+    <DHIS2_HOME>/logs/dhis.log    
+    <DHIS2_HOME>/logs/dhis-analytics-table.log
+    <DHIS2_HOME>/logs/dhis-data-exchange.log
+    <DHIS2_HOME>/logs/dhis-data-sync.log
+
+### Configuration des journaux { #log-configuration }
+
+In order to override the default log configuration you can specify a Java system property with the name *log4j.configuration* and a value pointing to the Log4j configuration file on the classpath. If you want to point to a
+file on the file system (i.e. outside Tomcat) you can use the *file* prefix e.g. like this:
+
+```properties
+-Dlog4j.configuration=file:/home/dhis/config/log4j.properties
+```
+
+Les propriétés du système Java peuvent être définies, par exemple via la variable d'environnement *JAVA\_OPTS* ou dans le script de démarrage Tomcat.
+
+A second approach to overriding the log configuration is to specify logging properties in the *dhis.conf* configuration file. The supported properties are:
+
+```properties
+# Max size for log files, default is '100MB' { #max-size-for-log-files-default-is-100mb } 
+logging.file.max_size = 250MB
+
+# Max number of rolling log archive files, default is 0 { #max-number-of-rolling-log-archive-files-default-is-0 } 
+logging.file.max_archives = 2
+```
+
+DHIS2 will eventually phase out logging to standard out / catalina.out and as a result it is recommended to rely on the logs under DHIS2\_HOME.
+
+## Travailler avec la base de données PostgreSQL { #install_working_with_the_postgresql_database }
+
+<!--DHIS2-SECTION-ID:install_working_with_the_postgresql_database-->
+
+Common operations when managing a DHIS2 instance are dumping and
+restoring databases. To make a dump (copy) of your database, assuming
+the setup from the installation section, you can invoke the following:
+
+    pg_dump dhis2 -U dhis -f dhis2.sql
+
+The first argument (dhis2) refers to the name of the database. The
+second argument (dhis) refers to the database user. The last argument
+(dhis2.sql) is the file name of the copy. If you want to compress the
+file copy immediately you can do:
+
+    pg_dump dhis2 -U dhis | gzip > dhis2.sql.gz
+
+To restore this copy on another system, you first need to create an
+empty database as described in the installation section. You also need
+to gunzip the copy if you created a compressed version. You can
+invoke:
+
+    psql -d dhis2 -U dhis -f dhis2.sql
+
+
+# Surveillance { #monitoring }
+
+## Introduction { #monitoring } 
+
+<!--DHIS2-SECTION-ID:monitoring-->
+
+DHIS2 can export [Prometheus](https://prometheus.io/) compatible metrics for monitoring DHIS2 nodes.
+
+This section describes the steps required to install Prometheus and [Grafana](https://grafana.com/) using a standard installation procedure (`apt-get`) and Docker and configure Grafana to show DHIS2 metrics.
+
+For a list of the metrics exposed by a DHIS2 instance, please refer to the monitoring guide on [GitHub](https://github.com/dhis2/wow-backend/blob/master/guides/monitoring.md).
+
+## Setup { #monitoring_setup } 
+
+<!--DHIS2-SECTION-ID:monitoring_setup-->
+
+The next sections describe how to set up Prometheus and Grafana and how to set up Prometheus to pull data from one or more DHIS2 instances.
+
+### Installing Prometheus + Grafana on Ubuntu and Debian { #prometheus } 
+
+<!--DHIS2-SECTION-ID:prometheus-->
+
+- Download Prometheus from the official [download](https://prometheus.io/download/) page.
+
+- Make sure to filter for your operating system and your CPU architecture (Linux and amd64).
+
+- Make sure to select the latest stable version, and not the “rc” one, as it is not considered stable enough for now.
+
+- Download the archive, either by clicking on the link or using `wget`.
+
+```
+wget https://github.com/prometheus/prometheus/releases/download/v2.15.2/prometheus-2.15.2.linux-amd64.tar.gz
+```
+
+- Untar the zip 
+
+```
+tar xvzf prometheus-2.15.2.linux-amd64.tar.gz
+```
+
+The archive contains many important files, but here is the main ones you need to know.
+
+- `prometheus.yml`: the configuration file for Prometheus. This is the file that you are going to modify in order to tweak your Prometheus server, for example to change the scraping interval or to configure custom alerts;
+- `prometheus`: the binary for your Prometheus server. This is the command that you are going to execute to launch a Prometheus instance on your Linux box;
+- `promtool`: this is a command that you can run to verify your Prometheus configuration.
+
+### Configuring Prometheus as a service { #prometheus_service } 
+
+<!--DHIS2-SECTION-ID:prometheus_service-->
+
+- Create a `Prometheus` user with a `Prometheus` group.
+
+```
+useradd -rs /bin/false prometheus
+```
+
+- Move the Prometheus binaries to the local bin directory
+
+```
+cd prometheus-2.15.2.linux-amd64/ 
+cp prometheus promtool /usr/local/bin
+chown prometheus:prometheus /usr/local/bin/prometheus
+```
+
+- Create a folder in the `/etc` folder for Prometheus and move the console files, console libraries and the prometheus configuration file to this newly created folder.
+
+```
+mkdir /etc/prometheus
+cp -R consoles/ console_libraries/ prometheus.yml /etc/prometheus
+```
+
+Create a data folder at the root directory, with a prometheus folder inside.
+
+```
+mkdir -p data/prometheus
+chown -R prometheus:prometheus /data/prometheus /etc/prometheus/*
+```
+
+### Create a Prometheus service { #prometheus_create_service } 
+
+<!--DHIS2-SECTION-ID:prometheus_create_service-->
+
+To create a Prometheus _systemd_ service, head over to the `/lib/systemd/system` folder and create a new systemd file named `prometheus.service`.
+
+```
+cd /lib/systemd/system
+touch prometheus.service
+```
+
+- Edit the newly created file, and paste the following content inside:
+
+```properties
+[Unit]
+Description=Prometheus
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=prometheus
+Group=prometheus
+ExecStart=/usr/local/bin/prometheus \
+  --config.file=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.path="/data/prometheus" \
+  --web.console.templates=/etc/prometheus/consoles \
+  --web.console.libraries=/etc/prometheus/console_libraries \
+  --web.listen-address=0.0.0.0:9090 \
+  --web.enable-admin-api
+
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+- Save the file and enable the Prometheus service at startup
+
+```
+systemctl enable prometheus
+systemctl start prometheus
+```
+
+- Test that the service is running
+
+```
+systemctl status prometheus
+
+...
+Active: active (running)
+```
+
+- It should be now possible to access the Prometheus UI by accessing `http://localhost:9090`.
+
+
+### Set-up Nginx reverse proxy { #prometheus_nginx } 
+
+<!--DHIS2-SECTION-ID:prometheus_nginx-->
+
+Prometheus does not natively support authentication or TLS encryption. If Prometheus has to be exposed outside the boundaries of the local network, it is important to enable authentication and TLS encryption. The following steps show how to use Nginx as a reverse proxy.
+
+- Install Nginx, if not already installed
+
+```
+apt update
+apt-get install nginx
+```
+
+By default, Nginx will start listening for HTTP requests in the default `http` port, which is `80`.
+
+If there is already an Nginx instance running on the machine and you are unsure on which port it is listening on, run the following command:
+
+```
+> lsof | grep LISTEN | grep nginx
+
+nginx   15792   root   8u   IPv4   1140223421   0t0   TCP *:http (LISTEN)
+```
+
+The last column shows the port used by Nginx (`http` -> `80`).
+
+By default, Nginx configuration is located in `/etc/nginx/nginx.conf`
+
+Make sure that `nginx.conf` contains the `Virtual Host Config` section
+
+```
+## { # } 
+# Virtual Host Configs { #virtual-host-configs } 
+## { # } 
+
+include /etc/nginx/conf.d/*.conf;
+include /etc/nginx/sites-enabled/*;
+
+```
+
+- Create a new file in `/etc/nginx/conf.d` called `prometheus.conf`
+
+```
+touch /etc/nginx/conf.d/prometheus.conf
+```
+
+- Edit the newly created file, and paste the following content inside:
+
+```
+server {
+  listen 1234;
+
+  location / {
+    proxy_pass           http://localhost:9090/;
+  }
+}
+```
+
+- Restart Nginx  and browse to http://localhost:1234
+
+```
+systemctl restart nginx
+
+# in case of start-up errors { #in-case-of-start-up-errors } 
+journalctl -f -u nginx.service
+```
+
+- Configure Prometheus for reverse proxying, by editing `/lib/systemd/system/prometheus.service` and add the following argument to the list of arguments passed to the Prometheus executable.
+
+```
+--web.external-url=https://localhost:1234
+```
+
+- Restart the service
+
+```
+systemctl daemon-reload
+systemctl restart prometheus
+
+
+# in case of errors { #in-case-of-errors } 
+journalctl -f -u prometheus.service
+```
+
+### Enable reverse proxy authentication { #prometheus_auth } 
+
+<!--DHIS2-SECTION-ID:prometheus_auth-->
+
+This section shows how to configure basic authentication via the reverse proxy. If you need a different authentication mechanism (SSO, etc.) please check the relevant documentation.
+
+- Make sure that `htpasswd` is installed on the system
+
+```
+apt-get install apache2-utils
+```
+
+- Create an authentication file
+
+```
+cd /etc/prometheus
+htpasswd -c .credentials admin 
+```
+
+Choose a strong password, and make sure that the pass file was correctly created.
+
+- Edit the previously created Nginx configuration file (`/etc/nginx/conf.d/prometheus.conf`), and add the authentication information.
+
+```
+server {
+  listen 1234;
+
+  location / {
+    auth_basic           "Prometheus";
+    auth_basic_user_file /etc/prometheus/.credentials;
+    proxy_pass           http://localhost:9090/;
+  }
+}
+```
+
+- Restart Nginx
+
+```
+systemctl restart nginx
+
+# in case of errors { #in-case-of-errors } 
+journalctl -f -u nginx.service
+```
+
+- `http://localhost:1234` should now prompt for username and password.
+
+### Installing Grafana on Ubuntu and Debian { #grafana } 
+
+<!--DHIS2-SECTION-ID:grafana-->
+
+- Add a `gpg` key and install the OSS Grafana package from APT repo
+
+```sh
+apt-get install -y apt-transport-https
+
+wget -q -O - "https://packages.grafana.com/gpg.key" | sudo apt-key add -
+
+add-apt-repository "deb https://packages.grafana.com/oss/deb stable main"
+
+apt-get update
+
+apt-get install grafana
+```
+
+- If the system is using `systemd`, a new `grafana-service` is automatically created. Check the `systemd` file to gain some insight on the Grafana installation
+
+```
+cat /usr/lib/systemd/system/grafana-server.service
+```
+
+This file is quite important because it offers information about the newly installed Grafana instance.
+
+The file shows:
+
+The **Grafana server binary** is located at `/usr/sbin/grafana-server`.
+The file that defines all the **environment variables** is located at `/etc/default/grafana-server`
+The **configuration file** is given via the `CONF_FILE` environment variable.
+The **PID of the file** is also determined by the `PID_FILE_DIR` environment variable.
+**Logging**, **data**, **plugins** and **provisioning** paths are given by environment variables.
+
+- Start the server
+
+```
+systemctl start grafana-server
+```
+
+- Access Grafana web console: http://localhost:3000
+
+The default login for Grafana is `admin` and the default password is also `admin`.
+You will be prompted to change the password on first access.
+
+- Configure Prometheus as a Grafana datasource
+
+Access to the datasources panel by clicking on `Configuration` > `Data sources` via the left menu.
+
+Click on `Add a datasource`
+
+Select a Prometheus data source on the next window.
+
+Configure the datasource according to the Prometheus setup (use authentication, TSL, etc.)
+
+### Installing Prometheus + Grafana using Docker { #prometheus_grafana_docker } 
+
+<!--DHIS2-SECTION-ID:prometheus_grafana_docker-->
+
+This section describes how to start-up a Prometheus stack containing Prometheus and Grafana.
+
+The configuration is based on this project: https://github.com/vegasbrianc/prometheus
+
+- Clone this Github project: https://github.com/vegasbrianc/prometheus
+
+- Start the Prometheus stack using:
+
+```
+docker stack deploy -c docker-stack.yml prom
+```
+
+The above command, may result in the following error:
+
+*This node is not a swarm manager. Use "docker swarm init" or "docker swarm join" to connect this node to swarm and try again*
+
+If that happens, you need to start Swarm. You can use the following command line:
+
+```
+docker swarm init --advertise-addr <YOUR_IP>
+```
+
+Once this command runs successfully, you should be able to run the previous command without problems.
+
+The stack contains also a Node exporter for Docker monitoring. If you are not interested in Docker monitoring, you can comment out the relevant sections in the `docker-stack.yml` file:
+
+- `node-exporter`
+- `cadvisor`
+
+- To stop the Prometheus stack:
+
+```
+docker stack rm prom
+```
+
+The Prometheus configuration (`prometheus.yml`) file is located in the `prometheus` folder.
+
+- Access Grafana web console at: http://localhost:3000 with username: `admin` and password: `foobar`
+
+### Configure Prometheus to pull metrics from one or more DHIS2 instances { #prometheus_dhis2 } 
+
+<!--DHIS2-SECTION-ID:prometheus_dhis2-->
+
+Prior to using Prometheus, it needs basic configuring. Thus, we need to create a configuration file named `prometheus.yml`
+
+> **Note**
+>
+> The configuration file of Prometheus is written in YAML which strictly forbids to use tabs. If your file is incorrectly formatted, Prometheus will not start. Be careful when you edit it.
+
+Prometheus’ configuration file is divided into three parts: `global`, `rule_files`, and `scrape_configs`.
+
+In the global part we can find the general configuration of Prometheus: `scrape_interval` defines how often Prometheus scrapes targets, `evaluation_interval` controls how often the software will evaluate rules. Rules are used to create new time series and for the generation of alerts.
+
+The `rule_files` block contains information of the location of any rules we want the Prometheus server to load.
+
+The last block of the configuration file is named `scape_configs` and contains the information which resources Prometheus monitors.
+
+A simple DHIS2 Prometheus monitoring file looks like this example:
+
+```yaml
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s 
+
+scrape_configs:
+  - job_name: 'dhis2'
+    metrics_path: '/dhis/api/metrics'
+    basic_auth:
+      username: admin
+      password: district
+    static_configs:
+      - targets: ['localhost:80']
+```
+
+The global `scrape_interval` is set to 15 seconds which is enough for most use cases.
+
+In the `scrape_configs` part we have defined the DHIS2 exporter.
+The `basic_auth` blocks contains the credentials required to access the `metrics` API: consider creating an ad-hoc user only for accessing the `metrics` endpoint.
+
+Prometheus may or may not run on the same server as DHIS2: in the above configuration, it is assumed that Prometheus monitors only one DHIS2 instance, running on the same server as Prometheus, so we use `localhost`.
+
+### Configure the DHIS2 exporter { #dhis2_metrics_conf } 
+
+<!--DHIS2-SECTION-ID:dhis2_metrics_conf-->
+
+The monitoring subsystem is disabled by default in DHIS2.
+
+Each metrics cluster has to be explicitly enabled in order for the metrics to be exported. To configure DHIS2 to export one or more metrics, check this [document](https://github.com/dhis2/wow-backend/blob/master/guides/monitoring.md#dhis2-monitoring-configuration).
+
+
+
+# Audit { #audit } 
+
+## Introduction { #introduction } 
+
+DHIS2 supports a new audit service which is based on Apache ActiveMQ Artemis. Artemis is used as an asynchronous messaging system by DHIS2.
+
+After an entity is saved to database, an audit message will be sent to the Artemis message consumer service. The message will then be processed in a different thread.
+
+Audit logs can be retrieved from the DHIS2 database. Currently there is no UI or API endpoint available for retriving audit entries.
+
+
+## Single Audit table { #audit_table } 
+
+<!--DHIS2-SECTION-ID:audit_table-->
+
+All audit entries will be saved into one single table named `audit`
+
+| Colonne     | Type                        |                                                                                                                                                   |   |
+|------------|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|---|
+| auditid    | integer                     |                                                                                                                                                   |   |
+| audittype  | texte                        | READ, CREATE, UPDATE, DELETE, SEARCH                                                                                                                  |   |
+| auditscope | texte                        | METADATA, AGGREGATE, TRACKER                                                                                                                        |   |
+| klass      | texte                        | Audit Entity Java class name                                                                                                                      |   |
+| attributes | jsonb                       | Json string stores attributes of the audit entity, used for searching. Example: {"valueType":"TEXT", "categoryCombo":"SWQW313FQY", "domainType":"TRACKER"} |   |
+| données       | bytea                       | Compressed Json string of the Audit Entity. It is currently in byte array format and not human-readable.                                                                                                        |   |
+| createdat  | timestamp without time zone |                                                                                                                                                   |   |
+| createdby  | texte                        |                                                                                                                                                   |   |
+| uid        | texte                        |                                                                                                                                                   |   |
+| code       | texte                        |                                                                                                                                                   |   |
+|            |                             |   
+
+
+
+The new Audit service makes use of two new concepts: Audit Scopes and Audit Type.
+
+## Audit Scope { #audit_scope } 
+
+<!--DHIS2-SECTION-ID:audit_scope-->
+
+An Audit Scope is a logical area of the application which can be audited. Currently there are three Audit Scopes:
+
+```
+Tracker
+
+Metadata
+
+Aggregate
+```
+
+- For the Tracker Audit Scope, the audited objects are:
+Tracked Entity Instance, Tracked Entity Attribute Value, Enrollment, Event
+
+- For the Metadata Scope, all "metadata" objects are audited.
+
+- For the Aggregate Scope, the Aggregate Data Value objects are audited.
+
+
+## Audit Type { #audit_type } 
+
+<!--DHIS2-SECTION-ID:audit_type-->
+
+An Audit Type is an action that triggers an audit operation. Currently we support the following types:
+
+```
+READ
+
+CREATE
+
+UPDATE
+
+DELETE
+```
+
+As an example, when a new Tracked Entity Instance gets created, and if configured like so, the CREATE action is used to insert a new Audit entry in the audit db table.
+
+> **Caution**
+>
+> The READ Audit Type will generate a lot of data in database and may have an impact on the performance.
+
+## Setup { #audit_configuration } 
+
+<!--DHIS2-SECTION-ID:audit_configuration-->
+
+The audit system is automatically configured to audit for the following scopes and types:
+
+- CREATE, UPDATE, DELETE
+
+- METADATA, TRACKER, AGGREGATE
+
+**No action is required to activate the audit.**
+The audit can still be configured using the "audit matrix". The audit matrix is driven by 3 properties in dhis.conf:
+
+```
+audit.metadata
+
+audit.tracker
+
+audit.aggregate
+```
+
+Each property accepts a semicolon delimited list of valid Audit Types:
+
+```
+CREATE
+
+UPDATE
+
+DELETE
+
+READ
+```
+
+For instance, in order to only audit Tracker related object creation and deletion, the following property should be added to `dhis.conf`:
+
+```
+audit.tracker = CREATE;DELETE
+```
+
+In order to completely disable auditing, this is the configuration to use:
+```
+audit.metadata = DISABLED 
+
+audit.tracker = DISABLED 
+
+audit.aggregate = DISABLED
+```
+
+
+
+# Using Gateways for SMS reporting  { #sms_report_sending } 
+
+<!--DHIS2-SECTION-ID:sms_report_sending-->
+
+DHIS2 supports accepting data via [SMS](https://docs.dhis2.org/master/en/dhis2_user_manual_en/mobile.html), however, the SMS needs to be composed in a cryptic way to protect the information. The DHIS2 Android App acts as a transparent layer to send the information via SMS where the user does not have to worry about writing the SMS. To send SMSs with the Android App the SMS gateway need to be properly configured. This section explains the different options available and how to achieve that.
+
+## Sending SMS { #sms_report_sening } 
+
+<!--DHIS2-SECTION-ID:sms_report_sening-->
+
+It is important to clarify firstly, that this section mainly concerns the set up of **receiving SMS** (from mobile devices to the DHIS2 server), which is necessary when considering using the App to send (sync) information recorded in the app to the DHIS2 server via SMS. In the App this can be set-up under the *Settings* > *SMS Settings*
+
+Sending SMS, i.e. from the DHIS2 server to mobile devices, is relatively simple to set up. If all that is required is the sending of notifications to users phones from DHIS2 when certain events occur (messaging, thresholds e.t.c.) only sending SMS is required.
+
+This can all be configured in the SMS Service Configuration page within the [Mobile Configuration section](https://docs.dhis2.org/master/en/user/html/mobile_sms_service.html).
+
+There is out of the box support for common providers such as *Bulk SMS* and *Clickatell*, and both providers support sending of SMS to numbers in most countries.
+
+Note also, it is possible to use a different SMS Gateway for sending and receiving SMS. So even if you set up a solution for receiving SMS below, it is still possible to use one of the aforementioned solutions above for sending SMS.
+
+## Using an Android device as SMS Gateway { #sms_report_android_gateway } 
+
+<!--DHIS2-SECTION-ID:sms_report_android_gateway-->
+
+The simplest solution by far is to use a dedicated Android device as your SMS Gateway. Any phone or tablet running Android OS (4.4, Kitkat or above) should be fine. It will require a constant internet connection, in order to forward messages to your DHIS2 server and it will also need a SIM card to receive the incoming SMS.
+
+You’ll need to download and install the DHIS2 Android SMS Gateway app on the mobile device. See a list of [releases](https://github.com/dhis2/dhis2-sms-android-gateway/releases) where you can download the latest APK file to install. There are instructions on the app page itself, but essentially you’ll just need to start the app and enter the details of your DHIS2 server (URL, username and password).
+
+Once this is set up and running, you then enter the phone number of this gateway device in the configuration page of any other mobile device using the DHIS2 Capture App. Then, when SMS are sent from these reporting devices, they will be received on the gateway device and automatically forwarded to the DHIS2 server where they will be processed.
+
+**Using this gateway device is perfect when testing the SMS functionality.** It would be fine when piloting projects that require SMS reporting. As long as the device is plugged into a power supply and has a constant internet connection it works well for small scale projects.
+
+However, when considering moving a project to production it would be necessary to investigate one of the more permanent and reliable solutions for gateways below.
+
+### Sending SMS using an Android Device Gateway { #sending-sms-using-an-android-device-gateway } 
+
+This option is currently not supported nor documented.
+
+## Dedicated SMS Gateways { #sms_report_dedicated_gateway } 
+
+<!--DHIS2-SECTION-ID:sms_report_dedicated_gateway-->
+
+This section discusses the use of more permanent and dedicated SMS gateways and the options available. Each of these options below will involve a provider (or yourself) having an SMPP connection to a phone carrier in country and using this connection to receive incoming SMS and forward them on to your DHIS2 server over the internet using HTTP.
+
+These solutions can either use a **long number** or **short code**. A long number is a standard mobile phone number of the type that most private people use, i.e. +61 400123123. A short code is simply a short number, such as 311. Short codes typically cost more to set up and maintain.
+
+### Ensuring incoming SMS to DHIS2 server are formatted correctly { #ensuring-incoming-sms-to-dhis2-server-are-formatted-correctly } 
+
+When sending incoming SMS to a DHIS2 server via the API you use the following URL: *https://<DHIS2_server_url>/api/sms/inbound*
+
+In DHIS2 version 2.34 and below, this endpoint requires the format of inbound SMS to be in a very specific format, i.e. the message itself must be a parameter called text, the phone number of the sender must be a parameter called originator.
+
+When using all of the below SMS gateway options, when you configure them to forward incoming SMS on to another web service, they will each have their own format, which will be different to the one expected by the DHIS2 API. For this reason then, it’s necessary to reformat them before sending them on to the DHIS2 server.
+
+One option is to run your own very simple web service, which simply receives the incoming SMS from the gateway provider, reformats it to the one required for DHIS2 and forwards it on to your DHIS2 API. Such a service would need to be written by a software developer.
+
+In DHIS2 version 2.35, it is planned to support these cases with a templating system for incoming SMS, so you can specify the format of the messages which will be sent from your provider. That way, you can configure the DHIS2 server to accept incoming SMS from any other SMS gateway provider and they can directly send incoming SMS to the DHIS2 API, without the need for such a formatting web service.
+
+### Using RapidPro { #using-rapidpro } 
+
+[RapidPro](https://rapidpro.io/) is a service run by UNICEF in over 50 countries around the world. It is a collection of software which works with in-country phone carriers to enable organisations to design SMS solutions for their projects, such as SMS reporting or awareness campaigns.
+
+The RapidPro service will involve an SMPP connection to one or more phone carriers in-country, usually via a shortcode, potentially dedicated to Health work for NGOs. It’s then possible to add a webhook so that incoming SMS are forwarded to another web service, such as the formatting web service described above. If the shortcode is used for other purposes as well, it may be necessary to add the phone numbers of your reporting devices to a separate group, so that only the incoming SMS from those devices is forwarded to the webhook.
+
+RapidPro is currently set up and running in roughly half of the countries which are currently using or piloting DHIS2. Before considering one of the solutions below, which can be costly in terms of both finance and time, it is worth getting in contact with Unicef to see if RapidPro is available and if it can be used for health reporting in your country.
+
+### Using commercial SMS gateway providers { #using-commercial-sms-gateway-providers } 
+
+Of the commercial SMS gateway providers mentioned in the Sending SMS section above, they will usually have capability to *send* SMS in most countries but can only support *receiving* SMS in a limited amount of countries. The majority of countries they support receiving SMS in are not those using DHIS2. Of the countries that are using DHIS2, most are already covered by having a RapidPro service running in-country.
+
+However, it is worth researching what commercial options are available for your country. In some countries there will be small national companies that provide SMS services, they’ll have existing SMPP connections with the phone providers you can use.
+
+### Using phone carriers directly { #using-phone-carriers-directly } 
+
+If none of the above solutions are available it would be necessary to approach the phone carriers in your country directly. The first question to ask them would be whether they are aware of any companies which are operating SMPP connections with them which you may be able to approach.
+
+If not, as a final option, you would need to consider setting up and maintaining your own SMPP connection with the phone provider. However, not all phone providers might offer such a service.
+
+You would need to run your own server running software such as [Kannel](https://www.kannel.org/), which connects (usually via a VPN) to an SMPP service running in the phone providers network. With this in place, any incoming SMS for the configured long number or shortcode are sent from the phone carrier to your Kannel server and you can then forward on these messages as above.
+
+### Receiving concatenated or multipart SMS { #receiving-concatenated-or-multipart-sms } 
+
+When syncing data via SMS with the DHIS2 Android App, it uses a compressed format to use as little space (characters of text) as possible. Despite this, it will quite often be the case that a message will extend over the 160 character limit of one standard SMS. On most modern mobile devices these messages will still be sent as one concatenated or multipart SMS, and received as one message. When sending between two mobile devices, when an Android device is used as the gateway, this should be handled without issue.
+
+When selecting an SMS gateway then, it is important to confirm that the phone carrier used supports concatenated SMS. Most of them will support this, but it is important to confirm as the SMS functionality will not work if SMS are split. This relies on something called a UDH (User Data Header). When discussing with providers then, ensure you ask if it is supported.
