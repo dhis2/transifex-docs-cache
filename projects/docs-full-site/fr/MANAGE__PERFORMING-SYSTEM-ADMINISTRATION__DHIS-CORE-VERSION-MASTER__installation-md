@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/sysadmin/installation.md"
-revision_date: '2024-02-16'
+revision_date: '2024-02-26'
 tags:
-- Version Master de DHIS2 Central
 - Gestion
+- Version Master de DHIS2 Central
 ---
 
 # Installation { #installation }
@@ -38,12 +38,22 @@ DHIS2 est une application très exigeante en matière de base de données et né
 
 Les versions ultérieures de DHIS2 nécessitent les versions logicielles suivantes pour fonctionner.
 
-- Un système d'exploitation pour lequel un Java JDK ou JRE version 8 ou 11 existe. Linux est recommandé.
+- An operating system for which a Java JDK or JRE version 17 exists. Linux is recommended.
 - JavaJDK. OpenJDK est recommandé.
-    - Pour DHIS 2 version 2.38 et plus, JDK 11 est requis.
-    - Pour DHIS 2 version 2.35 et plus, JDK 11 est recommandé et JDK 8 ou plus est requis.
-    - Pour les versions DHIS 2 antérieures à 2.35, JDK 8 est requis.
-- PostgreSQL database version 9.6 ou plus. Une version ultérieure de PostgreSQL telle que la version 14 est recommandée.
+
+
+Table: DHIS2 JDK compatibility
+
+| DHIS2 version | JDK recommended | JDK required |
+|---------------|-----------------|--------------|
+| 2.41          | 17              | 17           |
+| 2.40          | 17              | 11           |
+| 2.38          | 11              | 11           |
+| 2.35          | 11              | 8            |
+| pre 2.35      | 8               | 8            |
+
+
+- Base de données PostgreSQL version 9.6 ou plus. Une version ultérieure de PostgreSQL telle que la version 14 est recommandée.
 - Extension de base de données PostGIS version 2.2 ou plus.
 - Conteneur de servlet Tomcat version 8.5.50 ou plus, ou autre API de servlet
   Conteneurs de servlets compatibles 3.1.
@@ -51,19 +61,19 @@ Les versions ultérieures de DHIS2 nécessitent les versions logicielles suivant
 
 ## Configuration du serveur { #install_server_setup }
 
-Cette section décrit la configuration d'une instance de serveur DHIS2 sur Ubuntu 18.04 64 bit avec PostgreSQL comme système de base de données et Tomcat comme conteneur Servlet. Ce guide n'est pas un guide étape par étape, mais plutôt une référence sur la façon dont DHIS2 peut être installé sur un serveur. Il existe plusieurs stratégies d'installation possibles, qui diffèrent en fonction du système d'exploitation et de la base de données que vous utilisez, ainsi que d'autres facteurs. Le terme *invoquer* fait référence à l'exécution d'une commande donnée dans un terminal.
+Cette section décrit la configuration d'une instance de serveur DHIS2 sur Ubuntu 18.04 64 bit avec PostgreSQL comme système de base de données et Tomcat comme conteneur Servlet. Ce guide n'est pas un guide étape par étape, mais plutôt une référence sur la façon dont DHIS2 peut être déployé sur un serveur. Il existe plusieurs stratégies de déployèrent, qui diffèrent en fonction du système d'exploitation et de la base de données que vous utilisez, ainsi que d'autres facteurs. Le terme *appeler* fait référence à l'exécution d'une commande donnée dans un terminal.
 
 Pour ce guide, nous supposons que 8 Go de RAM sont alloués à PostgreSQL de même qu'à Tomcat/JVM, et qu'un système d'exploitation de 64 bits est utilisé. *Si vous utilisez une configuration différente, veuillez ajuster les valeurs suggérées en conséquence\!*
 
 Nous recommandons que la mémoire disponible soit répartie de manière presque équitable entre la base de données et la JVM. N'oubliez pas d'accorder une partie de la mémoire physique au système d'exploitation pour qu'il puisse effectuer ses tâches, par exemple 2 Go environ. Les étapes marquées comme *facultatives*, comme l'étape de réglage des performances, peuvent être effectuées ultérieurement.
 
-### Création d'un utilisateur pour exécuter DHIS2 { #install_creating_user }
+### Création d'un utilisateur pour faire fonctionner DHIS2 { #install_creating_user }
 
-Vous devriez créer un utilisateur dédié pour lancer DHIS2.
+Vous devez créer un utilisateur dédié au fonctionnement de DHIS2.
 
 > **Important**
 >
-> Vous ne devez pas exécuter le serveur DHIS2 en tant qu'utilisateur privilégié tel que super-utilisateur.
+> Vous ne devez pas opérer le serveur DHIS2 en tant qu'utilisateur privilégié, par exemple super-utilisateur.
 
 Créez un nouvel utilisateur appelé "dhis" en appelant :
 
@@ -100,7 +110,7 @@ Il peut être nécessaire de reconfigurer le fuseau horaire du serveur pour qu'i
 sudo dpkg-reconfigure tzdata
 ```
 
-PostgreSQL est sensible aux paramètres régionaux. Vous devrez donc installer votre emplacement en premier. Pour vérifier les paramètres régionaux existants et en installer de nouveaux (par exemple, Norvégien):
+PostgreSQL est sensible aux paramètres régionaux. Vous devrez donc installer votre emplacement en premier. Pour vérifier les paramètres régionaux existants et en installer de nouveaux (par exemple, Norvégien), utilisez la commande suivante :
 
 ```sh
 locale -a
@@ -121,7 +131,7 @@ Créez un utilisateur non privilégié appelé *dhis* en appelant :
 sudo -u postgres createuser -SDRP dhis
 ```
 
-Entrez un mot de passe sécurisé à l'invite. Créez une base de données en appelant :
+Entrez un mot de passe sécurisé dans l'invite. Créez une base de données en appelant :
 
 ```sh
 sudo -u postgres createdb -O dhis dhis2
@@ -190,7 +200,7 @@ Détermine la quantité de mémoire que PostgreSQL peut utiliser pour les opéra
 temp_buffers = 16MB
 ```
 
-Définit le nombre maximum de tampons temporaires utilisés par chaque session de la base de données. Il s'agit de tampons locaux utilisés uniquement pour l'accès aux tableaux temporaires.
+Définit le nombre maximum d'objets temporaires utilisés par chaque session de la base de données. Il s'agit d'objets locaux utilisés uniquement pour l'accès aux tableaux temporaires.
 
 ```properties
 effective_cache_size = 8GB
@@ -232,7 +242,7 @@ Spécifie le nombre moyen de verrous d'objets alloués pour chaque transaction. 
 track_activity_query_size = 8192
 ```
 
-Spécifie le nombre d'octets réservés au suivi de la commande en cours d'exécution pour chaque session active. Il permet d'afficher la chaîne de requête complète pour la surveillance des requêtes en cours d'exécution.
+Spécifie le nombre d'octets réservés au suivi de la commande en cours d'exécution pour chaque session active. Elle permet d'afficher la chaîne de requête complète pour la surveillance des requêtes en cours d'exécution.
 
 ```properties
 jit = off
@@ -248,16 +258,10 @@ sudo systemctl restart postgresql
 
 ### Installation de Java { #install_java_installation }
 
-Le JDK Java recommandé pour DHIS 2 est OpenJDK 11 (pour la version 2.35 et plus). Vous pouvez l'installer avec la commande suivante :
+The recommended Java JDK for DHIS 2 is OpenJDK 17 (for version 2.40 and later). You can install it with the following command:
 
 ```
-sudo apt-get install -y openjdk-11-jdk
-```
-
-Si vous préférez OpenJDK 8 (pour les versions antérieures à la 2.35), vous pouvez l'installer avec cette commande :
-
-```
-sudo apt-get install -y openjdk-8-jdk
+sudo apt-get install -y openjdk-17-jdk
 ```
 
 Vérifiez que votre installation est correcte en appelant :

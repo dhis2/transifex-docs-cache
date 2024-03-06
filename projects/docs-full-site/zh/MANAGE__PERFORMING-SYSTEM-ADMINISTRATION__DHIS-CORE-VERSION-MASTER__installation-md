@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/sysadmin/installation.md"
-revision_date: '2024-02-16'
+revision_date: '2024-02-26'
 tags:
-- DHIS核心 主版
 - Manage
+- DHIS核心 主版
 ---
 
 # 安装 { #installation } 
@@ -58,12 +58,22 @@ CPU内核，因此您负担得起的费用越多，应用程序的性能就会�
 
 更高版本的DHIS2需要以下软件版本才能运行。
 
-- 存在 Java JDK 或 JRE 版本 8 或 11 的操作系统。推荐使用Linux。
+- An operating system for which a Java JDK or JRE version 17 exists. Linux is recommended.
 - Java JDK。推荐使用OpenJDK。
-    - 对于 DHIS 2 版本 2.38 及更高版本，需要 JDK 11。
-    - 对于 DHIS 2 版本 2.35 及更高版本，建议使用 JDK 11，并且需要 JDK 8 或更高版本。
-    - 对于早于 2.35 的 DHIS 2 版本，需要 JDK 8。
-- PostgreSQL 数据库版本 9.6 或更高版本。建议使用更高版本的 PostgreSQL，例如版本 14。
+
+
+Table: DHIS2 JDK compatibility
+
+| DHIS2 version | JDK recommended | JDK required |
+|---------------|-----------------|--------------|
+| 2.41          | 17              | 17           |
+| 2.40          | 17              | 11           |
+| 2.38          | 11              | 11           |
+| 2.35          | 11              | 8            |
+| pre 2.35      | 8               | 8            |
+
+
+- PostgreSQL database version 9.6 or later. A later PostgreSQL version such as version 14 is recommended.
 - PostGIS数据库扩展版本2.2或更高版本。
 - Tomcat Servlet容器版本8.5.50或更高版本，或其他Servlet API
   3.1兼容的servlet容器。
@@ -80,17 +90,17 @@ differ depending on the operating system and database you are using, and
 other factors. The term *invoke* refers to executing a given command in
 a terminal.
 
-对于本指南，我们假设为 PostgreSQL 分配 8 Gb RAM，为 8 GB RAM 分配
-GB RAM 分配给 Tomcat/JVM，并且 64 位操作系统
-用来。 *如果您运行不同的配置，请调整
-相应的建议值\!*
+For this guide we assume that 8 Gb RAM is allocated for PostgreSQL and 8
+GB RAM is allocated for Tomcat/JVM, and that a 64-bit operating system
+is used. *If you are running a different configuration please adjust the
+suggested values accordingly\!*
 
-我们建议可用内存
-在数据库和 JVM 之间大致平均分配。记得
-将一些物理内存留给操作系统以供其使用
-执行其任务，例如大约 2 GB。步骤标记为
-*可选*，就像性能调整步骤一样，可以稍后完成
-阶段。
+We recommend that the available memory
+is split roughly equally between the database and the JVM. Remember to
+leave some of the physical memory to the operating system for it to
+perform its tasks, for instance around 2 GB. The steps marked as
+*optional*, like the step for performance tuning, can be done at a later
+stage.
 
 ### 创建一个用户来运行DHIS2 { #install_creating_user } 
 
@@ -189,7 +199,7 @@ sudo apt-get install -y postgresql-12 postgresql-12-postgis-3
 sudo -u postgres psql -c“创建扩展名postgis;” dhis2
 ```
 
-为了添加三元组索引并将其与原始列类型复合，必须在数据库中为 DHIS 2 版本 2.38 及更高版本创建两个扩展。这些扩展已经是默认 posgresql 安装的一部分：
+For adding trigram indexes and compounding it with primitive column types, two extensions have to be created in the database for DHIS 2 verision 2.38 and later. The extensions are already part of the default posgresql installation:
 
 ```sh
 sudo -u postgres psql -c "create extension btree_gin;" dhis2
@@ -211,15 +221,15 @@ PostgreSQL and should be adjusted accordingly to the environment.
 须藤nano /etc/postgresql/12/main/postgresql.conf
 ```
 
-设置以下属性。
+Set the following properties.
 
 ```properties
 jit = off
 ```
 
-对于 postgresql 版本 12 及更高版本来说，设置这一点很重要。 jit 编译器
-功能会导致许多 DHIS2 特定查询显着变慢，例如
-计划指标查询。对于版本 11 及更低版本，该设置默认处于关闭状态。
+This is important to set for postgresql versions 12 and greater.  The jit compiler 
+functionality causes a significant slowdown on many DHIS2 specific queries, eg 
+Program Indicator queries.  For versions 11 and below, the setting is off by default.
 
 ```属性
 max_connections = 200
@@ -258,9 +268,9 @@ maintenance_work_mem = 1GB
 temp_buffers = 16MB
 ```
 
-设置每个数据库使用的临时缓冲区的最大数量
-会议。这些是会话本地缓冲区，仅用于访问临时的
-表。
+Sets the maximum number of temporary buffers used by each database 
+session. These are session-local buffers used only for access to temporary 
+tables. 
 
 ```properties
 effective_cache_size = 8GB
@@ -320,13 +330,13 @@ max_locks_per_transaction = 96
 track_activity_query_size = 8192
 ```
 
-指定为跟踪每个活动会话当前正在执行的命令而保留的字节数。对于查看完整查询字符串以监控当前正在运行的查询很有用。
+Specifies the number of bytes reserved to track the currently executing command for each active session. Useful to view the full query string for monitoring of currently running queries.
 
 ```properties
 jit = off
 ```
 
-此设置会关闭 jit 优化器。对于 postgresql 版本 12 及更高版本，应将其设置为关闭。许多查询，特别是程序指示器查询，在默认启用 jit 设置的情况下执行效果非常差。关闭它可以将响应时间缩短高达 100 倍，从而显着提高仪表板性能。
+This setting turns the jit optimizer off.  It should be set to off for postgresql versions 12 and upwards.  Many queries, particularly program indicator queries, perform very badly with the default enabled jit setting.  Turning it off can improve response times by up to 100x with resulting significant improvement in dashboard performance.
 
 通过调用以下命令来重新启动PostgreSQL：
 
@@ -336,16 +346,10 @@ sudo systemctl restart postgresql
 
 ### Java安装 { #install_java_installation } 
 
-DHIS 2 的推荐 Java JDK 是 OpenJDK 11（适用于版本 2.35 及更高版本）。您可以使用以下命令安装它：
+The recommended Java JDK for DHIS 2 is OpenJDK 17 (for version 2.40 and later). You can install it with the following command:
 
 ```
-sudo apt-get install -y openjdk-11-jdk
-```
-
-如果您更喜欢 OpenJDK 8（对于 2.35 之前的版本），可以使用以下命令安装它：
-
-```
-sudo apt-get install -y openjdk-8-jdk
+sudo apt-get install -y openjdk-17-jdk
 ```
 
 通过调用以下命令来验证安装是否正确：
