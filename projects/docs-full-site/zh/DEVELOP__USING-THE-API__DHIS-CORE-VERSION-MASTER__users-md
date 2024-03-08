@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/users.md"
-revision_date: '2023-10-19'
+revision_date: '2024-03-07'
 tags:
 - DHIS核心 主版
 - Develop
@@ -350,6 +350,72 @@ curl -d @invites.json "localhost/api/33/users/invites" -u admin:district
 如果不满足这些要求中的任何一个，邀请资源将返回
 带有 *409 Conflict* 状态代码和描述性消息。
 
+### User account confirm invite (Experimental) { #webapi_user_confirm_invite }
+
+> **Important**  
+> Before confirming an invitation, an admin user should have set up the User and sent an invitation link. That prerequisite also adds some required data in the `userinfo` database table (`idToken`, `restoreToken`, `restoreExpiry`) for that user, in order to complete the invite.
+
+A user can confirm an invitation through the following endpoint:  
+`POST` `/api/auth/invite`  
+with `JSON` body:
+
+```json
+{
+    "username": "TestUser",
+    "firstName": "Test",
+    "surname": "User",
+    "password": "Test123!",
+    "email": "test@test.com",
+    "phoneNumber": "123456789",
+    "g-recaptcha-response": "recaptchaResponse",
+    "token": "aWRUb2tlbjpJRHJlc3RvcmVUb2tlbg=="
+}
+```
+
+> **Note**  
+> The `g-recaptcha-response` value would be populated through the use of the core Login App UI normally.  
+> The `token` field expects a Base64-encoded value. In this example, decoded, it's `idToken:IDrestoreToken`. This would be sent by the new Login App (it is actually created internally (and populated in the database) during the `/api/users/invite` operation).
+
+Successful response looks like:  
+
+```json
+{
+    "httpStatus": "OK",
+    "httpStatusCode": 200,
+    "status": "OK",
+    "message": "Account updated"
+}
+```
+
+### User account registration (Experimental) { #webapi_user_registration }
+A user can register directly through the following endpoint:  
+`POST` `/api/auth/registration` with `JSON` body:  
+
+```json
+{
+    "username": "testSelfReg",
+    "firstName": "test",
+    "surname": "selfReg",
+    "password": "P@ssword123",
+    "email": "test@test.com",
+    "phoneNumber": "12345oooo",
+    "g-recaptcha-response": "recap response"
+}
+
+```
+
+A successful response looks like:  
+
+```json
+{
+    "httpStatus": "Created",
+    "httpStatusCode": 201,
+    "status": "OK",
+    "message": "Account created"
+}
+```
+
+
 ### 用户复制 { #webapi_user_replication } 
 
 要复制用户，您可以使用 *replica* 资源。复制一个
@@ -378,12 +444,12 @@ curl -d @replica.json "localhost/api/33/users/N3PZBUlN8vq/replica"
   -H "Content-Type:application/json" -u admin:district
 ```
 
-### 重置用户密码{ #webapi_user_reset }
+### Reset user password { #webapi_user_reset }
 
-用户管理员（具有适当的权限）可以重置其他用户的帐户
-通过触发密码恢复。一旦触发，就会向用户发送一封电子邮件
-包含恢复链接。点击链接的用户将获得一个表格，该表格允许
-设置新密码。
+User administrators (with appropriate rights) can reset another user's account
+by triggering password recovery. Once triggered an email is sent to the user
+containing a recovery link. Users following the link get to a form which allows
+to set a new password.
 
 To trigger this workflow for user `tH7WIiIJ0O3` use:
 
@@ -427,19 +493,19 @@ and set it to the date `2021-01-01` use (requires user with appropriate rights):
 GET / api / users / {id} / dataApprovalWorkflows
 ```
 
-### 在连接到同一身份提供商帐户的用户帐户之间切换 { #switching-between-user-accounts-connected-to-the-same-identity-provider-account }
+### Switching between user accounts connected to the same identity provider account { #switching-between-user-accounts-connected-to-the-same-identity-provider-account } 
 
-如果[在 dhis.conf 中启用了链接帐户](../../../manage/performing-system-administration/dhis-core-version-master/installation.html#connecting-a-single-identity-provider -account-to-multiple-dhis2-accounts）并且用户已通过 OIDC 登录，则用户可以使用此 API 调用在链接到同一身份提供商帐户的 DHIS2 帐户之间进行切换：
+If [linked accounts are enabled in dhis.conf](../../../manage/performing-system-administration/dhis-core-version-master/installation.html#connecting-a-single-identity-provider-account-to-multiple-dhis2-accounts) and a user has logged in via OIDC, then it is possible for the user to switch between DHIS2 accounts that are linked to the same identity provider account using this API call:
 
 ```
 GET /dhis-web-commons-security/logout.action?current={current_username}&switch={username_to_switch_to}
 ```
 
-这具有注销当前用户并登录新用户的效果。它看起来无缝，除了新用户最终出现在 DHIS2 实例的默认页面上。
+This has the effect of signing out the current user and signing in the new user. It looks seamless as it is happening, except that the new user ends up on the default page of the DHIS2 instance.
 
-请注意，此 API 调用将来可能会发生变化，但其一般功能将保持不变。
+Note that this API call will likely change in the future, but its general function will remain the same.
 
-要查看可以切换到的用户列表，请使用以下 API 调用：
+To see a list of users that can be switched to, use this API call:
 
 ```
 GET /api/account/linkedAccounts

@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/visualizations.md"
-revision_date: '2022-09-13'
+revision_date: '2024-03-05'
 tags:
 - DHIS核心 主版
 - Develop
@@ -1305,12 +1305,51 @@ These operations follow the standard *REST* semantics. A new EventVisualization 
         "dimension": "pe",
         "items": [
           {
-              "id": "LAST_12_MONTHS"
+            "id": "LAST_12_MONTHS"
           }
         ]
       }
     ]
 }
+```
+
+For multi-program support, the root `program` should not be specified. This will turn the `eventVisualization` into a multi-program. Consequently, we have to specify the `program` and `programStage` (when applicable) for each `dimension` in `rows`, `columns`, and `filters`.
+
+例：
+
+```json
+"program": null,
+"columns": [
+  {
+    "dimension": "ou",
+    "items": [
+        {
+            "id": "O6uvpzGd5pu"
+        }
+    ],
+    "program": {
+        "id": "IpHINAT79UW"
+    }
+  },
+  {
+    "dimensionType": "CATEGORY_OPTION_GROUP_SET",
+    "items": [
+      {
+          "id": "JLGV7lRQRAg"
+      },
+      {
+          "id": "p916ZCVGNyq"
+      }
+    ],
+    "dimension": "C31vHZqu0qU",
+    "program": {
+        "id": "kla3mAPgvCH"
+    },
+    "programStage": {
+        "id": "aNLq9ZYoy9W"
+    }
+  }
+]
 ```
 
 > **Note**
@@ -1332,7 +1371,7 @@ Finally, to delete an existing EventVisualization, you can make a `DELETE` reque
 
 ## 释义 { #webapi_interpretations } 
 
-对于 DHIS2 中与数据分析相关的资源，例如可视化、地图、事件报告、事件图表甚至可视化，您可以编写和共享数据解释。解释可以是对数据报告或可视化的评论、问题、观察或解释。
+For resources related to data analysis in DHIS2, such as visualizations, maps, event reports, event charts and even visualizations you can write and share data interpretations. An interpretation can be a comment, question, observation or interpretation about a data report or visualization.
 
     / api /解释
 
@@ -1419,22 +1458,22 @@ JSON 响应格式的输出可能如下所示（附加
 
 
 
-表：解释字段
+Table: Interpretation fields
 
 | 领域 | 描述 |
 |---|---|
-| ID | 解释标识符。 |
-| 已创建 | 创建解释的时间。 |
-| 类型 | The type of analytical object being interpreted. Valid options: VISUALIZATION, MAP, EVENT_REPORT, EVENT_CHART, EVENT_VISUALIZATION, DATASET_REPORT. |
-| 用户 | 与创建解释的用户的关联。 |
-| 可视化 | 如果类型为 VISUALIZATION，则与可视化关联 |
-| 事件可视化 | 如果类型为 EVENT_VISUALIZATION，则与事件可视化关联 |
-| 地图 | 如果类型是 MAP，则与地图关联。 |
-| 事件报告 | 与事件报告关联的类型是 EVENT_REPORT。 |
-| 事件图 | 如果类型为 EVENT_CHART，则与事件图表关联。 |
-| 数据集 | 如果类型为 DATASET_REPORT，则与数据集关联。 |
-| 评论 | 用于解释的注释数组。文本字段包含实际的评论。 |
-| 提及 | 解释的一系列提及。用户标识符列表。 |
+| id | The interpretation identifier. |
+| created | The time of when the interpretation was created. |
+| type | The type of analytical object being interpreted. Valid options: VISUALIZATION, MAP, EVENT_REPORT, EVENT_CHART, EVENT_VISUALIZATION, DATASET_REPORT. |
+| user | Association to the user who created the interpretation. |
+| visualization | Association to the visualization if type is VISUALIZATION |
+| eventVisualization | Association to the event visualization if type is EVENT_VISUALIZATION |
+| map | Association to the map if type is MAP. |
+| eventReport | Association to the event report is type is EVENT_REPORT. |
+| eventChart | Association to the event chart if type is EVENT_CHART. |
+| dataSet | Association to the data set if type is DATASET_REPORT. |
+| comments | Array of comments for the interpretation. The text field holds the actual comment. |
+| mentions | Array of mentions for the interpretation. A list of users identifiers. |
 
 对于所有分析对象，您可以将 */data* 附加到 URL 以检索
 与资源关联的数据（相对于元数据）。作为
@@ -1473,8 +1512,8 @@ URL 模式如下所示，其中 {object-type} 指的是
 
     / api / interpretations / {object-type} / {object-id}
 
-对象类型的有效选项为*可视化*、*地图*、
-*eventReport*、*eventChart*、*eventVisualization* 和 *dataSetReport*。
+Valid options for object type are *visualization*, *map*,
+*eventReport*, *eventChart*, *eventVisualization* and *dataSetReport*.
 
 下面列出了一些有效的解释示例。
 
@@ -1482,7 +1521,7 @@ URL 模式如下所示，其中 {object-type} 指的是
 >
 > The `eventCharts` and `eventReports` APIs are deprecated. We recommend using the `eventVisualizations` API instead.
 
-    /api/解释/可视化/hQxZGXqnLS9
+    /api/interpretations/visualization/hQxZGXqnLS9
     /api/interpretations/map/FwLHSMCejFu
     /api/interpretations/eventReport/xJmPLGP3Cde
     /api/interpretations/eventChart/nEzXB2M9YBz
@@ -1615,15 +1654,15 @@ SQL 视图对于创建可能更容易的数据视图很有用
 级别和名称，以及数据库中列出的坐标。风景
 可能看起来像这样：
 
-``sql
-选择 ou.name 作为 orgunit，par.name 作为父级，ou.coordinates，ous.level，oul.name
-来自组织单位 ou
-ou.organizationunitid = ous.organizationunitid 上的内连接 _orgunitstruct ous
-内连接 ou.parentid = par.organizationunitid 上的organizationunit par
-内连接 orgunitlevel oul on ous.level = oul.level
-其中 ou.coordinates 不为空
-按 oul.level、par.name、ou.name 排序；
-````
+```sql
+select ou.name as orgunit, par.name as parent, ou.coordinates, ous.level, oul.name 
+from organisationunit ou
+inner join _orgunitstructure ous on ou.organisationunitid = ous.organisationunitid
+inner join organisationunit par on ou.parentid = par.organisationunitid
+inner join orgunitlevel oul on ous.level = oul.level
+where ou.coordinates is not null
+order by oul.level, par.name, ou.name;
+```
 
 我们将使用 *curl* 首先在 DHIS2 服务器上执行视图。这
 本质上是一个物化过程，并确保我们拥有
@@ -1635,13 +1674,13 @@ api/sqlViews 资源，然后使用以下命令进行 POST：
 curl "https://play.dhis2.org/demo/api/sqlViews/dI68mLkP1wN/execute" -X POST -u admin:district
 ```
 
-该过程的下一步是检索数据。端点位于：
+The next step in the process is the retrieval of the data. The endpoint is available at:
 
     /api/sqlViews/{id}/data(.csv)
 
 The `id` path represents the SQL view identifier. The path extensions refers to the format of the data download. Append either `data` for JSON data or `data.csv` for comma separated  values. Support response formats are json, xml, csv, xls, html and html+css. 
 
-例如，以下命令将为上面定义的 SQL 视图检索 CSV 数据。
+As an example, the following command would retrieve CSV data for the SQL view defined above.
 
 ```bash
 curl "https://play.dhis2.org/demo/api/sqlViews/dI68mLkP1wN/data.csv" -u admin:district
@@ -1667,8 +1706,8 @@ SQL视图有三种类型：
 
     / api / sqlViews / {id} / data？criteria = col1：value1＆criteria = col2：value2
 
-举个例子，要过滤上面的SQL视图结果集，只返回
-在级别 4 的组织单位中，您可以使用以下 URL：
+As an example, to filter the SQL view result set above to only return
+organisation units at level 4 you can use the following URL:
 
     https://play.dhis2.org/demo/api/sqlViews/dI68mLkP1wN/data.csv?criteria=level:4
 
@@ -1716,20 +1755,20 @@ SQL 视图支持变量替换。变量替换只是
 
 例如，以下 *query* 类型的 SQL 视图显示分配给用户的所有组织单位：
 
-``sql
-选择ou.路径，ou.名称
-来自组织单位 ou_user
-在 ou.path 上加入组织单位 ou，如 ou_user.path || '%'
-在 um.organizationunitid = ou_user.organizationunitid 上加入用户会员 um
-其中 um.userinfoid = ${_current_user_id}
-按 ou.path 排序；
-````
+```sql
+select ou.path, ou.name
+from organisationunit ou_user
+join organisationunit ou on ou.path like ou_user.path || '%'
+join usermembership um on um.organisationunitid = ou_user.organisationunitid
+where um.userinfoid = ${_current_user_id}
+order by ou.path;
+```
 
 ### 筛选 { #webapi_sql_view_filtering } 
 
-SQL视图API支持数据过滤，相当于[元数据object_filter](#webapi_metadata_object_filter)。有关过滤器运算符的完整列表，您可以查看 [metadata object_filter](#webapi_metadata_object_filter) 的文档。
+The SQL view API supports data filtering, equal to the [metadata object_filter](#webapi_metadata_object_filter). For a complete list of filter operators you can look at the documentation for [metadata object_filter](#webapi_metadata_object_filter).
 
-要使用过滤器，只需将它们作为参数添加到 SQL 视图的请求 URL 末尾，如下所示。此请求将返回一个结果，其中包括组织单位层次结构第 2 级名称中带有“bo”的组织单位：
+To use filters, simply add them as parameters at the end of the request URL for your SQL view like this. This request will return a result including org units with "bo" in the name at level 2 of the org unit hierarchy:
 
     /api/sqlViews/w3UxFykyHFy/data.json?filter=orgunit_level:eq:2&filter=orgunit_name:ilike:bo
 
@@ -1738,7 +1777,7 @@ SQL视图API支持数据过滤，相当于[元数据object_filter](#webapi_metad
 
     /api/sqlViews/w3UxFykyHFy/data.json?filter=orgunit_level:in:[2,4]
 
-最后，返回所有不以“Bo”开头的组织单位的示例：
+And last, an example to return all org units that does not start with "Bo":
 
     /api/sqlViews/w3UxFykyHFy/data.json?filter=orgunit_name:!like:Bo
 
@@ -1761,14 +1800,14 @@ Here, the `PROGRAM_INDICATOR` allows filtering by `programId`.
 So, based on the examples `1)` and `2)` if you try filtering a `DATA_ELEMENT` by `programId` or filter a `PROGRAM_INDICATOR` by `valueType`, you should get no results.
 In other words, the filter will be applied only when the attribute actually exists for the respective data item.
 
-需要强调的另一个重要方面是，此端点不遵循与其他现有端点相同的查询标准，例如[元数据对象过滤器](#webapi_metadata_object_filter)。因此，它支持较小的功能和查询集。
-其主要原因是需要查询具有不同关系的多个不同项目，这是使用现有的过滤组件（由其他端点使用）不可能实现的。
+Another important aspect to be highlighted is that this endpoint does NOT follow the same querying standards as other existing endpoints, like [Metadata object filter](#webapi_metadata_object_filter) for example. As a consequence, it supports a smaller set of features and querying.
+The main reason for that is the need for querying multiple different items that have different relationships, which is not possible using the existing filtering components (used by the others endpoints).
 
-### 端点响应 { #webapi_data_items_possible_responses }
+### Endpoint responses { #webapi_data_items_possible_responses } 
 
-基于`GET`请求/查询，可以返回以下状态代码和响应。
+Base on the `GET` request/query, the following status codes and responses are can be returned.
 
-#### 找到结果（状态代码 200）{ #results-found-status-code-200 }
+#### Results found (status code 200) { #results-found-status-code-200 } 
 
 ```json
 {
@@ -1794,7 +1833,7 @@ In other words, the filter will be applied only when the attribute actually exis
 }
 ```
 
-#### 未找到结果（状态代码 200）{ #results-not-found-status-code-200 }
+#### Results not found (status code 200) { #results-not-found-status-code-200 } 
 
 ```json
 {
@@ -1809,7 +1848,7 @@ In other words, the filter will be applied only when the attribute actually exis
 }
 ```
 
-#### 无效查询（状态代码 409）{ #invalid-query-status-code-409 }
+#### Invalid query (status code 409) { #invalid-query-status-code-409 } 
 
 ```json
 {
@@ -1854,70 +1893,70 @@ This endpoint also supports pagination as a default option. If needed, you can d
 
 现在，我们已经了解了此端点的主要功能和用法，让我们看一下响应中返回的属性列表。
 
-表：数据项属性
+Table: Data items attributes
 
 | 领域 | 描述 |
 |---|---|
-| ID | 唯一标识符。 |
-| 码 | 用于识别维度项目的自定义代码。 |
-| 名称 | 为该项目指定的名称。 |
-| 显示名称 | 定义的显示名称。 |
-| 简称 | 为该项目指定的简称。 |
-| 显示简称 | 定义的显示短名称。 |
-| 维度项目类型 | 尺寸类型。可能的类型：INDICATOR、DATA_ELEMENT、REPORTING_RATE、PROGRAM_INDICATOR、PROGRAM_DATA_ELEMENT、PROGRAM_ATTRIBUTE。 |
-| 值类型 | 项目值类型（更具体的定义）。可能的类型：TEXT、LONG_TEXT、LETTER、BOOLEAN、TRUE_ONLY、UNIT_INTERVAL、PERCENTAGE、INTEGER、INTEGER_POSITIVE、INTEGER_NEGATIVE、INTEGER_ZERO_OR_POSITIVE、COORDINATE |
-| 简化值类型 | The genereal representation of a value type. Valid values: NUMBER, BOOLEAN, DATE, FILE_RESOURCE, COORDINATE, TEXT |
-| 节目编号 | 关联的programId。 |
+| id | The unique identifier. |
+| 码 | A custom code to identify the dimensional item. |
+| 名称 | The name given for the item. |
+| displayName | The display name defined. |
+| shortName | The short name given for the item. |
+| displayShortName | The display short name defined. |
+| dimensionItemType | The dimension type. Possible types: INDICATOR, DATA_ELEMENT, REPORTING_RATE, PROGRAM_INDICATOR, PROGRAM_DATA_ELEMENT, PROGRAM_ATTRIBUTE. |
+| valueType | The item value type (more specific definition). Possitble types: TEXT, LONG_TEXT, LETTER, BOOLEAN, TRUE_ONLY, UNIT_INTERVAL, PERCENTAGE, INTEGER, INTEGER_POSITIVE, INTEGER_NEGATIVE, INTEGER_ZERO_OR_POSITIVE, COORDINATE |
+| simplifiedValueType | The genereal representation of a value type. Valid values: NUMBER, BOOLEAN, DATE, FILE_RESOURCE, COORDINATE, TEXT |
+| programId | The associated programId. |
 
 ## 查看分析性资源表示 { #webapi_viewing_analytical_resource_representations } 
 
 DHIS2 has several resources for data analysis. These resources include
 *maps*, *visualizations*, *eventVisualizations*, *reports* and *documents*. By visiting these resources you will retrieve information about the resource. For instance, by navigating to `/api/visualizations/R0DVGvXDUNP` the response will contain the name, last date of modification and so on for the chart. To retrieve the analytical representation, for instance, a PNG representation of the visualization, you can append */data* to all these resources. For instance, by visiting `/api/visualizations/R0DVGvXDUNP/data` the system will return a PNG image of the visualization.
 
-表：分析资源
+Table: Analytical resources
 
-| 资源 | 描述 | 数据网址 | 资源表示 |
+| Resource | 描述 | Data URL | Resource representations |
 |---|---|---|---|
-| 事件图表 | 活动图 | /api/eventCharts/<identifier\>/data | PNG |
-| 地图 | 地图 | /api/maps/<identifier\>/data | PNG |
-| 可视化 | 数据透视表和图表 | /api/visualizations/<identifier\>/data | json &#124; jsonp &#124; html &#124; xml &#124; pdf &#124; xls &#124;数据集
-| 事件可视化 | 活动图 | /api/eventVisualizations/<identifier\>/data | PNG
-| PNG |
-| 报告 | 标准报告 | /api/reports/<identifier\>/data | pdf &#124; xls &#124; html |
-| 文件 | 资源资源 | /api/documents/<identifier\>/data | <follows document\> |
+| eventCharts | 活动图 | /api/eventCharts/<identifier\>/data | png |
+| maps | 地图 | /api/maps/<identifier\>/data | png |
+| visualizations | Pivot tables and charts | /api/visualizations/<identifier\>/data | json &#124; jsonp &#124; html &#124; xml &#124; pdf &#124; xls &#124; csv 
+| eventVisualizations | 活动图 | /api/eventVisualizations/<identifier\>/data | png 
+| png |
+| reports | 标准报告 | /api/reports/<identifier\>/data | pdf &#124; xls &#124; html |
+| documents | 资源资源 | /api/documents/<identifier\>/data | <follows document\> |
 
 解析表示的数据内容可以通过以下方式修改
 提供 *date* 查询参数。这就要求分析
 为期间维度的相对期间设置资源。
 
-表：数据查询参数
+Table: Data query parameters
 
 | 查询参数 | 值 | 描述 |
 |---|---|---|
-| 日期 | yyyy-MM-dd 格式的日期 | 报告中相对期间的基础（需要相对期间） |
+| date | Date in yyyy-MM-dd format | Basis for relative periods in report (requires relative periods) |
 
-表：png/图像类型的查询参数（可视化、地图）
+Table: Query parameters for png / image types (visualizations, maps)
 
 | 查询参数 | 描述 |
 |---|---|
-| 宽度 | 图像的宽度（以像素为单位） |
-| 高度 | 图像的高度（以像素为单位） |
+| width | Width of image in pixels |
+| height | Height of image in pixels |
 
 用于检索各种分析的有效 URL 的一些示例
 代表如下。
 
-    /api/可视化/R0DVGvXDUNP/数据
-    /api/可视化/R0DVGvXDUNP/data?date=2013-06-01
+    /api/visualizations/R0DVGvXDUNP/data
+    /api/visualizations/R0DVGvXDUNP/data?date=2013-06-01
 
     /api/visualizations/jIISuEWxmoI/data.html
     /api/visualizations/jIISuEWxmoI/data.html?date=2013-01-01
-    /api/可视化/FPmvWs7bn2P/data.xls
+    /api/visualizations/FPmvWs7bn2P/data.xls
     /api/visualizations/FPmvWs7bn2P/data.pdf
 
     /api/eventVisualizations/x5FVFVt5CDI/data
     /api/eventVisualizations/x5FVFVt5CDI/data.png
 
-    /api/maps/DHE98Gsynpr/数据
+    /api/maps/DHE98Gsynpr/data
     /api/maps/DHE98Gsynpr/data?date=2013-07-01
 
     /api/reports/OeJsA6K1Otx/data.pdf
