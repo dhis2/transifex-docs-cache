@@ -1,8 +1,8 @@
 ---
-revision_date: '2024-03-12'
+revision_date: '2024-03-13'
 tags:
-- DHIS核心 主版
 - Develop
+- DHIS核心 主版
 template: single.html
 ---
 
@@ -1151,6 +1151,8 @@ _entityName_ 使用驼峰命名法。例如，端点
 
     / api / dataElements
 
+> **_NOTE:_**  When updating objects, all existing property values will be overwritten, even if the new value is null. Please use [JSON Patch API](#webapi_partial_updates) in case you want do partial update to an object.
+
 ### 创建/更新参数 { #webapi_metadata_create_update } 
 
 以下请求查询参数可用于所有元数据端点。
@@ -1160,8 +1162,7 @@ Table: Available Query Filters
 | Param | 类型 | 需要 | 选项（默认为默认） | 描述 |
 |---|---|---|---|---|
 | preheatCache | boolean | 假 | true &#124; false | Turn cache-map preheating on/off. This is on by default, turning this off will make initial load time for importer much shorter (but will make the import itself slower). This is mostly used for cases where you have a small XML/JSON file you want to import, and don't want to wait for cache-map preheating. |
-| importStrategy | enum | 假 | CREATE_AND_UPDATE &#124; CREATE &#124; UPDATE &#124; DELETE | Import strategy to use, see below for more information. |
-| mergeMode | enum | 假 | REPLACE, MERGE | Strategy for merging of objects when doing updates. REPLACE will just overwrite the property with the new value provided, MERGE will only set the property if it is not null (only if the property was provided). |
+| importStrategy | enum | 假 | 创建_并_更新&#124;创建&#124;更新&#124;删除 | Import strategy to use, see below for more information. |
 
 ### 创建和更新对象 { #webapi_creating_updating_objects } 
 
@@ -1660,8 +1661,7 @@ Table: Import Parameter
 | preheatMode | REFERENCE, ALL, NONE | 设置预热器模式，用于指示是否应该对 `ALL` 进行预热（就像以前使用 *preheatCache=true* 一样）或对对象进行更智能的扫描以查看要预热的内容（现在是默认设置），将其设置为不推荐使用`无`。 |
 | importStrategy | CREATE_AND_UPDATE, CREATE, UPDATE, DELETE | Sets import strategy, `CREATE_AND_UPDATE` will try and match on identifier, if it doesn't exist, it will create the object. |
 | atomicMode | ALL, NONE | 设置原子模式，在旧的导入器中，我们总是进行*best effort*导入，这意味着即使某些引用不存在，我们仍然会导入（即数据元素组导入时缺少数据元素）。新进口商的默认设置是不允许这样做，并且类似地拒绝任何验证错误。设置 `NONE` 模式模拟了旧的行为. |
-| ~~mergeMode~~ | ~~REPLACE, MERGE~~ | ~~Sets the merge mode, when doing updates we have two ways of merging the old object with the new one, `MERGE` mode will only overwrite the old property if the new one is not-null, for `REPLACE` mode all properties are overwritten regardless of null or not.~~ (*) |
-| flushMode | AUTO, OBJECT | 设置刷新模式，控制何时刷新内部缓存。*强烈*建议_将其保留为`AUTO`（这是默认设置）。仅将 `OBJECT` 用于调试目的，您会看到休眠异常并想查明堆栈发生的确切位置（休眠只会在刷新时抛出，因此很难知道哪个对象有问题）。 | 
+| flushMode | AUTO, OBJECT | 设置刷新模式，控制何时刷新内部缓存。*强烈*建议将其保留为`AUTO`（这是默认设置）。仅将 `OBJECT` 用于调试目的，您会看到休眠异常并想查明堆栈发生的确切位置（休眠只会在刷新时抛出，因此很难知道哪个对象有问题）。 | 
 | skipSharing | false, true | Skip sharing properties, does not merge sharing when doing updates, and does not add user group access when creating new objects. |
 | skipValidation | false, true | 跳过导入的验证。`不推荐`。 |
 | async | false, true | Asynchronous import, returns immediately with a *Location* header pointing to the location of the *importReport*. The payload also contains a json object of the job created. |
@@ -1669,7 +1669,7 @@ Table: Import Parameter
 | userOverrideMode | NONE, CURRENT, SELECTED | Allows you to override the user property of every object you are importing, the options are NONE (do nothing), CURRENT (use import user), SELECTED (select a specific user using overrideUser=X) |
 | overrideUser | User ID | If userOverrideMode is SELECTED, use this parameter to select the user you want override with. |
 
-> (*) Currently the `mergeMode=MERGE` option of the import service has limitations and doesn't support all objects. It doesn't work with some object types such as Embedded objects, or objects which are saved as JSONB format in database ( sharing, attributeValues, etc...). Fixing those issues are complicated and would just cause new issues. Therefore, this `mergedMode=MERGE` is deprecated and currently is not recommended to use. The update mode should always be mergedMode=REPLACE. We have developed a new [JSON Patch API](#webapi_partial_updates) which can be used as an alternative approach. This feature is introduced in 2.37 release.
+> **NOTE** When updating objects, all property values will be overwritten even if the new values are `null`. Please use [JSON Patch API](#webapi_partial_updates) in case you want do partial update to an object.
 
 
 要导入的元数据负载的示例如下所示。注意如何
@@ -1724,7 +1724,6 @@ Table: Import Parameter
     "preheatMode": "REFERENCE",
     "importStrategy": "CREATE_AND_UPDATE",
     "atomicMode": "ALL",
-    "mergeMode": "REPLACE",
     "flushMode": "AUTO",
     "skipSharing": false,
     "skipTranslation": false,
@@ -4469,6 +4468,8 @@ Known Differences:
 * Gist offers using attribute UIDs as field and filter property names to allow
   listing or filtering based on custom attribute values
 * Gist offers filter grouping
+* Gist offers renaming the enrty list in a paged response using `pageListName`
+* Gist offers to pluck multiple simple properties
 
 Known Limitations:
 
@@ -4479,7 +4480,7 @@ Known Limitations:
 * orders can only be applied to persisted fields
 * token filters are not available
 * order is always case-sensitive
-* `pluck` transformer limited to text properties
+* `pluck` transformer limited to text properties (or simple properties for multi-pluck)
 * fields which hold collections of simple (non-identifiable) items cannot always
   be included depending on how they are stored
 
@@ -4529,21 +4530,22 @@ ignored.
 ### 总览 { #overview } 
 Parameters in alphabetical order:
 
-| Parameter      | 选项               |  默认     | 描述          |
-| -------------- | --------------------- | ------------ | ---------------------|
-| `absoluteUrls` | `true` or `false`     | `false`      | `true` use relative paths in links, `false` use absolute URLs in links |
-| `auto`         | `XS`, `S`, `M`, `L`, `XL` | (context dependent) | extent of fields selected by `*` field selector |
-| `fields`       | (depends on endpoint) | `*`          | comma separated list of fields or presets to include |
-| `filter`       | `<field>:<operator>` or `<field>:<operator>:<value>` |   | comma separated list of query field filters (can be used more than once) |
-| `headless`     | `true` or `false`     | `false`      | `true` skip wrapping result in a pager (ignores `total`), `false` use a pager wrapper object around the result list |
-| `inverse`      | `true` or `false`     | `false`      | `true` return items **not** in the list, `false` return items in the list |
+| Parameter      | 选项               | 默认                            | 描述          |
+| -------------- | --------------------- |------------------------------------| ---------------------|
+| `absoluteUrls` | `true` or `false`     | `false`                            | `true` use relative paths in links, `false` use absolute URLs in links |
+| `auto`         | `XS`, `S`, `M`, `L`, `XL` | (context dependent)                | extent of fields selected by `*` field selector |
+| `fields`       | (depends on endpoint) | `*`                                | comma separated list of fields or presets to include |
+| `filter`       | `<field>:<operator>` or `<field>:<operator>:<value>` |                                    | comma separated list of query field filters (can be used more than once) |
+| `headless`     | `true` or `false`     | `false`                            | `true` skip wrapping result in a pager (ignores `total`), `false` use a pager wrapper object around the result list |
+| `inverse`      | `true` or `false`     | `false`                            | `true` return items **not** in the list, `false` return items in the list |
 | `locale`       |                       | (user account configured language) | translation language override |
-| `order`        | `<field>` or  `<field>:asc` or `<field>:desc` | `:asc` | comma separated list of query order fields (can be used more than once) |
-| `page`         | 1-n                   | 1            | page number |
-| `pageSize`     | 1-1000                | 50           | number of items on a page |
-| `rootJunction` | `与`或`或`         | `AND`        | logical combination of `filter`s, `AND`= all must match, `OR`= at least one must match |
-| `total`        | `true` or `false`     | `false`      | `true` add total number of matches to the pager, `false` skip counting total number of matches |
-| `translate`    | `true` or `false`     | `true`       | `true` translate all translatable properties, `false` skip translation of translatable properties (no effect on synthetic display names) |
+| `order`        | `<field>` or  `<field>:asc` or `<field>:desc` | `:asc`                             | comma separated list of query order fields (can be used more than once) |
+| `page`         | 1-n                   | 1                                  | page number |
+| `pageSize`     | 1-1000                | 50                                 | number of items on a page |
+| `pageListName` | `<text>` | (object type plural) | overrides the property name of the result entry list | 
+| `rootJunction` | `与`或`或`         | `AND`                              | logical combination of `filter`s, `AND`= all must match, `OR`= at least one must match |
+| `total`        | `true` or `false`     | `false`                            | `true` add total number of matches to the pager, `false` skip counting total number of matches |
+| `translate`    | `true` or `false`     | `true`                             | `true` translate all translatable properties, `false` skip translation of translatable properties (no effect on synthetic display names) |
 
 
 ### The `absoluteUrls` Parameter { #gist_parameters_absoluteUrls } 
@@ -4979,6 +4981,25 @@ used between filters. Possible are:
 默认为`与`。
 
 
+### The `pageListName` Parameter { #gist_parameters_pageListName }
+<!--DHIS2-SECTION-ID:gist_parameters_pageListName-->
+The array property in a paged response that contains the matching entry list is 
+named  after the object type contained in the list. 
+For `/api/organisationUnits/gist` it would be named `organisationUnits`.
+
+This default naming can be customized using the `pageListName` parameter.
+For example, `/api/organisationUnits/gist?pageListName=matches` returns a
+response root object with the format:
+
+```json
+{
+  "pager": {},
+  "matches": []
+}
+```
+(details of the pager and matches are omitted here)
+
+
 ### The `total` Parameter { #gist_parameters_total } 
 <!--DHIS2-SECTION-ID:gist_parameters_total-->
 
@@ -5089,18 +5110,18 @@ any of the indicators `::`, `~` or `@` followed by the transformer expression.
 
 Available transformer expressions are:
 
-| Transformer        | JSON Result Type    | 描述                       |
-| ------------------ | ------------------- | --------------------------------- |
-| `rename(<name>)`   | --                   | renames the field in the response to `<name>` |
-| `size`             | `number`            | number of items in the collection field |
-| `isEmpty`          | `boolean`           | emptiness of a collection field   |
-| `isNotEmpty`       | `boolean`           | non-emptiness of a collection field |
-| `ids`              | `string` or `[string]` | ID of an object or IDs of collection items |
-| `id-objects`       | `[{ "id": <id> }]`  | IDs of collection items as object |
-| `member(<id>)`     | `boolean`           | 具有`<id>`的成员用于集合字段 |
-| `not-member(<id>)` | `boolean`           | 集合字段中没有具有`<id>`的成员 |
-| `pluck(<field>)`   | `string` or `[string]` | extract single text property of the object or of each collection item |
-| `from(<field>,...)`| depends on bean type | extracts a non-persistent field from one or more persistent ones |
+| Transformer          | JSON Result Type       | 描述                                                                                           |
+|----------------------|------------------------|-------------------------------------------------------------------------------------------------------|
+| `rename(<name>)`     | --                      | renames the field in the response to `<name>`                                                         |
+| `size`               | `number`               | number of items in the collection field                                                               |
+| `isEmpty`            | `boolean`              | emptiness of a collection field                                                                       |
+| `isNotEmpty`         | `boolean`              | non-emptiness of a collection field                                                                   |
+| `ids`                | `string` or `[string]` | ID of an object or IDs of collection items                                                            |
+| `id-objects`         | `[{ "id": <id> }]`     | IDs of collection items as object                                                                     |
+| `member(<id>)`       | `boolean`              | 具有`<id>`的成员用于集合字段                                                           |
+| `not-member(<id>)`   | `boolean`              | 集合字段中没有具有`<id>`的成员                                                       |
+| `pluck(<field>,...)` | `string` or `[string]` | extract single text property or multiple simple properties from the object or of each collection item |
+| `from(<field>,...)`  | depends on bean type   | extracts a non-persistent field from one or more persistent ones                                      |
 
 A field can receive both the `rename` transformer and one of the other 
 transformers, for example:
@@ -6981,6 +7002,18 @@ Additional results can be filtered using a `section` parameter.
 
 The `section` filter will return all exact matches which have the specified section. 
 
+Furthermore, to filter (select) only checks marked as `isSlow` use `slow=true`,
+
+    GET /api/dataIntegrity?slow=true
+
+or to filter (select) only checks that are not performed via database query 
+(programmed checks) use `programmatic=true`:
+
+    GET /api/dataIntegrity?programmatic=true
+
+The `slow`, `programmatic` and `section` filters can be combined in which case
+all conditions must be met.
+
 ### Running data integrity summaries { #webapi_data_integrity_run_summary }
 
 Since version 2.38, data integrity checks have two levels of specificity: 
@@ -7170,6 +7203,14 @@ already completed details checks can be obtained using:
 
 Users of DHIS2 can now create and supply their own Data Integrity Checks. This can be useful if users
 want to avail of this functionality and extend upon the supplied set of core data integrity checks.
+
+> **Tip**
+> 
+> Users are also encouraged to share their custom checks with others by opening a pull request in the 
+> [dhis2-core](https://github.com/dhis2/dhis2-core) repository containing their `.yaml` file(s).
+> Please select `platform-backend` as reviewer to put the PR on our radar early on. The team will 
+> take care of checking and linking the check correctly, so it becomes part of the provided suite of 
+> checks with the next release. 
 
 An example of a custom check could be for determining if certain users are members of specific user groups.
 This type of check would be very specific to an implementation, and not generally applicable across all installs.
@@ -7470,6 +7511,7 @@ Table: Complete data set registrations query parameters
 | cc | No (must combine with cp) | Attribute combo identifier (for locking check) |
 | cp | No (must combine with cp) | Attribute option identifiers, separated with ; for multiple values (for locking check) |
 | multiOu | No (default false) | Whether registration applies to sub units |
+
 
 
 # 数据审批 { #data-approval } 
@@ -8547,6 +8589,9 @@ To update an existing queue CRON expression or sequence use a PUT request
 
 The payload has to state both new CRON expression and job sequence like in 
 the example above to create a new queue.
+
+To rename a queue the new name can be stated in the payload, while the old name 
+is used in the URL path.  
 
 ### Delete a Job Queue { #queues-delete }
 To delete a job queue send a DELETE request to its resource URL:
@@ -11292,6 +11337,7 @@ Table: Query parameters for png / image types (visualizations, maps)
     /api/reports/OeJsA6K1Otx/data.pdf?date=2014-01-01
 
 
+
 # 分析工具 { #analytics } 
 
 ## 分析工具 { #webapi_analytics } 
@@ -11439,13 +11485,14 @@ true 作为值。而不是生成一个普通的、规范化的数据源，
 
 ### 尺寸和项目 { #webapi_analytics_dimensions_and_items } 
 
-DHIS2 具有多维数据模型，具有多个固定和
-动态数据维度。固定维度是数据元素，
-期间（时间）和组织单位维度。您可以动态添加
-通过类别、数据元素组集和组织的维度
-单元组集。下表显示了可用的数据维度
-在 DHIS2 中。每个数据维度都有一个对应的*维度
-标识符*，每个维度可以有一组*维度项*：
+DHIS2 features a multi-dimensional data model with several fixed and
+dynamic data dimensions. The fixed dimensions are the data element,
+period (time) and organisation unit dimension. You can dynamically add
+dimensions through categories, category option group sets, 
+organisation unit group sets, data element group sets and organisation
+unit group sets. The table below displays the available data dimensions
+in DHIS2. Each data dimension has a corresponding *dimension
+identifier*, and each dimension can have a set of *dimension items*:
 
 
 
@@ -13715,7 +13762,6 @@ dataStatisticsEventType 参数描述了项目的类型
 下面显示了支持的事件类型。
 
 
-
 Table: Supported event types
 
 | 键 | 描述 |
@@ -13759,7 +13805,6 @@ startDate 和 endDate 参数指定期间
 
 使用情况分析 API 可让您检索最常用的
 DHIS2，并由用户。
-
 
 
 Table: Query parameters for top favorites
@@ -13870,7 +13915,9 @@ JSON响应如下所示：
 ]
 ```
 
-### 检索收藏的统计信息 { #webapi_usage_analytics_retrieve_favorite_statistics } 
+Note that the number of `activeUsers` indicates the number of distinct users who had any events during the requested time period. The number of `users` represents the total number of users in the system (both enabled and disabled).
+
+### 检索收藏的统计信息 { #webapi_usage_analytics_retrieve_favorite_statistics }
 
 您可以使用
 *收藏夹* 资源，其中 *{favorite-id}* 应替换为
@@ -15120,7 +15167,6 @@ Table: Task categories
     "dryRun": false,
     "async": true,
     "importStrategy": "CREATE_AND_UPDATE",
-    "mergeMode": "REPLACE",
     "reportMode": "FULL",
     "skipExistingCheck": false,
     "sharing": false,
@@ -16988,6 +17034,7 @@ POST 和密码字符串应在 POST 正文中发送。
     / api / me / dataApprovalWorkflows
 
 
+
 # 设置和配置 { #settings-and-configuration } 
 
 ## 系统设置 { #webapi_system_settings } 
@@ -17554,29 +17601,31 @@ curl --data-binary @style.css "localhost/api/33/files/style"
 
 # 追踪器 { #tracker } 
 
-> **Note**
->Tracker has been re-implemented in DHIS2 2.36. This document describes the new tracker endpoints
+> **Caution**
+>
+> Tracker has been re-implemented in DHIS2 2.36. This document describes the new tracker endpoints
 >
 > * `POST /api/tracker`
+> * `GET  /api/tracker/trackedEntities`
 > * `GET  /api/tracker/enrollments`
 > * `GET  /api/tracker/events`
-> * `GET  /api/tracker/trackedEntities`
 > * `GET  /api/tracker/relationships`
 >
->[Tracker
->(deprecated)](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker-deprecated.html)
->describes the deprecated endpoints
+> [Tracker
+> (deprecated)](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker-deprecated.html)
+> describes the deprecated endpoints
 >
 > * `GET/POST/PUT/DELETE /api/trackedEntityInstance`
 > * `GET/POST/PUT/DELETE /api/enrollments`
 > * `GET/POST/PUT/DELETE /api/events`
 > * `GET/POST/PUT/DELETE /api/relationships`
 >
->* If your are still using the deprecated tracker endpoints in production, please plan to migrate
->  over to the new endpoints. [Migrating to new tracker
->  endpoints](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker-deprecated.html#webapi_tracker_migration)
->  should help you get started. Reach out on the [community of
->  practice](https://community.dhis2.org) if you need further assistance.
+> The deprecated endpoints will be removed in version **42**!
+>
+> [Migrating to new tracker
+> endpoints](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker-deprecated.html#webapi_tracker_migration)
+> should help you get started with your migration. Reach out on the [community of
+> practice](https://community.dhis2.org) if you need further assistance.
 
 ## Tracker Objects { #webapi_nti_tracker_objects }
 
@@ -17612,10 +17661,8 @@ Tracker consists of a few different types of objects that are nested together to
 >
 > `被跟踪实体`中提到的"属性"是`被跟踪实体类型属性`。
 
-
 ### 注册 { #enrollment } 
 `被跟踪实体`可以注册其符合资格的`项目`。只要程序配置了与被跟踪实体相同的`被跟踪实体类型`，被跟踪实体就符合资格。我们用`Enrollment`对象来表示注册，我们将在本节中对此进行描述。
-
 
 | Property | 描述 | 需要 | Immutable | 类型 | 例 |
 |---|---|---|---|---|---|
@@ -17649,7 +17696,6 @@ Tracker consists of a few different types of objects that are nested together to
 > `Tracked Entities` "owns" all `Tracked Entity Attribute Values` (Or "attributes" as described in the previous table). However, `Tracked Entity Attributes` are either connected to a `Tracked Entity` through its `Tracked Entity Type` or a `Program`. We often refer to this separation as `Tracked Entity Type Attributes` and `Tracked Entity Program Attributes`. The importance of this separation is related to access control and limiting what information the user can see.
 >
 > The "attributes" referred to in the `Enrollment` are `Tracked Entity Program Attributes`.
-
 
 ### 大事记 { #events } 
 `Events` are either part of an `EVENT PROGRAM` or `TRACKER PROGRAM`. For `TRACKER PROGRAM`, events belong to an `Enrollment`, which again belongs to a `Tracked Entity`. On the other hand, `EVENT PROGRAM` is `Events` not connected to a specific `Enrollment` or `Tracked Entity`. The difference is related to whether we track a specific `Tracked Entity` or not. We sometimes refer to `EVENT PROGRAM` events as "anonymous events" or "single events" since they only represent themselves and not another `Tracked Entity`.
@@ -17860,7 +17906,7 @@ Table: Program Stage Query Criteria
 | order | List of fields and its directions in comma separated values, the results will be sorted according to it. A single item in order is of the form "orderDimension:direction". | "order": "w75KJ2mc4zz:asc" |
 | displayColumnOrder | Output ordering of columns | "displayColumnOrder":["w75KJ2mc4zz","zDhUuAYrxNC"] |
 | dataFilters | A list of items that contains the filters to be used when querying events | "dataFilters":[{"dataItem": "GXNUsigphqK","ge": "10","le": "20"}] |
-| attributeValueFilters | A list of attribute value filters. This is used to specify filters for attribute values when listing tracked entity instances | "attributeValueFilters":[{"attribute": "ruQQnf6rswq","eq": "15"}] |
+| attributeValueFilters | A list of attribute value filters. This is used to specify filters for attribute values when listing tracked entities | "attributeValueFilters":[{"attribute": "ruQQnf6rswq","eq": "15"}] |
 
 See an example payload below:
 
@@ -18595,7 +18641,7 @@ Some of the properties of tracker objects require a specific format. When import
 - Geometry (The coordinates must match the format as specified by its type)
 
 #### User access { #user-access } 
-All data imported will be validated based on the metadata  ([Sharing](#webapi_nti_metadata_sharing)) and the organisation units ([Organisation Unit Scopes](#webapi_nti_ou_scope)) referenced in the data. You can find more information about sharing and organisation unit scopes in the following sections.
+All data imported will be validated based on the metadata  ([Sharing](#webapi_nti_metadata_sharing)) and the organisation units ([Organisation Unit Scopes](#webapi_nti_orgunit_scope)) referenced in the data. You can find more information about sharing and organisation unit scopes in the following sections.
 
 Sharing is validated at the same time as references are looked up in the database. Metadata outside of the user's access will be treated as if it doesn't exist. The import will validate any metadata referenced in the data.
 
@@ -18731,7 +18777,7 @@ Tracker export endpoints allow you to retrieve the previously imported objects w
 
 The following endpoint supports standard parameters for pagination.
 
-- **Tracked Entities** `GET /api/tracker/trackedEntities`
+- **Tracked entities** `GET /api/tracker/trackedEntities`
 - **Events** `GET /api/tracker/events`
 - **Enrollments** `GET /api/tracker/enrollments`
 - **Relationships** `GET /api/tracker/relationships`
@@ -18740,11 +18786,12 @@ The following endpoint supports standard parameters for pagination.
 
 |Request parameter|类型|Allowed values|描述|
 |---|---|---|---|
-|`page`|`Integer`| Any positive integer |Page number to return. Defaults to 1 if missing|
-|`pageSize`|`Integer`| Any positive integer |Page size. Defaults to 50. |
-|`totalPages`|`Boolean`| `true`&#124;`false` |Indicates whether to return the total number of pages in the response |
-|`skipPaging`|`Boolean`| `true`&#124;`false` |Indicates whether paging should be ignored and all rows should be returned. Defaults to `false`, meaning that by default all requests are paginated, unless `skipPaging=true`|
-|`order`|`String`|comma-delimited list of `OrderCriteria` in the form of `propName:sortDirection`.<br><br> Example: `createdAt:desc`<br><br>**Note:** `propName` is case sensitive, `sortDirection` is case insensitive|Sort the response based on given `OrderCriteria`|
+|`page`|`Integer`|Any positive integer|Page number to return. Defaults to 1.|
+|`pageSize`|`Integer`|Any positive integer|Page size. Defaults to 50.|
+|`totalPages`|`Boolean`|`true`&#124;`false`|Indicates whether to return the total number of elements and pages. Defaults to `false` as getting the totals is an expensive operation.|
+|`paging`|`Boolean`|`true`&#124;`false`|Indicates whether paging should be ignored and all rows should be returned. Defaults to `true`, meaning that by default all requests are paginated, unless `paging=false`.|
+|`skipPaging` **deprecated for removal in version 42 use `paging`**|`Boolean`|`true`&#124;`false`|Indicates whether paging should be ignored and all rows should be returned. Defaults to `false`, meaning that by default all requests are paginated, unless `skipPaging=true`.|
+|`order`|`String`|Comma-separated list of property name and sort direction pairs in format `propName:sortDirection`.<br><br>Example: `createdAt:desc`<br><br>**Note:** `propName` is case sensitive. Valid `sortDirections` are `asc` and `desc`. `sortDirection` is case-insensitive. `sortDirection` defaults to `asc` for properties or UIDs without explicit `sortDirection`.||
 
 > **Caution**
 >
@@ -18752,7 +18799,7 @@ The following endpoint supports standard parameters for pagination.
 
 #### Request parameters for Organisational Unit selection mode { #request-parameters-for-organisational-unit-selection-mode } 
 
-The available organisation unit selection modes are `SELECTED`, `CHILDREN`, `DESCENDANTS`, `ACCESSIBLE`, `CAPTURE` and `ALL`. Each mode is explained in detail in [this section](#webapi_nti_ou_scope).
+The available organisation unit selection modes are `SELECTED`, `CHILDREN`, `DESCENDANTS`, `ACCESSIBLE`, `CAPTURE` and `ALL`. Each mode is explained in detail in [this section](#webapi_nti_orgunit_scope).
 
 #### Request parameter to filter responses { #webapi_nti_field_filter }
 
@@ -18790,25 +18837,29 @@ The endpoint returns a list of tracked entities that match the request parameter
 
 |Request parameter|类型|Allowed values|描述|
 |---|---|---|---|
-|`filter`|`String`|Comma separated values of attribute filters|Narrows response to TEIs matching given filters. A filter is a colon separated property or attribute UID with optional operator and value pairs. Example: `filter=H9IlTX2X6SL:sw:A` with operator starts with `sw` followed by a value. Special characters like `+` need to be percent-encoded so `%2B` instead of `+`. Characters such as `:` (colon) or `,` (comma), as part of the filter value, need to be escaped by `/` (slash). Likewise, `/` needs to be escaped. Multiple operator/value pairs for the same property/attribute like `filter=AuPLng5hLbE:gt:438901703:lt:448901704` are allowed. Repeating the same attribute UID is not allowed. User needs access to the attribute to filter on it.|
-|`orgUnit`|`String`|semicolon-delimited list of organisational unit `UID`|Only return tracked entity instances belonging to provided organisational units|
-|`ouMode` see [ouModes](#webapi_nti_ou_scope)|`String`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|The mode of selecting organisation units, can be. Default is `SELECTED`, which refers to the selected organisation units only.|
-|`program`|`String`|Program `UID`| a Program `UID` for which instances in the response must be enrolled into|
-|`programStatus`|`String`|`ACTIVE`&#124;`COMPLETED`&#124;`CANCELLED`|The ProgramStatus of the Tracked Entity Instance in the given program|
-|`programStage`|`String`|`UID`|a Program Stage `UID` for which instances in the response must have events for|
-|`followUp`|`Boolean`|`true`&#124;`false`|Indicates whether the Tracked Entity Instance is marked for follow up for the specified Program|
-|`updatedAfter`|`DateTime`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | Start date and time for last updated|
-|`updatedBefore`|`DateTime`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | End date and time for last updated|
+|`filter`|`String`|Comma-separated values of attribute filters.|Narrows response to TEIs matching given filters. A filter is a colon separated property or attribute UID with optional operator and value pairs. Example: `filter=H9IlTX2X6SL:sw:A` with operator starts with `sw` followed by a value. Special characters like `+` need to be percent-encoded so `%2B` instead of `+`. Characters such as `:` (colon) or `,` (comma), as part of the filter value, need to be escaped by `/` (slash). Likewise, `/` needs to be escaped. Multiple operator/value pairs for the same property/attribute like `filter=AuPLng5hLbE:gt:438901703:lt:448901704` are allowed. Repeating the same attribute UID is not allowed. User needs access to the attribute to filter on it.|
+|`orgUnits`|`String`|Comma-separated list of organisation unit `UID`s.|Only return tracked entities belonging to provided organisation units|
+|`orgUnit` **deprecated for removal in version 42 use `orgUnits`**|`String`|Semicolon-separated list of organisation units `UID`s.|Only return tracked entities belonging to provided organisation units.|
+|`orgUnitMode` see [orgUnitModes](#webapi_nti_orgunit_scope)|`String`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|The mode of selecting organisation units, can be. Default is `SELECTED`, which refers to the selected organisation units only.|
+|`ouMode` **deprecated for removal in version 42 use `orgUnitMode`** see [orgUnitModes](#webapi_nti_orgunit_scope)|`String`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|The mode of selecting organisation units, can be. Default is `SELECTED`, which refers to the selected organisation units only.|
+|`program`|`String`|Program `UID`|A program `UID` for which tracked entities in the response must be enrolled into.|
+|`programStatus`|`String`|`ACTIVE`&#124;`COMPLETED`&#124;`CANCELLED`|The program status of the tracked entity in the given program.|
+|`programStage`|`String`|`UID`|A program stage `UID` for which tracked entities in the response must have events for.|
+|`followUp`|`Boolean`|`true`&#124;`false`|Indicates whether the tracked entity is marked for follow up for the specified program.|
+|`updatedAfter`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | Start date and time for last updated|
+|`updatedBefore`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | End date and time for last updated|
 |`updatedWithin`|`Duration`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601#Durations) | Returns TEIs not older than specified Duration|
 |`enrollmentEnrolledAfter`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|Start date and time for enrollment in the given program|
 |`enrollmentEnrolledBefore`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|End date and time for enrollment in the given program|
 |`enrollmentOccurredAfter`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|Start date and time and time and time for occurred in the given program|
 |`enrollmentOccurredBefore`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|End date and time and time for occurred in the given program|
-|`trackedEntityType`|`String`|UID of tracked entity type|Only returns Tracked Entity Instances of given type|
-|`trackedEntity`|`String`|semicolon-delimited list of tracked entity instance `UID`|Filter the result down to a limited set of tracked entities using explicit uids of the tracked entity instances by using `trackedEntity=id1;id2`. This parameter will, at the very least, create the outer boundary of the results, forming the list of all tracked entities using the uids provided. If other parameters/filters from this table are used, they will further limit the results from the explicit outer boundary.|
+|`trackedEntityType`|`String`|UID of tracked entity type|Only returns tracked entities of given type.|
+|`trackedEntities`|`String`|Comma-separated list of tracked entity `UID`s.|Filter the result down to a limited set of tracked entities using explicit uids of the tracked entities by using `trackedEntity=id1;id2`. This parameter will, at the very least, create the outer boundary of the results, forming the list of all tracked entities using the uids provided. If other parameters/filters from this table are used, they will further limit the results from the explicit outer boundary.|
+|`trackedEntity` **deprecated for removal in version 42 use `trackedEntities`**|`String`|Semicolon-separated list of tracked entity `UID`s.|Filter the result down to a limited set of tracked entities using explicit uids of the tracked entities by using `trackedEntity=id1;id2`. This parameter will, at the very least, create the outer boundary of the results, forming the list of all tracked entities using the uids provided. If other parameters/filters from this table are used, they will further limit the results from the explicit outer boundary.|
 |`assignedUserMode`|`String`|`CURRENT`&#124;`PROVIDED`&#124;`NONE`&#124;`ANY`|Restricts result to tracked entities with events assigned based on the assigned user selection mode. See table below "Assigned user modes" for explanations. |
-|`assignedUser`|`String`|Semicolon-delimited list of user UIDs to filter based on events assigned to the users.|Filter the result down to a limited set of tracked entities with events that are assigned to the given user IDs by using `assignedUser=id1;id2`.This parameter will only be considered if assignedUserMode is either `PROVIDED` or `null`. The API will error out, if for example, `assignedUserMode=CURRENT` and `assignedUser=someId`|
-|`order`|`String`|comma-delimited list of property name or attribute or UID and sort direction pairs in format `propName:sortDirection`.|Supported values are `trackedEntity, createdAt, createdAtClient, updatedAt, updatedAtClient, enrolledAt, inactive`.|
+|`assignedUsers`|`String`|Comma-separated list of user UIDs to filter based on events assigned to the users.|Filter the result down to a limited set of tracked entities with events that are assigned to the given user IDs by using `assignedUser=id1;id2`.This parameter will only be considered if assignedUserMode is either `PROVIDED` or `null`. The API will error out, if for example, `assignedUserMode=CURRENT` and `assignedUser=someId`|
+|`assignedUser` **deprecated for removal in version 42 use `assignedUsers`**|`String`|Semicolon-separated list of user UIDs to filter based on events assigned to the users.|Filter the result down to a limited set of tracked entities with events that are assigned to the given user IDs by using `assignedUser=id1;id2`.This parameter will only be considered if assignedUserMode is either `PROVIDED` or `null`. The API will error out, if for example, `assignedUserMode=CURRENT` and `assignedUser=someId`|
+|`order`|`String`|Comma-separated list of property name or attribute or UID and sort direction pairs in format `propName:sortDirection`.|Supported values are `trackedEntity, createdAt, createdAtClient, updatedAt, updatedAtClient, enrolledAt, inactive`.|
 |`eventStatus`|`String`|`ACTIVE`&#124;`COMPLETED`&#124;`VISITED`&#124;`SCHEDULE`&#124;`OVERDUE`&#124;`SKIPPED`|Status of any events in the specified program|
 |`eventOccurredAfter`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|Start date and time for Event for the given Program|
 |`eventOccurredBefore`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|End date and time for Event for the given Program|
@@ -18831,7 +18882,7 @@ Table: Assigned user modes
 参数。
 
 - At least one organisation unit must be specified using the `orgUnit`
-  parameter (one or many), or `ouMode=ALL` must be specified.
+  parameter (one or many), or `orgUnitMode=ALL` must be specified.
 
 - Only one of the `program` and `trackedEntity` parameters can be
   指定（零或一）。
@@ -18848,72 +18899,72 @@ Table: Assigned user modes
 
 ##### Example requests { #example-requests } 
 
-查询与特定组织单位关联的所有实例
-看起来像这样：
+A query for all tracked entities associated with a specific organisation unit
+can look like this:
 
-    GET /api/tracker/trackedEntities?orgUnit=DiszpKrYNg8
+    GET /api/tracker/trackedEntities?orgUnits=DiszpKrYNg8
 
-使用一个带有过滤器的属性和一个属性来查询实例
-没有过滤器的属性，一个组织单位使用
-后代组织单位查询方式：
+To query for tracked entities using one attribute with a filter and one
+attribute without a filter, with one organisation unit using the
+descendant organisation unit query mode:
 
     GET /api/tracker/trackedEntities?filter=zHXD5Ve1Efw:EQ:A
-        &attribure=AMpUYgxuCaE&orgUnit=DiszpKrYNg8;yMCshbaVExv
+        &attribute=AMpUYgxuCaE&orgUnits=DiszpKrYNg8,yMCshbaVExv
 
-A query for instances where attributes are included in the response
+A query for tracked entities where attributes are included in the response
 and one attribute is used as a filter:
 
     GET /api/tracker/trackedEntities?filter=zHXD5Ve1Efw:EQ:A
         &filter=AMpUYgxuCaE:LIKE:Road
-        &orgUnit=DiszpKrYNg8
+        &orgUnits=DiszpKrYNg8
 
 为过滤器指定了多个操作数和过滤器的查询
 物品：
 
-    GET /api/tracker/trackedEntities?orgUnit=DiszpKrYNg8
+    GET /api/tracker/trackedEntities?orgUnits=DiszpKrYNg8
         &program=ur1Edk5Oe2n
         &filter=lw1SqmMlnfh:GT:150
         &filter=lw1SqmMlnfh:LT:190
 
 A query filter with a value that needs escaping and will be interpreted as `:,/`:
 
-    GET /api/tracker/trackedEntities?orgUnit=DiszpKrYNg8
+    GET /api/tracker/trackedEntities?orgUnits=DiszpKrYNg8
         &program=ur1Edk5Oe2n
         &filter=lw1SqmMlnfh:EQ:/:/,//
 
 要在 *IN* 过滤器中使用多个值查询属性：
 
-    GET /api/tracker/trackedEntities?orgUnit=DiszpKrYNg8
+    GET /api/tracker/trackedEntities?orgUnits=DiszpKrYNg8
         &filter=dv3nChNSIxy:IN:Scott;Jimmy;Santiago
 
-限制对属于特定事件一部分的实例的响应
-program 你可以包含一个 program 查询参数：
+To constrain the response to tracked entities which are part of a specific
+program you can include a program query parameter:
 
     GET /api/tracker/trackedEntities?filter=zHXD5Ve1Efw:EQ:A
-        &orgUnit=O6uvpzGd5pu&ouMode=DESCENDANTS
+        &orgUnits=O6uvpzGd5pu&orgUnitMode=DESCENDANTS
         &program=ur1Edk5Oe2n
 
 要将程序注册日期指定为查询的一部分，请执行以下操作：
 
     GET /API/tracker/trackedEntities?
-        &orgUnit=O6uvpzGd5pu&program=ur1Edk5Oe2n
+        &orgUnits=O6uvpzGd5pu&program=ur1Edk5Oe2n
         &enrollmentEnrolledAfter=2013-01-01
         &enrollmentEnrolledBefore=2013-09-01
 
-要限制对特定跟踪实体实例的响应，您
-可以包含跟踪实体查询参数：
+To constrain the response to tracked entities of a specific tracked entity you
+can include a tracked entity query parameter:
 
     GET /api/tracker/trackedEntities?filter=zHXD5Ve1Efw:EQ:A
-        &orgUnit=O6uvpzGd5pu
-        &ouMode=DESCENDANTS
+        &orgUnits=O6uvpzGd5pu
+        &orgUnitMode=DESCENDANTS
         &trackedEntity=cyl5vuJ5ETQ
 
-默认情况下，实例以大小为 50 的页面返回，以更改
-您可以使用 page 和 pageSize 查询参数：
+By default the tracked entities are returned in pages of size 50, to change
+this you can use the page and pageSize query parameters:
 
     GET /api/tracker/trackedEntities?filter=zHXD5Ve1Efw:EQ:A
-        &orgUnit=O6uvpzGd5pu
-        &ouMode=DESCENDANTS
+        &orgUnits=O6uvpzGd5pu
+        &orgUnitMode=DESCENDANTS
         &page=2&pageSize=3
 
 您可以使用一系列运算符进行过滤：
@@ -18937,7 +18988,7 @@ Responses can be filtered on desired fields, see [Request parameter to filter re
 
 ```json
 {
-  "instances": [
+  "trackedEntities": [
     {
       "trackedEntity": "IzHblRD2sDH",
       "trackedEntityType": "nEenWmSyUEp",
@@ -18990,13 +19041,13 @@ The purpose of this endpoint is to retrieve one tracked entity given its uid.
 
 |Request parameter|类型|Allowed values|描述|
 |---|---|---|---|
-|`uid`|`String`|`uid`|Return the Tracked Entity Instance with specified `uid`|
+|`uid`|`String`|`uid`|Return the tracked entity with specified `uid`|
 |`program`|`String`|`uid`| Include program attributes in the response (only the ones user has access to) |
 |`fields`|`String`| Any valid field filter (default `*,!relationships,!enrollments,!events,!programOwners`) |Include specified sub-objects in the response|
 
 ##### Example requests { #example-requests } 
 
-A query for a Tracked Entity Instance:
+A query for a tracked entity:
 
     GET /api/tracker/trackedEntities/IzHblRD2sDH?program=ur1Edk5Oe2n&fields=*
 
@@ -19122,9 +19173,10 @@ Returns a list of events based on the provided filters.
 |`filter`|`String`|Comma separated values of data element filters|Narrows response to events matching given filters. A filter is a colon separated property or data element UID with optional operator and value pairs. Example: `filter=fazCI2ygYkq:eq:PASSIVE` with operator starts with `eq` followed by a value. Characters such as `:` (colon) or `,` (comma), as part of the filter value, need to be escaped by `/` (slash). Likewise, `/` needs to be escaped. Multiple operator/value pairs for the same property/data element like `filter=qrur9Dvnyt5:gt:70:lt:80` are allowed. Repeating the same data element UID is not allowed. User needs access to the data element to filter on it.|
 |`filterAttributes`|`String`|Comma separated values of attribute filters|Narrows response to TEIs matching given filters. A filter is a colon separated property or attribute UID with optional operator and value pairs. Example: `filter=H9IlTX2X6SL:sw:A` with operator starts with `sw` followed by a value. Special characters like `+` need to be percent-encoded so `%2B` instead of `+`. Characters such as `:` (colon) or `,` (comma), as part of the filter value, need to be escaped by `/` (slash). Likewise, `/` needs to be escaped. Multiple operator/value pairs for the same property/attribute like `filter=AuPLng5hLbE:gt:438901703:lt:448901704` are allowed. Repeating the same attribute UID is not allowed. User needs access to the attribute to filter on it.|
 |`followUp`|`boolean`| `true`&#124;`false` | Whether event is considered for follow up in program. Defaults to `true`|
-|`trackedEntity`|`String`|`uid`| Identifier of tracked entity instance|
-|`orgUnit`|`String`|`uid`| Identifier of organisation unit|
-|`ouMode` see [ouModes](#webapi_nti_ou_scope)|`String`| `SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`|  Org unit selection mode|
+|`trackedEntity`|`String`|`uid`|Identifier of tracked entity|
+|`orgUnit`|`String`|`uid`|Identifier of organisation unit|
+|`orgUnitMode` see [orgUnitModes](#webapi_nti_orgunit_scope)|`String`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|The mode of selecting organisation units, can be. Default is `SELECTED`, which refers to the selected organisation units only.|
+|`ouMode` **deprecated for removal in version 42 use `orgUnitMode`** see [orgUnitModes](#webapi_nti_orgunit_scope)|`String`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|The mode of selecting organisation units, can be. Default is `SELECTED`, which refers to the selected organisation units only.|
 |`status`|`String`|`ACTIVE`&#124;`COMPLETED`&#124;`VISITED`&#124;`SCHEDULE`&#124;`OVERDUE`&#124;`SKIPPED` | Status of event|
 |`occurredAfter`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | Filter for events which occurred after this date.|
 |`occurredBefore`|`DateTime`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)| Filter for events which occurred up until this date.|
@@ -19143,29 +19195,33 @@ Returns a list of events based on the provided filters.
 |`programIdScheme`|`String`| `UID`&#124;`CODE`&#124;`ATTRIBUTE:{ID}`| Program ID scheme to use for export|
 |`programStageIdScheme`|`String`| `UID`&#124;`CODE`&#124;`ATTRIBUTE:{ID}`| Program Stage ID scheme to use for export|
 |`idScheme`|`string`| `UID`&#124;`CODE`&#124;`ATTRIBUTE:{ID}`| Allows to set id scheme for data element, category option combo, orgUnit, program and program stage at once.|
-|`order`|`String`|comma-delimited list of property name, attribute or data element UID and sort direction pairs in format `propName:sortDirection`.|Supported fields: `assignedUser, assignedUserDisplayName, attributeOptionCombo, completedAt, completedBy, createdAt, createdAtClient, createdBy, deleted, enrolledAt, enrollment, enrollmentStatus, event, followUp, occurredAt, orgUnit, program, programStage, scheduledAt, status, storedBy, trackedEntity, updatedAt, updatedAtClient, updatedBy`.|
-|`event`|`String`|comma-delimited list of `uid`| Filter the result down to a limited set of IDs by using event=id1;id2.|
-|`attributeCc` (see note)|`String`| Attribute category combo identifier (must be combined with attributeCos)|
-|`attributeCos` (see note)|`String`| Attribute category option identifiers, separated with ; (must be combined with attributeCc)|
+|`order`|`String`|Comma-separated list of property name, attribute or data element UID and sort direction pairs in format `propName:sortDirection`.|Supported fields: `assignedUser, assignedUserDisplayName, attributeOptionCombo, completedAt, completedBy, createdAt, createdAtClient, createdBy, deleted, enrolledAt, enrollment, enrollmentStatus, event, followUp, occurredAt, orgUnit, program, programStage, scheduledAt, status, storedBy, trackedEntity, updatedAt, updatedAtClient, updatedBy`.|
+|`events`|`String`|Comma-separated list of event `UID`s.|Filter the result down to a limited set of IDs by using `event=id1,id2`.|
+|`event` **deprecated for removal in version 42 use `events`**|`String`|Semicolon-separated list of `uid`| Filter the result down to a limited set of IDs by using `event=id1;id2`.|
+|`attributeCategoryCombo` (see note)|`String`|Attribute category combo identifier. Must be combined with `attributeCategoryOptions`.|
+|`attributeCc` **deprecated for removal in version 42 use `attributeCategoryCombo`**|`String`|Attribute category combo identifier (must be combined with attributeCos)|
+|`attributeCategoryOptions` (see note)|`String`|Comma-separated attribute category option identifiers. Must be combined with `attributeCategoryCombo`.|
+|`attributeCos` **deprecated for removal in version 42 use `attributeCategoryOptions`**|`String`|Semicolon-separated attribute category option identifiers. Must be combined with `attributeCc`.|
 |`includeDeleted`|`Boolean`| |  When true, soft deleted events will be included in your query result.|
 |`assignedUserMode`|`String`| `CURRENT`&#124;`PROVIDED`&#124;`NONE`&#124;`ANY`| Assigned user selection mode|
-|`assignedUser`|`String`|comma-delimited list od `uid`| Filter the result down to a limited set of events that are assigned to the given user IDs by using `assignedUser=id1;id2`.<br><br>This parameter will be considered only if assignedUserMode is either `PROVIDED` or `null`.<br><br>The API will error out, if for example, `assignedUserMode=CURRENT` and `assignedUser=someId`|
+|`assignedUsers`|`String`|Comma-separated list of user UIDs to filter based on events assigned to the users.|Filter the result down to a limited set of tracked entities with events that are assigned to the given user IDs by using `assignedUser=id1;id2`.This parameter will only be considered if assignedUserMode is either `PROVIDED` or `null`. The API will error out, if for example, `assignedUserMode=CURRENT` and `assignedUser=someId`|
+|`assignedUser` **deprecated for removal in version 42 use `assignedUsers`**|`String`|Semicolon-separated list of user UIDs to filter based on events assigned to the users.|Filter the result down to a limited set of tracked entities with events that are assigned to the given user IDs by using `assignedUser=id1;id2`.This parameter will only be considered if assignedUserMode is either `PROVIDED` or `null`. The API will error out, if for example, `assignedUserMode=CURRENT` and `assignedUser=someId`|
 
 > **Note**
 >
-> If the query contains neither `attributeCC` nor `attributeCos`,
+> If the query contains neither `attributeCategoryOptions` nor `attributeCategoryOptions`,
 > the server returns events for all attribute option combos where the user has read access.
 
 ##### Example requests { #example-requests } 
 
 The query for all events with children of a particular organisation unit:
 
-    GET /api/tracker/events?orgUnit=YuQRtpLP10I&ouMode=CHILDREN
+    GET /api/tracker/events?orgUnit=YuQRtpLP10I&orgUnitMode=CHILDREN
 
 The query for all events with all descendants of a particular organisation
 unit, implying all organisation units in the sub-hierarchy:
 
-    GET /api/tracker/events?orgUnit=O6uvpzGd5pu&ouMode=DESCENDANTS
+    GET /api/tracker/events?orgUnit=O6uvpzGd5pu&orgUnitMode=DESCENDANTS
 
 使用特定程序和组织单位查询所有事件：
 
@@ -19183,8 +19239,8 @@ and organisation unit - by paging and ordering by occurred date descending:
     GET /api/tracker/events?orgUnit=DiszpKrYNg8&program=eBAyeGv0exc
       &order=occurredAt:desc&pageSize=10&page=1
 
-查询具有特定节目和组织单位的所有事件
-特定的跟踪实体实例：
+Query for all events with a certain program and organisation unit for a
+specific tracked entity:
 
     GET /api/tracker/events?orgUnit=DiszpKrYNg8
       &program=eBAyeGv0exc&trackedEntity=gfVxE3ALA9m
@@ -19195,8 +19251,8 @@ and organisation unit - by paging and ordering by occurred date descending:
 
     GET /api/tracker/events?orgUnit=DiszpKrYNg8&program=eBAyeGv0exc&endDate=2014-02-03
 
-查询具有一定节目阶段、组织单位和
-2014年被跟踪实体实例：
+Query for all events with a certain program stage, organisation unit and
+tracked entity in the year 2014:
 
     GET /api/tracker/events?orgUnit=DiszpKrYNg8&program=eBAyeGv0exc
       &trackedEntity=gfVxE3ALA9m&occurredAfter=2014-01-01&occurredBefore=2014-12-31
@@ -19232,7 +19288,7 @@ The `JSON` response can look like the following.
 
 ```json
 {
-    "instances": [
+    "trackedEntities": [
         {
             "event": "rgWr86qs0sI",
             "status": "ACTIVE",
@@ -19241,7 +19297,7 @@ The `JSON` response can look like the following.
             "orgUnit": "DiszpKrYNg8",
             "relationships": [],
             "occurredAt": "2021-10-12T00:00:00.000",
-            "followup": false,
+            "followUp": false,
             "deleted": false,
             "createdAt": "2018-10-20T12:09:19.492",
             "updatedAt": "2018-10-20T12:09:19.492",
@@ -19307,7 +19363,7 @@ A query for an Event:
   "orgUnit": "DiszpKrYNg8",
   "relationships": [],
   "occurredAt": "2021-10-12T00:00:00.000",
-  "followup": false,
+  "followUp": false,
   "deleted": false,
   "createdAt": "2018-10-20T12:09:19.492",
   "createdAtClient": "2017-10-20T12:09:19.492",
@@ -19391,25 +19447,28 @@ Returns a list of events based on filters.
 
 |Request parameter|类型|Allowed values|描述|
 |---|---|---|---|
-|`orgUnit`|`String`|`uid`| Identifier of organisation unit|
-|`ouMode` see [ouModes](#webapi_nti_ou_scope)|`String`| `SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL| Org unit selection mode|
+|`orgUnits`|`String`|Comma-separated list of organisation unit `UID`s.|Only return enrollments belonging to provided organisation units.|
+|`orgUnit` **deprecated for removal in version 42 use `orgUnits`**|`String`|Semicolon-separated list of organisation units `UID`s.|Only return enrollments belonging to provided organisation units.|
+|`orgUnitMode` see [orgUnitModes](#webapi_nti_orgunit_scope)|`String`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|The mode of selecting organisation units, can be. Default is `SELECTED`, which refers to the selected organisation units only.|
+|`ouMode` **deprecated for removal in version 42 use `orgUnitMode`** see [orgUnitModes](#webapi_nti_orgunit_scope)|`String`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|The mode of selecting organisation units, can be. Default is `SELECTED`, which refers to the selected organisation units only.|
 |`program`|`String`|`uid`| Identifier of program|
 |`programStatus`|`enum`| `ACTIVE`&#124;`COMPLETED`&#124;`CANCELLED`| Program Status |
-|`followUp`|`boolean`| `true`&#124;`false` | 跟踪给定程序的实例状态。可以是 `true`&#124;`false` 或省略。|
+|`followUp`|`boolean`| `true`&#124;`false` | Follow up status of the tracked entity for the given program. Can be `true`&#124;`false` or omitted.|
 |`updatedAfter`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | Only enrollments updated after this date|
 |`updatedWithin`|`Duration`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)| Only enrollments updated since given duration |
 |`enrolledAfter`|`DateTime`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|  Only enrollments newer than this date|
 |`enrolledBefore`|`DateTime`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)| Only enrollments older than this date|
 |`trackedEntityType`|`String`|`uid`| Identifier of tracked entity type|
-|`trackedEntity`|`String`|`uid`| Identifier of tracked entity instance|
-|`order`|`String`|comma-delimited list of property name or attribute or UID and sort direction pairs in format `propName:sortDirection`.|Supported fields: `completedAt, createdAt, createdAtClient, enrolledAt, updatedAt, updatedAtClient`.|
-|`enrollment`|`String`|Comma-delimited list of `uid`| Filter the result down to a limited set of IDs by using enrollment=id1;id2.|
-|`includeDeleted`|`Boolean`| |  When true, soft deleted events will be included in your query result.|
+|`trackedEntity`|`String`|`uid`| Identifier of tracked entity|
+|`order`|`String`|Comma-separated list of property name or attribute or UID and sort direction pairs in format `propName:sortDirection`.|Supported fields: `completedAt, createdAt, createdAtClient, enrolledAt, updatedAt, updatedAtClient`.|
+|`enrollments`|`String`|Comma-separated list of enrollment `UID`s.|Filter the result down to a limited set of IDs by using `enrollments=id1,id2`.|
+|`enrollment` **deprecated for removal in version 42 use `enrollments`**|`String`|Semicolon-separated list of `uid`|Filter the result down to a limited set of IDs by using `enrollment=id1;id2`.|
+|`includeDeleted`|`Boolean`| |When true, soft deleted events will be included in your query result.|
 
 The query is case-insensitive. The following rules apply to the query parameters.
 
 - At least one organisation unit must be specified using the `orgUnit`
-  参数（一个或多个）或 *ouMode=ALL* 必须指定。
+  parameter (one or many), or *orgUnitMode=ALL* must be specified.
 
 - 只能使用 *program* 和 *trackedEntity* 参数之一
   指定（零或一）。
@@ -19426,32 +19485,28 @@ The query is case-insensitive. The following rules apply to the query parameters
 查询与特定组织单位关联的所有注册
 看起来像这样：
 
-    GET /api/tracker/enrollments?orgUnit=DiszpKrYNg8
+    GET /api/tracker/enrollments?orgUnits=DiszpKrYNg8
 
-限制对作为特定活动一部分的注册的响应
-程序，您可以包含程序查询
-    范围：
+To constrain the response to enrollments which are part of a specific program you can include a
+program query parameter:
 
-    GET /api/tracker/enrollments?orgUnit=O6uvpzGd5pu&ouMode=DESCENDANTS&program=ur1Edk5Oe2n
+    GET /api/tracker/enrollments?orgUnits=O6uvpzGd5pu&orgUnitMode=DESCENDANTS&program=ur1Edk5Oe2n
 
 要将程序注册日期指定为查询的一部分，请执行以下操作：
 
-    GET /api/tracker/enrollments?&orgUnit=O6uvpzGd5pu&program=ur1Edk5Oe2n
+    GET /api/tracker/enrollments?&orgUnits=O6uvpzGd5pu&program=ur1Edk5Oe2n
       &enrolledAfter=2013-01-01&enrolledBefore=2013-09-01
 
-限制对特定被跟踪实体的注册的响应
-您可以包含跟踪实体查询
-    范围：
+To constrain the response to enrollments of a specific tracked entity you can include a tracked
+entity query parameter:
 
-    GET /api/tracker/enrollments?orgUnit=O6uvpzGd5pu&ouMode=DESCENDANTS&trackedEntity=cyl5vuJ5ETQ
+    GET /api/tracker/enrollments?orgUnits=O6uvpzGd5pu&orgUnitMode=DESCENDANTS&trackedEntity=cyl5vuJ5ETQ
 
-To constrain the response to enrollments of a specific tracked entity
-you can include a tracked entity instance query parameter, in
-In this case, we have restricted it to available enrollments viewable for
-current
-user:
+To constrain the response to enrollments of a specific tracked entity you can include a tracked
+entity query parameter, in In this case, we have restricted it to available enrollments viewable for
+current user:
 
-    GET /API/tracker/enrollments?ouMode=ACCESSIBLE&trackedEntity=tphfdyIiVL6
+    GET /API/tracker/enrollments?orgUnitMode=ACCESSIBLE&trackedEntity=tphfdyIiVL6
 
 ##### 回应格式 { #response-format } 
 
@@ -19459,7 +19514,7 @@ The `JSON` response can look like the following.
 
 ```json
 {
-  "instances": [
+  "trackedEntities": [
     {
       "enrollment": "iKaBMOyq7QQ",
       "createdAt": "2017-03-28T12:28:19.812",
@@ -19532,7 +19587,7 @@ A query for a Enrollment:
 ### Relationships (`GET /api/tracker/relationships`) { #relationships-get-apitrackerrelationships } 
 
 Relationships are links between two entities in the Tracker.
-These entities can be tracked entity instances, enrollments, and events.
+These entities can be tracked entities, enrollments, and events.
 
 The purpose of this endpoint is to retrieve relationships between objects.
 
@@ -19544,11 +19599,11 @@ Unlike other tracked objects endpoints, relationships only expose one endpoint:
 
 |Request parameter|类型|Allowed values|描述|
 |---|---|---|---|
-|`trackedEntity`|`String`|`uid`| Identifier of a Tracked Entity Instance|
-|`enrollment`|`String`|`uid`| Identifier of an Enrollment |
-|`event`|`String`|`uid`| Identifier of an Event|
-|`fields`|`String`| Any valid field filter (default `relationship,relationshipType,createdAtClient,from[trackedEntity[trackedEntity],enrollment[enrollment],event[event]],to[trackedEntity[trackedEntity],enrollment[enrollment],event[event]]`) |Include specified sub-objects in the response|
-|`order`|`String`|comma-delimited list of `OrderCriteria` in the in format `propName:sortDirection`.|Supported fields: `created, createdAtClient`.|
+|`trackedEntity`|`String`|`uid`|Identifier of a tracked entity|
+|`enrollment`|`String`|`uid`|Identifier of an Enrollment |
+|`event`|`String`|`uid`|Identifier of an Event|
+|`fields`|`String`|Any valid field filter (default `relationship,relationshipType,createdAtClient,from[trackedEntity[trackedEntity],enrollment[enrollment],event[event]],to[trackedEntity[trackedEntity],enrollment[enrollment],event[event]]`) |Include specified sub-objects in the response|
+|`order`|`String`|Comma-separated list of `OrderCriteria` in the in format `propName:sortDirection`.|Supported fields: `created, createdAtClient`.|
 |`includeDeleted`|`Boolean`|`true`&#124;`false`| whether to include soft-deleted elements in your query result|
 
 The following rules apply to the query parameters.
@@ -19565,7 +19620,7 @@ The following rules apply to the query parameters.
 
 ```json
 {
-  "instances": [
+  "trackedEntities": [
     {
       "relationship": "SSfIicJKbh5",
       "relationshipType": "Mv8R4MPcNcX",
@@ -19621,15 +19676,15 @@ In summary, DHIS2 has a fine-grained sharing setting that we can use to implemen
 
 For more detailed information about data sharing, check out [Data sharing](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/about-sharing-of-objects.html#data-sharing-for-event-based-programs).
 
-### Organisation Unit Scopes { #webapi_nti_ou_scope }
+### Organisation Unit Scopes { #webapi_nti_orgunit_scope }
 
 Organisation units are one of the most fundamental objects in DHIS2. They define a universe under which a user is allowed to record and/or read data. There are three types of organisation units that can be assigned to a user. These are data capture, data view (not used in tracker), and tracker search. As the name implies, these organisation units define a scope under which a user is allowed to conduct the respective operations.
 
 However, to further fine-tune the scope, DHIS2 Tracker introduces a concept that we call **OrganisationUnitSelectionMode**. Such a mode is often used at the time exporting tracker objects. For example, given that a user has a particular tracker search scope, does it mean that we have to use this scope every time a user tries to search for a tracker, Enrollment, or Event object? Or is the user interested in limiting the searching just to the selected org unit, or the entire capture org unit scope, and so on.
 
-Users can do the fine-tuning by passing a specific value of ouMode in their API request:
+Users can do the fine-tuning by passing a specific value of `orgUnitMode` in their API request:
 
-*api/tracker/trackedEntities?orgUnit=UID&ouMode=specific_organisation_unit_selection_mode*
+*api/tracker/trackedEntities?orgUnit=UID&orgUnitMode=specific_organisation_unit_selection_mode*
 
 Currently, there are six selection modes available: *SELECTED, CHILDREN, DESCENDANTS, CAPTURE, ACCESSIBLE, and ALL*.
 
@@ -19699,21 +19754,29 @@ These access levels are only triggered when users try to interact with program d
 4.  Closed: This is the most restricted access level. Data recorded under programs configured with access level CLOSED will not be accessible if the Owner Organisation Unit does not fall within the user's capture scope. It is also not possible to break the glass or gain temporary ownership in this configuration. Note that it is still possible to transfer the ownership to another organisation unit. Only a user who has access to the data can transfer the ownership of a TrackedEntity-Program combination to another Organisation Unit. If ownership is transferred, the Owner Organisation Unit is updated.
 
 
+
 # Tracker (deprecated APIs) { #tracker-deprecated-apis } 
 
-> **Note**
->Tracker has been re-implemented in DHIS2 2.36. The new endpoints are documented at
->[Tracker](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker.html).
+> **Caution**
 >
->The endpoints described in this document are in maintenance mode and do not receive any new
->features. Important bugs will still be fixed.
+> Tracker has been re-implemented in DHIS2 2.36. The new endpoints are documented at
+> [Tracker](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker.html).
 >
->* If you plan to use the tracker endpoints use the new version described in
->  [Tracker](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker.html)
->* If you are still using the deprecated tracker endpoints in production, please plan to migrate
->  over to the new endpoints. [Migrating to new tracker endpoints](#webapi_tracker_migration) should
->  help you get started. Reach out on the [community of practice](https://community.dhis2.org) if
->  you need further assistance.
+> Endpoints
+>
+> * `GET/POST/PUT/DELETE /api/trackedEntityInstance`
+> * `GET/POST/PUT/DELETE /api/enrollments`
+> * `GET/POST/PUT/DELETE /api/events`
+> * `GET/POST/PUT/DELETE /api/relationships`
+>
+> will be removed in version **42**!
+>
+> * If you plan to use the tracker endpoints use the new endpoints described in
+>   [Tracker](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker.html)
+> * If you are still using the deprecated tracker endpoints in production, please migrate over to the
+>   new endpoints. [Migrating to new tracker endpoints](#webapi_tracker_migration) should help you
+>   get started. Reach out on the [community of practice](https://community.dhis2.org) if you need
+>   further assistance.
 
 ## Migrating to new tracker endpoints { #webapi_tracker_migration }
 
@@ -19727,9 +19790,9 @@ The following sections highlight the important differences between the deprecate
 and the newly introduced endpoints
 
 * `POST /api/tracker`
+* `GET  /api/tracker/trackedEntities`
 * `GET  /api/tracker/enrollments`
 * `GET  /api/tracker/events`
-* `GET  /api/tracker/trackedEntities`
 * `GET  /api/tracker/relationships`
 
 ### Property names { #webapi_tracker_migration_names }

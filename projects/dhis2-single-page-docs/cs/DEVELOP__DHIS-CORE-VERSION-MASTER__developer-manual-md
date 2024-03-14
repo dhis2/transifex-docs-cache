@@ -1,8 +1,8 @@
 ---
-revision_date: '2024-03-12'
+revision_date: '2024-03-13'
 tags:
-- Hlavní verze jádra DHIS
 - Vývoj
+- Hlavní verze jádra DHIS
 template: single.html
 ---
 
@@ -1144,6 +1144,8 @@ for _data elements_ is:
 
     /api/dataElements
 
+> **_NOTE:_**  When updating objects, all existing property values will be overwritten, even if the new value is null. Please use [JSON Patch API](#webapi_partial_updates) in case you want do partial update to an object.
+
 ### Vytvořit / aktualizovat parametry { #webapi_metadata_create_update } 
 
 Následující parametry dotazu na dotaz jsou k dispozici ve všech koncových bodech metadat.
@@ -1154,7 +1156,6 @@ Tabulka: Dostupné filtry dotazů
 |---|---|---|---|---|
 | preheatCache | boolean | false | true &#124; false | Zapněte/vypněte předehřívání mapy mezipaměti. Toto je ve výchozím nastavení zapnuto. Vypnutím této možnosti se počáteční doba načítání importéru výrazně zkrátí (ale zpomalí se samotný import). To se většinou používá pro případy, kdy máte malý soubor XML/JSON, který chcete importovat, a nechcete čekat na předehřívání mapy mezipaměti. |
 | importStrategy | enum | false | CREATE_AND_UPDATE &#124; CREATE &#124; UPDATE &#124; DELETE | Chcete -li použít strategii importu, další informace naleznete níže. |
-| mergeMode | enum | false | REPLACE, MERGE | Strategie pro slučování objektů při provádění aktualizací. REPLACE pouze přepíše vlastnost novou poskytnutou hodnotou, MERGE nastaví vlastnost pouze v případě, že není null (pouze pokud byla vlastnost poskytnuta). |
 
 ### Vytváření a aktualizace objektů { #webapi_creating_updating_objects } 
 
@@ -1650,7 +1651,6 @@ Tabulka: Parametr importu
 | preheatMode | REFERENCE, ALL, NONE | Sets the preheater mode, used to signal if preheating should be done for `ALL` (as it was before with *preheatCache=true*) or do a more intelligent scan of the objects to see what to preheat (now the default), setting this to `NONE` is not recommended. |
 | importStrategy | CREATE_AND_UPDATE, CREATE, UPDATE, DELETE | Nastaví strategii importu, `CREATE_AND_UPDATE` se pokusí najít shodu s identifikátorem, pokud neexistuje, vytvoří objekt. |
 | atomicMode | ALL, NONE | Sets atomic mode, in the old importer we always did a *best effort* import, which means that even if some references did not exist, we would still import (i.e. missing data elements on a data element group import). Default for new importer is to not allow this, and similar reject any validation errors. Setting the `NONE` mode emulated the old behavior. |
-| ~~mergeMode~~ | ~~REPLACE, MERGE~~ | ~~Sets the merge mode, when doing updates we have two ways of merging the old object with the new one, `MERGE` mode will only overwrite the old property if the new one is not-null, for `REPLACE` mode all properties are overwritten regardless of null or not.~~ (*) |
 | flushMode | AUTO, OBJECT | Sets the flush mode, which controls when to flush the internal cache. It is *strongly* recommended to keep this to `AUTO` (which is the default). Only use `OBJECT` for debugging purposes, where you are seeing hibernate exceptions and want to pinpoint the exact place where the stack happens (hibernate will only throw when flushing, so it can be hard to know which object had issues). | 
 | skipSharing | false, true | Přeskočit vlastnosti sdílení, nesloučit sdílení při provádění aktualizací a nepřidávat přístup ke skupině uživatelů při vytváření nových objektů. |
 | skipValidation | false, true | Přeskočit ověření pro import. `NOT RECOMMENDED`. |
@@ -1659,7 +1659,7 @@ Tabulka: Parametr importu
 | userOverrideMode | NONE, CURRENT, SELECTED | Umožňuje přepsat uživatelskou vlastnost každého objektu, který importujete, možnosti jsou NONE (nedělat nic), CURRENT (použít importovaného uživatele), SELECTED (vybrat konkrétního uživatele pomocí overrideUser=X) |
 | overrideUser | User ID | Pokud je userOverrideMode SELECTED, použijte tento parametr k výběru uživatele, u kterého chcete přepsat. |
 
-> (*) Currently the `mergeMode=MERGE` option of the import service has limitations and doesn't support all objects. It doesn't work with some object types such as Embedded objects, or objects which are saved as JSONB format in database ( sharing, attributeValues, etc...). Fixing those issues are complicated and would just cause new issues. Therefore, this `mergedMode=MERGE` is deprecated and currently is not recommended to use. The update mode should always be mergedMode=REPLACE. We have developed a new [JSON Patch API](#webapi_partial_updates) which can be used as an alternative approach. This feature is introduced in 2.37 release.
+> **NOTE** When updating objects, all property values will be overwritten even if the new values are `null`. Please use [JSON Patch API](#webapi_partial_updates) in case you want do partial update to an object.
 
 
 An example of a metadata payload to be imported looks like this. Note how
@@ -1714,7 +1714,6 @@ ignored:
     "preheatMode": "REFERENCE",
     "importStrategy": "CREATE_AND_UPDATE",
     "atomicMode": "ALL",
-    "mergeMode": "REPLACE",
     "flushMode": "AUTO",
     "skipSharing": false,
     "skipTranslation": false,
@@ -4451,6 +4450,8 @@ Známé rozdíly:
 * Gist offers using attribute UIDs as field and filter property names to allow
   listing or filtering based on custom attribute values
 * Gist nabízí seskupení filtrů
+* Gist offers renaming the enrty list in a paged response using `pageListName`
+* Gist offers to pluck multiple simple properties
 
 Známá omezení:
 
@@ -4461,7 +4462,7 @@ Známá omezení:
 * řazení lze použít pouze na trvalá pole
 * filtry tokenů nejsou k dispozici
 * pořadí vždy rozlišuje velká a malá písmena
-* transformátor `pluck` je omezen na vlastnosti textu
+* `pluck` transformer limited to text properties (or simple properties for multi-pluck)
 * fields which hold collections of simple (non-identifiable) items cannot always
   be included depending on how they are stored
 
@@ -4511,21 +4512,22 @@ ignored.
 ### Přehled { #overview } 
 Parametry v abecedním pořadí:
 
-| Parametr      | Možnosti               |  Výchozí     | Popis          |
-| -------------- | --------------------- | ------------ | ---------------------|
-| `absoluteUrls` | `true` nebo `false`     | `false`      | `true` používá v odkazech relativní cesty, `false` používá v odkazech absolutní URL |
-| `auto`         | `XS`, `S`, `M`, `L`, `XL` | (závislé na kontextu) | rozsah polí vybraných voličem polí `*` |
-| `fields`       | (závisí na koncovém bodu) | `*`          | čárkou oddělený seznam polí nebo předvoleb, které chcete zahrnout |
-| `filter`       | `<field>:<operator>` nebo `<field>:<operator>:<value>` |   | čárkami oddělený seznam filtrů pole dotazu (lze použít více než jednou) |
-| `headless`     | `true` nebo `false`     | `false`      | `true` přeskočí wrapping na pager (ignoruje `total`), `false` použije wrapper objekt pageru kolem seznamu výsledků |
-| `inverse`      | `true` nebo `false`     | `false`      | `true` vrací položky které **nejsou** v seznamu,` false` vrací položky v seznamu |
+| Parametr      | Možnosti               | Výchozí                            | Popis          |
+| -------------- | --------------------- |------------------------------------| ---------------------|
+| `absoluteUrls` | `true` nebo `false`     | `false`                            | `true` používá v odkazech relativní cesty, `false` používá v odkazech absolutní URL |
+| `auto`         | `XS`, `S`, `M`, `L`, `XL` | (závislé na kontextu)                | rozsah polí vybraných voličem polí `*` |
+| `fields`       | (závisí na koncovém bodu) | `*`                                | čárkou oddělený seznam polí nebo předvoleb, které chcete zahrnout |
+| `filter`       | `<field>:<operator>` nebo `<field>:<operator>:<value>` |                                    | čárkami oddělený seznam filtrů pole dotazu (lze použít více než jednou) |
+| `headless`     | `true` nebo `false`     | `false`                            | `true` přeskočí wrapping na pager (ignoruje `total`), `false` použije wrapper objekt pageru kolem seznamu výsledků |
+| `inverse`      | `true` nebo `false`     | `false`                            | `true` vrací položky které **nejsou** v seznamu,` false` vrací položky v seznamu |
 | `locale`       |                       | (jazyk konfigurovaný uživatelským účtem) | přepsat jazyk překladu |
-| `order`        | `<field>` or  `<field>:asc` or `<field>:desc` | `:asc` | čárkami oddělený seznam polí pořadí dotazů (lze použít více než jednou) |
-| `page`         | 1-n                   | 1            | číslo stránky |
-| `pageSize`     | 1-1000                | 50           | počet položek na stránce |
-| `rootJunction` | `AND` nebo `OR`         | `AND`        | logická kombinace `filter` `AND`= všechny se musí shodovat, `OR` = alespoň jeden se musí shodovat |
-| `total`        | `true` nebo `false`     | `false`      | `true` přidat celkový počet shod na pager,` false` přeskočit počítání celkového počtu shod |
-| `translate`    | `true` nebo `false`     | `true`       | `true` přeložit všechny přeložitelné vlastnosti, `false` přeskočit překlad přeložitelných vlastností (žádný vliv na syntetické zobrazované názvy) |
+| `order`        | `<field>` or  `<field>:asc` or `<field>:desc` | `:asc`                             | čárkami oddělený seznam polí pořadí dotazů (lze použít více než jednou) |
+| `page`         | 1-n                   | 1                                  | číslo stránky |
+| `pageSize`     | 1-1000                | 50                                 | počet položek na stránce |
+| `pageListName` | `<text>` | (object type plural) | overrides the property name of the result entry list | 
+| `rootJunction` | `AND` nebo `OR`         | `AND`                              | logická kombinace `filter` `AND`= všechny se musí shodovat, `OR` = alespoň jeden se musí shodovat |
+| `total`        | `true` nebo `false`     | `false`                            | `true` přidat celkový počet shod na pager,` false` přeskočit počítání celkového počtu shod |
+| `translate`    | `true` nebo `false`     | `true`                             | `true` přeložit všechny přeložitelné vlastnosti, `false` přeskočit překlad přeložitelných vlastností (žádný vliv na syntetické zobrazované názvy) |
 
 
 ### Parametr `absoluteUrls` { #gist_parameters_absoluteUrls } 
@@ -4961,6 +4963,25 @@ used between filters. Possible are:
 Výchozí hodnota je `AND`.
 
 
+### The `pageListName` Parameter { #gist_parameters_pageListName }
+<!--DHIS2-SECTION-ID:gist_parameters_pageListName-->
+The array property in a paged response that contains the matching entry list is 
+named  after the object type contained in the list. 
+For `/api/organisationUnits/gist` it would be named `organisationUnits`.
+
+This default naming can be customized using the `pageListName` parameter.
+For example, `/api/organisationUnits/gist?pageListName=matches` returns a
+response root object with the format:
+
+```json
+{
+  "pager": {},
+  "matches": []
+}
+```
+(details of the pager and matches are omitted here)
+
+
 ### The `total` Parameter { #gist_parameters_total } 
 <!--DHIS2-SECTION-ID:gist_parameters_total-->
 
@@ -5071,18 +5092,18 @@ any of the indicators `::`, `~` or `@` followed by the transformer expression.
 
 Dostupné výrazy transformátoru jsou:
 
-| Transformátor        | Typ výsledku JSON    | Popis                       |
-| ------------------ | ------------------- | --------------------------------- |
-| `rename(<name>)`   | -                   | přejmenuje pole v odpovědi na `<name>` |
-| `size`             | `number`            | počet položek v poli sbírky |
-| `isEmpty`          | `boolean`           | prázdnota sběrného pole   |
-| `isNotEmpty`       | `boolean`           | nevyprázdnění sběrného pole |
-| `ids`              | `string` or `[string]` | ID objektu nebo ID předmětů sběru |
-| `id-objects`       | `[{ "id": <id> }]`  | ID předmětů sběru jako objektu |
-| `member(<id>)`     | `boolean`           | má člena s `<id>` pro pole sběru |
-| `not-member(<id>)` | `boolean`           | nemá člena s `<id>` pro pole sběru |
-| `pluck(<field>)`   | `string` or `[string]` | extrahovat jedinou textovou vlastnost objektu nebo každé položky kolekce |
-| `from(<field>,...)`| záleží na typu bean | extrahuje neperzistentní pole z jednoho nebo více trvalých |
+| Transformátor          | Typ výsledku JSON       | Popis                                                                                           |
+|----------------------|------------------------|-------------------------------------------------------------------------------------------------------|
+| `rename(<name>)`     | -                      | přejmenuje pole v odpovědi na `<name>`                                                         |
+| `size`               | `number`               | počet položek v poli sbírky                                                               |
+| `isEmpty`            | `boolean`              | prázdnota sběrného pole                                                                       |
+| `isNotEmpty`         | `boolean`              | nevyprázdnění sběrného pole                                                                   |
+| `ids`                | `string` or `[string]` | ID objektu nebo ID předmětů sběru                                                            |
+| `id-objects`         | `[{ "id": <id> }]`     | ID předmětů sběru jako objektu                                                                     |
+| `member(<id>)`       | `boolean`              | má člena s `<id>` pro pole sběru                                                           |
+| `not-member(<id>)`   | `boolean`              | nemá člena s `<id>` pro pole sběru                                                       |
+| `pluck(<field>,...)` | `string` or `[string]` | extract single text property or multiple simple properties from the object or of each collection item |
+| `from(<field>,...)`  | záleží na typu bean   | extrahuje neperzistentní pole z jednoho nebo více trvalých                                      |
 
 A field can receive both the `rename` transformer and one of the other 
 transformers, for example:
@@ -6956,6 +6977,18 @@ Additional results can be filtered using a `section` parameter.
 
 The `section` filter will return all exact matches which have the specified section. 
 
+Furthermore, to filter (select) only checks marked as `isSlow` use `slow=true`,
+
+    GET /api/dataIntegrity?slow=true
+
+or to filter (select) only checks that are not performed via database query 
+(programmed checks) use `programmatic=true`:
+
+    GET /api/dataIntegrity?programmatic=true
+
+The `slow`, `programmatic` and `section` filters can be combined in which case
+all conditions must be met.
+
 ### Running data integrity summaries { #webapi_data_integrity_run_summary }
 
 Since version 2.38, data integrity checks have two levels of specificity: 
@@ -7145,6 +7178,14 @@ already completed details checks can be obtained using:
 
 Users of DHIS2 can now create and supply their own Data Integrity Checks. This can be useful if users
 want to avail of this functionality and extend upon the supplied set of core data integrity checks.
+
+> **Tip**
+> 
+> Users are also encouraged to share their custom checks with others by opening a pull request in the 
+> [dhis2-core](https://github.com/dhis2/dhis2-core) repository containing their `.yaml` file(s).
+> Please select `platform-backend` as reviewer to put the PR on our radar early on. The team will 
+> take care of checking and linking the check correctly, so it becomes part of the provided suite of 
+> checks with the next release. 
 
 An example of a custom check could be for determining if certain users are members of specific user groups.
 This type of check would be very specific to an implementation, and not generally applicable across all installs.
@@ -7441,6 +7482,7 @@ Tabulka: Parametry dotazu na registraci kompletní datové sady
 | cc | Ne (nutno kombinovat s cp) | Kombinovaný identifikátor atributů (pro kontrolu uzamčení) |
 | cp | Ne (nutno kombinovat s cp) | Identifikátory možností atributů oddělené ; pro více hodnot (pro kontrolu uzamčení) |
 | multiOu | Ne (výchozí hodnota false) | Zda se registrace vztahuje na dílčí jednotky |
+
 
 
 # Schválení dat { #data-approval } 
@@ -8504,6 +8546,9 @@ To update an existing queue CRON expression or sequence use a PUT request
 
 The payload has to state both new CRON expression and job sequence like in 
 the example above to create a new queue.
+
+To rename a queue the new name can be stated in the payload, while the old name 
+is used in the URL path.  
 
 ### Delete a Job Queue { #queues-delete }
 To delete a job queue send a DELETE request to its resource URL:
@@ -11237,6 +11282,7 @@ representations are listed below.
     /api/reports/OeJsA6K1Otx/data.pdf?date=2014-01-01
 
 
+
 # Analytika { #analytics } 
 
 ## Analytika { #webapi_analytics } 
@@ -11377,7 +11423,8 @@ order is:
 DHIS2 features a multi-dimensional data model with several fixed and
 dynamic data dimensions. The fixed dimensions are the data element,
 period (time) and organisation unit dimension. You can dynamically add
-dimensions through categories, data element group sets and organisation
+dimensions through categories, category option group sets, 
+organisation unit group sets, data element group sets and organisation
 unit group sets. The table below displays the available data dimensions
 in DHIS2. Each data dimension has a corresponding *dimension
 identifier*, and each dimension can have a set of *dimension items*:
@@ -13611,7 +13658,6 @@ A successful save operation returns an HTTP status code 201. The table
 below shows the supported types of events.
 
 
-
 Tabulka: Podporované typy událostí
 
 | Klíč | Popis |
@@ -13654,7 +13700,6 @@ API query that creates a query for a monthly
 ### Načíst hlavní oblíbené položky { #webapi_usage_analytics_top_favorites } 
 
 Rozhraní API pro analýzu využití vám umožňuje načíst nejoblíbenější oblíbené položky používané v DHIS2 a podle uživatele.
-
 
 
 Tabulka: Parametry dotazu na oblíbené položky
@@ -13764,7 +13809,9 @@ Odpověď JSON vypadá takto:
 ]
 ```
 
-### Načíst statistiky oblíbené položky { #webapi_usage_analytics_retrieve_favorite_statistics } 
+Note that the number of `activeUsers` indicates the number of distinct users who had any events during the requested time period. The number of `users` represents the total number of users in the system (both enabled and disabled).
+
+### Načíst statistiky oblíbené položky { #webapi_usage_analytics_retrieve_favorite_statistics }
 
 You can retrieve the number of view for a specific favorite by using the
 *favorites* resource, where *{favorite-id}* should be substituted with
@@ -15008,7 +15055,6 @@ Odpověď bude vypadat podobně jako tato:
     "dryRun": false,
     "async": true,
     "importStrategy": "CREATE_AND_UPDATE",
-    "mergeMode": "REPLACE",
     "reportMode": "FULL",
     "skipExistingCheck": false,
     "sharing": false,
@@ -16858,6 +16904,7 @@ what permissions they have at each level:
     /api/me/dataApprovalWorkflows
 
 
+
 # Nastavení a konfigurace { #settings-and-configuration } 
 
 ## Nastavení systému { #webapi_system_settings } 
@@ -17417,29 +17464,31 @@ Chcete-li odstranit obsah JavaScriptu, můžete použít požadavek DELETE.
 
 # Trasovač { #tracker } 
 
-> **Note**
->Tracker has been re-implemented in DHIS2 2.36. This document describes the new tracker endpoints
+> **Caution**
+>
+> Tracker has been re-implemented in DHIS2 2.36. This document describes the new tracker endpoints
 >
 > * `POST /api/tracker`
+> * `GET  /api/tracker/trackedEntities`
 > * `GET  /api/tracker/enrollments`
 > * `GET  /api/tracker/events`
-> * `GET  /api/tracker/trackedEntities`
 > * `GET  /api/tracker/relationships`
 >
->[Tracker
->(deprecated)](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker-deprecated.html)
->describes the deprecated endpoints
+> [Tracker
+> (deprecated)](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker-deprecated.html)
+> describes the deprecated endpoints
 >
 > * `GET/POST/PUT/DELETE /api/trackedEntityInstance`
 > * `GET/POST/PUT/DELETE /api/enrollments`
 > * `GET/POST/PUT/DELETE /api/events`
 > * `GET/POST/PUT/DELETE /api/relationships`
 >
->* If your are still using the deprecated tracker endpoints in production, please plan to migrate
->  over to the new endpoints. [Migrating to new tracker
->  endpoints](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker-deprecated.html#webapi_tracker_migration)
->  should help you get started. Reach out on the [community of
->  practice](https://community.dhis2.org) if you need further assistance.
+> The deprecated endpoints will be removed in version **42**!
+>
+> [Migrating to new tracker
+> endpoints](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker-deprecated.html#webapi_tracker_migration)
+> should help you get started with your migration. Reach out on the [community of
+> practice](https://community.dhis2.org) if you need further assistance.
 
 ## Objekty Trasovače { #webapi_nti_tracker_objects }
 
@@ -17475,10 +17524,8 @@ Trasovač se skládá z několika různých typů objektů, které jsou vnořeny
 >
 > "Atributy" uvedené v části `Trasovaná entita` jsou `Atributy typu trasované entity`.
 
-
 ### Zápis { #enrollment } 
 `Trasované entity` se mohou přihlásit do `Programů`, pro které mají nárok. Trasované entity jsou způsobilé, pokud je program nakonfigurován se stejným `typem trasované entity` jako trasovaná entita. Zápis reprezentujeme objektem `Zápis`, který popisujeme v této části.
-
 
 | Vlastnictví | Popis | Požadované | Neměnný | Typ | Příklad |
 |---|---|---|---|---|---|
@@ -17512,7 +17559,6 @@ Trasovač se skládá z několika různých typů objektů, které jsou vnořeny
 > `Trasované entity` "vlastní" všechny `Hodnoty atributů trasovaných entit` (nebo "atributy", jak je popsáno v předchozí tabulce). Atributy `Trasovaných entit` jsou však buď připojeny k `Trasované entitě` prostřednictvím jejího `Typu trasované entity`, nebo `Programu`. Toto rozdělení často označujeme jako `Atributy typu trasované entity` a `Atributy programu trasované entity`. Význam tohoto oddělení souvisí s řízením přístupu a omezením toho, jaké informace může uživatel vidět.
 >
 > "Atributy", na které se odkazuje v `Zápisu`, jsou `Atributy programu trasované entity`.
-
 
 ### Události { #events } 
 `Events` are either part of an `EVENT PROGRAM` or `TRACKER PROGRAM`. For `TRACKER PROGRAM`, events belong to an `Enrollment`, which again belongs to a `Tracked Entity`. On the other hand, `EVENT PROGRAM` is `Events` not connected to a specific `Enrollment` or `Tracked Entity`. The difference is related to whether we track a specific `Tracked Entity` or not. We sometimes refer to `EVENT PROGRAM` events as "anonymous events" or "single events" since they only represent themselves and not another `Tracked Entity`.
@@ -17723,7 +17769,7 @@ Table: Program Stage Query Criteria
 | řazení | List of fields and its directions in comma separated values, the results will be sorted according to it. A single item in order is of the form "orderDimension:direction". | "order": "w75KJ2mc4zz:asc" |
 | displayColumnOrder | Output ordering of columns | "displayColumnOrder":["w75KJ2mc4zz","zDhUuAYrxNC"] |
 | dataFilters | A list of items that contains the filters to be used when querying events | "dataFilters":[{"dataItem": "GXNUsigphqK","ge": "10","le": "20"}] |
-| attributeValueFilters | A list of attribute value filters. This is used to specify filters for attribute values when listing tracked entity instances | "attributeValueFilters":[{"attribute": "ruQQnf6rswq","eq": "15"}] |
+| attributeValueFilters | A list of attribute value filters. This is used to specify filters for attribute values when listing tracked entities | "attributeValueFilters":[{"attribute": "ruQQnf6rswq","eq": "15"}] |
 
 See an example payload below:
 
@@ -18458,7 +18504,7 @@ Některé vlastnosti objektů sledování vyžadují specifický formát. Při i
 - Geometrie (souřadnice musí odpovídat formátu určenému jeho typem)
 
 #### User access { #user-access } 
-All data imported will be validated based on the metadata  ([Sharing](#webapi_nti_metadata_sharing)) and the organisation units ([Organisation Unit Scopes](#webapi_nti_ou_scope)) referenced in the data. You can find more information about sharing and organisation unit scopes in the following sections.
+All data imported will be validated based on the metadata  ([Sharing](#webapi_nti_metadata_sharing)) and the organisation units ([Organisation Unit Scopes](#webapi_nti_orgunit_scope)) referenced in the data. You can find more information about sharing and organisation unit scopes in the following sections.
 
 Sdílení se ověřuje současně s vyhledáváním referencí v databázi. Metadata mimo přístup uživatele budou považována za neexistující. Import ověří všechna metadata odkazovaná v datech.
 
@@ -18594,7 +18640,7 @@ Tracker export endpoints allow you to retrieve the previously imported objects w
 
 The following endpoint supports standard parameters for pagination.
 
-- **Tracked Entities** `GET /api/tracker/trackedEntities`
+- **Tracked entities** `GET /api/tracker/trackedEntities`
 - **Události** `GET /api/tracker/events`
 - **Enrollments** `GET /api/tracker/enrollments`
 - **Relationships** `GET /api/tracker/relationships`
@@ -18603,11 +18649,12 @@ The following endpoint supports standard parameters for pagination.
 
 |Parametr požadavku|Typ|Povolené hodnoty|Popis|
 |---|---|---|---|
-|`page`|`Integer`| Any positive integer |Page number to return. Defaults to 1 if missing|
-|`pageSize`|`Integer`| Any positive integer |Page size. Defaults to 50. |
-|`totalPages`|`Boolean`| `true`&#124;`false` |Indicates whether to return the total number of pages in the response |
-|`skipPaging`|`Boolean`| `true`&#124;`false` |Indicates whether paging should be ignored and all rows should be returned. Defaults to `false`, meaning that by default all requests are paginated, unless `skipPaging=true`|
-|`order`|`String`|comma-delimited list of `OrderCriteria` in the form of `propName:sortDirection`.<br><br> Example: `createdAt:desc`<br><br>**Note:** `propName` is case sensitive, `sortDirection` is case insensitive|Sort the response based on given `OrderCriteria`|
+|`page`|`Integer`|Any positive integer|Page number to return. Defaults to 1.|
+|`pageSize`|`Integer`|Any positive integer|Page size. Defaults to 50.|
+|`totalPages`|`Boolean`|`true`&#124;`false`|Indicates whether to return the total number of elements and pages. Defaults to `false` as getting the totals is an expensive operation.|
+|`paging`|`Boolean`|`true`&#124;`false`|Indicates whether paging should be ignored and all rows should be returned. Defaults to `true`, meaning that by default all requests are paginated, unless `paging=false`.|
+|`skipPaging` **deprecated for removal in version 42 use `paging`**|`Boolean`|`true`&#124;`false`|Indicates whether paging should be ignored and all rows should be returned. Defaults to `false`, meaning that by default all requests are paginated, unless `skipPaging=true`.|
+|`order`|`String`|Comma-separated list of property name and sort direction pairs in format `propName:sortDirection`.<br><br>Example: `createdAt:desc`<br><br>**Note:** `propName` is case sensitive. Valid `sortDirections` are `asc` and `desc`. `sortDirection` is case-insensitive. `sortDirection` defaults to `asc` for properties or UIDs without explicit `sortDirection`.||
 
 > **Caution**
 >
@@ -18615,7 +18662,7 @@ The following endpoint supports standard parameters for pagination.
 
 #### Request parameters for Organisational Unit selection mode { #request-parameters-for-organisational-unit-selection-mode } 
 
-The available organisation unit selection modes are `SELECTED`, `CHILDREN`, `DESCENDANTS`, `ACCESSIBLE`, `CAPTURE` and `ALL`. Each mode is explained in detail in [this section](#webapi_nti_ou_scope).
+The available organisation unit selection modes are `SELECTED`, `CHILDREN`, `DESCENDANTS`, `ACCESSIBLE`, `CAPTURE` and `ALL`. Each mode is explained in detail in [this section](#webapi_nti_orgunit_scope).
 
 #### Request parameter to filter responses { #webapi_nti_field_filter }
 
@@ -18653,25 +18700,29 @@ Koncový bod vrátí seznam trasovaných entit, které odpovídají parametrům 
 
 |Parametr požadavku|Typ|Povolené hodnoty|Popis|
 |---|---|---|---|
-|`filter`|`String`|Hodnoty filtrů atributů oddělené čárkami|Narrows response to TEIs matching given filters. A filter is a colon separated property or attribute UID with optional operator and value pairs. Example: `filter=H9IlTX2X6SL:sw:A` with operator starts with `sw` followed by a value. Special characters like `+` need to be percent-encoded so `%2B` instead of `+`. Characters such as `:` (colon) or `,` (comma), as part of the filter value, need to be escaped by `/` (slash). Likewise, `/` needs to be escaped. Multiple operator/value pairs for the same property/attribute like `filter=AuPLng5hLbE:gt:438901703:lt:448901704` are allowed. Repeating the same attribute UID is not allowed. User needs access to the attribute to filter on it.|
-|`orgUnit`|`String`|středníkem oddělený seznam organizační jednotky `UID`|Vrací pouze instance trasovaných entit, které patří k poskytnutým organizačním jednotkám|
-|`ouMode` see [ouModes](#webapi_nti_ou_scope)|`String`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|Způsob výběru organizačních jednotek může být. Výchozí hodnota je `SELECTED`, což se týká pouze vybraných organizačních jednotek.|
-|`program`|`String`|Program `UID`| program `UID`, do kterého musí být instance v odpovědi zapsány|
-|`programStatus`|`String`|`ACTIVE`&#124;`COMPLETED`&#124;`CANCELLED`|Stav programu instance trasované entity v daném programu|
-|`programStage`|`String`|`UID`|`UID` programové fáze, pro kterou musí instance v odpovědi obsahovat události|
-|`followUp`|`Boolean`|`true`&#124;`false`|Označuje, zda je instance trasované entity označena pro následnou kontrolu pro daný program|
-|`updatedAfter`|`DateTime`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | Start date and time for last updated|
-|`updatedBefore`|`DateTime`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | End date and time for last updated|
+|`filter`|`String`|Comma-separated values of attribute filters.|Narrows response to TEIs matching given filters. A filter is a colon separated property or attribute UID with optional operator and value pairs. Example: `filter=H9IlTX2X6SL:sw:A` with operator starts with `sw` followed by a value. Special characters like `+` need to be percent-encoded so `%2B` instead of `+`. Characters such as `:` (colon) or `,` (comma), as part of the filter value, need to be escaped by `/` (slash). Likewise, `/` needs to be escaped. Multiple operator/value pairs for the same property/attribute like `filter=AuPLng5hLbE:gt:438901703:lt:448901704` are allowed. Repeating the same attribute UID is not allowed. User needs access to the attribute to filter on it.|
+|`orgUnits`|`String`|Comma-separated list of organisation unit `UID`s.|Only return tracked entities belonging to provided organisation units|
+|`orgUnit` **deprecated for removal in version 42 use `orgUnits`**|`String`|Semicolon-separated list of organisation units `UID`s.|Only return tracked entities belonging to provided organisation units.|
+|`orgUnitMode` see [orgUnitModes](#webapi_nti_orgunit_scope)|`String`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|Způsob výběru organizačních jednotek může být. Výchozí hodnota je `SELECTED`, což se týká pouze vybraných organizačních jednotek.|
+|`ouMode` **deprecated for removal in version 42 use `orgUnitMode`** see [orgUnitModes](#webapi_nti_orgunit_scope)|`String`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|Způsob výběru organizačních jednotek může být. Výchozí hodnota je `SELECTED`, což se týká pouze vybraných organizačních jednotek.|
+|`program`|`String`|Program `UID`|A program `UID` for which tracked entities in the response must be enrolled into.|
+|`programStatus`|`String`|`ACTIVE`&#124;`COMPLETED`&#124;`CANCELLED`|The program status of the tracked entity in the given program.|
+|`programStage`|`String`|`UID`|A program stage `UID` for which tracked entities in the response must have events for.|
+|`followUp`|`Boolean`|`true`&#124;`false`|Indicates whether the tracked entity is marked for follow up for the specified program.|
+|`updatedAfter`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | Start date and time for last updated|
+|`updatedBefore`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | End date and time for last updated|
 |`updatedWithin`|`Duration`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601#Durations) | Vrátí TEI ne starší než zadaná doba trvání|
 |`enrollmentEnrolledAfter`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|Start date and time for enrollment in the given program|
 |`enrollmentEnrolledBefore`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|End date and time for enrollment in the given program|
 |`enrollmentOccurredAfter`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|Start date and time and time and time for occurred in the given program|
 |`enrollmentOccurredBefore`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|End date and time and time for occurred in the given program|
-|`trackedEntityType`|`String`|UID typu trasované entity|Only returns Tracked Entity Instances of given type|
-|`trackedEntity`|`String`|semicolon-delimited list of tracked entity instance `UID`|Filter the result down to a limited set of tracked entities using explicit uids of the tracked entity instances by using `trackedEntity=id1;id2`. This parameter will, at the very least, create the outer boundary of the results, forming the list of all tracked entities using the uids provided. If other parameters/filters from this table are used, they will further limit the results from the explicit outer boundary.|
+|`trackedEntityType`|`String`|UID typu trasované entity|Only returns tracked entities of given type.|
+|`trackedEntities`|`String`|Comma-separated list of tracked entity `UID`s.|Filter the result down to a limited set of tracked entities using explicit uids of the tracked entities by using `trackedEntity=id1;id2`. This parameter will, at the very least, create the outer boundary of the results, forming the list of all tracked entities using the uids provided. If other parameters/filters from this table are used, they will further limit the results from the explicit outer boundary.|
+|`trackedEntity` **deprecated for removal in version 42 use `trackedEntities`**|`String`|Semicolon-separated list of tracked entity `UID`s.|Filter the result down to a limited set of tracked entities using explicit uids of the tracked entities by using `trackedEntity=id1;id2`. This parameter will, at the very least, create the outer boundary of the results, forming the list of all tracked entities using the uids provided. If other parameters/filters from this table are used, they will further limit the results from the explicit outer boundary.|
 |`assignedUserMode`|`String`|`CURRENT`&#124;`PROVIDED`&#124;`NONE`&#124;`ANY`|Restricts result to tracked entities with events assigned based on the assigned user selection mode. See table below "Assigned user modes" for explanations. |
-|`assignedUser`|`String`|Semicolon-delimited list of user UIDs to filter based on events assigned to the users.|Filter the result down to a limited set of tracked entities with events that are assigned to the given user IDs by using `assignedUser=id1;id2`.This parameter will only be considered if assignedUserMode is either `PROVIDED` or `null`. The API will error out, if for example, `assignedUserMode=CURRENT` and `assignedUser=someId`|
-|`order`|`String`|comma-delimited list of property name or attribute or UID and sort direction pairs in format `propName:sortDirection`.|Supported values are `trackedEntity, createdAt, createdAtClient, updatedAt, updatedAtClient, enrolledAt, inactive`.|
+|`assignedUsers`|`String`|Comma-separated list of user UIDs to filter based on events assigned to the users.|Filter the result down to a limited set of tracked entities with events that are assigned to the given user IDs by using `assignedUser=id1;id2`.This parameter will only be considered if assignedUserMode is either `PROVIDED` or `null`. The API will error out, if for example, `assignedUserMode=CURRENT` and `assignedUser=someId`|
+|`assignedUser` **deprecated for removal in version 42 use `assignedUsers`**|`String`|Semicolon-separated list of user UIDs to filter based on events assigned to the users.|Filter the result down to a limited set of tracked entities with events that are assigned to the given user IDs by using `assignedUser=id1;id2`.This parameter will only be considered if assignedUserMode is either `PROVIDED` or `null`. The API will error out, if for example, `assignedUserMode=CURRENT` and `assignedUser=someId`|
+|`order`|`String`|Comma-separated list of property name or attribute or UID and sort direction pairs in format `propName:sortDirection`.|Supported values are `trackedEntity, createdAt, createdAtClient, updatedAt, updatedAtClient, enrolledAt, inactive`.|
 |`eventStatus`|`String`|`ACTIVE`&#124;`COMPLETED`&#124;`VISITED`&#124;`SCHEDULE`&#124;`OVERDUE`&#124;`SKIPPED`|Status of any events in the specified program|
 |`eventOccurredAfter`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|Start date and time for Event for the given Program|
 |`eventOccurredBefore`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|End date and time for Event for the given Program|
@@ -18693,7 +18744,7 @@ Tabulka: Přiřazené uživatelské režimy
 V dotazu se nerozlišují velká a malá písmena. Pro parametry dotazu platí následující pravidla.
 
 - At least one organisation unit must be specified using the `orgUnit`
-  parameter (one or many), or `ouMode=ALL` must be specified.
+  parameter (one or many), or `orgUnitMode=ALL` must be specified.
 
 - Only one of the `program` and `trackedEntity` parameters can be
   specifikováno (nula nebo jedna).
@@ -18710,72 +18761,72 @@ V dotazu se nerozlišují velká a malá písmena. Pro parametry dotazu platí n
 
 ##### Example requests { #example-requests } 
 
-A query for all instances associated with a specific organisation unit
+A query for all tracked entities associated with a specific organisation unit
 can look like this:
 
-    GET /api/tracker/trackedEntities?orgUnit=DiszpKrYNg8
+    GET /api/tracker/trackedEntities?orgUnits=DiszpKrYNg8
 
-To query for instances using one attribute with a filter and one
+To query for tracked entities using one attribute with a filter and one
 attribute without a filter, with one organisation unit using the
 descendant organisation unit query mode:
 
     GET /api/tracker/trackedEntities?filter=zHXD5Ve1Efw:EQ:A
-        &attribure=AMpUYgxuCaE&orgUnit=DiszpKrYNg8;yMCshbaVExv
+        &attribute=AMpUYgxuCaE&orgUnits=DiszpKrYNg8,yMCshbaVExv
 
-A query for instances where attributes are included in the response
+A query for tracked entities where attributes are included in the response
 and one attribute is used as a filter:
 
     GET /api/tracker/trackedEntities?filter=zHXD5Ve1Efw:EQ:A
         &filter=AMpUYgxuCaE:LIKE:Road
-        &orgUnit=DiszpKrYNg8
+        &orgUnits=DiszpKrYNg8
 
 A query where multiple operand and filters are specified for a filter
 item:
 
-    GET /api/tracker/trackedEntities?orgUnit=DiszpKrYNg8
+    GET /api/tracker/trackedEntities?orgUnits=DiszpKrYNg8
         &program=ur1Edk5Oe2n
         &filter=lw1SqmMlnfh:GT:150
         &filter=lw1SqmMlnfh:LT:190
 
 A query filter with a value that needs escaping and will be interpreted as `:,/`:
 
-    GET /api/tracker/trackedEntities?orgUnit=DiszpKrYNg8
+    GET /api/tracker/trackedEntities?orgUnits=DiszpKrYNg8
         &program=ur1Edk5Oe2n
         &filter=lw1SqmMlnfh:EQ:/:/,//
 
 To query on an attribute using multiple values in an *IN* filter:
 
-    GET /api/tracker/trackedEntities?orgUnit=DiszpKrYNg8
+    GET /api/tracker/trackedEntities?orgUnits=DiszpKrYNg8
         &filter=dv3nChNSIxy:IN:Scott;Jimmy;Santiago
 
-To constrain the response to instances which are part of a specific
+To constrain the response to tracked entities which are part of a specific
 program you can include a program query parameter:
 
     GET /api/tracker/trackedEntities?filter=zHXD5Ve1Efw:EQ:A
-        &orgUnit=O6uvpzGd5pu&ouMode=DESCENDANTS
+        &orgUnits=O6uvpzGd5pu&orgUnitMode=DESCENDANTS
         &program=ur1Edk5Oe2n
 
 Chcete-li zadat data zápisu programu jako součást dotazu:
 
     GET /API/tracker/trackedEntities?
-        &orgUnit=O6uvpzGd5pu&program=ur1Edk5Oe2n
+        &orgUnits=O6uvpzGd5pu&program=ur1Edk5Oe2n
         &enrollmentEnrolledAfter=2013-01-01
         &enrollmentEnrolledBefore=2013-09-01
 
-To constrain the response to instances of a specific tracked entity you
+To constrain the response to tracked entities of a specific tracked entity you
 can include a tracked entity query parameter:
 
     GET /api/tracker/trackedEntities?filter=zHXD5Ve1Efw:EQ:A
-        &orgUnit=O6uvpzGd5pu
-        &ouMode=DESCENDANTS
+        &orgUnits=O6uvpzGd5pu
+        &orgUnitMode=DESCENDANTS
         &trackedEntity=cyl5vuJ5ETQ
 
-By default the instances are returned in pages of size 50, to change
+By default the tracked entities are returned in pages of size 50, to change
 this you can use the page and pageSize query parameters:
 
     GET /api/tracker/trackedEntities?filter=zHXD5Ve1Efw:EQ:A
-        &orgUnit=O6uvpzGd5pu
-        &ouMode=DESCENDANTS
+        &orgUnits=O6uvpzGd5pu
+        &orgUnitMode=DESCENDANTS
         &page=2&pageSize=3
 
 K filtrování můžete použít řadu operátorů:
@@ -18799,7 +18850,7 @@ Responses can be filtered on desired fields, see [Request parameter to filter re
 
 ```json
 {
-  "instances": [
+  "trackedEntities": [
     {
       "trackedEntity": "IzHblRD2sDH",
       "trackedEntityType": "nEenWmSyUEp",
@@ -18852,13 +18903,13 @@ Responses can be filtered on desired fields, see [Request parameter to filter re
 
 |Parametr požadavku|Typ|Povolené hodnoty|Popis|
 |---|---|---|---|
-|`uid`|`String`|`uid`|Vrátí instanci trasované entity se zadaným `uid`|
+|`uid`|`String`|`uid`|Return the tracked entity with specified `uid`|
 |`program`|`String`|`uid`| Zahrnout atributy programu do odpovědi (pouze ty, ke kterým má uživatel přístup) |
 |`fields`|`String`| Libovolný platný filtr polí (výchozí `*,!relationships,!enrollments,!events,!programOwners`) |Zahrnout do odpovědi zadané dílčí objekty|
 
 ##### Example requests { #example-requests } 
 
-Dotaz na instanci trasované entity:
+A query for a tracked entity:
 
     GET /api/tracker/trackedEntities/IzHblRD2sDH?program=ur1Edk5Oe2n&fields=*
 
@@ -18984,9 +19035,10 @@ Vrátí seznam událostí na základě poskytnutých filtrů.
 |`filter`|`String`|Čárkami oddělené hodnoty filtrů datových prvků|Narrows response to events matching given filters. A filter is a colon separated property or data element UID with optional operator and value pairs. Example: `filter=fazCI2ygYkq:eq:PASSIVE` with operator starts with `eq` followed by a value. Characters such as `:` (colon) or `,` (comma), as part of the filter value, need to be escaped by `/` (slash). Likewise, `/` needs to be escaped. Multiple operator/value pairs for the same property/data element like `filter=qrur9Dvnyt5:gt:70:lt:80` are allowed. Repeating the same data element UID is not allowed. User needs access to the data element to filter on it.|
 |`filterAttributes`|`String`|Hodnoty filtrů atributů oddělené čárkami|Narrows response to TEIs matching given filters. A filter is a colon separated property or attribute UID with optional operator and value pairs. Example: `filter=H9IlTX2X6SL:sw:A` with operator starts with `sw` followed by a value. Special characters like `+` need to be percent-encoded so `%2B` instead of `+`. Characters such as `:` (colon) or `,` (comma), as part of the filter value, need to be escaped by `/` (slash). Likewise, `/` needs to be escaped. Multiple operator/value pairs for the same property/attribute like `filter=AuPLng5hLbE:gt:438901703:lt:448901704` are allowed. Repeating the same attribute UID is not allowed. User needs access to the attribute to filter on it.|
 |`followUp`|`boolean`| `true`&#124;`false` | Zda je událost zvažována pro pokračování v programu. Výchozí hodnota je `true`|
-|`trackedEntity`|`String`|`uid`| Identifikátor instance trasované entity|
-|`orgUnit`|`String`|`uid`| Identifikátor organizační jednotky|
-|`ouMode` see [ouModes](#webapi_nti_ou_scope)|`String`| `SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`|  Režim výběru organizační jednotky|
+|`trackedEntity`|`String`|`uid`|Identifier of tracked entity|
+|`orgUnit`|`String`|`uid`|Identifikátor organizační jednotky|
+|`orgUnitMode` see [orgUnitModes](#webapi_nti_orgunit_scope)|`String`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|Způsob výběru organizačních jednotek může být. Výchozí hodnota je `SELECTED`, což se týká pouze vybraných organizačních jednotek.|
+|`ouMode` **deprecated for removal in version 42 use `orgUnitMode`** see [orgUnitModes](#webapi_nti_orgunit_scope)|`String`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|Způsob výběru organizačních jednotek může být. Výchozí hodnota je `SELECTED`, což se týká pouze vybraných organizačních jednotek.|
 |`status`|`String`|`ACTIVE`&#124;`COMPLETED`&#124;`VISITED`&#124;`SCHEDULE`&#124;`OVERDUE`&#124;`SKIPPED` | Stav události|
 |`occurredAfter`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | Filtrujte události, které nastaly po tomto datu.|
 |`occurredBefore`|`DateTime`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)| Filtrujte události, které nastaly do tohoto data.|
@@ -19005,29 +19057,33 @@ Vrátí seznam událostí na základě poskytnutých filtrů.
 |`programIdScheme`|`String`| `UID`&#124;`CODE`&#124;`ATTRIBUTE:{ID}`| Program ID scheme to use for export|
 |`programStageIdScheme`|`String`| `UID`&#124;`CODE`&#124;`ATTRIBUTE:{ID}`| Schéma ID fáze programu, které se má použít pro export|
 |`idScheme`|`string`| `UID`&#124;`CODE`&#124;`ATTRIBUTE:{ID}`| Umožňuje nastavit id schéma pro datový prvek, kombinaci možností kategorie, orgUnit, program a fázi programu najednou.|
-|`order`|`String`|čárkami oddělený seznam názvu vlastnosti, atributu nebo datového prvku UID a dvojice směrů řazení ve formátu `propName:sortDirection`.|Supported fields: `assignedUser, assignedUserDisplayName, attributeOptionCombo, completedAt, completedBy, createdAt, createdAtClient, createdBy, deleted, enrolledAt, enrollment, enrollmentStatus, event, followUp, occurredAt, orgUnit, program, programStage, scheduledAt, status, storedBy, trackedEntity, updatedAt, updatedAtClient, updatedBy`.|
-|`event`|`String`|čárkami oddělený seznam  `uid`| Filter the result down to a limited set of IDs by using event=id1;id2.|
-|`attributeCc` (viz poznámka)|`String`| Attribute category combo identifier (must be combined with attributeCos)|
-|`attributeCos` (viz poznámka)|`String`| Identifikátory možností kategorie atributů oddělené ; (nutno kombinovat s atributeCc)|
+|`order`|`String`|Comma-separated list of property name, attribute or data element UID and sort direction pairs in format `propName:sortDirection`.|Supported fields: `assignedUser, assignedUserDisplayName, attributeOptionCombo, completedAt, completedBy, createdAt, createdAtClient, createdBy, deleted, enrolledAt, enrollment, enrollmentStatus, event, followUp, occurredAt, orgUnit, program, programStage, scheduledAt, status, storedBy, trackedEntity, updatedAt, updatedAtClient, updatedBy`.|
+|`events`|`String`|Comma-separated list of event `UID`s.|Filter the result down to a limited set of IDs by using `event=id1,id2`.|
+|`event` **deprecated for removal in version 42 use `events`**|`String`|Semicolon-separated list of `uid`| Filter the result down to a limited set of IDs by using `event=id1;id2`.|
+|`attributeCategoryCombo` (see note)|`String`|Attribute category combo identifier. Must be combined with `attributeCategoryOptions`.|
+|`attributeCc` **deprecated for removal in version 42 use `attributeCategoryCombo`**|`String`|Attribute category combo identifier (must be combined with attributeCos)|
+|`attributeCategoryOptions` (see note)|`String`|Comma-separated attribute category option identifiers. Must be combined with `attributeCategoryCombo`.|
+|`attributeCos` **deprecated for removal in version 42 use `attributeCategoryOptions`**|`String`|Semicolon-separated attribute category option identifiers. Must be combined with `attributeCc`.|
 |`includeDeleted`|`Boolean`| |  Když je true, budou do výsledku dotazu zahrnuty měkké odstraněné události.|
 |`assignedUserMode`|`String`| `CURRENT`&#124;`PROVIDED`&#124;`NONE`&#124;`ANY`| Režim výběru přiřazeného uživatele|
-|`assignedUser`|`String`|čárkami oddělený seznam od `uid`| Filter the result down to a limited set of events that are assigned to the given user IDs by using `assignedUser=id1;id2`.<br><br>This parameter will be considered only if assignedUserMode is either `PROVIDED` or `null`.<br><br>The API will error out, if for example, `assignedUserMode=CURRENT` and `assignedUser=someId`|
+|`assignedUsers`|`String`|Comma-separated list of user UIDs to filter based on events assigned to the users.|Filter the result down to a limited set of tracked entities with events that are assigned to the given user IDs by using `assignedUser=id1;id2`.This parameter will only be considered if assignedUserMode is either `PROVIDED` or `null`. The API will error out, if for example, `assignedUserMode=CURRENT` and `assignedUser=someId`|
+|`assignedUser` **deprecated for removal in version 42 use `assignedUsers`**|`String`|Semicolon-separated list of user UIDs to filter based on events assigned to the users.|Filter the result down to a limited set of tracked entities with events that are assigned to the given user IDs by using `assignedUser=id1;id2`.This parameter will only be considered if assignedUserMode is either `PROVIDED` or `null`. The API will error out, if for example, `assignedUserMode=CURRENT` and `assignedUser=someId`|
 
 > **Note**
 >
-> If the query contains neither `attributeCC` nor `attributeCos`,
+> If the query contains neither `attributeCategoryOptions` nor `attributeCategoryOptions`,
 > the server returns events for all attribute option combos where the user has read access.
 
 ##### Example requests { #example-requests } 
 
 Dotaz na všechny události s potomky konkrétní organizační jednotky:
 
-    GET /api/tracker/events?orgUnit=YuQRtpLP10I&ouMode=CHILDREN
+    GET /api/tracker/events?orgUnit=YuQRtpLP10I&orgUnitMode=CHILDREN
 
 The query for all events with all descendants of a particular organisation
 unit, implying all organisation units in the sub-hierarchy:
 
-    GET /api/tracker/events?orgUnit=O6uvpzGd5pu&ouMode=DESCENDANTS
+    GET /api/tracker/events?orgUnit=O6uvpzGd5pu&orgUnitMode=DESCENDANTS
 
 Dotaz na všechny události s určitou programovou a organizační jednotkou:
 
@@ -19046,7 +19102,7 @@ and organisation unit - by paging and ordering by occurred date descending:
       &order=occurredAt:desc&pageSize=10&page=1
 
 Query for all events with a certain program and organisation unit for a
-specific tracked entity instance:
+specific tracked entity:
 
     GET /api/tracker/events?orgUnit=DiszpKrYNg8
       &program=eBAyeGv0exc&trackedEntity=gfVxE3ALA9m
@@ -19058,7 +19114,7 @@ or equal to
     GET /api/tracker/events?orgUnit=DiszpKrYNg8&program=eBAyeGv0exc&endDate=2014-02-03
 
 Query for all events with a certain program stage, organisation unit and
-tracked entity instance in the year 2014:
+tracked entity in the year 2014:
 
     GET /api/tracker/events?orgUnit=DiszpKrYNg8&program=eBAyeGv0exc
       &trackedEntity=gfVxE3ALA9m&occurredAfter=2014-01-01&occurredBefore=2014-12-31
@@ -19094,7 +19150,7 @@ Odpověď `JSON` může vypadat následovně.
 
 ```json
 {
-    "instances": [
+    "trackedEntities": [
         {
             "event": "rgWr86qs0sI",
             "status": "ACTIVE",
@@ -19103,7 +19159,7 @@ Odpověď `JSON` může vypadat následovně.
             "orgUnit": "DiszpKrYNg8",
             "relationships": [],
             "occurredAt": "2021-10-12T00:00:00.000",
-            "followup": false,
+            "followUp": false,
             "deleted": false,
             "createdAt": "2018-10-20T12:09:19.492",
             "updatedAt": "2018-10-20T12:09:19.492",
@@ -19169,7 +19225,7 @@ Dotaz na událost:
   "orgUnit": "DiszpKrYNg8",
   "relationships": [],
   "occurredAt": "2021-10-12T00:00:00.000",
-  "followup": false,
+  "followUp": false,
   "deleted": false,
   "createdAt": "2018-10-20T12:09:19.492",
   "createdAtClient": "2017-10-20T12:09:19.492",
@@ -19253,25 +19309,28 @@ Vrátí seznam událostí na základě filtrů.
 
 |Parametr požadavku|Typ|Povolené hodnoty|Popis|
 |---|---|---|---|
-|`orgUnit`|`String`|`uid`| Identifikátor organizační jednotky|
-|`ouMode` see [ouModes](#webapi_nti_ou_scope)|`String`| `SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL| Režim výběru organizační jednotky|
+|`orgUnits`|`String`|Comma-separated list of organisation unit `UID`s.|Only return enrollments belonging to provided organisation units.|
+|`orgUnit` **deprecated for removal in version 42 use `orgUnits`**|`String`|Semicolon-separated list of organisation units `UID`s.|Only return enrollments belonging to provided organisation units.|
+|`orgUnitMode` see [orgUnitModes](#webapi_nti_orgunit_scope)|`String`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|Způsob výběru organizačních jednotek může být. Výchozí hodnota je `SELECTED`, což se týká pouze vybraných organizačních jednotek.|
+|`ouMode` **deprecated for removal in version 42 use `orgUnitMode`** see [orgUnitModes](#webapi_nti_orgunit_scope)|`String`|`SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL`|Způsob výběru organizačních jednotek může být. Výchozí hodnota je `SELECTED`, což se týká pouze vybraných organizačních jednotek.|
 |`program`|`String`|`uid`| Identifikátor programu|
 |`programStatus`|`enum`| `ACTIVE`&#124;`COMPLETED`&#124;`CANCELLED`| Stav programu |
-|`followUp`|`boolean`| `true`&#124;`false` | Sledovat stav instance pro daný program. Může být `true`&#124;`false` nebo může být vynechána.|
+|`followUp`|`boolean`| `true`&#124;`false` | Follow up status of the tracked entity for the given program. Can be `true`&#124;`false` or omitted.|
 |`updatedAfter`|`DateTime`|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | Pouze zápisy aktualizované po tomto datu|
 |`updatedWithin`|`Duration`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)| Pouze zápisy aktualizované od daného data |
 |`enrolledAfter`|`DateTime`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|  Pouze zápisy novější než toto datum|
 |`enrolledBefore`|`DateTime`| [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)| Pouze přihlášky starší než toto datum|
 |`trackedEntityType`|`String`|`uid`| Identifikátor typu trasované entity|
-|`trackedEntity`|`String`|`uid`| Identifikátor instance trasované entity|
-|`order`|`String`|comma-delimited list of property name or attribute or UID and sort direction pairs in format `propName:sortDirection`.|Supported fields: `completedAt, createdAt, createdAtClient, enrolledAt, updatedAt, updatedAtClient`.|
-|`enrollment`|`String`|Seznam `uid` oddělený čárkami| Filtr výsledku na omezenou sadu ID pomocí enrollment=id1;id2.|
-|`includeDeleted`|`Boolean`| |  Když je true, budou do výsledku dotazu zahrnuty měkké odstraněné události.|
+|`trackedEntity`|`String`|`uid`| Identifier of tracked entity|
+|`order`|`String`|Comma-separated list of property name or attribute or UID and sort direction pairs in format `propName:sortDirection`.|Supported fields: `completedAt, createdAt, createdAtClient, enrolledAt, updatedAt, updatedAtClient`.|
+|`enrollments`|`String`|Comma-separated list of enrollment `UID`s.|Filter the result down to a limited set of IDs by using `enrollments=id1,id2`.|
+|`enrollment` **deprecated for removal in version 42 use `enrollments`**|`String`|Semicolon-separated list of `uid`|Filter the result down to a limited set of IDs by using `enrollment=id1;id2`.|
+|`includeDeleted`|`Boolean`| |Když je true, budou do výsledku dotazu zahrnuty měkké odstraněné události.|
 
 V dotazu se nerozlišují velká a malá písmena. Následující pravidla platí pro parametry dotazu.
 
 - At least one organisation unit must be specified using the `orgUnit`
-  parameter (one or many), or *ouMode=ALL* must be specified.
+  parameter (one or many), or *orgUnitMode=ALL* must be specified.
 
 - Může být pouze jeden z parametrů *program* a *trackedEntity*
   specifikováno (nula nebo jedna).
@@ -19285,35 +19344,30 @@ V dotazu se nerozlišují velká a malá písmena. Následující pravidla plat�
 
 ##### Example requests { #example-requests } 
 
-A query for all enrollments associated with a specific organisation unit
-can look like this:
+Dotaz na všechny zápisy přidružené ke konkrétní organizační jednotce může vypadat takto:
 
-    GET /api/tracker/enrollments?orgUnit=DiszpKrYNg8
+    GET /api/tracker/enrollments?orgUnits=DiszpKrYNg8
 
-To constrain the response to enrollments which are part of a specific
-program you can include a program query
-parameter:
+To constrain the response to enrollments which are part of a specific program you can include a
+program query parameter:
 
-    GET /api/tracker/enrollments?orgUnit=O6uvpzGd5pu&ouMode=DESCENDANTS&program=ur1Edk5Oe2n
+    GET /api/tracker/enrollments?orgUnits=O6uvpzGd5pu&orgUnitMode=DESCENDANTS&program=ur1Edk5Oe2n
 
 Chcete-li zadat data zápisu programu jako součást dotazu:
 
-    GET /api/tracker/enrollments?&orgUnit=O6uvpzGd5pu&program=ur1Edk5Oe2n
+    GET /api/tracker/enrollments?&orgUnits=O6uvpzGd5pu&program=ur1Edk5Oe2n
       &enrolledAfter=2013-01-01&enrolledBefore=2013-09-01
 
-To constrain the response to enrollments of a specific tracked entity
-you can include a tracked entity query
-parameter:
+To constrain the response to enrollments of a specific tracked entity you can include a tracked
+entity query parameter:
 
-    GET /api/tracker/enrollments?orgUnit=O6uvpzGd5pu&ouMode=DESCENDANTS&trackedEntity=cyl5vuJ5ETQ
+    GET /api/tracker/enrollments?orgUnits=O6uvpzGd5pu&orgUnitMode=DESCENDANTS&trackedEntity=cyl5vuJ5ETQ
 
-To constrain the response to enrollments of a specific tracked entity
-you can include a tracked entity instance query parameter, in
-In this case, we have restricted it to available enrollments viewable for
-current
-user:
+To constrain the response to enrollments of a specific tracked entity you can include a tracked
+entity query parameter, in In this case, we have restricted it to available enrollments viewable for
+current user:
 
-    GET /API/tracker/enrollments?ouMode=ACCESSIBLE&trackedEntity=tphfdyIiVL6
+    GET /API/tracker/enrollments?orgUnitMode=ACCESSIBLE&trackedEntity=tphfdyIiVL6
 
 ##### Formát odpovědi { #response-format } 
 
@@ -19321,7 +19375,7 @@ Odpověď `JSON` může vypadat následovně.
 
 ```json
 {
-  "instances": [
+  "trackedEntities": [
     {
       "enrollment": "iKaBMOyq7QQ",
       "createdAt": "2017-03-28T12:28:19.812",
@@ -19394,7 +19448,7 @@ Dotaz na Zápis:
 ### Relationships (`GET /api/tracker/relationships`) { #relationships-get-apitrackerrelationships } 
 
 Relationships are links between two entities in the Tracker.
-These entities can be tracked entity instances, enrollments, and events.
+These entities can be tracked entities, enrollments, and events.
 
 Účelem tohoto koncového bodu je načíst vztahy mezi objekty.
 
@@ -19406,11 +19460,11 @@ Na rozdíl od jiných koncových bodů trasovaných objektů vztahy odhalují po
 
 |Parametr požadavku|Typ|Povolené hodnoty|Popis|
 |---|---|---|---|
-|`trackedEntity`|`String`|`uid`| Identifikátor instance trasované entity|
-|`enrollment`|`String`|`uid`| Identifikátor Zápisu |
-|`event`|`String`|`uid`| Identifikátor Události|
-|`fields`|`String`| Any valid field filter (default `relationship,relationshipType,createdAtClient,from[trackedEntity[trackedEntity],enrollment[enrollment],event[event]],to[trackedEntity[trackedEntity],enrollment[enrollment],event[event]]`) |Zahrnout do odpovědi zadané dílčí objekty|
-|`order`|`String`|comma-delimited list of `OrderCriteria` in the in format `propName:sortDirection`.|Supported fields: `created, createdAtClient`.|
+|`trackedEntity`|`String`|`uid`|Identifier of a tracked entity|
+|`enrollment`|`String`|`uid`|Identifikátor Zápisu |
+|`event`|`String`|`uid`|Identifikátor Události|
+|`fields`|`String`|Any valid field filter (default `relationship,relationshipType,createdAtClient,from[trackedEntity[trackedEntity],enrollment[enrollment],event[event]],to[trackedEntity[trackedEntity],enrollment[enrollment],event[event]]`) |Zahrnout do odpovědi zadané dílčí objekty|
+|`order`|`String`|Comma-separated list of `OrderCriteria` in the in format `propName:sortDirection`.|Supported fields: `created, createdAtClient`.|
 |`includeDeleted`|`Boolean`|`true`&#124;`false`| whether to include soft-deleted elements in your query result|
 
 Následující pravidla platí pro parametry dotazu.
@@ -19427,7 +19481,7 @@ Následující pravidla platí pro parametry dotazu.
 
 ```json
 {
-  "instances": [
+  "trackedEntities": [
     {
       "relationship": "SSfIicJKbh5",
       "relationshipType": "Mv8R4MPcNcX",
@@ -19483,15 +19537,15 @@ Stručně řečeno, DHIS2 má jemné nastavení sdílení, které můžeme použ
 
 Podrobnější informace o sdílení dat najdete v [Sdílení dat](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/about-sharing-of-objects.html#data-sharing-for-event-based-programs).
 
-### Rozsahy organizační jednotky { #webapi_nti_ou_scope }
+### Organisation Unit Scopes { #webapi_nti_orgunit_scope }
 
 Organisation units are one of the most fundamental objects in DHIS2. They define a universe under which a user is allowed to record and/or read data. There are three types of organisation units that can be assigned to a user. These are data capture, data view (not used in tracker), and tracker search. As the name implies, these organisation units define a scope under which a user is allowed to conduct the respective operations.
 
 Pro další doladění rozsahu však DHIS2 Tracker zavádí koncept, který nazýváme **OrganisationUnitSelectionMode**. Takový režim se často používá při exportu objektů trackeru. Pokud má například uživatel určitý rozsah vyhledávání trackeru, znamená to, že musíme tento rozsah použít pokaždé, když se uživatel pokusí vyhledat objekt trackeru, registrace nebo události? Nebo má uživatel zájem omezit vyhledávání pouze na vybranou organizační jednotku nebo celý rozsah zachycené organizační jednotky a tak dále.
 
-Users can do the fine-tuning by passing a specific value of ouMode in their API request:
+Users can do the fine-tuning by passing a specific value of `orgUnitMode` in their API request:
 
-*api/tracker/trackedEntities?orgUnit=UID&ouMode=specific_organisation_unit_selection_mode*
+*api/tracker/trackedEntities?orgUnit=UID&orgUnitMode=specific_organisation_unit_selection_mode*
 
 Currently, there are six selection modes available: *SELECTED, CHILDREN, DESCENDANTS, CAPTURE, ACCESSIBLE, and ALL*.
 
@@ -19561,21 +19615,29 @@ Tyto úrovně přístupu se spouštějí pouze tehdy, když se uživatelé pokus
 4.  Zavřeno: Toto je nejvíce omezená úroveň přístupu. Data zaznamenaná v rámci programů nakonfigurovaných s úrovní přístupu ZAVŘENO nebudou přístupná, pokud organizační jednotka vlastníka nespadá do rozsahu zachycení uživatele. V této konfiguraci také není možné rozbít sklo nebo získat dočasné vlastnictví. Upozorňujeme, že je stále možné převést vlastnictví na jinou organizační jednotku. Pouze uživatel, který má přístup k datům, může převést vlastnictví kombinace TrackedEntity-Program na jinou organizační jednotku. Pokud je vlastnictví převedeno, je aktualizována organizační jednotka vlastníka.
 
 
+
 # Tracker (deprecated APIs) { #tracker-deprecated-apis } 
 
-> **Note**
->Tracker has been re-implemented in DHIS2 2.36. The new endpoints are documented at
->[Tracker](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker.html).
+> **Caution**
 >
->The endpoints described in this document are in maintenance mode and do not receive any new
->features. Important bugs will still be fixed.
+> Tracker has been re-implemented in DHIS2 2.36. The new endpoints are documented at
+> [Tracker](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker.html).
 >
->* If you plan to use the tracker endpoints use the new version described in
->  [Tracker](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker.html)
->* If you are still using the deprecated tracker endpoints in production, please plan to migrate
->  over to the new endpoints. [Migrating to new tracker endpoints](#webapi_tracker_migration) should
->  help you get started. Reach out on the [community of practice](https://community.dhis2.org) if
->  you need further assistance.
+> Endpoints
+>
+> * `GET/POST/PUT/DELETE /api/trackedEntityInstance`
+> * `GET/POST/PUT/DELETE /api/enrollments`
+> * `GET/POST/PUT/DELETE /api/events`
+> * `GET/POST/PUT/DELETE /api/relationships`
+>
+> will be removed in version **42**!
+>
+> * If you plan to use the tracker endpoints use the new endpoints described in
+>   [Tracker](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker.html)
+> * If you are still using the deprecated tracker endpoints in production, please migrate over to the
+>   new endpoints. [Migrating to new tracker endpoints](#webapi_tracker_migration) should help you
+>   get started. Reach out on the [community of practice](https://community.dhis2.org) if you need
+>   further assistance.
 
 ## Migrating to new tracker endpoints { #webapi_tracker_migration }
 
@@ -19589,9 +19651,9 @@ The following sections highlight the important differences between the deprecate
 and the newly introduced endpoints
 
 * `POST /api/tracker`
+* `GET  /api/tracker/trackedEntities`
 * `GET  /api/tracker/enrollments`
 * `GET  /api/tracker/events`
-* `GET  /api/tracker/trackedEntities`
 * `GET  /api/tracker/relationships`
 
 ### Property names { #webapi_tracker_migration_names }
