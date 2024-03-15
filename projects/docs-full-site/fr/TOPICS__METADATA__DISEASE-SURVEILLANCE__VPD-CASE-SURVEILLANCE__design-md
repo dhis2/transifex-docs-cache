@@ -1,0 +1,301 @@
+---
+edit_url: "https://github.com/dhis2-metadata/VPD_CS/blob/master/docs/vpd_cs-design.md"
+revision_date: '2022-10-24'
+tags:
+- Métadonnées
+---
+
+# Conception du Tracker Surveillance des cas de MEV { #vpd-cs-design }
+
+## Introduction { #introduction } 
+
+La conception du système intégré de surveillance des cas de maladies évitables par la vaccination (SC-MEV) vise à :
+
+1. Faciliter la déclaration intégrée de neuf (9) maladies évitables par la vaccination dans un système électronique
+2. Relier les résultats de laboratoire aux diagnostics cliniques et aux formulaires d'investigation d'un cas suspect
+3. Générer des alertes automatiques en cas d'éventuelles épidémies selon les seuils
+4. Améliorer l'analyse des données basées sur les cas, parallèlement aux rapports agrégés des établissements, afin d'orienter l'action
+
+La stratégie de surveillance intégrée des maladies a été largement adoptée au cours des dernières décennies pour promouvoir une utilisation rationnelle et efficace des ressources en rationalisant les activités et les fonctions de surveillance communes ([OMS](https://apps.who.int/iris/bitstream/handle/10665/325015/WHO-AF-WHE-CPI-05.2019-eng.pdf)). L'approche de la conception d'un système d'information intégré pour la surveillance des maladies basée sur les cas dans le DHIS2 tire parti des similitudes des fonctions de surveillance de différentes maladies telles que la notification des cas, la collecte d'échantillons, l'établissement de rapports, l'analyse et l'interprétation, le retour d'information et l'action - souvent réalisées dans les pays à l'aide des mêmes structures, processus et personnel. Le package basé sur les cas est conçu pour être implémenté parallèlement au package de surveillance agrégée des maladies pour la notification hebdomadaire/routinière des cas suspects, des conditions et/ou des syndromes provenant des établissements de santé sur les maladies évitables par la vaccination et à tendance épidémique.
+
+Le système intégré MEV basé sur les cas dans le DHIS2 présente plusieurs avantages comparativement aux rapports traditionnellement centralisés (au niveau national) dans des formulaires spécifiques aux maladies :
+
+1. Système intégré pour toutes les maladies : Toutes les maladies signalées sont regroupées en un seul endroit, plutôt que de gérer et de fusionner différentes bases de données pour la saisie, l'analyse et l'administration. Cette approche est plus durable dans la plupart des contextes, étant donné qu'une seule base de données peut être gérée pour toutes les maladies.
+2. Amélioration de la rapidité d'exécution grâce à la décentralisation du signalement des cas : les établissements peuvent immédiatement signaler un cas suspect et les utilisateurs des laboratoires ou les utilisateurs des niveaux supérieurs peuvent ajouter les résultats des analyses et la classification finale au dossier des cas dans DHIS2 au fur et à mesure que les données sont disponibles à chaque niveau.
+3. Amélioration de l'accès au niveau des districts et des établissements : Permet au personnel d'accéder à distance aux détails relatifs à un cas sur lequel il travaille (par exemple, le personnel de laboratoire, le personnel clinique).
+4. Réduction de la charge de travail sur les rapports ascendants : Permet aux rapports de cas saisis dans le système national DHIS2 d'être synchronisés avec une plateforme régionale grâce à l'échange électronique de données, plutôt que par des processus manuels.
+
+Le package SC-MEV a été développé en étroite collaboration avec le programme Urgences sanitaires de l'OMS (WHE) et le Bureau régional de l'OMS pour l'Afrique et vise à renforcer les recommandations visant à améliorer les systèmes électroniques de surveillance des maladies, comme indiqué dans les [Directives techniques pour la surveillance intégrée des maladies et la riposte dans la région AFRO (2019)](https://apps.who.int/iris/bitstream/handle/10665/325015/WHO-AF-WHE-CPI-05.2019-eng.pdf). Pour les États membres d'AFRO, le package sert également à remplacer le reporting centralisé et hors ligne dans la base de données Epi-Info qui a traditionnellement été utilisée pour soumettre les rapports de cas au bureau régional. Des applications d'échange de données supplémentaires ont été développées pour faciliter la transmission des rapports de cas de l'instance DHIS2 d'un pays à la plateforme de surveillance régionale d'AFRO. Ainsi, les éléments de données ont été alignés sur les rapports standard des cas de MEV utilisés dans la région. Le package peut être adapté aux besoins locaux et aux directives nationales ; toutefois, les éléments clés requis par la plateforme régionale seront obligatoires et ne devront donc pas être modifiés.
+
+Pour les États non membres d'AFRO, le package peut être davantage modifié pour inclure/exclure des maladies et des variables de données du programme tracker en fonction des politiques nationales relatives aux maladies à déclarer et à notifier. La conception générale du programme tracker, qui permet de relier la déclaration des cas aux résultats de laboratoire et à la classification, est flexible et peut être modifiée aussi bien au niveau national que régional.
+
+### Remerciements { #acknowledgements } 
+
+Ce package a été développé à partir d'un contenu normalisé proposé par le Programme d'urgences sanitaires mondiales de l'OMS (WHE) et le Bureau régional de l'OMS pour l'Afrique (AFRO), et cela en étroite collaboration avec lesdits organismes. Un groupe consultatif mondial d'experts, composé d'experts en la matière de l'OMS et des CDC américains, a été convoqué pour définir les besoins, donner son avis sur la conception du système et s'assurer que le package est conçu conformément aux normes mondiales de surveillance par cas des maladies à tendance épidémique et évitables par la vaccination. HISP exprime sa gratitude à Gavi, l'Alliance pour les vaccins, qui a soutenu le développement de ce package en tant que bien mondial ainsi que les efforts en matière de déploiement au niveau national.
+
+## System Design Overview { #system-design-overview } 
+
+### Use case { #use-case } 
+
+Surveillance is the ongoing systematic identification, collection, collation, analysis and interpretation of disease occurrence and public health event data, for the purposes of taking timely and robust action, such as disseminating the resulting information to the relevant people, for effective and appropriate action ([WHO](https://apps.who.int/iris/bitstream/handle/10665/325015/WHO-AF-WHE-CPI-05.2019-eng.pdf)). Surveillance is also essential for planning, implementation,
+monitoring and evaluation of public health interventions. The DHIS2 VPD case surveillance package supports one approach to indicator-based surveillance, which is typically characterized as structured information, reported to public health officials mostly from formal sources such as health care providers, following a standardized format or set of indicator definitions ([WHO](https://apps.who.int/iris/bitstream/handle/10665/325015/WHO-AF-WHE-CPI-05.2019-eng.pdf), [US CDC](https://www.cdc.gov/globalhealth/healthprotection/gddopscenter/how.html#:~:text=Indicator%2Dbased%20surveillance%20involves%20reports,the%20information%20obtained%20is%20standardized)). Systematic reporting of suspected cases or notifiable conditions through indicator-based surveillance forms one key component of an early warning system. VPD surveillance data can also be analyzed and triangulated with immunization programme data by to identify communities with zero-dose or under-immunized populations and inform both supplemental and routine immunization activities.
+
+### Utilisateurs cibles { #intended-users } 
+
+Grâce à un processus de collaboration impliquant les pays de mise en œuvre et les parties prenantes de la surveillance à plusieurs niveaux du système de santé, les éléments suivants ont été identifiés comme utilisateurs ou utilisateurs potentiels d'un système intégré de surveillance basé sur les cas dans DHIS2 :
+
+* Personnel des établissements de santé : le personnel des établissements est souvent le premier à signaler un cas suspect par le biais des systèmes de surveillance passive existants, conformément aux politiques nationales relatives aux maladies et aux affections à signaler ; le personnel des établissements peut également participer au suivi des soins et des résultats médicaux du cas.
+* Responsables de la surveillance au niveau du district : les responsables de la surveillance au niveau du district ou à d'autres niveaux administratifs infranationaux peuvent être chargés de mener à bien les enquêtes sur les cas à partir des rapports de cas suspects provenant des établissements, de suivre les notifications de cas et d'analyser les tendances de la maladie et les alertes d'épidémie pour leur zone administrative.
+* Le personnel de santé publique : reçoit des alertes pour des épidémies potentielles générées par le système ; analyse les données de surveillance pour détecter les tendances qui pourraient indiquer des épidémies possibles et planifie des activités de riposte le cas échéant.
+* Le personnel du programme de vaccination : accède aux tableaux de bord et aux indicateurs de surveillance des MEV et les analyse dans le système DHIS2 pour trianguler les données de surveillance avec les données du programme de vaccination afin d'orienter les activités de vaccination supplémentaires et de routine.
+* Personnel de laboratoire : reçoit les formulaires électroniques de demande d'échantillons ; peut être impliqué dans la saisie ou le téléchargement des résultats des analyses de laboratoire dans un dossier longitudinal.
+
+### Diseases Covered { #diseases-covered } 
+
+Ce package intègre dans un même système des flux de déclaration basée sur les cas pour 9 différentes maladies évitables par la vaccination. Cette approche est généralement plus durable que celle qui consiste à disposer de différents systèmes ou bases de données pour chaque maladie individuelle. Les variables de données par maladie ont été configurées en tant qu'éléments de données et attributs d'entités suivies dans le programme tracker du DHIS2, conformément à une liste de base d'[éléments de données de surveillance] (https://drive.google.com/file/d/1IL2fRyBcVI5IP-cTrwQW9dEqry7RI5dz/view?usp=sharing) fournie par le programme Urgences sanitaires de l'OMS et le Bureau régional de l'OMS pour l'Afrique.
+
+Des variables de données normalisées sont incorporées dans le programme tracker de surveillance des cas de MEV pour les maladies suivantes :
+
+1. Syndrome de Rubéole congénitale (SRC)
+2. Maladie bactérienne invasive évitable par la vaccination (MIBEV)
+3. Rougeole/Rubéole (RR)
+4. Méningite
+5. Tétanos néonatal (TN)
+6. Paralysie flasque aiguë (PFA)
+7. Rotavirus
+8. Impact du rotavirus
+9. Fièvre jaune
+10. Alertes/épidémie
+11. Analyse comparative
+
+The package design is *not* inherently limited to vaccine-preventable disease reporting;  it can be adapted and customized for country implementation to incorporate additional reporting of notifiable, reportable or other epidemic-prone diseases according to country policies.
+
+### Conceptual Workflow { #conceptual-workflow } 
+
+Le programme tracker SC-MEV prend en charge la collecte d'informations en fonction du diagnostic clinique initial sélectionné lors de l'inscription d'un nouveau cas suspect. **Les règles du programme** sont utilisées pour présenter les étapes du programme et les variables de données en fonction du diagnostic clinique initial d'une maladie suspecte. Le flux de travail conceptuel décrit ici ne reflète pas nécessairement chacune des interactions individuelles qui peuvent se produire au sein d'un système de santé lors de la saisie des données et de la gestion des informations relatives à un cas particulier sur le terrain.
+
+#### **Centralized reporting** { #centralized-reporting } 
+
+Le flux de travail décrit ci-dessous illustre les processus permettant d'entrer tous les formulaires de cas pertinents dans le DHIS2 à un niveau centralisé, sur la base de multiples sources de données (par exemple, les informations cliniques saisies au niveau de l'établissement, le diagnostic de laboratoire, les détails supplémentaires qui peuvent être complétés par les agents de surveillance au cours de l'enquête sur le cas).
+
+Ce flux de travail est conforme au système existant de notification centralisée utilisant Epi-Info. Même si ce flux de travail est le plus facile à remplacer dans un pays donné, l'inconvénient de la notification centralisée est qu'il peut y avoir de longs délais entre le moment où un cas suspect est notifié par un établissement de santé et le moment où les détails complets du cas sont saisis dans les systèmes pour générer des alertes d'épidémie ou permettre l'analyse.
+
+* Flux de travail : toutes les MEV à l'exception du Tétanos néonatal.
+
+The possibility for laboratory specimen collection and lab diagnosis data to be attached to the case record is incorporated into the program design for all diseases *excluding Neonatal Tetanus (NT)*.
+
+![Flux de travail pour toutes les maladies](resources/images/workflow1.png)
+
+* Flux de travail : Tétanos néonatal
+
+Le flux de travail pour le tétanos néonatal ne comprend pas les tests de laboratoire.
+
+![Flux de travail pour le tétanos néonatal](resources/images/workflow2.png)
+
+#### Decentralized reporting { #decentralized-reporting } 
+
+While centralized reporting of case-based data for VPDs is typical for reporting upwards (e.g. to WHO for IHR compliance or other bodies according to data sharing agreements), many countries have already begun to implement *decentralized* electronic case-based disease surveillance using DHIS2.
+
+Dans un flux de travail décentralisé, la configuration de **groupes d'utilisateurs** permet aux utilisateurs et aux acteurs à différents niveaux du système de santé d'ajouter des données à un formulaire électronique de notification de cas partagé dans DHIS2. Par exemple, un utilisateur d'un établissement de santé peut être responsable de la notification du cas en remplissant un formulaire électronique de notification de cas, en saisissant les détails cliniques du cas suspect et en remplissant le formulaire de demande d'échantillons de laboratoire. Une fois que les résultats de laboratoire sont disponibles pour un cas donné (lié par un identifiant unique ou un numéro d'échantillon de laboratoire), un utilisateur du laboratoire peut entrer les résultats de laboratoire dans l'étape du programme Lab. Selon les politiques en vigueur dans le pays, d'autres groupes d'utilisateurs, tels que les agents de surveillance, peuvent être chargés de déterminer et de mettre à jour la classification finale.
+
+L'un des principaux avantages d'un système de reporting décentralisé est la disponibilité des données en temps voulu dans le système électronique pour l'investigation et la réponse aux épidémies. Par exemple, les établissements peuvent signaler les cas suspects dans le programme MEV du DHIS2 en temps quasi réel, ce qui renforce la fonction d'alerte précoce du système. Lorsque les résultats de laboratoire sont disponibles, les données peuvent être ajoutées au dossier du cas et les indicateurs et les seuils d'alerte d'épidémie configurés dans le système seront mis à jour automatiquement.
+
+### Analysis & Use { #analysis-use } 
+
+Surveillance data captured in the DHIS2 case-based system can be made available to users from national to district and facility levels according to the configuration of user access settings. Regardless of which level of the system data are *entered* electronically into the system, data can be made available for analysis automatically down to the level of initial reporting (i.e. facility and upwards). Triangulation of case-based data for VPDs captured in DHIS2 alongside immunization coverage rates and other data sources can be used by national immunization programme staff to identify zero-dose and under-immunized pockets of the population.
+
+**Les indicateurs de programme** ont été configurés dans le package basé sur les cas selon les besoins spécifiques de la maladie, avec notamment des indicateurs opérationnels utiles pour la planification et le suivi des activités de riposte. Les indicateurs de programme sont utilisés pour agréger les données basées sur les cas pour l'analyse et la présentation sur des visualisations de tableaux de bord.
+
+Des **tableaux de bord** préconfigurés spécifiques à chaque maladie sont inclus dans le package. En outre, les tableaux de bord suivants intègrent des données provenant de plusieurs maladies :
+
+1. Tableau de bord des alertes/épidémies SBC : résume les alertes d'épidémies (sur la base de seuils préconfigurés pour les données basées sur les cas) pour toutes les MEV intégrées dans le package au niveau du district pour une analyse rapide
+2. Tableau de bord comparatif SBC-SIMR : lorsque le package SC-MEV est installé avec le package de surveillance agrégée (SIMR) dans le DHIS2, ce tableau de bord permet l'analyse et l'examen de la qualité/complétude des données dans les flux de rapports basés sur les cas et agrégés pour les MEV
+
+## Program Structure { #program-structure } 
+
+All of the programs in the VPD-CS package have a similar design, however different sections and variables are attached to each disease ***based on the initial diagnosis that is selected during registration***. The program structure is as follows:
+The program is made up of the following stages in its design:
+
+1. Détails de l’inscription
+2. Informations diagnostiques et clinique
+3. Requête de laboratoire
+4. Suivi des échantillons
+5. Résultat du laboratoire
+6. Classification finale
+
+![Structure du programme SC-MEV](resources/VPD_CBS_program_structure.png)
+
+Notez que les cas suspects de tétanos néonatal ne nécessitent pas de prélèvement d'échantillons de laboratoire ou de confirmation en laboratoire. Par conséquent, les règles du programme sont utilisées pour afficher uniquement les étapes suivantes du programme pour les cas de TN :
+
+1. Détails de l’inscription
+2. Informations diagnostiques et clinique
+3. Classification finale
+
+### Enrollment (case registration) { #enrollment-case-registration } 
+
+A suspected case presenting at a health facility or other surveillance point is represented in DHIS2 as a tracked entity instance [TEI]), using the tracked entity type 'person'. The enrollment is configured to '*Only enroll once per tracked entity lifetime*'. The TEI is expected to be enrolled in the tracker program only once; when the final case classification is completed for a given case and the enrollment is completed in the tracker program, it is not expected to create a new enrollment for that TEI in the future. If the same person presents as a suspected case in the future, the person would be registered and enrolled into the program as a new tracked entity instance representing a new suspected case, given a new Epid number and assigned an initial clinical diagnosis.
+
+The *enrollment date* is represented as the 'date of case notification'; while the *incident date* is represented as the 'date of symptoms onset'. Capturing the date of symptons onset in addition to date of notication during the enrollment allows for more robust time-based anaysis of case data.
+
+**Tracked entity attributes**
+The following concepts and data variables have been modeled as tracked entity attributes (TEA) in the tracker program and are captured during the enrollment:
+
+* **Diagnostic clinique :** Le diagnostic clinique initial est conçu sous forme de TEA puisqu'il déclenche une série de règles de programme pour afficher et masquer les variables de données, les étapes de programme et les sections d'étape de programme tout au long du flux de travail en fonction de la maladie. Ainsi, un seul programme tracker peut être utilisé pour établir des rapports pour de nombreuses maladies.
+* **'Numéro Épi'** : Les cas sont identifiés de manière unique par le numéro Épi spécifique à la maladie qui leur est attribué. Ce numéro est une combinaison de leur numéro Épi et de la maladie identifiée lors de leur diagnostic initial. Les règles du programme ont été configurées de manière à ce que les numéros Épi respectent le format correct. Le numéro Épi est un identifiant utile pour la recherche et la récupération de l'enregistrement du cas ; cependant, de manière pragmatique, le numéro Épi est souvent attribué au niveau central et peut ne pas être saisi lors de l'inscription initiale dans un flux de travail décentralisé qui permet aux établissements d'enregistrer les cas suspects dans le programme.
+* **System case ID**: an additional identifier configured to be automatically generated and unique *within the DHIS2 system*.
+* **Localisation de la résidence du cas** La géolocalisation de la résidence du cas est capturée par plusieurs TEA pour représenter à la fois des données structurées et non structurées :
+  * District de résidence : le district est sélectionné dans la hiérarchie des unités d'organisation pour permettre une analyse structurée basée sur la résidence/le domicile d'un cas
+  * Province de résidence : tout comme pour le district de résidence, la province est sélectionnée dans la hiérarchie des unités d'organisation
+  * Adresse du domicile : configuré pour la capture de texte libre
+  * Village/quartier : configuré pour la capture de texte libre
+* **Date de naissance et âge** : La date de naissance peut être saisie et représentée avec plusieurs TEA. Si la DDN est connue, l'utilisateur peut la saisir directement en tant que TEA. Si la DDN est inconnue, l'utilisateur saisira "oui seulement" pour le TEA "date de naissance inconnue" et les règles du programme afficheront des options permettant à l'utilisateur de saisir "âge en années" ou "âge en mois" comme TEA. Lorsque ces champs sont utilisés, le TEA "date de naissance inconnue" est automatiquement complété sur la base du nombre estimé d'années/mois saisis. Un exemple est donné ci-dessous.
+
+![SC-MEV DDN](resources/images/SC_MEV_DDN.PNG)
+
+### Stage 1: Diagnostic & Clinical Information { #stage-1-diagnostic-clinical-information } 
+
+Cette étape enregistre les détails cliniques et les informations d'admission d'un cas suspect, les signes et symptômes, l'historique des vaccinations, les informations de notification et le résultat. L'étape du programme contient les sections suivantes ; toutefois, notez que les sections sont affichées/masquées dans le formulaire de saisie des données par les règles du programme en fonction des variables de données pertinentes pour le diagnostic clinique (maladie suspectée) saisi lors de l'inscription
+
+* Admission et informations cliniques
+* Statut vaccinal
+* Diarrhée
+* Vomissement
+* Statut vaccinal de la mère
+* Signes et symptômes
+* Naissance d'un enfant
+* Entretien avec les parents
+* Antécédents des mouvements du patient avant l'apparition de la maladie
+* Information sur les notifications
+* Examen de suivi
+* Résultat
+
+### Stage 2: Lab request { #stage-2-lab-request } 
+
+L'étape 'demande d'analyses de laboratoire' enregistre les détails relatifs aux échantillons transmis au laboratoire pour traitement. Les informations fournies ici peuvent aider le personnel du laboratoire à prioriser les tests de laboratoire lorsque les ressources sont limitées. La personne qui saisit ces données peut être la même que celle qui a enregistré le cas suspect et consigné l'examen clinique du patient et ses expositions ; il peut aussi s'agir d'un autre membre du personnel chargé de formuler les requêtes de laboratoire. L'identifiant de l'échantillon est saisi et peut être utilisé pour établir un lien avec les systèmes de suivi ou de laboratoire.
+
+### Stage 3: Specimen Tracking { #stage-3-specimen-tracking } 
+
+L'étape de suivi de l'échantillon enregistre le moment où l'échantillons de laboratoire envoyé pour traitement a été reçu à différents niveaux de laboratoire, tels que les laboratoires de référence nationaux et internationaux. Cette étape saisit également l'état de l'échantillon à chaque niveau.
+
+### Stage 4: Laboratory Result { #stage-4-laboratory-result } 
+
+L'étape des résultats de laboratoire enregistre le type d'échantillon et les résultats des tests de laboratoire. Cette action peut être effectuée directement au laboratoire ou sous forme de saisie de données secondaires. Cette étape peut être répétée car les échantillons d'un cas donné peuvent être testés plusieurs fois (par exemple, en cas de résultats de laboratoire non concluants, un nouveau test de laboratoire peut être effectué et les résultats enregistrés) et/ou plusieurs échantillons peuvent également devoir être traités. L'étape du programme contient les sections suivantes ; toutefois, notez que les sections sont affichées/cachées dans le formulaire de saisie de données par les règles du programme en fonction des tests de laboratoire pertinents pour le diagnostic clinique (maladie suspectée) saisi lors de l'inscription.
+
+* Informations (y compris l'état de l'échantillon, les résultats du TDR, les résultats test PCR)
+* Sensibilité
+* Journal du laboratoire
+* LCR et Isolat
+* Laboratoire - Rougeole/Rubéole (variable spécifique aux cas suspects de R/R)
+* Autres liquides corporels stériles
+* Résultat sérologique
+* Laboratoire régional - Séroneutralisation
+* Laboratoire régional - Biologie moléculaire
+* Laboratoire régional - Isolement du virus
+* Laboratoire régional de référence
+* Résumé des résultats de la culture cellulaire
+* Résultats de l'analyse des selles
+* Informations sur le séquençage de l'isolat
+* Séquençage
+* Résultats de l'étude des entérovirus
+* Résultats de la DIT
+* résultats de rRT-PCR-DIT
+* résultats de rRT-PCR-PVDV
+* Résultats du séquençage du Sabin
+* Informations relatives au laboratoire sur site
+* Laboratoire de référence
+* Résultats du séquençage du PVDV
+* Résultats du séquençage de la polio sauvage
+* Renvoyé au CDC secondaire
+* Résultats de la résistance aux antimicrobiens
+* Autres tests
+* Classification finale du laboratoire
+* Résumé des résultats 
+
+### Stage 5: Final Classification { #stage-5-final-classification } 
+
+L'étape de classification finale enregistre la classification finale confirmée du cas par rapport au diagnostic initial. L'étape saisit également des données facultatives sur le diagnostic clinique à la sortie et les séquelles présentes à la sortie.
+
+### Notifications { #notifications } 
+
+Les notifications ont été configurées pour déclencher des messages sortants du système :
+
+* Résultats de tests de laboratoire disponibles : cette notification de programme peut être utilisée pour alerter les groupes d'utilisateurs tels que le personnel de santé du district, les agents de surveillance ou le personnel de l'établissement par message, e-mail ou SMS (avec une passerelle configurée) lorsque les résultats de tests de laboratoire sont disponibles et mis à jour dans le système. La notification est déclenchée lorsque l'étape du programme Résultats de laboratoire est marquée comme "terminée".
+
+### Program Rules { #program-rules } 
+
+Les règles de programme sont largement utilisées dans l'ensemble du programme tracker pour afficher/masquer les éléments de données, les étapes du programme et les sections des étapes du programme en fonction de l'attribut de l'entité de suivi "diagnostic clinique" sélectionné lors de l'inscription. Les règles de programme sont également utilisées pour la validation, par exemple pour les avertissements et les messages d'erreur, afin de garantir le respect du format standard du numéro Epi.
+
+Une liste complète des règles du programme est incluse dans le fichier de référence des métadonnées du package disponible à l’adresse [dhis2.org/who-package-downloads](https://dhis2.org/who-package-downloads).
+
+## Dashboards & Analytics { #dashboards-analytics } 
+
+### Tableaux de bord { #dashboards } 
+
+Pre-configured dashboards are included in the package to automate key analyses in an integrated way (across diseases) as well as for disease-specific surveillance needs and indicators. Disease-specific dashboards include epi cruves, suspected outbreak alerts, and automated analysis of indicators specific to the disease such as antigen specific vaccination status, measles discard rates, and specimen adequacy.  Some examples of integrated and disease-specific dashboard visualizations are provided below.
+
+#### CBS Alert/Outbreak dashboard { #cbs-alertoutbreak-dashboard } 
+
+Le tableau de bord affiche les alertes d'épidémie par district pour toutes les MEV intégrées pour l'alerte précoce. Les districts en alerte sont configurés en fonction de seuils fixés sur la base de critères spécifiques à la maladie.
+
+* SBC: Districts en alerte/épidémie
+
+![SBC: tableau de bord d'alertes](resources/VPD_CBS_outbreak_dashboard_1.PNG)
+
+#### CBS/IDSR Comparative dashboard { #cbsidsr-comparative-dashboard } 
+
+Lorsque le package SC-MEV est installé avec le package de surveillance agrégée (SIM) dans le DHIS2, ce tableau de bord permet l'analyse et l'examen de la qualité/complétude des données dans les flux de rapports basés sur les cas et agrégés pour les MEV.
+
+![SBC: tableau de bord comparatif](resources/VPD_CBS_comparative_dashboard_1.PNG)
+
+#### CBS Measles/Rubella dashboard { #cbs-measlesrubella-dashboard } 
+
+* Visualisations de l'épidémie de rougeole au niveau du district
+
+![Tableau de bord 1 SBC RR](resources/VPD_CBS_MR_dashboard_1.PNG)
+
+* Répartition des cas confirmés/non confirmés de rougeole
+
+![Tableau de bord 2 SBC RR](resources/VPD_CBS_MR_dashboard_2.PNG)
+
+* Incidence de la rougeole par semaine et par district
+
+![Tableau de bord 3 SBC RR](resources/VPD_CBS_MR_dashboard_3.PNG)
+
+* Cas de rougeole par statut vaccinal et échantillons prélevés pour 100 000 personnes
+
+![Tableau de bord 3 SBC RR](resources/VPD_CBS_MR_dashboard_4.PNG)
+
+### Indicateurs de programme { #program-indicators } 
+
+Les indicateurs de programme sont utilisés pour automatiser l'agrégation des données de cas au niveau individuel à des fins d'analyse ou pour effectuer des calculs tels que le temps écoulé entre les variables à travers différentes étapes de la collecte de données. En voici quelques exemples :
+
+* Nombre de cas suspects agrégés par diagnostic clinique (par exemple, nombre de cas suspects de méningite)
+* Nombre de cas confirmés agrégés par maladie et par type de confirmation de cas (nombre de cas confirmés de rougeole, confirmés par laboratoire ou par lien épidémiologique)
+* Nombre de cas suspects ayant fait l'objet d'une enquête dans les 48 heures : basé sur le temps écoulé entre la date de notification du cas et la date de l'enquête sur le cas.
+
+Une liste complète des indicateurs du programme est intégrée dans le fichier de référence des métadonnées du package, disponible sur [dhis2.org/who-package-downloads](https://dhis2.org/who-package-downloads)
+
+### Indicateurs { #indicators } 
+
+Des indicateurs ont été configurés pour combiner un ou plusieurs indicateurs de programme ou utiliser d'autres sources de données telles que la population pour le dénominateur. Tous les indicateurs associés au programme de surveillance des cas de MEV sont inclus dans le **groupe d'indicateurs** "Surveillance des cas de MEV", ce qui permet aux utilisateurs de l'analytique de sélectionner facilement la liste des indicateurs MEV dans les applications de visualisation de données du DHIS2.
+
+Voici quelques exemples d'indicateurs du programme basé sur les cas :
+
+* % de cas pour lesquels du liquide céphalo-rachidien (LCR) a été prélevé
+  * Numérateur : indicateur de programme regroupant le nombre de cas suspects de méningite dont l'échantillon de LCR a été prélevé
+  * Dénominateur : indicateur de programme regroupant le nombre total de cas suspects de méningite signalés via le tracker SC-MEV
+
+* Taux d'incidence de la rougeole
+  * Numérateur : indicateur de programme regroupant les cas confirmés de rougeole signalés par le biais du tracker basé sur les cas
+  * Dénominateur : population issue des ensembles de données ne provenant pas du CBS
+
+## Implementation & Local Adaptation { #implementation-local-adaptation } 
+
+Pour les États membres d'AFRO, ce package est optimisé et approuvé par le Bureau régional pour remplacer le système EPI Info de surveillance des MEV existant d'AFRO par le package de surveillance des MEV du DHIS2. Le package répond aux exigences fonctionnelles, aux flux de travail et aux variables de données obligatoires pour les rapports qui étaient précédemment effectués dans EPI Info. Les pays utilisant ce package peuvent envoyer leurs données basées sur les cas vers le référentiel régional AFRO directement à partir de l'instance nationale de DHIS2 où le package MEV est installé et utilisé. Ainsi, dans le cadre de la mise en œuvre nationale dans les États membres d'AFRO, il est recommandé de discuter de la manière et du moment d'abandonner progressivement l'utilisation du système de notification EPI Info afin de réduire la saisie de données doublons et de renforcer les boucles de rétroaction et la qualité des données dans le système DHIS2.
+
+## Références { #references } 
+
+Bureau régional de l'OMS pour l'Afrique (2019). Directives techniques pour la surveillance intégrée des maladies et la riposte dans la Région OMS AFRO. Disponible sur : <https://apps.who.int/iris/bitstream/handle/10665/325015/WHO-AF-WHE-CPI-05.2019-eng.pdf>
+
+US CDC (2021). Global Disease Detection Operations Center (Centre d'opérations mondiales de détection des maladies) : Aperçu. Disponible sur : <https://www.cdc.gov/globalhealth/healthprotection/gddopscenter/how.html>
+
