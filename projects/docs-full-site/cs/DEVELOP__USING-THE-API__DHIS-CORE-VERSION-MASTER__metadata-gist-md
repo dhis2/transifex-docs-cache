@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/metadata-gist.md"
-revision_date: '2022-05-12'
+revision_date: '2024-03-13'
 tags:
-- Vývoj
 - Hlavní verze jádra DHIS
+- Vývoj
 ---
 
 # Metadata Gist API { #gist_api } 
@@ -65,6 +65,8 @@ Známé rozdíly:
 * Gist offers using attribute UIDs as field and filter property names to allow
   listing or filtering based on custom attribute values
 * Gist nabízí seskupení filtrů
+* Gist offers renaming the enrty list in a paged response using `pageListName`
+* Gist offers to pluck multiple simple properties
 
 Známá omezení:
 
@@ -75,7 +77,7 @@ Známá omezení:
 * řazení lze použít pouze na trvalá pole
 * filtry tokenů nejsou k dispozici
 * pořadí vždy rozlišuje velká a malá písmena
-* transformátor `pluck` je omezen na vlastnosti textu
+* `pluck` transformer limited to text properties (or simple properties for multi-pluck)
 * fields which hold collections of simple (non-identifiable) items cannot always
   be included depending on how they are stored
 
@@ -125,21 +127,22 @@ ignored.
 ### Přehled { #overview } 
 Parametry v abecedním pořadí:
 
-| Parametr      | Možnosti               |  Výchozí     | Popis          |
-| -------------- | --------------------- | ------------ | ---------------------|
-| `absoluteUrls` | `true` nebo `false`     | `false`      | `true` používá v odkazech relativní cesty, `false` používá v odkazech absolutní URL |
-| `auto`         | `XS`, `S`, `M`, `L`, `XL` | (závislé na kontextu) | rozsah polí vybraných voličem polí `*` |
-| `fields`       | (závisí na koncovém bodu) | `*`          | čárkou oddělený seznam polí nebo předvoleb, které chcete zahrnout |
-| `filter`       | `<field>:<operator>` nebo `<field>:<operator>:<value>` |   | čárkami oddělený seznam filtrů pole dotazu (lze použít více než jednou) |
-| `headless`     | `true` nebo `false`     | `false`      | `true` přeskočí wrapping na pager (ignoruje `total`), `false` použije wrapper objekt pageru kolem seznamu výsledků |
-| `inverse`      | `true` nebo `false`     | `false`      | `true` vrací položky které **nejsou** v seznamu,` false` vrací položky v seznamu |
+| Parametr      | Možnosti               | Výchozí                            | Popis          |
+| -------------- | --------------------- |------------------------------------| ---------------------|
+| `absoluteUrls` | `true` nebo `false`     | `false`                            | `true` používá v odkazech relativní cesty, `false` používá v odkazech absolutní URL |
+| `auto`         | `XS`, `S`, `M`, `L`, `XL` | (závislé na kontextu)                | rozsah polí vybraných voličem polí `*` |
+| `fields`       | (závisí na koncovém bodu) | `*`                                | čárkou oddělený seznam polí nebo předvoleb, které chcete zahrnout |
+| `filter`       | `<field>:<operator>` nebo `<field>:<operator>:<value>` |                                    | čárkami oddělený seznam filtrů pole dotazu (lze použít více než jednou) |
+| `headless`     | `true` nebo `false`     | `false`                            | `true` přeskočí wrapping na pager (ignoruje `total`), `false` použije wrapper objekt pageru kolem seznamu výsledků |
+| `inverse`      | `true` nebo `false`     | `false`                            | `true` vrací položky které **nejsou** v seznamu,` false` vrací položky v seznamu |
 | `locale`       |                       | (jazyk konfigurovaný uživatelským účtem) | přepsat jazyk překladu |
-| `order`        | `<field>` or  `<field>:asc` or `<field>:desc` | `:asc` | čárkami oddělený seznam polí pořadí dotazů (lze použít více než jednou) |
-| `page`         | 1-n                   | 1            | číslo stránky |
-| `pageSize`     | 1-1000                | 50           | počet položek na stránce |
-| `rootJunction` | `AND` nebo `OR`         | `AND`        | logická kombinace `filter` `AND`= všechny se musí shodovat, `OR` = alespoň jeden se musí shodovat |
-| `total`        | `true` nebo `false`     | `false`      | `true` přidat celkový počet shod na pager,` false` přeskočit počítání celkového počtu shod |
-| `translate`    | `true` nebo `false`     | `true`       | `true` přeložit všechny přeložitelné vlastnosti, `false` přeskočit překlad přeložitelných vlastností (žádný vliv na syntetické zobrazované názvy) |
+| `order`        | `<field>` or  `<field>:asc` or `<field>:desc` | `:asc`                             | čárkami oddělený seznam polí pořadí dotazů (lze použít více než jednou) |
+| `page`         | 1-n                   | 1                                  | číslo stránky |
+| `pageSize`     | 1-1000                | 50                                 | počet položek na stránce |
+| `pageListName` | `<text>` | (object type plural) | overrides the property name of the result entry list | 
+| `rootJunction` | `AND` nebo `OR`         | `AND`                              | logická kombinace `filter` `AND`= všechny se musí shodovat, `OR` = alespoň jeden se musí shodovat |
+| `total`        | `true` nebo `false`     | `false`                            | `true` přidat celkový počet shod na pager,` false` přeskočit počítání celkového počtu shod |
+| `translate`    | `true` nebo `false`     | `true`                             | `true` přeložit všechny přeložitelné vlastnosti, `false` přeskočit překlad přeložitelných vlastností (žádný vliv na syntetické zobrazované názvy) |
 
 
 ### Parametr `absoluteUrls` { #gist_parameters_absoluteUrls } 
@@ -575,6 +578,25 @@ used between filters. Possible are:
 Výchozí hodnota je `AND`.
 
 
+### The `pageListName` Parameter { #gist_parameters_pageListName }
+<!--DHIS2-SECTION-ID:gist_parameters_pageListName-->
+The array property in a paged response that contains the matching entry list is 
+named  after the object type contained in the list. 
+For `/api/organisationUnits/gist` it would be named `organisationUnits`.
+
+This default naming can be customized using the `pageListName` parameter.
+For example, `/api/organisationUnits/gist?pageListName=matches` returns a
+response root object with the format:
+
+```json
+{
+  "pager": {},
+  "matches": []
+}
+```
+(details of the pager and matches are omitted here)
+
+
 ### The `total` Parameter { #gist_parameters_total } 
 <!--DHIS2-SECTION-ID:gist_parameters_total-->
 
@@ -685,18 +707,18 @@ any of the indicators `::`, `~` or `@` followed by the transformer expression.
 
 Dostupné výrazy transformátoru jsou:
 
-| Transformátor        | Typ výsledku JSON    | Popis                       |
-| ------------------ | ------------------- | --------------------------------- |
-| `rename(<name>)`   | -                   | přejmenuje pole v odpovědi na `<name>` |
-| `size`             | `number`            | počet položek v poli sbírky |
-| `isEmpty`          | `boolean`           | prázdnota sběrného pole   |
-| `isNotEmpty`       | `boolean`           | nevyprázdnění sběrného pole |
-| `ids`              | `string` or `[string]` | ID objektu nebo ID předmětů sběru |
-| `id-objects`       | `[{ "id": <id> }]`  | ID předmětů sběru jako objektu |
-| `member(<id>)`     | `boolean`           | má člena s `<id>` pro pole sběru |
-| `not-member(<id>)` | `boolean`           | nemá člena s `<id>` pro pole sběru |
-| `pluck(<field>)`   | `string` or `[string]` | extrahovat jedinou textovou vlastnost objektu nebo každé položky kolekce |
-| `from(<field>,...)`| záleží na typu bean | extrahuje neperzistentní pole z jednoho nebo více trvalých |
+| Transformátor          | Typ výsledku JSON       | Popis                                                                                           |
+|----------------------|------------------------|-------------------------------------------------------------------------------------------------------|
+| `rename(<name>)`     | -                      | přejmenuje pole v odpovědi na `<name>`                                                         |
+| `size`               | `number`               | počet položek v poli sbírky                                                               |
+| `isEmpty`            | `boolean`              | prázdnota sběrného pole                                                                       |
+| `isNotEmpty`         | `boolean`              | nevyprázdnění sběrného pole                                                                   |
+| `ids`                | `string` or `[string]` | ID objektu nebo ID předmětů sběru                                                            |
+| `id-objects`         | `[{ "id": <id> }]`     | ID předmětů sběru jako objektu                                                                     |
+| `member(<id>)`       | `boolean`              | má člena s `<id>` pro pole sběru                                                           |
+| `not-member(<id>)`   | `boolean`              | nemá člena s `<id>` pro pole sběru                                                       |
+| `pluck(<field>,...)` | `string` or `[string]` | extract single text property or multiple simple properties from the object or of each collection item |
+| `from(<field>,...)`  | záleží na typu bean   | extrahuje neperzistentní pole z jednoho nebo více trvalých                                      |
 
 A field can receive both the `rename` transformer and one of the other 
 transformers, for example:

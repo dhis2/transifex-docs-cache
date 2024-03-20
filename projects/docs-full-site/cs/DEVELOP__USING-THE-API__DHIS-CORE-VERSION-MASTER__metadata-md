@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/metadata.md"
-revision_date: '2024-02-09'
+revision_date: '2024-03-13'
 tags:
-- Vývoj
 - Hlavní verze jádra DHIS
+- Vývoj
 ---
 
 # Metadata { #metadata } 
@@ -580,6 +580,8 @@ for _data elements_ is:
 
     /api/dataElements
 
+> **_NOTE:_**  When updating objects, all existing property values will be overwritten, even if the new value is null. Please use [JSON Patch API](#webapi_partial_updates) in case you want do partial update to an object.
+
 ### Vytvořit / aktualizovat parametry { #webapi_metadata_create_update } 
 
 Následující parametry dotazu na dotaz jsou k dispozici ve všech koncových bodech metadat.
@@ -590,7 +592,6 @@ Tabulka: Dostupné filtry dotazů
 |---|---|---|---|---|
 | preheatCache | boolean | false | true &#124; false | Zapněte/vypněte předehřívání mapy mezipaměti. Toto je ve výchozím nastavení zapnuto. Vypnutím této možnosti se počáteční doba načítání importéru výrazně zkrátí (ale zpomalí se samotný import). To se většinou používá pro případy, kdy máte malý soubor XML/JSON, který chcete importovat, a nechcete čekat na předehřívání mapy mezipaměti. |
 | importStrategy | enum | false | CREATE_AND_UPDATE &#124; CREATE &#124; UPDATE &#124; DELETE | Chcete -li použít strategii importu, další informace naleznete níže. |
-| mergeMode | enum | false | REPLACE, MERGE | Strategie pro slučování objektů při provádění aktualizací. REPLACE pouze přepíše vlastnost novou poskytnutou hodnotou, MERGE nastaví vlastnost pouze v případě, že není null (pouze pokud byla vlastnost poskytnuta). |
 
 ### Vytváření a aktualizace objektů { #webapi_creating_updating_objects } 
 
@@ -1086,7 +1087,6 @@ Tabulka: Parametr importu
 | preheatMode | REFERENCE, ALL, NONE | Sets the preheater mode, used to signal if preheating should be done for `ALL` (as it was before with *preheatCache=true*) or do a more intelligent scan of the objects to see what to preheat (now the default), setting this to `NONE` is not recommended. |
 | importStrategy | CREATE_AND_UPDATE, CREATE, UPDATE, DELETE | Nastaví strategii importu, `CREATE_AND_UPDATE` se pokusí najít shodu s identifikátorem, pokud neexistuje, vytvoří objekt. |
 | atomicMode | ALL, NONE | Sets atomic mode, in the old importer we always did a *best effort* import, which means that even if some references did not exist, we would still import (i.e. missing data elements on a data element group import). Default for new importer is to not allow this, and similar reject any validation errors. Setting the `NONE` mode emulated the old behavior. |
-| ~~mergeMode~~ | ~~REPLACE, MERGE~~ | ~~Sets the merge mode, when doing updates we have two ways of merging the old object with the new one, `MERGE` mode will only overwrite the old property if the new one is not-null, for `REPLACE` mode all properties are overwritten regardless of null or not.~~ (*) |
 | flushMode | AUTO, OBJECT | Sets the flush mode, which controls when to flush the internal cache. It is *strongly* recommended to keep this to `AUTO` (which is the default). Only use `OBJECT` for debugging purposes, where you are seeing hibernate exceptions and want to pinpoint the exact place where the stack happens (hibernate will only throw when flushing, so it can be hard to know which object had issues). | 
 | skipSharing | false, true | Přeskočit vlastnosti sdílení, nesloučit sdílení při provádění aktualizací a nepřidávat přístup ke skupině uživatelů při vytváření nových objektů. |
 | skipValidation | false, true | Přeskočit ověření pro import. `NOT RECOMMENDED`. |
@@ -1095,7 +1095,7 @@ Tabulka: Parametr importu
 | userOverrideMode | NONE, CURRENT, SELECTED | Umožňuje přepsat uživatelskou vlastnost každého objektu, který importujete, možnosti jsou NONE (nedělat nic), CURRENT (použít importovaného uživatele), SELECTED (vybrat konkrétního uživatele pomocí overrideUser=X) |
 | overrideUser | User ID | Pokud je userOverrideMode SELECTED, použijte tento parametr k výběru uživatele, u kterého chcete přepsat. |
 
-> (*) Currently the `mergeMode=MERGE` option of the import service has limitations and doesn't support all objects. It doesn't work with some object types such as Embedded objects, or objects which are saved as JSONB format in database ( sharing, attributeValues, etc...). Fixing those issues are complicated and would just cause new issues. Therefore, this `mergedMode=MERGE` is deprecated and currently is not recommended to use. The update mode should always be mergedMode=REPLACE. We have developed a new [JSON Patch API](#webapi_partial_updates) which can be used as an alternative approach. This feature is introduced in 2.37 release.
+> **NOTE** When updating objects, all property values will be overwritten even if the new values are `null`. Please use [JSON Patch API](#webapi_partial_updates) in case you want do partial update to an object.
 
 
 An example of a metadata payload to be imported looks like this. Note how
@@ -1150,7 +1150,6 @@ ignored:
     "preheatMode": "REFERENCE",
     "importStrategy": "CREATE_AND_UPDATE",
     "atomicMode": "ALL",
-    "mergeMode": "REPLACE",
     "flushMode": "AUTO",
     "skipSharing": false,
     "skipTranslation": false,
