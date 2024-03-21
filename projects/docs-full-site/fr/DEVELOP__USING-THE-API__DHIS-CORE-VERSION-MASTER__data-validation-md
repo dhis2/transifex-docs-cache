@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/data-validation.md"
-revision_date: '2024-02-14'
+revision_date: '2024-03-13'
 tags:
-- Développement
 - Version Master de DHIS2 Central
+- Développement
 ---
 
 # Validation des données { #data-validation }
@@ -516,17 +516,29 @@ Des résultats supplémentaires peuvent être filtrés à l'aide d'un paramètre
 
 Le filtre `section` renverra toutes les correspondances exactes qui ont la section spécifiée.
 
-### Exécution de résumés sur l'intégrité des données { #webapi_data_integrity_run_summary }
+Furthermore, to filter (select) only checks marked as `isSlow` use `slow=true`,
+
+    GET /api/dataIntegrity?slow=true
+
+or to filter (select) only checks that are not performed via database query 
+(programmed checks) use `programmatic=true`:
+
+    GET /api/dataIntegrity?programmatic=true
+
+The `slow`, `programmatic` and `section` filters can be combined in which case
+all conditions must be met.
+
+### Production de résumés sur l'intégrité des données { #webapi_data_integrity_run_summary }
 
 Depuis la version 2.38, les contrôles d'intégrité des données ont deux niveaux de spécificité :
 - un niveau `résumé` qui donne un aperçu du nombre de problèmes
 - un niveau `détails` qui fournit une liste de problèmes indiquant des violations individuelles de l'intégrité des données.
 
-Pour déclencher une analyse récapitulative pour un ensemble de contrôles exécutés :
+Pour lancer une analyse qui résume les contrôles exécutés :
 
     POST /api/dataIntegrity/summary?checks=<name1>,<name2>
 
-Cela déclenche une tâche qui exécute le ou les contrôles de manière asynchrone. Les résultats des contrôles individuels seront renvoyés dans le cache de l'application dès que le contrôle sera terminé.
+Cela déclenche l'exécution du ou des contrôle(s) de manière asynchrone. Les résultats des contrôles individuels seront renvoyés dans le cache de l'application dès que le contrôle sera terminé.
 
 Alternativement, la liste des contrôles peut également être fournie comme le CORPS de la requête POST.
 Cela peut être utile si la liste devient trop longue pour être utilisée dans l'URL.
@@ -544,7 +556,7 @@ Pour attendre que le résumé soit disponible dans le cache, un `timeout` (déla
 
     GET /api/dataIntegrity/summary?checks=<name1>,<name2>&timeout=500
 
-Une réponse récapitulative pourrait ressembler à  ceci :
+Une réponse de résumé pourrait ressembler à  ceci :
 ```json
 {
   "<name1>": {
@@ -572,7 +584,7 @@ Une réponse récapitulative pourrait ressembler à  ceci :
 }
 ```
 
-Chaque réponse de résumé contient le `nom`, la `section`, la `sévérité`, la `description` et éventuellement une `introduction` et une `recommandation`. Chaque résumé contient le nombre de problèmes trouvés dans le champ `nombre`. Si possible, un champ optionnel `pourcentage` fournit le pourcentage d'objets présentant des problèmes d'intégrité des données par rapport à l'ensemble des objets du même type. Le champ `Temps de début` indique le moment où le contrôle a été initié. Le champ `Temps de fin` permet de calculer la durée nécessaire à l'exécution du contrôle.
+Chaque réponse de résumé contient le `nom`, la `section`, la `sévérité`, la `description` et éventuellement une `introduction` et une `recommandation`. Chaque résumé contient le nombre de problèmes trouvés dans le champ `nombre`. Si possible, un champ optionnel `pourcentage` fournit le pourcentage d'objets présentant des problèmes d'intégrité des données par rapport à l'ensemble des objets du même type. Le champ `Heure de début` indique le moment où le contrôle a été initié. Le champ `Heure de fin` permet de calculer la durée nécessaire à l'exécution du contrôle.
 
 Si une analyse de contrôle échoue en raison d'une erreur de programmation ou d'une incohérence imprévue des données, le résumé et les détails comporteront un champ `erreur` qui décrit l'erreur qui s'est produite. Le `nombre` de contrôles qui ont échoué sera fixé à -1. Aucun `pourcentage` ne sera renvoyé dans ce cas.
 
@@ -672,6 +684,14 @@ Tout comme avec le résumé, il est possible d'obtenir les noms des contrôles d
 
 Users of DHIS2 can now create and supply their own Data Integrity Checks. This can be useful if users
 want to avail of this functionality and extend upon the supplied set of core data integrity checks.
+
+> **Tip**
+> 
+> Users are also encouraged to share their custom checks with others by opening a pull request in the 
+> [dhis2-core](https://github.com/dhis2/dhis2-core) repository containing their `.yaml` file(s).
+> Please select `platform-backend` as reviewer to put the PR on our radar early on. The team will 
+> take care of checking and linking the check correctly, so it becomes part of the provided suite of 
+> checks with the next release. 
 
 An example of a custom check could be for determining if certain users are members of specific user groups.
 This type of check would be very specific to an implementation, and not generally applicable across all installs.
