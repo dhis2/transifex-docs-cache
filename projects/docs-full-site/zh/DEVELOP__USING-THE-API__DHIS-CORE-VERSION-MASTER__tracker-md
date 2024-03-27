@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/tracker.md"
-revision_date: '2024-03-19'
+revision_date: '2024-03-26'
 tags:
-- DHIS核心 主版
 - Develop
+- DHIS核心 主版
 ---
 
 # 追踪器 { #tracker } 
@@ -39,7 +39,7 @@ tags:
 Tracker consists of a few different types of objects that are nested together to represent the data.
 In this section, we will show and describe each of the objects used in the Tracker API.
 
-### 跟踪实体{ #tracked-entity }
+### Tracked Entities { #tracked-entities } 
 
 `跟踪实体`是跟踪器模型的根对象。
 
@@ -52,16 +52,17 @@ In this section, we will show and describe each of the objects used in the Track
 | updatedAt | 上次更新对象的时间戳。在服务器上设置。 | 不 | 不 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
 | updatedAtClient | 对象上次在客户端更新的时间戳。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
 | orgUnit | 用户创建跟踪实体的组织部门。 | 是的 | 是的 | String:Uid | ABCDEF12345 |
-| inactive | 指示被跟踪实体是否处于非活动状态。 | 不 | 是的 | Boolean | Default: False, True |
-| deleted | 指示跟踪的实体是否已被删除。只有删除时才能改变。 | 不 | 不 | Boolean | 错误直到被删除 |
-| geometry | 被跟踪实体的地理表示。基于 TrackedEntityType 的“featureType”。 | 不 | 是的 | GeoJson | {<br>"type": "POINT",<br>"coordinates": [123.0, 123.0]<br>} |
-| 存储者 | 存储/创建被跟踪实体的客户参考。 | 不 | 是的 | 字符串：任意 | 约翰·多伊 |
-| 由...制作 | 仅用于读取数据。创建该对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"用户名": "用户名",<br>“名字”：“约翰”，<br>“姓氏”：“Doe”<br>} |
-| 更新者 | 仅用于读取数据。最后更新对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"用户名": "用户名",<br>“名字”：“约翰”，<br>“姓氏”：“Doe”<br>} |
-| 属性 | 被跟踪实体拥有的被跟踪实体属性值的列表。 | 不 | 是的 | TrackedEntityAttributeValue 列表 | 查看属性 |
-| 入学人数 | 被跟踪实体拥有的注册列表。 | 不 | 是的 | 招生名单 | 查看报名 |
-| 关系 | 连接到被跟踪实体的关系列表。 | 不 | 是的 | 关系列表 | 查看关系 |
-| 程序所有者 | 可以通过特定程序访问此跟踪实体的组织单位列表。有关详细信息，请参阅“程序所有权”。 | 不 | 是的 | 程序所有者列表 | 请参阅“程序所有权”部分 |
+| inactive | 指示被跟踪实体是否处于非活动状态。 | 不 | 是的 | Boolean | Default: false, true |
+| deleted | 指示跟踪的实体是否已被删除。只有删除时才能改变。 | 不 | 不 | Boolean | false until deleted |
+| potentialDuplicate | Indicates whether the tracked entity is a potential duplicate. | 不 | 不 | Boolean | Default: false |
+| geometry | A  geographical representation of the tracked entity. Based on the "featureType" of the TrackedEntityType. | 不 | 是的 | GeoJson | {<br>"type": "POINT",<br>"coordinates": [123.0, 123.0]<br>} |
+| storedBy | Client reference for who stored/created the tracked entity. | 不 | 是的 | String:Any | John Doe |
+| createdBy | Only for reading data. User that created the object. Set on the server | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"用户名": "用户名",<br>“名字”：“约翰”，<br>“姓氏”：“Doe”<br>} |
+| updatedBy | Only for reading data. User that last updated the object. Set on the server | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"username": "username",<br>"firstName": "John",<br>"surname": "Doe"<br>} |
+| 属性 | A list of tracked entity attribute values owned by the tracked entity. | 不 | 是的 | List of TrackedEntityAttributeValue | See Attribute |
+| enrollments | A list of enrollments owned by the tracked entity. | 不 | 是的 | List of Enrollment | See Enrollment |
+| relationships | A list of relationships connected to the tracked entity. | 不 | 是的 | List of Relationship | See Relationship |
+| programOwners | A list of organisation units that have access through specific programs to this tracked entity. See "Program Ownership" for more. | 不 | 是的 | List of ProgramOwner | See section "Program Ownership" |
 
 > **Note**
 >
@@ -73,38 +74,38 @@ In this section, we will show and describe each of the objects used in the Track
 >
 > The "attributes" referred to in the `Tracked Entity` are `Tracked Entity Type Attributes`.
 
-### 注册 { #enrollment } 
+### Enrollments { #enrollments } 
 
 `Tracked Entities` can enroll into `Programs` for which they are eligible. Tracked entities are
 eligible as long as the program is configured with the same `Tracked Entity Type` as the tracked
 entity. We represent the enrollment with the `Enrollment` object, which we describe in this section.
 
-| 财产 | 描述 | 需要 | 不可变的 | 类型 | 例 |
+| Property | 描述 | 需要 | Immutable | 类型 | 例 |
 |---|---|---|---|---|---|
-| 注册 | 注册的标识符。如果未提供则生成 | 不 | 是的 | String:Uid | ABCDEF12345 |
-| 程序 | 注册代表的计划。 | 是的 | 不 | String:Uid | ABCDEF12345 |
-| 跟踪实体 | 对注册的跟踪实体的引用。 | 是的 | 是的 | String:Uid | ABCDEF12345 |
-| trackedEntityType | 仅用于读取数据。注册的跟踪实体的类型 | 不 | 是的 | String:Uid | ABCDEF12345 |
-| 地位 | 注册状态。如果未提供，则处于活动状态。 | 不 | 不 | 枚举 | 有效、已完成、已取消 |
-| orgUnit | 用户注册跟踪实体的组织部门。 | 是的 | 不 | String:Uid | ABCDEF12345 |
-| createdAt | 用户创建对象时的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| createdAtClient | 用户在客户端创建对象时的时间戳 | 不 | 不 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| updatedAt | 上次更新对象的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| updatedAtClient | 对象上次在客户端更新的时间戳 | 不 | 不 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| 注册于 | 用户注册跟踪实体时的时间戳。 | 是的 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| 发生于 | 注册发生时的时间戳。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| 完成时间 | 用户完成注册时的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| 完成者 | 参考谁完成了注册 | 不 | 不 | 字符串：任意 | 约翰·多伊 |
-| 跟进 | 指示注册是否需要跟进。如果未提供则为假 | 不 | 不 | 布尔兰 | Default: False, True |
-| deleted | 指示注册是否已被删除。只有删除时才能改变。 | 不 | 是的 | Boolean | 错误直到被删除 |
-| geometry | 招生的地理代表性。基于程序的“featureType” | 不 | 不 | GeoJson | {<br>"type": "POINT",<br>"coordinates": [123.0, 123.0]<br>} |
-| 存储者 | 存储/创建注册的客户参考。 | 不 | 不 | 字符串：任意 | 约翰·多伊 |
-| 由...制作 | 仅用于读取数据。创建该对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"用户名": "用户名",<br>“名字”：“约翰”，<br>“姓氏”：“Doe”<br>} |
-| 更新者 | 仅用于读取数据。最后更新对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"用户名": "用户名",<br>“名字”：“约翰”，<br>“姓氏”：“Doe”<br>} |
-| 属性 | 与注册相关的跟踪实体属性值的列表。 | 不 | 不 | TrackedEntityAttributeValue 列表 | 查看属性 |
-| 事件 | 注册拥有的事件列表。 | 不 | 不 | 活动一览 | 查看活动 |
-| 关系 | 与注册相关的关系列表。 | 不 | 不 | 关系列表 | 查看关系 |
-| 笔记 | 与注册相关的注释。它只能被创建。 | 不 | 是的 | 注意事项清单 | 看注释 |
+| enrollment | The identifier of the enrollment. Generated if not supplied | 不 | 是的 | String:Uid | ABCDEF12345 |
+| program | The program the enrollment represents. | 是的 | 不 | String:Uid | ABCDEF12345 |
+| trackedEntity | A reference to the tracked entity enrolled. | 是的 | 是的 | String:Uid | ABCDEF12345 |
+| trackedEntityType | Only for reading data. The type of tracked entity enrolled | 不 | 是的 | String:Uid | ABCDEF12345 |
+| status | Status of the enrollment. ACTIVE if not supplied. | 不 | 不 | Enum | ACTIVE, COMPLETED, CANCELLED |
+| orgUnit | The organisation unit where the user enrolled the tracked entity. | 是的 | 不 | String:Uid | ABCDEF12345 |
+| createdAt | Timestamp when the user created the object. Set on the server. | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| createdAtClient | Timestamp when the user created the object on client | 不 | 不 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| updatedAt | Timestamp when the object was last updated. Set on the server. | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| updatedAtClient | Timestamp when the object was last updated on client | 不 | 不 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| enrolledAt | Timestamp when the user enrolled the tracked entity. | 是的 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| occurredAt | Timestamp when enrollment occurred. | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| completedAt | Timestamp when the user completed the enrollment. Set on the server. | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| completedBy | Reference to who completed the enrollment | 不 | 不 | String:any | John Doe |
+| 跟进 | Indicates whether the enrollment requires follow-up. False if not supplied | 不 | 不 | Booelan | Default: False, True |
+| deleted | Indicates whether the enrollment has been deleted. It can only change when deleting. | 不 | 是的 | Boolean | False until deleted |
+| geometry | A  geographical representation of the enrollment. Based on the "featureType" of the Program | 不 | 不 | GeoJson | {<br>"type": "POINT",<br>"coordinates": [123.0, 123.0]<br>} |
+| storedBy | Client reference for who stored/created the enrollment. | 不 | 不 | String:Any | John Doe |
+| createdBy | Only for reading data. User that created the object. Set on the server | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"用户名": "用户名",<br>“名字”：“约翰”，<br>“姓氏”：“Doe”<br>} |
+| updatedBy | Only for reading data. User that last updated the object. Set on the server | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"username": "username",<br>"firstName": "John",<br>"surname": "Doe"<br>} |
+| 属性 | A list of tracked entity attribute values connected to the enrollment. | 不 | 不 | List of TrackedEntityAttributeValue | See Attribute |
+| events | A list of events owned by the enrollment. | 不 | 不 | List of Event | See Event |
+| relationships | A list of relationships connected to the enrollment. | 不 | 不 | List of Relationship | See Relationship |
+| notes | Notes connected to the enrollment. It can only be created. | 不 | 是的 | List of Note | See Note |
 
 > **Note**
 >
@@ -129,88 +130,88 @@ In the API, the significant difference is that all events are either connected t
 enrollment (`EVENT PROGRAM`) or different enrollments (`TRACKER PROGRAM`). The table below will
 point out any exceptional cases between these two.
 
-| 财产 | 描述 | 需要 | 不可变的 | 类型 | 例 |
+| Property | 描述 | 需要 | Immutable | 类型 | 例 |
 |---|---|---|---|---|---|
-| 事件 | 事件的标识符。如果未提供则生成 | 不 | 是的 | String:Uid | ABCDEF12345 |
-| 节目阶段 | 事件代表的节目阶段。 | 是的 | 不 | String:Uid | ABCDEF12345 |
-| 注册 | A reference to the enrollment which owns the event. ***Not applicable for `EVENT PROGRAM`*** | 是的 | 是的 | String:Uid | ABCDEF12345 |
-| 程序 | 仅用于读取数据。拥有该活动的注册所拥有的计划类型。 | 不 | 是的 | String:Uid | ABCDEF12345 |
-| 跟踪实体 | Only for reading data. The tracked entity which owns the event. ***Not applicable for `EVENT PROGRAM`*** | 不 | 不 | String:Uid | ABCDEF12345 |
-| 地位 | 事件的状态。如果未提供，则处于活动状态。 | 不 | 不 | 枚举 | 活动、已完成、已访问、已安排、逾期、已跳过 |
-| 入学状态 | Only for reading data. The status of the enrollment which owns the event. ***Not applicable for `EVENT PROGRAM`*** | 不 | 不 | 枚举 | 有效、已完成、已取消 |
-| orgUnit | 用户注册事件的组织单位。 | 是的 | 不 | String:Uid | ABCDEF12345 |
-| createdAt | 仅用于读取数据。用户创建事件的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| createdAtClient | 用户在客户端创建事件的时间戳 | 不 | 不 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| updatedAt | 仅用于读取数据。事件上次更新的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| updatedAtClient | 事件上次在客户端更新的时间戳 | 不 | 不 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| 预定时间 | 安排活动的时间戳。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| 发生于 | 发生某事时的时间戳。 | 是的 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| 完成时间 | 用户完成事件时的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| 完成者 | 参考谁完成了事件 | 不 | 不 | 字符串：任意 | 约翰·多伊 |
-| 跟进 | 仅用于读取数据。指示事件是否已标记为后续操作。 | 不 | 不 | Boolean | 假，真 |
-| deleted | 仅用于读取数据。指示事件是否已被删除。只有删除时才能改变。 | 不 | 是的 | Boolean | 错误直到被删除 |
-| geometry | 事件的地理代表。基于节目阶段的“featureType” | 不 | 不 | GeoJson | {<br>"type": "POINT",<br>"coordinates": [123.0, 123.0]<br>} |
-| 存储者 | 存储/创建事件的客户参考。 | 不 | 不 | 字符串：任意 | 约翰·多伊 |
-| 由...制作 | 仅用于读取数据。创建该对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"用户名": "用户名",<br>“名字”：“约翰”，<br>“姓氏”：“Doe”<br>} |
-| 更新者 | 仅用于读取数据。最后更新对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"用户名": "用户名",<br>“名字”：“约翰”，<br>“姓氏”：“Doe”<br>} |
-| 属性选项组合 | 事件的属性选项组合。如果未提供或配置，则为默认值。 | 不 | 不 | String:Uid | ABCDEF12345
-| 属性类别选项 | 事件的属性类别选项。如果未提供或配置，则为默认值。 | 不 | 不 | String:Uid | ABCDEF12345
-| 分配的用户 | 对已分配给事件的用户的引用。 | 不 | 不 | 用户 | {<br>"uid": "ABCDEF12345",<br>"用户名": "用户名",<br>“名字”：“约翰”，<br>“姓氏”：“Doe”<br>} |
-| 数据值 | 与事件相关的数据值列表。 | 不 | 不 | TrackedEntityAttributeValue 列表 | 查看属性 |
-| 关系 | 与事件相关的关系列表。 | 不 | 不 | 关系列表 | 查看关系 |
-| 笔记 | 与事件相关的注释。它只能被创建。 | 不 | 是的 | 注意事项清单 | 看注释 |
+| event | The identifier of the event. Generated if not supplied | 不 | 是的 | String:Uid | ABCDEF12345 |
+| programStage | The program stage the event represents. | 是的 | 不 | String:Uid | ABCDEF12345 |
+| enrollment | A reference to the enrollment which owns the event. ***Not applicable for `EVENT PROGRAM`*** | 是的 | 是的 | String:Uid | ABCDEF12345 |
+| program | Only for reading data. The type of program the enrollment which owns the event has. | 不 | 是的 | String:Uid | ABCDEF12345 |
+| trackedEntity | Only for reading data. The tracked entity which owns the event. ***Not applicable for `EVENT PROGRAM`*** | 不 | 不 | String:Uid | ABCDEF12345 |
+| status | Status of the event. ACTIVE if not supplied. | 不 | 不 | 枚举 | ACTIVE, COMPLETED, VISITED, SCHEDULE, OVERDUE, SKIPPED |
+| enrollmentStatus | Only for reading data. The status of the enrollment which owns the event. ***Not applicable for `EVENT PROGRAM`*** | 不 | 不 | Enum | ACTIVE, COMPLETED, CANCELLED |
+| orgUnit | The organisation unit where the user registered the event. | 是的 | 不 | String:Uid | ABCDEF12345 |
+| createdAt | Only for reading data. Timestamp when the user created the event. Set on the server. | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| createdAtClient | Timestamp when the user created the event on client | 不 | 不 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| updatedAt | Only for reading data. Timestamp when the event was last updated. Set on the server. | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| updatedAtClient | Timestamp when the event was last updated on client | 不 | 不 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| scheduledAt | Timestamp when the event was scheduled for. | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| occurredAt | Timestamp when something occurred. | 是的 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| completedAt | Timestamp when the user completed the event. Set on the server. | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| completedBy | Reference to who completed the event | 不 | 不 | String:Any | John Doe |
+| 跟进 | Only for reading data. Indicates whether the event has been flagged for follow-up. | 不 | 不 | Boolean | False, True |
+| deleted | Only for reading data. Indicates whether the event has been deleted. It can only change when deleting. | 不 | 是的 | Boolean | False until deleted |
+| geometry | A  geographical representation of the event. Based on the "featureType" of the Program Stage | 不 | 不 | GeoJson | {<br>"type": "POINT",<br>"coordinates": [123.0, 123.0]<br>} |
+| storedBy | Client reference for who stored/created the event. | 不 | 不 | String:Any | John Doe |
+| createdBy | Only for reading data. User that created the object. Set on the server | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"用户名": "用户名",<br>“名字”：“约翰”，<br>“姓氏”：“Doe”<br>} |
+| updatedBy | Only for reading data. User that last updated the object. Set on the server | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"username": "username",<br>"firstName": "John",<br>"surname": "Doe"<br>} |
+| attributeOptionCombo | Attribute option combo for the event. Default if not supplied or configured. | 不 | 不 | String:Uid | ABCDEF12345
+| attributeCategoryOptions | Attribute category option for the event. Default if not supplied or configured. | 不 | 不 | String:Uid | ABCDEF12345
+| assignedUser | A reference to a user who has been assigned to the event. | 不 | 不 | 用户 | {<br>"uid": "ABCDEF12345",<br>"username": "username",<br>"firstName": "John",<br>"surname": "Doe"<br>} |
+| dataValues | A list of data values connected to the event. | 不 | 不 | List of TrackedEntityAttributeValue | See Attribute |
+| relationships | A list of relationships connected to the event. | 不 | 不 | List of Relationship | See Relationship |
+| notes | Notes connected to the event. It can only be created. | 不 | 是的 | List of Note | See Note |
 
-### 关系{ #relationship }
+### 人际关系 { #relationships } 
 
 `Relationships` are objects that link together two other tracker objects. The constraints each side
 of the relationship must conform to are based on the `Relationship Type` of the `Relationship`.
 
 
-| 财产 | 描述 | 需要 | 不可变的 | 类型 | 例 |
+| Property | 描述 | 需要 | Immutable | 类型 | 例 |
 |---|---|---|---|---|---|
-| 关系 | 关系的标识符。如果未提供则生成。 | 不 | 是的 | String:Uid | ABCDEF12345 |
-| 关系类型 | 关系的类型。决定哪些对象可以在关系中链接。 | 是的 | 是的 | String:Uid | ABCDEF12345 |
-| 关系名称 | 仅用于读取数据。该关系的关系类型的名称 | 不 | 不 | 字符串：任意 | 兄弟 |
-| createdAt | 用户创建关系时的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| updatedAt | 上次更新关系的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| createdAtClient | 用户在客户端上创建关系的时间戳。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| 双向 | 仅用于读取数据。指示关系类型是否是双向的。 | 不 | 不 | Boolean | 对或错 |
-| 从到 | 对关系每一方的引用。必须符合关系类型中设置的约束 | 是的 | 是的 | 关系项目 | {"trackedEntity": {"trackedEntity": "ABCEF12345"}}、{"enrollment": {"enrollment": "ABCDEF12345"}} 或 {"event": {"event": "ABCDEF12345" }} |
+| relationship | The identifier of the relationship. Generated if not supplied. | 不 | 是的 | String:Uid | ABCDEF12345 |
+| relationshipType | The type of the relationship. Decides what objects can be linked in a relationship. | 是的 | 是的 | String:Uid | ABCDEF12345 |
+| relationshipName | Only for reading data. The name of the relationship type of this relationship | 不 | 不 | String:Any | Sibling |
+| createdAt | Timestamp when the user created the relationship. Set on the server. | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| updatedAt | Timestamp when the relationship was last updated. Set on the server. | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| createdAtClient | Timestamp when the user created the relationship on the client. | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| bidirectional | Only for reading data. Indicated whether the relationship type is bidirectional or not. | 不 | 不 | Boolean | True or False |
+| from, to | A reference to each side of the relationship. Must conform to the constraints set in the relationship type | 是的 | 是的 | RelationshipItem | {"trackedEntity": {"trackedEntity": "ABCEF12345"}}, {"enrollment": {"enrollment": "ABCDEF12345"}} or {"event": {"event": "ABCDEF12345" }} |
 
 > **Note**
 >
->`Relationship item` represents a link to an object. Since a `relationship` can be between any
->tracker object like `tracked entity`, `enrollment`, and `event`, the value depends on the
->`relationship type`. For example, if the `relationship type` connects from an `event` to a `tracked
->entity`, the format is strict:
+> `Relationship item` represents a link to an object. Since a `relationship` can be between any
+> tracker object like `tracked entity`, `enrollment`, and `event`, the value depends on the
+> `relationship type`. For example, if a `relationship type` connects from an `event` to a `tracked
+> entity`, the format is strict:
 
->```json
->{
+> ```json
+> {
 >   "from": {
 >     "event": { "event": "ABCDEF12345" }
 >   },
 >   "to": {
 >     "trackedEntity": { "trackedEntity": "FEDCBA12345" }
 >   }
->}
->```
+> }
+> ```
 
-### 属性 { #attribute } 
+### 属性 { #attributes } 
 
 `Attributes` are the actual values describing the `tracked entities`. They can either be connected
 through a `tracked entity type` or a `program`. Implicitly this means `attributes` can be part of
 both a `tracked entity` and an `enrollment`.
 
-| 财产 | 描述 | 需要 | 不可变的 | 类型 | 例 |
+| Property | 描述 | 需要 | Immutable | 类型 | 例 |
 |---|---|---|---|---|---|
-| 属性 | 对所表示的跟踪实体属性的引用。 | 是的 | 是的 | String:Uid | ABCDEF12345 |
-| 码 | 仅用于读取数据。被跟踪实体属性的代码。 | 不 | 不 | 字符串：任意 | ABC |
-| 显示名称 | 仅用于读取数据。跟踪实体属性的显示名称。 | 不 | 不 | 字符串：任意 | 名称 |
-| createdAt | 添加值时的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| updatedAt | 上次更新值的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| 存储者 | 存储/创造价值的客户参考。 | 不 | 不 | 字符串：任意 | 约翰·多伊 |
-| 值类型 | 仅用于读取数据。属性表示的值的类型。 | 不 | 不 | 枚举 | 文本、整数等 |
-| 价值 | 被跟踪实体属性的值。 | 不 | 不 | 字符串：任意 | 约翰·多伊 |
+| attribute | A reference to the tracked entity attribute represented. | 是的 | 是的 | String:Uid | ABCDEF12345 |
+| 码 | Only for reading data. The code of the tracked entity attribute. | 不 | 不 | 字符串：任意 | ABC |
+| displayName | Only for reading data. The displayName of the tracked entity attribute. | 不 | 不 | String:Any | 名称 |
+| createdAt | Timestamp when the value was added. Set on the server. | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| updatedAt | Timestamp when the value was last updated. Set on the server. | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| storedBy | Client reference for who stored/created the value. | 不 | 不 | String:Any | John Doe |
+| valueType | Only for reading data. The type of value the attribute represents. | 不 | 不 | Enum | TEXT, INTEGER, and more |
+| 价值 | The value of the tracked entity attribute. | 不 | 不 | String:Any | John Doe |
 
 > **Note**
 >
@@ -219,38 +220,38 @@ both a `tracked entity` and an `enrollment`.
 >
 > In the context of tracker objects, we refer to `Tracked Entity Attributes` and `Tracked Entity
 > Attribute Values` as "attributes". However, attributes are also their own thing, related to
-> metadata. Therefore it's vital to separate Tracker attributes and metadata attributes. In the
+> metadata. Therefore, it's vital to separate Tracker attributes and metadata attributes. In the
 > tracker API, it is possible to reference the metadata attributes when specifying `idScheme` (See
 > request parameters for more information).
 
-### 数据值{ #data-values }
+### Data Values { #data-values } 
 
 While `Attributes` describes a `tracked entity` or an `enrollment`, `data values` describes an `event`. The major difference is that `attributes` can only have a single value for a given `tracked entity`. In contrast, `data values` can have many different values across different `events` - even if the `events` all belong to the same `enrollment` or `tracked entity`.
 
-| 财产 | 描述 | 需要 | 不可变的 | 类型 | 例 |
+| Property | 描述 | 需要 | Immutable | 类型 | 例 |
 |---|---|---|---|---|---|
-| 数据元素 | 该值表示的数据元素。 | 是的 | 是的 | String:Uid | ABCDEF12345 |
-| 价值 | 数据值的值。 | 不 | 不 | 字符串：任意 | 123 |
-| 在别处提供 | 指示用户是否在其他地方提供了该值。如果未提供则为假。 | 不 | 不 | Boolean | 是真是假 |
-| createdAt | 用户添加值时的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| updatedAt | 上次更新值的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| 存储者 | 存储/创造价值的客户参考。 | 不 | 不 | 字符串：任意 | 约翰·多伊 |
-| 由...制作 | 仅用于读取数据。创建该对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"用户名": "用户名",<br>“名字”：“约翰”，<br>“姓氏”：“Doe”<br>} |
-| 更新者 | 仅用于读取数据。最后更新对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"用户名": "用户名",<br>“名字”：“约翰”，<br>“姓氏”：“Doe”<br>} |
+| dataElement | The data element this value represents. | 是的 | 是的 | String:Uid | ABCDEF12345 |
+| 价值 | The value of the data value. | 不 | 不 | String:Any | 123 |
+| providedElsewhere | Indicates whether the user provided the value elsewhere or not. False if not supplied. | 不 | 不 | Boolean | False or True |
+| createdAt | Timestamp when the user added the value. Set on the server. | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| updatedAt | Timestamp when the value was last updated. Set on the server. | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| storedBy | Client reference for who stored/created the value. | 不 | 不 | String:Any | John Doe |
+| createdBy | Only for reading data. User that created the object. Set on the server | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"用户名": "用户名",<br>“名字”：“约翰”，<br>“姓氏”：“Doe”<br>} |
+| updatedBy | Only for reading data. User that last updated the object. Set on the server | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"username": "username",<br>"firstName": "John",<br>"surname": "Doe"<br>} |
 
 > **Note**
 >
 > For `data elements` only the "dataElement" and "value" properties are required when adding data.
 > "value" can be null, which implies the user should remove the value.
 
-### 跟踪器备注 { #tracker-notes }
+### 笔记 { #notes } 
 
 DHIS2 tracker allows for capturing of data using data elements and tracked entity attributes.
 However, sometimes there could be a situation where it is necessary to record additional information
-or comment about the issue at hand. Such additional information can be captured using tracker notes.
-Tracker notes are equivalent to data value comments from the Aggregate DHIS2 side.
+or comment about the issue at hand. Such additional information can be captured using notes.
+Notes are equivalent to data value comments from the Aggregate DHIS2 side.
 
-There are two types of tracker notes - notes recorded at the event level and those recorded at the
+There are two types of notes - notes recorded at the event level and those recorded at the
 enrollment level. An enrollment can have one or more events. Comments about each of the events - for
 example, why an event was missed, rescheduled, or why only a few data elements were filled and the
 like - can be documented using event notes. Each of the events within an enrollment can have its own
@@ -263,7 +264,7 @@ possible to delete or update neither of these notes. They are like a logbook. If
 a note, one can do so by creating another note. The only way to delete a note is by deleting the
 parent object - either event or enrollment.
 
-Tracker notes do not have their dedicated endpoint; they are exchanged as part of the parent event
+Notes do not have their dedicated endpoint; they are exchanged as part of the parent event
 and/or enrollment payload. Below is a sample payload.
 
 ```json
@@ -300,27 +301,27 @@ and/or enrollment payload. Below is a sample payload.
 }
 ```
 
-| 财产 | 描述 | 需要 | 不可变的 | 类型 | 例 |
+| Property | 描述 | 需要 | Immutable | 类型 | 例 |
 |---|---|---|---|---|---|
-| 笔记 | 注释的参考。如果为空则生成 | 不 | 是的 | String:Uid | ABCDEF12345 |
-| 价值 | 注释的内容。 | 是的 | 是的 | 字符串：任意 | 这是一个注释 |
-| 存储于 | 用户添加注释时的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| 存储者 | 存储/创建注释的客户参考。 | 不 | 不 | 字符串：任意 | 约翰·多伊 |
-| 由...制作 | 仅用于读取数据。创建该对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"用户名": "用户名",<br>“名字”：“约翰”，<br>“姓氏”：“Doe”<br>} |
+| note | The reference of the note. Generated if empty | 不 | 是的 | String:Uid | ABCDEF12345 |
+| 价值 | The content of the note. | 是的 | 是的 | String:Any | This is a note |
+| storedAt | Timestamp when the user added the note. Set on the server. | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| storedBy | Client reference for who stored/created the note. | 不 | 不 | String:Any | John Doe |
+| createdBy | Only for reading data. User that created the object. Set on the server | 不 | 是的 | 用户 | {<br>"uid": "ABCDEF12345",<br>"username": "username",<br>"firstName": "John",<br>"surname": "Doe"<br>} |
 
-### 用户 { #user } 
+### 用户数 { #users } 
 
-| 财产 | 描述 | 需要 | 不可变的 | 类型 | 例 |
+| Property | 描述 | 需要 | Immutable | 类型 | 例 |
 |---|---|---|---|---|---|
-| uid | 用户的标识符。 | 是的* | 是的 | String:Uid | ABCDEF12345 |
-| 用户名 | 用户使用的用户名。 | 是的* | 是的 | 字符串：任意 | 123 |
-| 名 | 仅用于读取数据。用户的名字。 | 不 | 是的 | 字符串：任意 | 约翰 |
-| 姓 | 仅用于读取数据。用户的姓氏。 | 不 | 是的 | 字符串：任意 | 美国能源部 |
+| uid | The identifier of the user. | 是的* | 是的 | String:Uid | ABCDEF12345 |
+| 用户名 | Username used by the user. | Yes* | 是的 | String:Any | 123 |
+| firstName | Only for reading data. First name of the user. | 不 | 是的 | 字符串：任意 | John |
+| surname | Only for reading data. Last name of the user. | 不 | 是的 | String:Any | Doe |
 
 > One between `uid` or `username` field must be provided. If both are provided, only username is
 > considered.
 
-### 计划阶段工作清单{ #webapi_working_list_filters }
+### Program stage working lists { #webapi_working_list_filters }
 
 The program stage working lists feature within the Capture app is designed to display
 pre-established working lists relevant to a particular program stage. This functionality enables
@@ -332,31 +333,31 @@ pattern as any other metadata. When using the */api/sharing* the type parameter 
 
     /api/40/programStageWorkingLists
 
-##### CRUD 操作的有效负载到编程阶段工作列表{ #payload-on-crud-operations-to-program-stage-working-lists }
+##### Payload on CRUD operations to program stage working lists { #payload-on-crud-operations-to-program-stage-working-lists } 
 
 The endpoint above can be used to get all program stage working lists. To get a single one, just add
 at the end the id of the one you are interested in. This is the same in case you want to delete it.
 On the other hand, if you are looking to create or update a program stage working list, besides the
 endpoint mentioned above, you'll need to provide a payload in the following format:
 
-表：有效负载
+Table: Payload
 
-| 有效负载值 | 描述 | 例 |
+| Payload values | 描述 | 例 |
 |---|---|---|
-| 名称 | 工作列表的名称。必需的。 ||
-| 描述 | 工作列表的描述。 ||
-| 程序 | 包含程序 ID 的对象。必需的。 | {“id”：“uy2gU8kTjF”} |
-| 节目阶段 | 包含程序阶段 ID 的对象。必需的。 | {“id”：“oRySG82BKE6”} |
-| 程序阶段查询条件 | 表示各种可能的过滤值的对象。请参阅下面的*程序阶段查询标准*定义表。
+| 名称 | Name of the working list. Required. ||
+| 描述 | A description of the working list. ||
+| program | Object containing the id of the program. Required. | {"id" : "uy2gU8kTjF"} |
+| programStage | Object containing the id of the program stage. Required. | {"id" : "oRySG82BKE6"} |
+| programStageQueryCriteria | An object representing various possible filtering values. See *Program Stage Query Criteria* definition table below.
 
-表：节目阶段查询条件
+Table: Program Stage Query Criteria
 
-| 标准值 | 描述 | 例 |
+| Criteria values | 描述 | 例 |
 |---|---|---|
-| 地位 | 事件状态。可能的值为 ACTIVE、COMPLETED、VISITED、SCHEDULE、OVERDUE、SKIPPED 和 VISITED | “状态”：“已访问” |
-| 事件创建时间 | DateFilterPeriod 对象基于事件创建日期进行过滤。 | {“类型”：“绝对”，“开始日期”：“2020-03-01”，“结束日期”：“2022-12-30”} |
-| 预定时间 | DateFilterPeriod 对象根据事件预定日期进行过滤。 | {"type":"RELATIVE","period":"今天"} |
-| 入学状态 | 任何有效的程序状态。可能的值为“活动”、“已完成”和“已取消”。 | “注册状态”：“已完成” |
+| status | The event status. Possible values are ACTIVE, COMPLETED, VISITED, SCHEDULE, OVERDUE, SKIPPED and VISITED | "status":"VISITED" |
+| eventCreatedAt | DateFilterPeriod object filtering based on the event creation date. | {"type":"ABSOLUTE","startDate":"2020-03-01","endDate":"2022-12-30"} |
+| scheduledAt | DateFilterPeriod object filtering based on the event scheduled date. | {"type":"RELATIVE","period":"TODAY"} |
+| enrollmentStatus | Any valid ProgramStatus. Possible values are ACTIVE, COMPLETED and CANCELLED. | "enrollmentStatus": "COMPLETED" |
 | 跟进 | Indicates whether to filter enrollments marked for follow up or not | "followUp":true |
 | enrolledAt | DateFilterPeriod object filtering based on the event enrollment date. | "enrolledAt": {"type":"RELATIVE","period":"THIS_MONTH"} |
 | enrollmentOccurredAt | DateFilterPeriod object filtering based on the event occurred date. | {"type":"RELATIVE","period":"THIS_MONTH"} |
@@ -423,7 +424,7 @@ Currently, the tracker import endpoint supports the following parameters:
 |---|---|---|---|
 | async | Indicates whether the import should happen asynchronously or synchronously. | Boolean | `TRUE`, `FALSE` |
 | reportMode | Only when performing synchronous import. See importSummary for more info. | Enum | `FULL`, `ERRORS`, `WARNINGS` |
-| importMode | Indicates the mode of import. Can either be validate only (dry run) or commit (Default) | Enum | `VALIDATE`, `COMMIT` |
+| importMode | Can either be `VALIDATE` which will report errors in the payload without making changes to the database or `COMMIT` (default) which will validate the payload and make changes to the database. | Enum | `VALIDATE`, `COMMIT` |
 | 方案 | Indicates the overall idScheme to use for metadata references when importing. Default is UID. Can be overridden for specific metadata (Listed below) | Enum | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
 | 数据元素标识方案 | Indicates the idScheme to use for data elements when importing. | Enum | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
 | orgUnitIdScheme | Indicates the idScheme to use for organisation units when importing. | Enum | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
@@ -645,21 +646,27 @@ section](#webapi_nti_import_summary).
 }
 ```
 
-### CSV Events payload { #csv-events-payload } 
+### CSV import { #csv-import } 
 
-In order to maintain compatibility with older versions of tracker, the API allows to import events
-using the CSV format. As this format does not allow list as field, every row of the CSV payload
-represents an event and a data value. So for events with multiple data values, the CSV file will
-have `x` rows per event where `x` is the number of data values in that event. Other fields that are
-lists as ***relationships*** and ***notes*** are not supported. To import a CSV payload, the content
-type of the request must be set to ***application/csv*** or ***text/csv***.
+To import events using CSV make a `POST` request with CSV body file and the `Content-Type` set to 
+***application/csv*** or ***text/csv***.
 
-#### ***CSV PAYLOAD*** example { #csv-payload-example } 
+#### 大事记 { #events } 
 
-|event|status|program|programStage|enrollment|orgUnit|occurredAt|scheduledAt|dataElement|价值|storedBy|providedElsewhere
-|---|---|---|---|---|---|---|---|---|---|---|---|
-|V1CerIi3sdL|COMPLETED|IpHINAT79UW|A03MvHHogjR|CCBLMntFuzb|DiszpKrYNg8|2020-02-26T23:00:00Z|2020-02-27T23:00:00Z|a3kGcGDCuk6|11|admin|假
-|V1CerIi3sdL|COMPLETED|IpHINAT79UW|A03MvHHogjR|CCBLMntFuzb|DiszpKrYNg8|2020-02-26T23:00:00Z|2020-02-27T23:00:00Z|mB2QHw1tU96|[-11.566044,9.477801]|admin|假
+Every row of the CSV payload represents an event and a data value. So, for events with multiple 
+data values, the CSV file will have `x` rows per event, where `x` is the number of data values 
+in that event.
+
+##### ***CSV PAYLOAD*** example { #csv-payload-example } 
+
+Your CSV file can look like:
+
+```csv
+event,status,program,programStage,enrollment,orgUnit,occurredAt,scheduledAt,geometry,latitude,longitude,followUp,deleted,createdAt,createdAtClient,updatedAt,updatedAtClient,completedBy,completedAt,updatedBy,attributeOptionCombo,attributeCategoryOptions,assignedUser,dataElement,value,storedBy,providedElsewhere,storedByDataValue,updatedAtDataValue,createdAtDataValue
+A7rzcnZTe2T,ACTIVE,eBAyeGv0exc,Zj7UnCAulEk,RiLEKhWHlxZ,DwpbWkiqjMy,2023-02-12T23:00:00Z,2023-02-12T23:00:00Z,"POINT (-11.468912037323042 7.515913998868316)",7.515913998868316,-11.468912037323042,false,false,2017-09-08T19:40:22Z,,2017-09-08T19:40:22Z,,,,,HllvX50cXC0,xYerKDKCefk,,F3ogKBuviRA,"[-11.4880220438585,7.50978830548003]",admin,false,,2016-12-06T17:22:34.438Z,2016-12-06T17:22:34.438Z
+```
+
+See [Events CSV](#events-csv) in the export section for a more detailed definition of the CSV fields.
 
 ### Import Summary { #webapi_nti_import_summary }
 
@@ -1119,9 +1126,11 @@ otherwise specified.
 | E1000 | User: `{0}`, has no write access to OrganisationUnit: `{1}`. | This typically means that the OrganisationUnit `{1}` is not in the capture scope of the user `{0}` for the write operation to be authorized. |
 | E1001 | User: `{0}`, has no data write access to TrackedEntityType: `{1}`. | The error occurs when the user is not authorized to create or modify data of the TrackedEntityType `{1}`  
 | E1002 | TrackedEntity: `{0}`, already exists. | This error is thrown when trying to create a new TrackedEntity with an already existing uid. Make sure a new uid is used when adding a new TrackedEntity. |
+| E1003 | OrganisationUnit: `{0}` of TrackedEntity is outside search scope of User: `{1}`. | |
 | E1005 | Could not find TrackedEntityType: `{0}`. | Error thrown when trying to fetch a non existing TrackedEntityType with uid `{0}` . This might also mean that the user does not have read access to the TrackedEntityType. |
 | E1006 | Attribute: `{0}`, does not exist. | Error thrown when the system was not able to find a matching TrackedEntityAttribute with uid `{0}`. This might also mean that the user does not have access to the TrackedEntityAttribute. |
 | E1007 | Error validating attribute value type: `{0}`; Error: `{1}`. | Mismatch between value type of a TrackedEntityAttribute and its provided attribute value. The actual validation error will be displayed in `{1}`. |
+| E1008 | Program stage `{0}` has no reference to a program. Check the program stage configuration | |
 | E1009 | File resource: `{0}`, has already been assigned to a different object. | The File resource uid `{0}` is already assigned to another object in the system. |
 | E1010 | Could not find Program: `{0}`, linked to Event. | The system was unable to find a Program with the uid `{0}` specified inside the Event payload. This might also mean that the specific Program is not accessible by the logged in user. |
 | E1011 | Could not find OrganisationUnit: `{0}`, linked to Event. | The system was unable to find a OrganisationUnit with uid `{0}` specified inside the Event payload.  |
@@ -1143,13 +1152,17 @@ otherwise specified.
 | E1032 | Event: `{0}`, do not exist. | |
 | E1033 | Event: `{0}`, Enrollment value is NULL. | |
 | E1035 | Event: `{0}`, ProgramStage value is NULL. | |
-| E1036 | Event: `{0}`, TrackedEntity does not point to a existing object. | The system was unable to find a TrackedEntity with the uid specified inside the event payload. This might also mean that the user does not have read access to the TrackedEntity. |
 | E1039 | ProgramStage: `{0}`, is not repeatable and an event already exists. | An Event already exists for the ProgramStage for the specific Enrollment. Since the ProgramStage is configured to be non-repeatable, another Event for the same ProgramStage cannot be added.  |
 | E1041 | Enrollment OrganisationUnit: `{0}`, and Program: `{1}`, don't match. | The Enrollment payload contains a Program `{1}` which is not configured to be accessible by the OrganisationUnit  `{0}`. |
 | E1042 | Event: `{0}`, needs to have completed date. | If the program is configured to have completeExpiryDays, then CompletedDate is mandatory for a COMPLETED event payload. An Event with status as COMPLETED should have completedDate property as non-null and a valid date format. |
+| E1043 | Event: `{0}`, completeness date has expired. Not possible to make changes to this event. | A user without 'F_EDIT_EXPIRED' authority cannot update an Event that has passed its expiry days as configured in its Program. |
+| E1045 | Program: `{0}`, expiry date has passed. It is not possible to make changes to this event. | |
+| E1046 | Event: `{0}`, needs to have at least one (event or schedule) date. | Either of occuredAt or scheduledAt property should be present in the Event payload. |
+| E1047 | Event: `{0}`, date belongs to an expired period. It is not possible to create such event. | Event occuredAt or scheduledAt has a value that is earlier than the PeriodType start date.  |
 | E1048 | Object: `{0}`, uid: `{1}`, has an invalid uid format. | 有效的 uid 有 11 个字符。第一个字符必须是字母（a-z 或 A-Z），其余 10 个字符可以是字母数字（a-z 或 A-Z 或 0-9）。 |
 | E1049 | Could not find OrganisationUnit: `{0}`, linked to Tracked Entity. | The system could not find an OrganisationUnit with uid `{0}`. |
 | E1050 | Event ScheduledAt date is missing. | ScheduledAt property in the Event payload is either missing or an invalid date format. |
+| E1054 | AttributeOptionCombo `{0}` is not in the event programs category combo `{1}`. |
 | E1055 | Default AttributeOptionCombo is not allowed since program has non-default CategoryCombo. | The Program is configured to contain non-default CategoryCombo but the request uses the Default AttributeOptionCombo. |
 | E1056 | Event date: `{0}`, is before start date: `{1}`, for AttributeOption: `{2}`. | The CategoryOption has a start date configured , the Event date in the payload cannot be earlier than this start date. |
 | E1057 | Event date: `{0}`, is after end date: `{1}`, for AttributeOption; `{2}`. | The CategoryOption has an end date configured, the Event date in the payload cannot be later than this end date.  |
@@ -1162,15 +1175,20 @@ otherwise specified.
 | E1075 | Attribute: `{0}`, is missing uid. | |
 | E1076 | `{0}` `{1}` is mandatory and can't be null | |
 | E1077 | Attribute: `{0}`, text value exceed the maximum allowed length: `{0}`. | |
+| E1079 | Event: `{0}`, program: `{1}` is different from program defined in enrollment `{2}`. | |
 | E1080 | Enrollment: `{0}`, already exists. | This error is thrown when trying to create a new Enrollmentt with an already existing uid. Make sure a new uid is used when adding a new Enrollment. |
 | E1081 | Enrollment: `{0}`, do not exist. | Error thrown when trying to fetch a non existing Enrollment with uid `{0}` . This might also mean that the user does not have read access to the Enrollment. |
 | E1082 | Event: `{0}`, is already deleted and can't be modified. | If the event is soft deleted, no modifications on it are allowed. |
 | E1083 | User: `{0}`, is not authorized to modify completed events. | Only a super user or a user with the authority "F_UNCOMPLETE_EVENT" can modify completed events. Completed Events are those Events with status as COMPLETED. |
 | E1084 | File resource: `{0}`, reference could not be found. | |
 | E1085 | Attribute: `{0}`, value does not match value type: `{1}`. | Mismatch between value type of an attribute and its provided attribute value. |
+| E1086 | Event: `{0}`, has a program: `{1}`, that is a registration but its ProgramStage is not valid or missing. | |
+| E1087 | Event: `{0}`, could not find DataElement: `{1}`, linked to a data value. | |
+| E1088 | Event: `{0}`, program: `{1}`, and ProgramStage: `{2}`, could not be found. | |
 | E1089 | Event: `{0}`, references a Program Stage `{1}` that does not belong to Program `{2}`. | The ProgramStage uid and Program uid in the Event payload is incompatible. |
 | E1090 | Attribute: `{0}`, is mandatory in tracked entity type `{1}` but not declared in tracked entity `{2}`. | The payload has missing values for mandatory TrackedEntityTypeAttributes. |
 | E1091 | User: `{0}`, has no data write access to Program: `{1}`. | The Program sharing configuration is such that, the user does not have write access for this Program. |
+| E1094 | Not allowed to update Enrollment: `{0}`, existing Program `{1}`. | The Enrollment payload for an existing Enrollment has a different Program uid than the one it was originally enrolled with. |
 | E1095 | User: `{0}`, has no data write access to ProgramStage: `{1}`. | The ProgramStage sharing configuration is such that, the user does not have write access for this ProgramStage.  |
 | E1096 | User: `{0}`, has no data read access to Program: `{1}`. | The Program sharing configuration is such that, the user does not have read access for this Program. |
 | E1099 | User: `{0}`, has no write access to CategoryOption: `{1}`. | The CategoryOption sharing configuration is such that, the user does not have write access for this CategoryOption |
@@ -1178,6 +1196,7 @@ otherwise specified.
 | E1102 | User: `{0}`, does not have access to the tracked entity: `{1}`, Program: `{2}`, combination. | This error is thrown when the user's OrganisationUnit does not have the ownership of this TrackedEntity for this specific Program. The owning OrganisationUnit of the TrackedEntity-Program combination should fall into the capture scope (in some cases the search scope) of the user. |
 | E1103 | User: `{0}`, is lacking 'F_ENROLLMENT_CASCADE_DELETE' authority to delete Enrollment : `{1}`. | There exists undeleted Events for this Enrollment. If the user does not have 'F_ENROLLMENT_CASCADE_DELETE' authority, then these Events has to be deleted first explicitly to be able to delete the Enrollment. |
 | E1104 | User: `{0}`, has no data read access to program: `{1}`, TrackedEntityType: `{2}`. | The sharing configuration of the TrackedEntityType associated with the Program is such that, the user does not have data read access to it. |
+| E1110 | Not allowed to update Event: `{0}`, existing Program `{1}`. | The Event payload for an existing Event has a different Program uid than the one it was originally created with.  |
 | E1112 | Attribute value: `{0}`, is set to confidential but system is not properly configured to encrypt data. | Either JCE files is missing or the configuration property `encryption.password` might be missing in `dhis.conf`. |
 | E1113 | Enrollment: `{0}`, is already deleted and can't be modified. | If the Enrollment is soft deleted, no modifications on it are allowed. |
 | E1114 | TrackedEntity: `{0}`, is already deleted and can't be modified. | If the TrackedEntity is soft deleted, no modifications on it are allowed. |
@@ -1191,16 +1210,12 @@ otherwise specified.
 | E1122 | Missing required enrollment property: `{0}`. | |
 | E1123 | Missing required event property: `{0}`. | |
 | E1124 | Missing required relationship property: `{0}`. | |
-| E1125 | Value `{0}` is not a valid option for `{1}` `{2}` in option set `{3}` | |
-| E1017 | Attribute: `{0}`, does not exist. | |
-| E1093 | User: `{0}`, has no search access to OrganisationUnit: `{1}`. | |
-| E1094 | Not allowed to update Enrollment: `{0}`, existing Program `{1}`. | The Enrollment payload for an existing Enrollment has a different Program uid than the one it was originally enrolled with. |
-| E1110 | Not allowed to update Event: `{0}`, existing Program `{1}`. | The Event payload for an existing Event has a different Program uid than the one it was originally created with.  |
-| E1111 | We have a generated attribute: `{0}`, but no pattern. | |
-| E1043 | Event: `{0}`, completeness date has expired. Not possible to make changes to this event. | A user without 'F_EDIT_EXPIRED' authority cannot update an Event that has passed its expiry days as configured in its Program. |
-| E1046 | Event: `{0}`, needs to have at least one (event or schedule) date. | Either of occuredAt or scheduledAt property should be present in the Event payload. |
-| E1047 | Event: `{0}`, date belongs to an expired period. It is not possible to create such event. | Event occuredAt or scheduledAt has a value that is earlier than the PeriodType start date.  |
+| E1125 | Value `{0}` is not a valid option code in option set `{1}` | |
+| E1126 | Not allowed to update Tracked Entity property: {0}. | |
+| E1127 | Not allowed to update Enrollment property: {0}. | |
+| E1128 | Not allowed to update Event property: {0}. | |
 | E1300 | Generated by program rule (`{0}`) - `{1}` | |
+| E1301 | Generated by program rule (`{0}`) - Mandatory DataElement `{1}` is not present | |
 | E1302 | Generated by program rule (`{0}`) - DataElement `{1}` is not valid: `{2}` | |
 | E1303 | Generated by program rule (`{0}`) - Mandatory DataElement `{1}` is not present | |
 | E1304 | Generated by program rule (`{0}`) - DataElement `{1}` is not a valid data element | |
@@ -1210,22 +1225,23 @@ otherwise specified.
 | E1308 | Generated by program rule (`{0}`) - DataElement `{1}` is being replaced in event `{2}` | |
 | E1309 | Generated by program rule (`{0}`) - Unable to assign value to attribute `{1}`. The provided value must be empty or match the calculated value `{2}` | |
 | E1310 | Generated by program rule (`{0}`) - Attribute `{1}` is being replaced in tei `{2}` | |
+| E1311 | Referral events need to have at least one complete relationship | |
+| E1312 | Referral events need to have both sides of a relationship | |
+| E1313 | Event {0} of an enrollment does not point to an existing tracked entity. The data in your system might be corrupted | Indicates an anomaly in the existing data whereby enrollments might not reference a tracked entity |
 | E4000 | Relationship: `{0}` cannot link to itself | |
 | E4001 | Relationship Item `{0}` for Relationship `{1}` is invalid: an Item can link only one Tracker entity. | |
 | E4006 | Could not find relationship Type: `{0}`. | |
-| E4009 | Relationship Type `{0}` is not valid. | |
 | E4010 | Relationship Type `{0}` constraint requires a {1} but a {2} was found. | |
 | E4011 | Relationship: `{0}` cannot be persisted because {1} {2} referenced by this relationship is not valid. | |
 | E4012 | Could not find `{0}`: `{1}`, linked to Relationship. | |
-| E4013 | Relationship Type `{0}` constraint is missing {1}. | |
-| E4014 | Relationship Type `{0}` constraint requires a Tracked Entity having type `{1}` but `{2}` was found. | |
-| E4062 | Start date or end date not specified with ABSOLUTE date period type for item `{0}` | |
-| E4063 | Assigned users cannot be empty when assigned user mode is set to PROVIDED | |
-| E4064 | Organisation unit cannot be empty with `{0}` org unit mode | |
-| E4065 | Data item UID is missing in filter | |
-| E4066 | No data element found for item: `{0}` | |
-| E4067 | Attribute UID is missing in filter | |
-| E4068 | No tracked entity attribute found for attribute: `{0}` | |
+| E4014 | Relationship type `{0}` constraint requires a tracked entity having type `{1}` but `{2}` was found. | |
+| E4015 | Relationship: `{0}`, already exists. | |
+| E4016 | Relationship: `{0}`, do not exist. | |
+| E4017 | Relationship: `{0}`, is already deleted and cannot be modified. | |
+| E4018 | Relationship: `{0}`, linking {1}: `{2}` to {3}: `{4}` already exists. | |
+| E4019 | User: `{0}`, has no data write access to relationship type: `{1}`. | |
+| E5000 | "{0}" `{1}` cannot be persisted because "{2}" `{3}` referenced by it cannot be persisted. | The importer can't persist a tracker object because a reference cannot be persisted. |
+| E5001 | "{0}" `{1}` cannot be deleted because "{2}" `{3}` referenced by it cannot be deleted. | The importer can't deleted a tracker object because a reference cannot be deleted. |
 | E9999 | 不适用 | Undefined error message. |
 
 ### 验证方式 { #webapi_nti_validation }
@@ -1440,8 +1456,17 @@ Tracker export endpoints allow you to retrieve the previously imported objects w
 
 > **NOTE**
 >
-> - All these endpoints currently support `JSON`. `CSV` is only supported by tracked entities and
->   events.
+> * All tracker export endpoints default to a `JSON` response content. `CSV` is only supported 
+>   by tracked entities and events.
+> * You can export a CSV file by adding the `Accept` header ***text/csv*** or ***application/csv*** 
+>   to the request. 
+> * You can download in zip and gzip formats:
+>     *  CSV for Tracked entities 
+>     *  JSON and CSV for Events
+> * You can export a Gzip file by adding the `Accept` header ***application/csv+gzip*** for CSV 
+> or ***application/json+gzip*** for JSON.
+> * You can export a Zip file by adding the `Accept` header ***application/csv+zip*** for CSV or  
+> ***application/json+zip*** for JSON.
 
 ### Common request parameters { #common-request-parameters } 
 
@@ -1500,13 +1525,54 @@ Two endpoints are dedicated to tracked entities:
 - `GET /api/tracker/trackedEntities/{id}`
   - retrieves a tracked entity given the provided id
 
+If not otherwise specified, JSON is the default response for the `GET` method. 
+The API also supports CSV export for single and collection endpoints. Furthermore, compressed 
+CSV types is an option for the collection endpoint.
+
+#### CSV { #csv } 
+
+In the case of CSV, the `fields` request parameter has no effect, and the response will always 
+contain the following fields:
+
+  - trackedEntity (UID)
+  - trackedEntityType (UID)
+  - createdAt (Datetime)
+  - createdAtClient (Datetime)
+  - updatedAt (Datetime)
+  - updatedAtClient (Datetime)
+  - orgUnit (UID)
+  - inactive (boolean)
+  - deleted (boolean)
+  - potentialDuplicate (boolean)
+  - geometry (WKT, https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry. 
+    You can omit it in case of a `Point` type and with `latitude` and `longitude` provided)
+  - latitude (Latitude of a `Point` type of Geometry)
+  - longitude (Longitude of a `Point` type of Geometry)
+  - attribute (UID)
+  - displayName (String)
+  - attrCreatedAt (Attribute creation Datetime)
+  - attrUpdatedAt (Attribute last update Datetime)
+  - valueType (String)
+  - value (String)
+  - storedBy (String)
+  - createdBy (Username of user)
+  - updatedBy (Username of user)
+
+See [Tracked Entities](#tracked-entities) and [Attributes](#attributes) for more field descriptions.
+
+#### GZIP { #gzip } 
+
+The response is file `trackedEntities.csv.gz` containing the `trackedEntities.csv` file.
+
+#### ZIP { #zip } 
+
+The response is file `trackedEntities.csv.zip` containing the `trackedEntities.csv` file.
+
 #### Tracked Entities Collection endpoint `GET /api/tracker/trackedEntities` { #tracked-entities-collection-endpoint-get-apitrackertrackedentities } 
 
 The purpose of this endpoint is to retrieve tracked entities matching client-provided criteria.
 
 The endpoint returns a list of tracked entities that match the request parameters.
-
-##### 请求语法 { #request-syntax } 
 
 |Request parameter|类型|Allowed values|描述|
 |---|---|---|---|
@@ -1612,12 +1678,16 @@ A query filter with a value that needs escaping and will be interpreted as `:,/`
 |`LT`|Less than|
 |`NE`|Not equal to|
 
-##### 回应格式 { #response-format } 
+##### Tracked Entities response example { #tracked-entities-response-example } 
 
-The `JSON` response can look like the following.
+The API supports CSV and JSON response for `GET /api/tracker/trackedEntities`. 
+
+##### JSON { #json } 
 
 Responses can be filtered on desired fields, see [Request parameter to filter
 responses](#webapi_nti_field_filter)
+
+A JSON response can look like the following:
 
 ```json
 {
@@ -1627,37 +1697,66 @@ responses](#webapi_nti_field_filter)
   },
   "trackedEntities": [
     {
-      "trackedEntity": "PQfMcpmXeFE",
-      "trackedEntityType": "nEenWmSyUEp",
-      "createdAt": "2014-03-06T05:49:28.256",
-      "createdAtClient": "2014-03-06T05:49:28.256",
-      "updatedAt": "2016-08-03T23:49:43.309",
+      "trackedEntity": "F8yKM85NbxW",
+      "trackedEntityType": "Zy2SEgA61ys",
+      "createdAt": "2019-08-21T13:25:38.022",
+      "createdAtClient": "2019-03-19T01:12:16.624",
+      "updatedAt": "2019-08-21T13:31:33.410",
+      "updatedAtClient": "2019-03-19T01:12:16.624",
       "orgUnit": "DiszpKrYNg8",
       "inactive": false,
       "deleted": false,
       "potentialDuplicate": false,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -11.7896,
+          8.2593
+        ]
+      },
       "attributes": [
         {
-          "attribute": "w75KJ2mc4zz",
-          "code": "MMD_PER_NAM",
-          "displayName": "First name",
-          "createdAt": "2016-08-03T23:49:43.308",
-          "updatedAt": "2016-08-03T23:49:43.308",
-          "valueType": "TEXT",
-          "value": "John"
+          "attribute": "B6TnnFMgmCk",
+          "displayName": "Age (years)",
+          "createdAt": "2019-08-21T13:25:38.477",
+          "updatedAt": "2019-08-21T13:25:38.477",
+          "storedBy": "braimbault",
+          "valueType": "INTEGER_ZERO_OR_POSITIVE",
+          "value": "30"
         },
         {
-          "attribute": "zDhUuAYrxNC",
-          "displayName": "Last name",
-          "createdAt": "2016-08-03T23:49:43.309",
-          "updatedAt": "2016-08-03T23:49:43.309",
+          "attribute": "TfdH5KvFmMy",
+          "displayName": "First Name",
+          "createdAt": "2019-08-21T13:25:38.066",
+          "updatedAt": "2019-08-21T13:25:38.067",
+          "storedBy": "josemp10",
           "valueType": "TEXT",
-          "value": "Kelly"
+          "value": "Sarah"
+        },
+        {
+          "attribute": "aW66s2QSosT",
+          "displayName": "Last Name",
+          "createdAt": "2019-08-21T13:25:38.388",
+          "updatedAt": "2019-08-21T13:25:38.388",
+          "storedBy": "karoline",
+          "valueType": "TEXT",
+          "value": "Johnson"
         }
       ]
     }
   ]
 }
+```
+
+##### CSV { #csv } 
+
+A CSV response can look like the following:
+
+```
+trackedEntity,trackedEntityType,createdAt,createdAtClient,updatedAt,updatedAtClient,orgUnit,inactive,deleted,potentialDuplicate,geometry,latitude,longitude,storedBy,createdBy,updatedBy,attrCreatedAt,attrUpdatedAt,attribute,displayName,value,valueType
+F8yKM85NbxW,Zy2SEgA61ys,2019-08-21T11:25:38.022Z,2019-03-19T00:12:16.624Z,2019-08-21T11:31:33.410Z,2019-03-19T00:12:16.624Z,DiszpKrYNg8,false,false,false,"POINT (-11.7896 8.2593)",8.2593,-11.7896,,,,2019-08-21T11:25:38.477Z,2019-08-21T11:25:38.477Z,B6TnnFMgmCk,"Age (years)",30,INTEGER_ZERO_OR_POSITIVE
+F8yKM85NbxW,Zy2SEgA61ys,2019-08-21T11:25:38.022Z,2019-03-19T00:12:16.624Z,2019-08-21T11:31:33.410Z,2019-03-19T00:12:16.624Z,DiszpKrYNg8,false,false,false,"POINT (-11.7896 8.2593)",8.2593,-11.7896,,,,2019-08-21T11:25:38.066Z,2019-08-21T11:25:38.067Z,TfdH5KvFmMy,"First Name",Sarah,TEXT
+F8yKM85NbxW,Zy2SEgA61ys,2019-08-21T11:25:38.022Z,2019-03-19T00:12:16.624Z,2019-08-21T11:31:33.410Z,2019-03-19T00:12:16.624Z,DiszpKrYNg8,false,false,false,"POINT (-11.7896 8.2593)",8.2593,-11.7896,,,,2019-08-21T11:25:38.388Z,2019-08-21T11:25:38.388Z,aW66s2QSosT,"Last Name",Johnson,TEXT
 ```
 
 #### Tracked Entities single object endpoint `GET /api/tracker/trackedEntities/{uid}`
@@ -1680,27 +1779,11 @@ A query for a tracked entity:
 
     GET /api/tracker/trackedEntities/PQfMcpmXeFE
 
-##### 回应格式 { #response-format } 
+##### Tracked Entity response example { #tracked-entity-response-example } 
 
-This endpoint supports returning sub-objects when the `fields` request parameter is passed when json
-format is requested. In case of csv the `fields` request parameter has no effect and the response
-will always contain the same fields, which are:
+The API supports CSV and JSON response for `GET /api/tracker/trackedEntities/{uid}` 
 
-  - trackedEntity (Identifier)
-  - trackedEntityType (Identifier)
-  - createdAt (Datetime)
-  - createdAtClient (Datetime)
-  - updatedAt (Datetime)
-  - updatedAtClient (Datetime)
-  - orgUnit (Identifier)
-  - inactive (boolean)
-  - deleted (boolean)
-  - potentialDuplicate (boolean)
-  - geometry (WKT, https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry)
-  - storedBy (String)
-  - createdBy (Username of user)
-  - updatedBy (Username of user)
-  - attributes (each valid attribute listed as another column)
+###### JSON { #json } 
 
 An example of a json response:
 
@@ -1841,6 +1924,11 @@ An example of a json response:
   ]
 }
 ```
+
+###### CSV { #csv } 
+
+The response will be the same as the collection endpoint but referring to a single tracked 
+entity, although it might have multiple rows for each attribute.
 
 ### Enrollments (`GET /api/tracker/enrollments`) { #enrollments-get-apitrackerenrollments } 
 
@@ -1996,6 +2084,59 @@ Two endpoints are dedicated to events:
 - `GET /api/tracker/events/{id}`
     - retrieves an event given the provided id
 
+If not otherwise specified, JSON is the default response for the `GET` method.
+The API also supports CSV export for single and collection endpoints. Furthermore, it supports 
+compressed JSON and CSV for the collection endpoint.
+
+#### Events CSV { #events-csv } 
+
+In the case of CSV, the `fields` request parameter has no effect, and the response will always 
+contain the following fields:
+
+  - event (UID)
+  - status (String)
+  - program (UID)
+  - programStage (UID)
+  - enrollment (UID)
+  - orgUnit (UID)
+  - occurredAt (DateTime)
+  - scheduledAt (DateTime)
+  - geometry (WKT, https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry. 
+    You can omit it in case of a `Point` type and with `latitude` and `longitude` provided)
+  - latitude (Latitude of a `Point` type of Geometry)
+  - longitude (Longitude of a `Point` type of Geometry)
+  - followUp (boolean)
+  - deleted (boolean)
+  - createdAt (DateTime)
+  - createdAtClient (DateTime)
+  - updatedAt (DateTime)
+  - updatedAtClient (DateTime)
+  - completedBy (String)
+  - completedAt (DateTime)
+  - updatedBy (UserName of user)
+  - attributeOptionCombo (UID)
+  - attributeCategoryOptions (UID)
+  - assignedUser (UserName of user)
+  - dataElement (UID)
+  - value (String)
+  - storedBy (String)
+  - providedElsewhere (boolean)
+  - storedByDataValue (String)
+  - createAtDataValue (DateTime)
+  - updatedAtDataValue (DateTime)
+
+See [Events](#events) and [Data Values](#data-values) for more field descriptions.
+
+#### Events GZIP { #events-gzip } 
+
+The response is file `events.json.gz` or `events.csv.gzip` containing the `events.json` 
+or `events.csv` file.
+
+#### Events ZIP { #events-zip } 
+
+The response is file`events.json.gz` or `events.json.zip` containing the `events.json` 
+or `events.csv` file.
+
 #### Events Collection endpoint `GET /api/tracker/events` { #events-collection-endpoint-get-apitrackerevents } 
 
 Returns a list of events based on the provided filters.
@@ -2089,9 +2230,13 @@ A query filter with a value that needs escaping and will be interpreted as `:,/`
 
     GET /api/tracker/events?orgUnit=DiszpKrYNg8&program=lxAQ7Zs9VYR&filter=DanTR5x0WDK:EQ:/:/,//
 
-##### 回应格式 { #response-format } 
+##### Events response example { #events-response-example } 
 
-The `JSON` response can look like the following.
+The API supports CSV and JSON response for `GET /api/tracker/events`.
+
+###### JSON { #json } 
+
+The JSON response can look like the following:
 
 ```json
 {
@@ -2101,40 +2246,52 @@ The `JSON` response can look like the following.
   },
   "events": [
     {
-      "event": "uup8whjPHyH",
+      "event": "A7rzcnZTe2T",
       "status": "ACTIVE",
-      "program": "M3xtLkYBlKI",
-      "programStage": "CWaAcQYKVpq",
-      "enrollment": "aOc1W0Xb7Yj",
-      "trackedEntity": "neR4cmMY22o",
-      "orgUnit": "g8upMTyEZGZ",
-      "occurredAt": "2023-11-12T00:00:00.000",
-      "scheduledAt": "2023-11-12T00:00:00.000",
-      "storedBy": "josemp10",
+      "program": "eBAyeGv0exc",
+      "programStage": "Zj7UnCAulEk",
+      "enrollment": "RiLEKhWHlxZ",
+      "orgUnit": "DwpbWkiqjMy",
+      "occurredAt": "2023-02-13T00:00:00.000",
+      "scheduledAt": "2023-02-13T00:00:00.000",
       "followUp": false,
       "deleted": false,
-      "createdAt": "2019-08-21T13:27:49.280",
-      "createdAtClient": "2018-11-12T04:20:51.016",
-      "updatedAt": "2019-08-21T13:29:37.255",
-      "updatedAtClient": "2019-08-21T13:29:37.255",
+      "createdAt": "2017-09-08T21:40:22.000",
+      "createdAtClient": "2016-09-08T21:40:22.000",
+      "updatedAt": "2017-09-08T21:40:22.000",
       "attributeOptionCombo": "HllvX50cXC0",
       "attributeCategoryOptions": "xYerKDKCefk",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -11.468912037323042,
+          7.515913998868316
+        ]
+      },
       "dataValues": [
         {
-          "createdAt": "2019-08-21T13:27:49.328",
-          "updatedAt": "2019-08-21T13:29:37.234",
-          "storedBy": "healthworker2",
+          "createdAt": "2016-12-06T18:22:34.438",
+          "updatedAt": "2016-12-06T18:22:34.438",
+          "storedBy": "bjorn",
           "providedElsewhere": false,
-          "dataElement": "DanTR5x0WDK",
-          "value": "RESIDENT_IN_THE_FOCUS"
+          "dataElement": "F3ogKBuviRA",
+          "value": "[-11.4880220438585,7.50978830548003]"
         },
         {
-          "createdAt": "2019-08-21T13:27:49.328",
-          "updatedAt": "2019-08-21T13:29:37.234",
-          "storedBy": "healthworker2",
+          "createdAt": "2013-12-30T14:23:57.423",
+          "updatedAt": "2013-12-30T14:23:57.423",
+          "storedBy": "lars",
           "providedElsewhere": false,
-          "dataElement": "rFQNCGMYud2",
-          "value": "45"
+          "dataElement": "eMyVanycQSC",
+          "value": "2018-02-07"
+        },
+        {
+          "createdAt": "2013-12-30T14:23:57.382",
+          "updatedAt": "2013-12-30T14:23:57.382",
+          "storedBy": "lars",
+          "providedElsewhere": false,
+          "dataElement": "oZg33kd9taw",
+          "value": "Male"
         }
       ],
       "notes": [],
@@ -2144,13 +2301,15 @@ The `JSON` response can look like the following.
 }
 ```
 
-The `CSV` response can look like the following.
+###### CSV { #csv } 
 
-```
-|event|status|program|programStage|enrollment|orgUnit|occurredAt|scheduledAt|dataElement|value|storedBy|providedElsewhere
-|---|---|---|---|---|---|---|---|---|---|---|---|
-|V1CerIi3sdL|COMPLETED|IpHINAT79UW|A03MvHHogjR|CCBLMntFuzb|DiszpKrYNg8|2020-02-26T23:00:00Z|2020-02-27T23:00:00Z|a3kGcGDCuk6|11|admin|false
-|V1CerIi3sdL|COMPLETED|IpHINAT79UW|A03MvHHogjR|CCBLMntFuzb|DiszpKrYNg8|2020-02-26T23:00:00Z|2020-02-27T23:00:00Z|mB2QHw1tU96|[-11.566044,9.477801]|admin|false
+The CSV response can look like the following:
+
+```csv
+event,status,program,programStage,enrollment,orgUnit,occurredAt,scheduledAt,geometry,latitude,longitude,followUp,deleted,createdAt,createdAtClient,updatedAt,updatedAtClient,completedBy,completedAt,updatedBy,attributeOptionCombo,attributeCategoryOptions,assignedUser,dataElement,value,storedBy,providedElsewhere,storedByDataValue,updatedAtDataValue,createdAtDataValue
+A7rzcnZTe2T,ACTIVE,eBAyeGv0exc,Zj7UnCAulEk,RiLEKhWHlxZ,DwpbWkiqjMy,2023-02-12T23:00:00Z,2023-02-12T23:00:00Z,"POINT (-11.468912037323042 7.515913998868316)",7.515913998868316,-11.468912037323042,false,false,2017-09-08T19:40:22Z,,2017-09-08T19:40:22Z,,,,,HllvX50cXC0,xYerKDKCefk,,F3ogKBuviRA,"[-11.4880220438585,7.50978830548003]",admin,false,,2016-12-06T17:22:34.438Z,2016-12-06T17:22:34.438Z
+A7rzcnZTe2T,ACTIVE,eBAyeGv0exc,Zj7UnCAulEk,RiLEKhWHlxZ,DwpbWkiqjMy,2023-02-12T23:00:00Z,2023-02-12T23:00:00Z,"POINT (-11.468912037323042 7.515913998868316)",7.515913998868316,-11.468912037323042,false,false,2017-09-08T19:40:22Z,,2017-09-08T19:40:22Z,,,,,HllvX50cXC0,xYerKDKCefk,,eMyVanycQSC,2018-02-07,admin,false,,2013-12-30T13:23:57.423Z,2013-12-30T13:23:57.423Z
+A7rzcnZTe2T,ACTIVE,eBAyeGv0exc,Zj7UnCAulEk,RiLEKhWHlxZ,DwpbWkiqjMy,2023-02-12T23:00:00Z,2023-02-12T23:00:00Z,"POINT (-11.468912037323042 7.515913998868316)",7.515913998868316,-11.468912037323042,false,false,2017-09-08T19:40:22Z,,2017-09-08T19:40:22Z,,,,,HllvX50cXC0,xYerKDKCefk,,msodh3rEMJa,2018-02-13,admin,false,,2013-12-30T13:23:57.467Z,2013-12-30T13:23:57.467Z
 ```
 
 #### Events single object endpoint `GET /api/tracker/events/{uid}`
@@ -2172,7 +2331,11 @@ A query for an Event:
 
     GET /api/tracker/events/rgWr86qs0sI
 
-##### 回应格式 { #response-format } 
+##### Event response example { #event-response-example } 
+
+The API supports CSV and JSON response for `GET /api/tracker/trackedEntities` 
+
+###### JSON { #json } 
 
 ```json
 {
@@ -2204,6 +2367,11 @@ A query for an Event:
   "followup": false
 }
 ```
+
+###### CSV { #csv } 
+
+The response will be the same as the collection endpoint but referring to a single event, 
+although it might have multiple rows for each data element value.
 
 ### Relationships (`GET /api/tracker/relationships`) { #relationships-get-apitrackerrelationships } 
 
