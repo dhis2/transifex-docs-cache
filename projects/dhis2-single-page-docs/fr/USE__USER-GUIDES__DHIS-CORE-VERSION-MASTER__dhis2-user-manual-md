@@ -1,5 +1,5 @@
 ---
-revision_date: '2024-03-21'
+revision_date: '2024-03-28'
 tags:
 - Version Master de DHIS2 Central
 - Utilisation
@@ -11565,6 +11565,74 @@ Toute période pour laquelle le *Test de saut d'échantillon* est *vrai* ne sera
 
 ![](resources/images/maintenance/predictor_sample_skip_test.png){.Largeur centre=66% }
 
+### Predictors and category option combinations (disaggregations) { #predictors-and-category-option-combinations-disaggregations } 
+
+The category option combination (disaggregation) for predictor output data
+is chosen in one of three ways:
+
+1. Default category option combination.
+
+   If the predictor's output data element has no disaggregations (category combination "None",
+also known as the default category combination), then all predictor output data will be made in
+the default category option combination. In this case, predictor output data is not disaggregated.
+
+2. Fixed category option combination
+
+   If the predictor's output data element has a category combination other than "None", you can
+choose a fixed disaggregation for the predictor "Output category option combo". If you do so,
+all output from this predictor will have this category option combination.
+
+   For example, if the output data element has a category combination of "Sex and Age", you can
+decide that all predictor output will go to a category option combination such as "Female under 5",
+"Male 5 - 10", or any other.
+
+3. Use the input category option combo (available in v40.1 and following)
+
+   If the predictor's output data element has a category combination other than "None", you can choose
+"Predict according to input category option combo" as the value for "Output category option combo".
+If you do so, a different prediction is made for each category option combo in the output data element's
+category combination (that is, one prediction for "Female under 5", a second for "Male under 5",
+a third for "Female 5 - 10", and so on).
+
+   (In v40.1, this feature is enabled by selecting the choice "\<no value\>" for "Output category option combo".)
+
+    > **Tip**
+    >
+    > In some installations, the options in a category may have changed over time.
+    For example, a category "Age" may have had three options "1-5", "6-10", and "over 10",
+    but then was changed to only have two options "10 and under" and "over 10".
+    Historical data may have values with any of these options.
+    To use a predictor with such data, you can define another category
+    such as "Reporting Age" with all the options ever used, such as "1-5", "6-10",
+    "10 and under", and "over 10". Use this category in the category combination
+    for the predictor's output data element. This means that all the input category
+    options will be reflected in the output.
+    >
+    > If you then want a single report for the output data that covers
+    all the disaggregations, you can use category option groups
+    in a category option group set. For example use a category option group
+    "10 and under" that contains category options "1-5", "6-10", and "10 and under".
+
+### Predictors and attribute option combinations { #predictors-and-attribute-option-combinations } 
+
+If the input data to a prediction has attribute option combinations, a different prediction 
+will be made for each attribute option combination where there is data.
+
+For example, you could use attribute option combinations to represent different projects
+on your system. The predictor will generate a value with the attribute option combination
+for Project A when it finds input data for Project A; it will generate a value with the 
+attribute option combination for Project B when it finds input data for Project B; and so on.
+
+For any input data without attribute option combinations (in other words, with the
+default attribute option combination), predictions are generated using the default
+attribute option combination. If you don't use attribute option combinations in the data,
+they will not be used in predictor output data.
+
+If you use attribute option combinations and also "Predict according to input category option combo",
+there will be a separate prediction for each combination of disaggregation and attribute option combination.
+For example, there could be a prediction for Project A data for "Female under 5", a prediction for 
+Project A data for "Male under 5", a prediction for Project B data for "Female under 5", and so on.
+
 ### Créer ou modifier un prédicteur { #create_predictor } 
 
 1.  Ouvrez l'application **Maintenance** et cliquez sur **Autre** \> **Prédicteur**.
@@ -11589,8 +11657,9 @@ Toute période pour laquelle le *Test de saut d'échantillon* est *vrai* ne sera
     remplacés par des zéros.)
 
 7.  (Facultatif) Sélectionnez une **combinaison d'options de catégorie de sortie**. Cette liste déroulante s'affichera uniquement
-    si l'élément de données sélectionné a une combinaison de catégories autre que celle par défaut.
-    Dans ce cas, vous pouvez sélectionner la combinaison d'options de catégorie (désagrégation) dans laquelle vous voulez générer la sortie.
+    if the selected data element has a category combination other than "None".
+    If so, you can select which disaggregation category option combo you would like to output to,
+    or you can select "Predict according to input category option combo" (see the discussion above).
 
 8.  Sélectionnez un **Type de période**.
 
@@ -11602,6 +11671,7 @@ Toute période pour laquelle le *Test de saut d'échantillon* est *vrai* ne sera
      
 
 10. **Unités d'organisation fournissant des données** contrôle l'origine des valeurs d'entrée pour les données **agrégées**. Si "Aux niveaux sélectionnés uniquement" est sélectionné, seules les unités d'organisation aux niveaux sélectionnés seront prises en compte. Si "Aux niveaux sélectionnés et à tous les niveaux inférieurs" est sélectionné, les unités d'organisation au(x) niveau(x) sélectionné(s) et toutes les unités d'organisation inférieures seront prises en compte.
+
 11. Créer un **Générateur**. Le générateur est l'expression utilisée pour le calcul de la valeur prédite.
 
     1.  Tapez une **Description** de l'expression du générateur.
@@ -12367,7 +12437,6 @@ Tableau : Types d'objets dans l'Editeur de groupes de métadonnées
 
 6.  Dans la liste de droite, sélectionnez le(s) groupe(s) d'objets desquels vous voulez
     supprimez l’objet et cliquez sur la flèche gauche.
-
 
 
 # Configurer les programmes dans l'application Maintenance { #configure_programs_in_maintenance_app } 
@@ -17510,7 +17579,7 @@ Tableau : Paramètres généraux
 
 | Paramètre | Description |
 |---|--|
-| **Stratégie de mise en cache** | Décide de la durée de mise en cache des rapports d'analyse. <br><br>Si vous utilisez la mise à jour programmée et nocturne des analyses, vous pouvez sélectionner **Mettre en cache jusqu'à 6 heures du matin le lendemain**. En effet, les données des rapports changent à ce moment-là et vous pouvez mettre en cache les données en toute sécurité jusqu'au moment où les tables d'analyse sont mises à jour. <br><br>Si vous chargez des données en continu dans les tables d'analyse, sélectionnez **Pas de cache**. <br><br>Dans les autres cas, sélectionnez la durée pendant laquelle vous souhaitez que les données soient mises en cache. |
+| **Stratégie de mise en cache** | Décide de la durée de mise en cache des rapports d'analyse. <br><br>Si vous utilisez la mise à jour programmée et nocturne des analyses, vous pouvez sélectionner **Mettre en cache jusqu'à 6 heures du matin le lendemain**. En effet, les données des rapports changent à ce moment-là et vous pouvez mettre en cache les données en toute sécurité jusqu'au moment où les tableaux d'analyse sont mises à jour. <br><br>Si vous chargez des données en continu dans les tableaux d'analyse, sélectionnez **Pas de cache**. <br><br>Dans les autres cas, sélectionnez la durée pendant laquelle vous souhaitez que les données soient mises en cache. |
 | **Indicateurs d'infrastructure** | Définit un groupe d'indicateurs dont les indicateurs membres doivent décrire les données relatives à l'infrastructure des unités d'organisation. <br><br>Vous pouvez visualiser les données d'infrastructure dans l'application **SIG** : cliquez avec le bouton droit de la souris sur une installation et cliquez sur **Afficher les informations**. |
 | **Éléments de données infrastructurelles** | Définit un groupe d'éléments de données dont les éléments de données associés doivent décrire les données relatives à l'infrastructure des unités d'organisation. <br><br>Les éléments de données d'infrastructure peuvent être la population, les médecins, les lits, la couverture Internet et le climat. <br><br>Vous pouvez visualiser les données d'infrastructure dans l'application **GIS** : cliquez avec le bouton droit de la souris sur un élément et cliquez sur **Afficher les informations**. |
 | **Type de période infrastructurelle** | Définit la fréquence à laquelle les éléments de données du groupe d'éléments de données sur les infrastructures sont saisis. <br><br>En général, il sera question d'une périodicité annuelle. Lorsque vous visualisez les données d'infrastructure, vous pouvez sélectionner la période de la source de données. <br><br>Vous pouvez visualiser les données d'infrastructure dans l'application **GIS** : cliquez avec le bouton droit de la souris sur une entité et cliquez sur **Afficher les informations**. |
@@ -17722,6 +17791,7 @@ Il est également possible de désactiver cette fonctionnalité en fixant la var
 Sous le capot, il fonctionne en appelant (GET, sans paramètres) le point de terminaison d'une API REST sur un serveur central, tous les jours vers 2 heures du matin.
 
 Voici l'URL : [https://releases.dhis2.org/v1/versions/stable.json](https://releases.dhis2.org/v1/versions/stable.json)
+
 
 
 # Utilisation de l'application Data Exchange( Échange de données) { #data_exchange }
@@ -18364,7 +18434,7 @@ manually". This action is only available for enabled jobs and queues.
     creation you will be redirected to the job overview, where the newly created
     job will now be listed.
 
-![Création d'une nouvelle tâche de programmateur](resources/images/scheduler/add_new_job.png)
+![Création d'une nouvelle tâche de planification](resources/images/scheduler/add_new_job.png)
 
 Les tâches nouvellement créées sont activées par défaut.
 
@@ -19364,6 +19434,7 @@ Tableau : Valeurs disponibles
 
 The ID scheme applies to all types of objects, but can be overwritten
 by more specific object types.
+
 
 
 # Configurer la synchronisation des métadonnées { #metadata_sync } 
@@ -21063,7 +21134,7 @@ ensembles de groupes d'indicateurs (dimensions) exactement de la même manière 
 
 Les unités d'organisation du DHIS2 doivent généralement représenter un lieu, tel qu'un 
 centre de santé communautaire ou des hôpitaux de référence, ou une unité administrative 
-comme le "Miistère de la santé de la Sierra Leone", le "district de Bo" ou la "chefferie de 
+comme le "Ministère de la santé de la Sierra Leone", le "district de Bo" ou la "chefferie de 
 Baoma". Dans les applications de secteurs autre que la santé, il peut s'agir d'"écoles" ou de 
 "points d'eau". Les unités sont représentées dans une hiérarchie par défaut, généralement 
 la hiérarchie administrative par défaut d'un pays ou d'une région, et se voient 
@@ -22306,7 +22377,7 @@ d'analyse disponibles à l'utilisateur puisque les données sont collectées et 
 cette structure. Il ne peut y avoir qu'une seule hiérarchie d'organisation à la 
 fois, il faut donc faire attention à sa structure. Des hiérarchies supplémentaires 
 (ex. regroupements administratifs parallèles comme les "Propriétaires 
-d'installations") peuvent être modélisées à l'aide de regroupements organisationnels et d'ensembles de regroupements, 
+d'établissements") peuvent être modélisées à l'aide de regroupements organisationnels et d'ensembles de regroupements, 
 mais la hiérarchie organisationnelle représente le principal moyen d'agrégation 
 de données sur la dimension géographique. Les hiérarchies organisationnelles 
 nationales typiques dans le domaine de la santé publique ont 4-6 niveaux, mais peuvent 
@@ -22422,7 +22493,7 @@ la façon dont les nouvelles données seront collectées.
 Un ensemble de données a un type de période, qui contrôle la fréquence de collecte des 
 données, qui peut être quotidienne, hebdomadaire, mensuelle, trimestrielle, semestrielle 
 ou annuelle. Les éléments de données à inclure dans l'ensemble de données et le 
-type de période sont définis par l'utilisateur, ainsi qu'un nom, un nom abrégé 
+type de période sont définis par l'utilisateur, ainsi qu'un nom, un nom court 
 et un code.
 
 Pour utiliser un ensemble de données dans la collecte des données pour le compte d'une 
@@ -22436,7 +22507,7 @@ nécessite une réflexion approfondie, car il peut entraîner un chevauchement e
 inconstance des données collectées si les ensembles de données ont par exemple des 
 fréquences différentes et sont utilisés par les mêmes unités d'organisation.
 
-#### Modèles de saisie de données { #data-entry-forms } 
+#### Formulaires de saisie de données { #data-entry-forms } 
 
 Une fois que vous avez affecté un ensemble de données à une unité d'organisation, cet ensemble de données sera 
 disponible dans Saisie de données (sous Service) pour les unités d'organisation auxquelles 
@@ -22533,14 +22604,7 @@ Dans le module SIG intégré, vous pouvez facilement afficher vos données sur d
 
 ### Diagrammes et tableau de bord { #charts-and-dashboard } 
 
-La plupart des modules de rapport dans DHIS 2 supportent à la fois les
-éléments de données et les indicateurs et vous pouvez également
-combiner ceux-ci dans des rapports personnalisés; toutefois la
-différence importante et la force des indicateurs par rapport aux
-données brutes (les valeurs des éléments de données) est leur capacité
-de comparer les données entre les différentes zones géographiques (par
-exemple, zones densément peuplées et zones rurales) par le fait que la
-population cible peut être utilisée au niveau du dénominateur.
+L'un des moyens les plus faciles d'afficher les données de votre indicateur est d'utiliser des graphiques. Un dialogue de diagramme facile à utiliser vous guidera dans la création de divers types de graphiques avec des données sur les indicateurs, les unités d'organisation et les périodes de votre choix. Ces graphiques peuvent facilement être ajoutés à l'une des quatre sections de votre tableau de bord et sont facilement disponibles immédiatement après votre connexion. Assurez-vous de définir le module du tableau de bord comme module de démarrage dans les paramètres utilisateur.
 
 
 

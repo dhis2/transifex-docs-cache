@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/user/configure-metadata.md"
-revision_date: '2023-12-11'
+revision_date: '2024-03-28'
 tags:
-- Version Master de DHIS2 Central
 - Utilisation
+- Version Master de DHIS2 Central
 ---
 
 # Configurer les métadonnées { #maintenance_app } 
@@ -3667,23 +3667,91 @@ Toute période pour laquelle le *Test de saut d'échantillon* est *vrai* ne sera
 
 ![](resources/images/maintenance/predictor_sample_skip_test.png){.Largeur centre=66% }
 
+### Predictors and category option combinations (disaggregations) { #predictors-and-category-option-combinations-disaggregations } 
+
+The category option combination (disaggregation) for predictor output data
+is chosen in one of three ways:
+
+1. Default category option combination.
+
+   If the predictor's output data element has no disaggregations (category combination "None",
+also known as the default category combination), then all predictor output data will be made in
+the default category option combination. In this case, predictor output data is not disaggregated.
+
+2. Fixed category option combination
+
+   If the predictor's output data element has a category combination other than "None", you can
+choose a fixed disaggregation for the predictor "Output category option combo". If you do so,
+all output from this predictor will have this category option combination.
+
+   For example, if the output data element has a category combination of "Sex and Age", you can
+decide that all predictor output will go to a category option combination such as "Female under 5",
+"Male 5 - 10", or any other.
+
+3. Use the input category option combo (available in v40.1 and following)
+
+   If the predictor's output data element has a category combination other than "None", you can choose
+"Predict according to input category option combo" as the value for "Output category option combo".
+If you do so, a different prediction is made for each category option combo in the output data element's
+category combination (that is, one prediction for "Female under 5", a second for "Male under 5",
+a third for "Female 5 - 10", and so on).
+
+   (In v40.1, this feature is enabled by selecting the choice "\<no value\>" for "Output category option combo".)
+
+    > **Tip**
+    >
+    > In some installations, the options in a category may have changed over time.
+    For example, a category "Age" may have had three options "1-5", "6-10", and "over 10",
+    but then was changed to only have two options "10 and under" and "over 10".
+    Historical data may have values with any of these options.
+    To use a predictor with such data, you can define another category
+    such as "Reporting Age" with all the options ever used, such as "1-5", "6-10",
+    "10 and under", and "over 10". Use this category in the category combination
+    for the predictor's output data element. This means that all the input category
+    options will be reflected in the output.
+    >
+    > If you then want a single report for the output data that covers
+    all the disaggregations, you can use category option groups
+    in a category option group set. For example use a category option group
+    "10 and under" that contains category options "1-5", "6-10", and "10 and under".
+
+### Predictors and attribute option combinations { #predictors-and-attribute-option-combinations } 
+
+If the input data to a prediction has attribute option combinations, a different prediction 
+will be made for each attribute option combination where there is data.
+
+For example, you could use attribute option combinations to represent different projects
+on your system. The predictor will generate a value with the attribute option combination
+for Project A when it finds input data for Project A; it will generate a value with the 
+attribute option combination for Project B when it finds input data for Project B; and so on.
+
+For any input data without attribute option combinations (in other words, with the
+default attribute option combination), predictions are generated using the default
+attribute option combination. If you don't use attribute option combinations in the data,
+they will not be used in predictor output data.
+
+If you use attribute option combinations and also "Predict according to input category option combo",
+there will be a separate prediction for each combination of disaggregation and attribute option combination.
+For example, there could be a prediction for Project A data for "Female under 5", a prediction for 
+Project A data for "Male under 5", a prediction for Project B data for "Female under 5", and so on.
+
 ### Créer ou modifier un prédicteur { #create_predictor } 
 
 1.  Ouvrez l'application **Maintenance** et cliquez sur **Autre** \> **Prédicteur**.
 
-2.  Cliquez sur le bouton d'ajout.
+2.  Cliquez sur le bouton Ajouter.
 
 3.  Dans le champ **Nom**, entrez le nom du prédicteur.
 
 4.  (Facultatif) Dans le champ **Code**, attribuez un code.
 
-5.  (Facultatif) Tapez une **Description**.
+5.  (Facultatif) Saisissez une **Description**.
 
 6.  Sélectionnez un **Elément de données de sortie**. Les valeurs générées par ce
     le prédicteur sont enregistrées en tant que données agrégées associées à ces éléments
     données et la période prédite.
 
-    La valeur est arrondie en fonction du type des valeurs de l'élément de
+    La valeur est arrondie en fonction du type de valeur de l'élément de
     données : si la valeur est de type entier, la valeur prédite
     sera arrondi à l’entier le plus proche. Pour tous les autres types de valeur, le
     nombre est arrondi à quatre chiffres significatifs. (Cependant, s'il y a
@@ -3691,8 +3759,9 @@ Toute période pour laquelle le *Test de saut d'échantillon* est *vrai* ne sera
     remplacés par des zéros.)
 
 7.  (Facultatif) Sélectionnez une **combinaison d'options de catégorie de sortie**. Cette liste déroulante s'affichera uniquement
-    si l'élément de données sélectionné a une combinaison de catégories autre que celle par défaut.
-    Dans ce cas, vous pouvez sélectionner la combinaison d'options de catégorie (désagrégation) dans laquelle vous voulez générer la sortie.
+    if the selected data element has a category combination other than "None".
+    If so, you can select which disaggregation category option combo you would like to output to,
+    or you can select "Predict according to input category option combo" (see the discussion above).
 
 8.  Sélectionnez un **Type de période**.
 
@@ -3700,10 +3769,11 @@ Toute période pour laquelle le *Test de saut d'échantillon* est *vrai* ne sera
     attribuée à une unité d'organisation de ce niveau (ou de ces niveaux).
     Pour les données **agrégées**, les valeurs d'entrée dépendent de la sélection ci-dessous ; **unités d'organisation fournissant des données**.
     Pour les données **Tracker**, les valeurs d'entrée proviendront de l'unité d'organisation à laquelle la
-    valeur de sortie est attribuée, ou à partir de tout niveau inférieur à celui de la valeur de sortie
-    comme complets pour l'ensemble de données dont il est question.
+    valeur de sortie est attribuée, ou à partir de tout niveau inférieur à l'unité d'organisation de la valeur de sortie
+     
 
 10. **Unités d'organisation fournissant des données** contrôle l'origine des valeurs d'entrée pour les données **agrégées**. Si "Aux niveaux sélectionnés uniquement" est sélectionné, seules les unités d'organisation aux niveaux sélectionnés seront prises en compte. Si "Aux niveaux sélectionnés et à tous les niveaux inférieurs" est sélectionné, les unités d'organisation au(x) niveau(x) sélectionné(s) et toutes les unités d'organisation inférieures seront prises en compte.
+
 11. Créer un **Générateur**. Le générateur est l'expression utilisée pour le calcul de la valeur prédite.
 
     1.  Tapez une **Description** de l'expression du générateur.
@@ -3712,9 +3782,9 @@ Toute période pour laquelle le *Test de saut d'échantillon* est *vrai* ne sera
 
         | Option                         | Description                                                                                                                                                                                                                     |
         |--- |--- |
-        | Ignorer si une valeur est manquante | La règle de validation sera ignorée si l'une des valeurs composant l'expression est manquante.  C'est l'option par défaut. <br><br>Sélectionnez toujours cette option si vous utilisez l'opérateur **Paire exclusive** ou **Paire obligatoire**. |
-        | Ignorez si toutes les valeurs sont manquantes | La règle de validation ne sera ignorée que si toutes les valeurs qui la composent sont manquantes.                                                                                                                                     |
-        | Ne jamais ignorer                     | La règle de validation ne sera jamais ignorée en cas de données manquantes, et toutes les valeurs manquantes seront effectivement traitées comme un zéro.                                                                                                |
+        | Ignorer si une valeur est manquante | La règle de validation sera ignorée si l'une des valeurs composant l'expression est manquante. C'est l'option par défaut. <br><br>Sélectionnez toujours cette option si vous utilisez l'opérateur **Paire exclusive** ou **Paire obligatoire**. |
+        | Ignorer si toutes les valeurs sont manquantes | La règle de validation ne sera ignorée que si toutes les valeurs qui la composent sont manquantes.|                                                                                                        
+        | Ne jamais ignorer| La règle de validation ne sera jamais ignorée en cas de données manquantes, et toutes les valeurs manquantes seront prises pour zéro. |                                                                               
 
     3.  Entrez l'expression du générateur. Vous pouvez générer l'expression en sélectionnant des éléments de données pour les données agrégées, ou des éléments de données de programme, des attributs ou des indicateurs. Le comptage des unités d'organisation n'est pas encore pris en charge.
 
@@ -3727,9 +3797,9 @@ Toute période pour laquelle le *Test de saut d'échantillon* est *vrai* ne sera
         | max(x) | Valeur maximale de x |
         | médiane(x) | Valeur médiane de x |
         | min(x) | Valeur minimale de x |
-        | percentileCont(p, x) | Percentile continu de x, où p est le percentile sous forme de nombre à virgule flottante compris entre 0 et 1. Par exemple, p = 0 renverra la valeur la plus basse, p = 0,5 renverra la médiane, p = 0,75 renverra le 75e percentile, p = 1 renverra la valeur la plus élevée, etc. Continu signifie que la valeur sera interpolée si nécessaire. Par exemple, percentileCont( 0.5, #{FTRrcoaog83} ) renverra 2,5 si les valeurs échantillonnées de l'élément de données FTRrcoaog83 sont 1, 2, 3 et 4. |
+        | percentileCont(p, x) | Centile continu de x, où p est le centile sous forme de nombre à virgule flottante compris entre 0 et 1. Par exemple, p = 0 renverra la valeur la plus basse, p = 0,5 renverra la médiane, p = 0,75 renverra le 75e percentile, p = 1 renverra la valeur la plus élevée, etc. Continu signifie que la valeur sera interpolée si nécessaire. Par exemple, centileCont( 0.5, #{FTRrcoaog83} ) renverra 2,5 si les valeurs échantillonnées de l'élément de données FTRrcoaog83 sont 1, 2, 3 et 4. |
         | devstd(x) | Écart type de x. Cette fonction est équivalente à stddevSamp. Il est suggéré d'utiliser plutôt la fonction stddevSamp pour plus de clarté. |
-        | stddevPop(x) | Écart type de population de x : sqrt( sum( (x - avg(x))^2 ) / n ) |
+        | stddevPop(x) | Écart type de population de x : sqrt( somme( (x - avg(x))^2 ) / n ) |
         | stddevSamp(x) | Exemple d'écart type de x : sqrt( somme( (x - avg(x))^2 ) / ( n - 1 ) ). Notez que cette valeur n'est pas calculée lorsqu'il n'y a qu'un seul échantillon. |
         | somme(x) | Somme des valeurs de x |
 
@@ -3748,74 +3818,68 @@ Toute période pour laquelle le *Test de saut d'échantillon* est *vrai* ne sera
         insère \[jours] dans l'expression qui se résout en 
         nombre de jours dans la période d'où proviennent les données.
 
-        Vous pouvez également utiliser les fonctions non agrégées suivantes dans votre
+        Vous pouvez également utiliser les fonctions non agrégées suivantes dans votre 
         expression, soit à l'intérieur de fonctions agrégées, soit contenant 
         des fonctions agrégées, soit indépendantes des fonctions agrégées :
 
 
-        | Fonction | Moyens |
-        |---|---|
-        | si(test, valeurSiVrai, valeurSiFausse) | Évalue **test** qui est une expression qui correspond à une valeur booléenne -- voir **Notes sur l'expression booléenne** ci-dessous. Si le test est **vrai**, renvoie l'expression **valeurSiVrai**. Si c'est **faux**, renvoie l'expression **valeurSiFausse**. |
-        | est(expr1 dans l'expression [, expression ...]) | Renvoie vrai si expr1 est égal à l’une des expressions suivantes, sinon renvoie faux. |
-        | estNulle(élément) | Renvoie la valeur booléenne **vrai** si l'**item** est nul (manquant), sinon renvoie **faux**. L' **élément** peut être n'importe quel élément sélectionné à droite (élément de données, élément de données de programme, etc.). |
-        | n'estPasNul(élément) | Renvoie **vrai** si la valeur de l'**item** n'est pas manquante (non nulle), sinon renvoie **faux**. |
-        | premierNonNul(élément [, élément ...]) | Renvoie la valeur du premier **élément** non manquant (non nul). Peut obtenir un nombre quelconque d'arguments. Tout argument peut également être un littéral numérique ou une chaîne, qui sera renvoyé si tous les éléments précédents ont des valeurs manquantes. |
-        | plus grand(expression [, expression ...]) | Renvoie la plus grande valeur (la plus élevée) des expressions données. Peut être fourni n'importe quel nombre d'arguments. |
-        | moindre(expression [, expression ...]) | Renvoie la valeur la plus petite (la plus basse) des expressions données. Peut être fourni n'importe quel nombre d'arguments. |
-        | log(expression [, base ]) | Renvoie le logarithme népérien (base e) de l'expression numérique. Si un entier est donné comme deuxième argument, renvoie le logarithme utilisant cette base. |
-        | log10(expression) | Renvoie le logarithme commun (base 10) de l'expression numérique. |
-        | normDistCum(x [,mean [,stddev]]) | Renvoie la valeur de la fonction de distribution cumulative (CDF) pour x étant donné la distribution normalisée décrite par la moyenne et stddev. Équivalent à Excel NORM.DIST(x,mean,stddev,TRUE) ou LibreOffice NORMDIST(x,mean,stddev,1). Si stddev n'est pas donné, il est calculé à partir des valeurs échantillonnées passées de x. Si ni la moyenne ni l'écart type ne sont donnés, ils sont calculés à partir de la valeur échantillonnée passée de x. Voir des exemples. |
-        | normDistDen(x [,mean [,stddev]]) | Renvoie la valeur de la fonction de densité de probabilité (PDF) pour x étant donné la distribution normalisée décrite par la moyenne et stddev. Équivalent à Excel NORM.DIST(x,mean,stddev,FALSE) ou LibreOffice NORMDIST(x,mean,stddev,0). Si stddev n'est pas donné, il est calculé à partir des valeurs échantillonnées passées de x. Si ni la moyenne ni l'écart type ne sont donnés, ils sont calculés à partir de la valeur échantillonnée passée de x. Voir des exemples. |
-        | nul | Ne renvoie aucun résultat. Par exemple, _if( #{FH8ab5Rog83}<0, null, 1 )_ ne renvoie rien si la valeur de l'élément de données est inférieure à 0, sinon 1. |
-        | orgUnit.ancestor(orgUnitUid [, orgUnitUid ...]) | Renvoie vrai si l'unité d'organisation est un descendant de l'une des (1 ou plusieurs) unités d'organisation, sinon faux. |
-        | orgUnit.dataSet(dataSetUid [, dataSetUid ...]) | Renvoie vrai si l'unité d'organisation est affectée à l'un des (1 ou plusieurs) ensembles de données, sinon faux. |
-        | orgUnit.group(ouGroupUid [, ouGroupUid ...]) | Renvoie vrai si l'unité d'organisation est membre de l'un des (1 ou plusieurs) groupes d'unités d'organisation, sinon faux. |
-        | orgUnit.program(programUid [, programUid ...]) | Renvoie vrai si l'unité d'organisation est affectée à l'un des (1 ou plusieurs) programmes, sinon faux. |
-        | supprimerZéros(expression) | Ne renvoie rien si la valeur de l'expression est 0, sinon renvoie la valeur de l'expression. |
-        | .maxDate (aaaa-mm-jj) | Pour un élément de données (et non des données de programme), valeur des périodes se terminant à une date maximale ou avant. |
-        | .minDate (aaaa-mm-jj) | Pour un élément de données (et non des données de programme), valeur des périodes commençant à une date minimale ou après. |
+ | Fonction | Signification |
+|---|---|
+| si(test, valeurSiVrai, valeurSiFausse) | Évalue **test** qui est une expression qui correspond à une valeur booléenne -- voir **Notes sur l'expression booléenne** ci-dessous. Si le test est **vrai**, renvoie l'expression **valeurSiVrai**. Si c'est **faux**, renvoie l'expression **valeurSiFausse**. |
+| est(expr1 dans l'expression [, expression ...]) | Renvoie vrai si expr1 est égal à l’une des expressions suivantes, sinon renvoie faux. |
+| estNulle(élément) | Renvoie la valeur booléenne **vrai** si l'**item** est nul (manquant), sinon renvoie **faux**. L' **élément** peut être n'importe quel élément sélectionné à droite (élément de données, élément de données de programme, etc.). |
+| n'estPasNul(élément) | Renvoie **vrai** si la valeur de l'**item** n'est pas manquante (non nulle), sinon renvoie **faux**. |
+| premierNonNul(élément [, élément ...]) | Renvoie la valeur du premier **élément** non manquant (non nul). Peut obtenir un nombre quelconque d'arguments. Tout argument peut également être un littéral numérique ou de chaîne, qui sera renvoyé si tous les éléments précédents ont des valeurs manquantes. |
+| plus grande(expression [, expression ...]) | Renvoie la plus grande valeur (la plus élevée) des expressions données. Peut obtenir un nombre quelconque d'arguments. |
+| plus petite(expression [, expression ...]) | Renvoie la plus petite valeur des expressions données. Peut obtenir un nombre quelconque d'arguments. |
+| log(expression [, base ]) | Renvoie le logarithme népérien (base e) de l'expression numérique. Si un entier est donné comme deuxième argument, renvoie le logarithme utilisant cette base. |
+| log10(expression) | Renvoie le logarithme commun (base 10) de l'expression numérique. |
+| normDistCum(x [,mean [,stddev]]) | Renvoie la valeur de la fonction de distribution cumulative (CDF) pour x étant donné la distribution normalisée décrite par la moyenne et stddev. Équivalent à Excel NORM.DIST(x,mean,stddev,TRUE) ou LibreOffice NORMDIST(x,mean,stddev,1). Si stddev n'est pas fourni, il est calculé à partir des valeurs échantillonnées passées de x. Si ni la moyenne ni l'écart type ne sont fournis, ils seront calculés à partir de la valeur échantillonnée passée de x. Voir des exemples. |
+| normDistDen(x [,mean [,stddev]]) | Renvoie la valeur de la fonction de densité de probabilité (PDF) pour x étant donné la distribution normalisée décrite par la moyenne et stddev. Équivalent à Excel NORM.DIST(x,mean,stddev,FALSE) ou LibreOffice NORMDIST(x,mean,stddev,0). Si stddev n'est pas fourni, il sera calculé à partir des valeurs échantillonnées passées de x. Si ni la moyenne ni l'écart type ne sont fournis, ils seront calculés à partir de la valeur échantillonnée passée de x. Voir des exemples. |
+| nul | Ne renvoie aucun résultat. Par exemple, _si( #{FH8ab5Rog83}<0, null, 1 )_ ne renvoie rien si la valeur de l'élément de données est inférieure à 0, sinon renvoie 1. |
+| orgUnit.ancestor(orgUnitUid [, orgUnitUid ...]) | Renvoie "vrai" si l'unité d'organisation est un descendant de l'une des (1 ou plusieurs) unités d'organisation, sinon renvoie "faux". |
+| orgUnit.dataSet(dataSetUid [, dataSetUid ...]) | Renvoie "vrai" si l'unité d'organisation est affectée à l'un des (1 ou plusieurs) ensembles de données, sinon renvoie "faux". |
+| orgUnit.group(ouGroupUid [, ouGroupUid ...]) | Renvoie "vrai" si l'unité d'organisation est membre de l'un des (1 ou plusieurs) groupes d'unités d'organisation, sinon renvoie "faux". |
+| orgUnit.program(programUid [, programUid ...]) | Renvoie "vrai" si l'unité d'organisation est affectée à l'un des (1 ou plusieurs) programmes, sinon renvoie "faux". |
+| supprimerLesZéros(expression) | Ne renvoie rien si la valeur de l'expression est 0, sinon renvoie la valeur de l'expression. |
+| .dateMax(aaaa-mm-jj) | Pour un élément de données (et non des données de programme), valeur des périodes se terminant à une date maximale ou avant. |
+| .dateMin (aaaa-mm-jj) | Pour un élément de données (et non des données de programme), valeur des périodes commençant à une date minimale ou après. |
 
-        **Remarques sur l'expression booléenne :** Une expression booléenne doit évaluer
-        à **vrai** ou **faux**. Les opérateurs suivants peuvent être utilisés pour
-        comparer deux valeurs résultant en une expression booléenne : \<, \>,
-        \!=, ==, \>= et \<=. Les opérateurs suivants peuvent être utilisés pour
-        combinez deux expressions booléennes : && ou le mot-clé _and_ (et logique), et || ou le mot-clé _ou_
-        (ou logique). L'opérateur unaire \! ou le mot-clé _not_ peut être utilisé pour annuler un
-        Expression booléenne.
+**Remarques sur l'expression booléenne :** Une expression booléenne doit évaluer par **vrai** ou **faux**. Les opérateurs suivants peuvent être utilisés pour comparer deux valeurs résultant en une expression booléenne : \<, \>, \!=, ==, \>= et \<=. Les opérateurs suivants peuvent être utilisés pour combiner deux expressions booléennes : && ou le mot-clé _et_ (et logique), et || ou le mot-clé _ou_ (ou logique). L'opérateur unaire \! ou le mot-clé _non_ (not en anglais) peut être utilisé pour annuler une expression booléenne.
 
-        **Exemples d'expressions de générateur :**
+**Exemples d'expressions de générateur :**
 
 
-        | Expression génératrice | Moyens |
-        |---|---|
-        | somme(#{FTRrcoaog83.tMwM3ZBd7BN}) | Somme des valeurs échantillonnées de l'élément de données FTRrcoaog83 et de la combinaison d'options de catégorie (désagrégation) tMwM3ZBd7BN |
-        | moyenne(I{GSae40Fyppf}) + 2 \* stddevSamp(I{GSae40Fyppf}) | Moyenne des valeurs échantillonnées de l'indicateur de programme GSae40Fyppf plus deux fois son écart type d'échantillon |
-        | somme(D{IpHINAT79UW.eMyVanycQSC}) / somme([jours]) | Somme de toutes les valeurs échantillonnées de l'élément de données eMyVanycQSC du programme IpHINAT79UW divisée par le nombre de jours dans toutes les périodes d'échantillonnage (ce qui donne la valeur quotidienne moyenne globale) |
-        | somme(#{FTRrcoaog83}) + #{T7OyqQpUpNd} | Somme de toutes les valeurs échantillonnées de l'élément de données FTRrcoaog83 plus la valeur de l'élément de données T7OyqQpUpNd dans la période pour laquelle la prévision est effectuée (inclut toutes les désagrégations) |
-        | 1.2 \* A{IpHINAT79UW.RKLKz1H20EE} | 1,2 fois la valeur de l'attribut RKLKz1H20EE du programme IpHINAT79UW, dans la période prévue pour |
-        | si(isNull(#{T7OyqQpUpNd}), 0, 1) | Si l'élément de données T7OyqQpUpNd est nul dans la période prédite, alors 0, sinon 1 |
-        | if(is(#{jeiTh8ahyae} dans 'NÉGATIF','INCONNU'), 0, 1) | Si l'élément de données jeiTh8ahyae a la valeur 'NEGATIVE' ou 'INCONNU' alors 0, sinon 1 |
-        | percentileCont(0.5, #{T7OyqQpUpNd}) | 50e centile continu des valeurs échantillonnées pour l'élément de données T7OyqQpUpNd. Notez que c'est la même chose que median(#{T7OyqQpUpNd}) |
-        | if(count(#{T7OyqQpUpNd}) == 1, 0, stddevSamp(#{T7OyqQpUpNd})) | S'il existe une valeur d'échantillon présente pour l'élément de données T7OyqQpUpNd, alors 0, sinon l'écart type de ces valeurs d'échantillon. (Notez que si aucun échantillon n'est présent, stddevSamp ne renvoie aucune valeur, donc aucune valeur n'est prédite.) |
-        | normDistCum(#{T7OyqQpUpNd}) | La fonction de distribution cumulative pour la valeur de la période actuelle de l'élément de données T7OyqQpUpNd basée sur la distribution normalisée définie par la moyenne et l'écart type des périodes échantillonnées passées de l'élément de données T7OyqQpUpNd |
-        | normDistCum( #{T7OyqQpUpNd}, médiane(#{T7OyqQpUpNd}) ) | La fonction de distribution cumulative pour la valeur de la période actuelle de l'élément de données T7OyqQpUpNd basée sur la distribution définie par la médiane (au lieu de la moyenne) et l'écart type des périodes échantillonnées passées de l'élément de données T7OyqQpUpNd |
-        | normDistCum( #{T7OyqQpUpNd}, médiane(#{T7OyqQpUpNd}) ) | La fonction de distribution cumulative pour la valeur de la période actuelle de l'élément de données T7OyqQpUpNd basée sur la distribution définie par la médiane (au lieu de la moyenne) et l'écart type des périodes échantillonnées passées de l'élément de données T7OyqQpUpNd |
-        | normDistCum( #{T7OyqQpUpNd}, avg(#{T7OyqQpUpNd}), stddev(#{T7OyqQpUpNd}) ) | Identique à normDistCum( #{T7OyqQpUpNd} ) |
-        | normDistDen( #{T7OyqQpUpNd}, avg(#{IKahz1Quie3}), stddev(#{IKahz1Quie3}) ) | La fonction de densité de probabilité pour la valeur de la période actuelle de l'élément de données T7OyqQpUpNd basée sur la distribution définie par la moyenne et l'écart type des périodes échantillonnées passées des différents éléments de données IKahz1Quie3 |
-        | normDistDen( median(#{T7OyqQpUpNd}), avg(#{IKahz1Quie3}), stddev(#{IKahz1Quie3}) ) | La fonction de densité de probabilité pour la médiane des valeurs échantillonnées passées de l'élément de données T7OyqQpUpNd basée sur la distribution définie par la moyenne et l'écart type des périodes échantillonnées passées des différents éléments de données IKahz1Quie3 |
-        | #{T7OyqQpUpNd}.minDate(2022-10-1) | Valeur à compter du 1er octobre 2022 |
-        | #{T7OyqQpUpNd}.maxDate(2022-12-31) | Valeur au plus tard le 31 décembre 2022 |
-        | #{T7OyqQpUpNd}.minDate(2022-10-1).maxDate(2022-12-31) | Valeur entre le 1er octobre 2022 et le 31 décembre 2022 |
+| Expression de générateur | Moyens |
+|---|---|
+| somme(#{FTRrcoaog83.tMwM3ZBd7BN}) | Somme des valeurs échantillonnées de l'élément de données FTRrcoaog83 et de la combinaison d'options de catégorie (désagrégation) tMwM3ZBd7BN |
+| moyenne(I{GSae40Fyppf}) + 2 \* stddevSamp(I{GSae40Fyppf}) | Moyenne des valeurs échantillonnées de l'indicateur de programme GSae40Fyppf plus deux fois l'écart type de son échantillon|
+| somme(D{IpHINAT79UW.eMyVanycQSC}) / somme([jours]) | Somme de toutes les valeurs échantillonnées de l'élément de données eMyVanycQSC du programme IpHINAT79UW divisée par le nombre de jours dans toutes les périodes d'échantillonnage (ce qui donne la valeur moyenne quotidienne générale) |
+| somme(#{FTRrcoaog83}) + #{T7OyqQpUpNd} | Somme de toutes les valeurs échantillonnées de l'élément de données FTRrcoaog83 plus la valeur de l'élément de données T7OyqQpUpNd dans la période pour laquelle la prévision est effectuée (inclut toutes les désagrégations) |
+| 1.2 \* A{IpHINAT79UW.RKLKz1H20EE} | 1,2 fois la valeur de l'attribut RKLKz1H20EE du programme IpHINAT79UW, dans la période prévue à cet effet |
+| si(estNul(#{T7OyqQpUpNd}), 0, 1) | Si l'élément de données T7OyqQpUpNd est nul dans la période prédite, renvoie 0, sinon renvoie 1 |
+| si(est(#{jeiTh8ahyae} dans 'NÉGATIF','INCONNU'), 0, 1) | Si l'élément de données jeiTh8ahyae a la valeur 'NEGATIVE' ou 'INCONNU', renvoie 0, sinon renvoie 1 |
+| percentileCont(0.5, #{T7OyqQpUpNd}) | 50e centile continu des valeurs échantillonnées pour l'élément de données T7OyqQpUpNd. Notez que c'est la même chose que la médiane(#{T7OyqQpUpNd}) |
+| si(nombre(#{T7OyqQpUpNd}) == 1, 0, stddevSamp(#{T7OyqQpUpNd})) | S'il existe une valeur d'échantillon pour l'élément de données T7OyqQpUpNd, renvoie 0, sinon renvoie l'écart type de ces valeurs d'échantillon. (Notez que si aucun échantillon n'est présent, stddevSamp ne renvoie aucune valeur, donc aucune valeur ne sera prédite.) |
+| normDistCum(#{T7OyqQpUpNd}) | La fonction de distribution cumulative pour la valeur de la période actuelle de l'élément de données T7OyqQpUpNd basée sur la distribution normalisée définie par la moyenne et l'écart type des périodes échantillonnées passées de l'élément de données T7OyqQpUpNd |
+| normDistCum( #{T7OyqQpUpNd}, médiane(#{T7OyqQpUpNd}) ) | La fonction de distribution cumulative pour la valeur de la période actuelle de l'élément de données T7OyqQpUpNd basée sur la distribution définie par la médiane (et non la moyenne) et l'écart type des périodes échantillonnées passées de l'élément de données T7OyqQpUpNd |
+| normDistCum( #{T7OyqQpUpNd}, médiane(#{T7OyqQpUpNd}) ) | La fonction de distribution cumulative pour la valeur de la période actuelle de l'élément de données T7OyqQpUpNd basée sur la distribution définie par la médiane (et non la moyenne) et l'écart type des périodes échantillonnées passées de l'élément de données T7OyqQpUpNd |
+| normDistCum( #{T7OyqQpUpNd}, avg(#{T7OyqQpUpNd}), stddev(#{T7OyqQpUpNd}) ) | Identique à normDistCum( #{T7OyqQpUpNd} ) |
+| normDistDen( #{T7OyqQpUpNd}, avg(#{IKahz1Quie3}), stddev(#{IKahz1Quie3}) ) | La fonction de densité de probabilité pour la valeur de la période actuelle de l'élément de données T7OyqQpUpNd basée sur la distribution définie par la moyenne et l'écart type des périodes échantillonnées passées des différents éléments de données IKahz1Quie3 |
+| normDistDen( median(#{T7OyqQpUpNd}), avg(#{IKahz1Quie3}), stddev(#{IKahz1Quie3}) ) | La fonction de densité de probabilité pour la médiane des valeurs échantillonnées passées de l'élément de données T7OyqQpUpNd basée sur la distribution définie par la moyenne et l'écart type des périodes échantillonnées passées des différents éléments de données IKahz1Quie3 |
+| #{T7OyqQpUpNd}.minDate(2022-10-1) | Valeur à compter du 1er octobre 2022 |
+| #{T7OyqQpUpNd}.maxDate(2022-12-31) | Valeur au plus tard le 31 décembre 2022 |
+| #{T7OyqQpUpNd}.dateMin(2022-10-1).dateMax(2022-12-31) | Valeur entre le 1er octobre 2022 et le 31 décembre 2022 |
 
 12. (Facultatif) Créez un **Exemple de test de saut**. L'exemple de test de saut indique
     les périodes précédentes, s'il y'en a, à exclure de l'échantillon.
 
-    1.  Tapez une **Description** du test de saut.
+    1.  Saisissez une **Description** du test de saut.
 
     2.  Entrez l’expression du test de saut d'échantillon. Vous pouvez construire
         l'expression en sélectionnant des éléments de données pour les données agrégées, ou
-        les éléments de données, attributs ou indicateurs de programme. Le nombre
-        d'unités d'organisation n'est pas encore pris en charge. Comme pour la fonction de
+        les éléments de données, attributs ou indicateurs de programme. Le comptage
+        des unités d'organisation n'est pas encore pris en charge. Comme pour la fonction de
         générateur, vous pouvez cliquer sur (ou entrer) l'un des éléments situés sous
         le champ d'expression : ( ) \* / + - Jours.
 
@@ -3834,17 +3898,17 @@ Toute période pour laquelle le *Test de saut d'échantillon* est *vrai* ne sera
         | #{uF1DLnZNlWe} \> 0 | La valeur de l'élément de données uF1DLnZNlWe (somme de toutes les désagrégations) est supérieure à zéro |
         | #{FTRrcoaog83} \> #{M62VHgYT2n0} &#124;&#124; #{uF1DLnZNlWe} \> 0 | La valeur de l'élément de données FTRrcoaog83 (somme de toutes les désagrégations) est supérieure à la valeur de l'élément de données M62VHgYT2n0 (somme de toutes les désagrégations) ou la valeur de l'élément de données uF1DLnZNlWe (somme de toutes les désagrégations) est supérieure à zéro |
 
-13. Entrez une valeur de **Nombre séquentiel d'échantillons**.
+13. Entrez une valeur pour **Nombre d'échantillons séquentiels**.
 
-    Il s'agit du nombre de périodes séquentielles pour lesquelles le calcul doit remonter 
-    dans le temps afin d'échantillonner les données pour les calculs.
+    Il s'agit du nombre de périodes séquentielles que le calcul doit remonter 
+    pour échantillonner les données pour les calculs.
 
-14. Entrez une valeur de **Nombre annuel d'échantillons**.
+14. Entrez une valeur pour **Nombre d'échantillons annuels**.
 
     Il s'agit du nombre d'années que le calcul doit remonter pour
     pour échantillonner les données pour les calculs.
 
-15. (Facultatif) Entrez une valeur de **Nombre séquentiel de sauts**.
+15. (Facultatif) Entrez une valeur pour **Nombre de sauts séquentiels**.
 
     Il s'agit du nombre de périodes séquentielles précédant immédiatement la
     période de la valeur prédite, qui doivent être ignorées avant l'échantillonnage des données.
@@ -3863,9 +3927,9 @@ où :
 
 | partie | signifie |
 |---|---|
-| forEach | mot clé obligatoire au début de l'expression |
+| forEach | mot clé à placer au début de l'expression |
 | ?_de_ | tout nom de variable commençant par « ? », puis une lettre, puis éventuellement un nombre quelconque de lettres ou de chiffres supplémentaires (sensible à la casse). Exemples : ?de, ?X, ?élémentDeDonnées, etc. |
-| recherche | mot clé obligatoire |
+| dans | mot clé |
 | :DEG:_degUid_ | la notation :DEG : suivie de l'UID du groupe de données contenant les données à traiter |
 | --> | à placer avant l'expression principale |
 | _expression principale_ | l'expression à opérer sur chaque élément de données du groupe. Dans cette expression, utilisez le nom de la variable (tel que ?de) comme espace réservé pour chaque élément de données. |
@@ -3893,7 +3957,7 @@ Vos combinaisons d’options de catégorie ont les UID suivants :
 | <code>nthohhie8Ba</code> | Utilisé pendant la période |
 | <code>Faey8Iphooy</code> | Perdu, endommagé, expiré ou volé pendant la période |
 
-L'expression de génération de prédicteurs suivant calculera le solde des stocks au début de la période suivante (stock de départ + réapprovisionnement - stock utilisé - stock perdu) :
+L'expression de génération du prédicteur suivant calculera le solde des stocks au début de la période suivante (stock initial + réapprovisionnement - stock utilisé - stock perdu) :
 
 <pre><code>forEach ?de in :DEG:aIMu0nieph7 -->
 sum( #{?de.Gvoecom5muL} + #{?de.CWa6eew5uco} - #{?de.nthohhie8Ba} - #{?de.Faey8Iphooy} )</code></pre>
@@ -3905,12 +3969,12 @@ La configuration du prédicteur comprend :
 | Élément de données de sortie | un des éléments de données du groupe |
 | Combinaison d'options de catégorie de sortie | Solde des stocks en début de période (<code>Gvoecom5muL</code>) |
 | Unités d'organisation fournissant des données | Au(x) niveau(s) sélectionné(s) uniquement |
-| Comptage séquentiel des échantillons | 1 |
-| Comptage annuel de l'échantillon | 0 |
+| Nombre d'échantillons séquentiels | 1 |
+| Nombre d'échantillons annuels | 0 |
 
 Le prédicteur s'exécute une fois pour chaque élément de données du groupe d'éléments de données. Étant donné que la fonction d'agrégation <code>somme()</code> est utilisée dans l'expression de génération du prédicteur, toutes les valeurs de l'expression seront extraites de la période précédente (puisque le nombre d'échantillons séquentiels est égal à 1). Le prédicteur écrira le solde initial de chaque élément de données pour les périodes comprises entre les dates de début et de fin de l'exécution du prédicteur, pour les unités d'organisation au(x) niveau(x) sélectionné(s).
 
-Les prédictions sont toujours faites dans le temps. Le solde initial prévu pour une période peut être utilisé comme entrée pour calculer le solde initial de la période suivante.
+Les prédictions sont toujours effectuées à l'avance. Le solde initial prédit pour une période peut être utilisé pour calculer le solde initial de la période suivante.
 
 #### Exemple 2 { #example-2 }
 
@@ -3918,7 +3982,7 @@ Si vous voulez effectuer des prédictions pour la même période que les donnée
 
 | combinaison d'options de catégorie | signifie |
 |---|---|
-| <code>Hpiek8IefoS</code> | Variation du stock au cours la période |
+| <code>Hpiek8IefoS</code> | Variation du stock au cours de la période |
 
 Vous pouvez utiliser l'expression suivante pour calculer la variation du stock ( réapprovisionnement - stock utilisé - stock perdu ) :
 
@@ -3936,16 +4000,16 @@ Puisqu'il n'y a pas de fonction d'agrégation telle que <code>somme()</code> aut
 ### Créer ou modifier un groupe de prédicteurs { #create_predictor_group } 
 
 1.  Ouvrez l'application **Maintenance** et cliquez sur **Autre** \> **Groupe de
-    le groupe**.
+    prédicteurs**.
 
-2.  Cliquez sur le bouton d'ajout.
+2.  Cliquez sur le bouton Ajouter.
 
 3.  Saisissez un **Nom**. Ce champ doit être unique.
 
 4.  (Facultatif) Dans le champ **Code**, attribuez un code. Ce champ doit
     être unique.
 
-5.  (Facultatif) Tapez une **Description**.
+5.  (Facultatif) Saisissez une **Description**.
 
 6.  Double-cliquez sur les **prédicteurs** que vous souhaitez attribuer au groupe.
 
@@ -3958,9 +4022,9 @@ Le clonage d'un élément de données ou d'autres objets peut faire gagner du te
 1.  Ouvrez l'application **Maintenance** et cherchez le type d'objet de métadonnées 
     que vous voulez cloner.
 
-2.  Dans la liste des objets, cliquez sur le menu des options et sélectionnez **Cloner**.
+2.  Dans la liste des objets, cliquez sur le menu Options et sélectionnez **Cloner**.
 
-3.  Modifiez les options que vous souhaitez.
+3.  Modifiez les options que vous voulez.
 
 4.  Cliquez sur **Sauvegarder**.
 
@@ -3978,7 +4042,7 @@ Le clonage d'un élément de données ou d'autres objets peut faire gagner du te
 1.  Ouvrez l'application **Maintenance** et cherchez le type d'objet de métadonnées 
     que vous voulez supprimer.
 
-2.  Dans la liste des objets, cliquez sur le menu des options et sélectionnez **Supprimer**.
+2.  Dans la liste des objets, cliquez sur le menu Options et sélectionnez **Supprimer**.
 
 3.  Cliquez sur **Confirmer**.
 
@@ -3992,7 +4056,7 @@ Le clonage d'un élément de données ou d'autres objets peut faire gagner du te
 
 ### Traduire les objets de métadonnées { #translate-metadata-objects } 
 
-Le DHIS2 dispose des fonctionnalités pour la traduction du contenu des bases de données, par exemple les éléments de données, les groupes d'éléments de données, les indicateurs, les groupes d'indicateurs ou les unités d'organisation. Vous pouvez traduire ces éléments pour plusieurs emplacements. Un emplacement représente une région géographique, politique ou culturelle spécifique.
+DHIS2 dispose des fonctionnalités pour la traduction du contenu des bases de données, par exemple les éléments de données, les groupes d'éléments de données, les indicateurs, les groupes d'indicateurs ou les unités d'organisation. Vous pouvez traduire ces éléments pour plusieurs emplacements. Un emplacement représente une région géographique, politique ou culturelle spécifique.
 
 > **Astuce**
 >
@@ -4001,16 +4065,16 @@ Le DHIS2 dispose des fonctionnalités pour la traduction du contenu des bases de
 1.  Ouvrez l'application **Maintenance** et cherchez le type d'objet de métadonnées 
     que vous voulez traduire.
 
-2.  Dans la liste des objets, cliquez sur le menu des options et sélectionnez **Traduire**.
+2.  Dans la liste des objets, cliquez sur le menu Options et sélectionnez **Traduire**.
 
     > **Tip**
     >
     > If you want to translate an organisation unit level, click
     > directly on the **Translate** icon next to each list item.
 
-3.  Sélectionnez un lieu.
+3.  Sélectionnez un emplacement.
 
-4.  Tapez un **Nom**, **Nom abrégé** et **Description**.
+4.  Tapez un **Nom**, **Nom court** et **Description**.
 
 5.  Cliquez sur **Sauvegarder**.
 
@@ -4034,11 +4098,11 @@ La fonctionnalité push vous permet de faire connaître davantage et d'utiliser 
   - Les paramètres **Titre** et **Message** que vous avez configurés dans
     l'application **Maintenance** sont inclus dans chaque rapport. Le **Nom** que vous
     donnez au rapport n’est pas inclus dans le rapport. Il est plutôt
-    utilisé pour identifier l’objet de l'analyse push dans le système. De cette façon, un
+    utilisé pour identifier l’objet de l'analyse push dans le système. Ainsi, un
     rapport peut être nommé d'une manière et son titre peut être
     tout autre.
 
-  - Lorsque vous exécutez une tâche de rapport push, le système compile une liste de
+  - Lorsque vous exécutez une tâche de rapport push, le système constitue une liste de
     destinataires provenant des groupes d’utilisateurs que vous avez sélectionnés. Le système
     génère ensuite un rapport pour chaque membre des groupes d'utilisateurs sélectionnés. Chaque
     élément du tableau de bord est généré de manière spécifique pour chaque utilisateur.
@@ -4048,7 +4112,7 @@ La fonctionnalité push vous permet de faire connaître davantage et d'utiliser 
     données sont "dynamiques"), ou une combinaison des deux.
 
   - Les rapports push sont envoyés par mail aux destinataires, et non via le
-    système de messagerie interne de DHIS2. Si un utilisateur ne dispose pas d'une adresse mail valide
+    système de messagerie interne de DHIS2. Si un utilisateur ne dispose pas d'une adresse mail valide,
     ou si la tâche échoue, aucun mail ne sera envoyé. Dans ce cas, le
     problème est enregistré sur le serveur.
 
@@ -4069,31 +4133,31 @@ Tableau : Objets de rapports push dans l'application Maintenance
 |---|---|
 | Analyse push | Créer, modifier, cloner, supprimer, afficher les détails, traduire, prévisualiser et exécuter |
 
-### Créer ou modifier un Push report { #create_push_report } 
+### Créer ou modifier un rapport push { #create_push_report } 
 
 1.  Ouvrez l'application **Maintenance** et cliquez sur **Autre** \> **Analyse
-    validation**.
+    push**.
 
-2.  Cliquez sur le bouton d'ajout.
+2.  Cliquez sur le bouton Ajouter.
 
-3.  Dans le champ **Nom**, tapez le nom du rapport prévu.
+3.  Dans le champ **Nom**, entrez le nom du rapport prévu.
 
     Ce nom n'est pas inclus dans le mail du rapport. Il est plutôt
     utilisé pour identifier l’objet de l'analyse push dans le système.
 
 4.  (Facultatif) Dans le champ **Code**, attribuez un code.
 
-5.  Ajouter un **Titre** de rapport.
+5.  Ajoutez un **Titre** au rapport.
 
-    Ce titre est inclus dans le courriel du rapport.
+    Ce titre est inclus dans le mail du rapport.
 
 6.  (Facultatif) Ajoutez un **Message**.
 
-    Ce message est inclus dans le courrier électronique du rapport.
+    Ce message est inclus dans le mail du rapport.
 
-7.  Sélectionnez un **Tableau de bord** sur lequel vous baserez le rapport.
+7.  Sélectionnez un **Tableau de bord** sur lequel vous placerez le rapport.
 
-8.  Sélectionnez et attribuez les groupes d'utilisateurs auxquels vous souhaitez envoyer le rapport.
+8.  Sélectionnez et attribuez les groupes d'utilisateurs auxquels vous voulez envoyer le rapport.
 
 9.  Sélectionnez une **Fréquence de programmation** : **Journalier**, **Hebdomadaire** ou
     **Mensuel**.
@@ -4103,31 +4167,31 @@ Tableau : Objets de rapports push dans l'application Maintenance
     > If you schedule a push report to "Monthly" and "31", the scheduled
     > report job will not run if the month has less than 31 days.
 
-10. (Facultatif) Sélectionnez **Activer** pour activer la tâche de Rapport push.
+10. (Facultatif) Sélectionnez **Activer** pour activer la tâche de rapport push.
 
-    La âche ne sera pas exécuté tant que vous ne l'aurez pas activée.
+    La tâche ne sera pas exécutée tant que vous ne l'aurez pas activée.
 
 11. Cliquez sur **Sauvegarder**.
 
-### Prévisualiser les Rapports push { #preview_push_report } 
+### Prévisualiser les rapports push { #preview_push_report } 
 
 1.  Ouvrez l'application **Maintenance** et cliquez sur **Autre** \> **Analyse
-    validation**.
+    push**.
 
-2.  Dans la liste des Rapports push, trouvez le Rapport push que vous souhaitez visualiser.
+2.  Dans la liste des rapports push, identifiez le rapport push que vous voulez visualiser.
 
-3.  Cliquez sur le menu des options et sélectionnez **Aperçu**.
+3.  Cliquez sur le menu Options et sélectionnez **Aperçu**.
 
-    Un aperçu du Rapport push s'ouvre dans une nouvelle fenêtre.
+    Un aperçu du rapport push s'ouvre dans une nouvelle fenêtre.
 
-### Exécuter les tâches de Rapport push { #run_push_report } 
+### Exécuter les tâches de rapport push { #run_push_report } 
 
 1.  Ouvrez l'application **Maintenance** et cliquez sur **Autre** \> **Analyse
-    validation**.
+    push**.
 
-2.  Dans la liste des Rapports push, trouvez le Rapport push que vous souhaitez lancer.
+2.  Dans la liste des rapports push, identifiez le rapport push que vous voulez exécuter.
 
-3.  Cliquez sur le menu des options et sélectionnez **Exécuter maintenant**.
+3.  Cliquez sur le menu Options et sélectionnez **Exécuter maintenant**.
 
     La tâche de Rapport push s'exécute immédiatement.
 
@@ -4138,9 +4202,9 @@ Le clonage d'un élément de données ou d'autres objets peut faire gagner du te
 1.  Ouvrez l'application **Maintenance** et cherchez le type d'objet de métadonnées 
     que vous voulez cloner.
 
-2.  Dans la liste des objets, cliquez sur le menu des options et sélectionnez **Cloner**.
+2.  Dans la liste des objets, cliquez sur le menu Options et sélectionnez **Cloner**.
 
-3.  Modifiez les options que vous souhaitez.
+3.  Modifiez les options que vous voulez.
 
 4.  Cliquez sur **Sauvegarder**.
 
@@ -4158,7 +4222,7 @@ Le clonage d'un élément de données ou d'autres objets peut faire gagner du te
 1.  Ouvrez l'application **Maintenance** et cherchez le type d'objet de métadonnées 
     que vous voulez supprimer.
 
-2.  Dans la liste des objets, cliquez sur le menu des options et sélectionnez **Supprimer**.
+2.  Dans la liste des objets, cliquez sur le menu Options et sélectionnez **Supprimer**.
 
 3.  Cliquez sur **Confirmer**.
 
@@ -4172,7 +4236,7 @@ Le clonage d'un élément de données ou d'autres objets peut faire gagner du te
 
 ### Traduire les objets de métadonnées { #translate-metadata-objects } 
 
-Le DHIS2 dispose des fonctionnalités pour la traduction du contenu des bases de données, par exemple les éléments de données, les groupes d'éléments de données, les indicateurs, les groupes d'indicateurs ou les unités d'organisation. Vous pouvez traduire ces éléments pour plusieurs emplacements. Un emplacement représente une région géographique, politique ou culturelle spécifique.
+DHIS2 dispose des fonctionnalités pour la traduction du contenu des bases de données, par exemple les éléments de données, les groupes d'éléments de données, les indicateurs, les groupes d'indicateurs ou les unités d'organisation. Vous pouvez traduire ces éléments pour plusieurs emplacements. Un emplacement représente une région géographique, politique ou culturelle spécifique.
 
 > **Astuce**
 >
@@ -4181,16 +4245,16 @@ Le DHIS2 dispose des fonctionnalités pour la traduction du contenu des bases de
 1.  Ouvrez l'application **Maintenance** et cherchez le type d'objet de métadonnées 
     que vous voulez traduire.
 
-2.  Dans la liste des objets, cliquez sur le menu des options et sélectionnez **Traduire**.
+2.  Dans la liste des objets, cliquez sur le menu Options et sélectionnez **Traduire**.
 
     > **Tip**
     >
     > If you want to translate an organisation unit level, click
     > directly on the **Translate** icon next to each list item.
 
-3.  Sélectionnez un lieu.
+3.  Sélectionnez un emplacement.
 
-4.  Tapez un **Nom**, **Nom abrégé** et **Description**.
+4.  Tapez un **Nom**, **Nom court** et **Description**.
 
 5.  Cliquez sur **Sauvegarder**.
 
@@ -4198,9 +4262,7 @@ Le DHIS2 dispose des fonctionnalités pour la traduction du contenu des bases de
 
 ### À propos des couches de carte externes { #about_gis_map_layers } 
 
-Vous pouvez paramétrer le SIG en incluant des couches cartographiques provenant de diverses sources et les combinez avec vos propres données dans DHIS2. DHIS2 prend en charge les formats de service cartographique courants suive : Web Map Service (WMS), Tile Map Service (TMS), tuiles XYZ et tuiles vectorielles (Style vectoriel).
-
-Vous pouvez personnaliser le SIG en incluant des couches cartographiques provenant de diverses sources et les combiner avec vos propres données dans le DHIS2. DHIS2 prend en charge les formats de service cartographique courants tels que Web Map Service (WMS), Tile Map Service (TMS) et les carreaux XYZ.
+Vous pouvez paramétrer le SIG en incluant des couches cartographiques provenant de diverses sources et les combinez avec vos propres données dans DHIS2. DHIS2 prend en charge les formats de service cartographique courants tels que : Web Map Service (WMS), Tile Map Service (TMS), XYZ tiles et Vector tiles (Style de Vecteur).
 
 ### Créer ou modifier une couche de carte externe { #create_external_map_layer } 
 
@@ -4219,7 +4281,7 @@ Tableau : Objets de couche de carte externe dans l'application Maintenance
 1.  Ouvrez l'application **Maintenance** et cliquez sur **Autre** \> **Couche de carte 
     externe**.
 
-2.  Cliquez sur le bouton d'ajout.
+2.  Cliquez sur le bouton Ajouter.
 
 3.  Dans le champ **Nom**, saisissez un nom qui décrit le contenu de la 
     couche de carte externe.
@@ -4246,11 +4308,11 @@ Tableau : Objets de couche de carte externe dans l'application Maintenance
 
       - Les pavés XYZ (peuvent également être utilisées pour le WMTS)
 
-      - Vector tiles (Style vectoriel)
+      - Vector tiles (Style de Vecteur)
 
-      Lorsque Style du Vecteur est choisi, vous pouvez ajouter une valeur pour "Avant l'identifiant de la couche". Cette valeur indique l'identifiant de la couche dans la pile de tuiles du Vecteur (couches) dans laquelle les couches de l'utilisateur (telles que les couches thématiques et d'événements) seront insérées. Si cette valeur n'est pas définie, les couches de l'utilisateur seront placés au-dessus des couches présentes dans Style du Vecteur. L'URL du service de cartographie doit être un document JSON conforme à la [Spécification de style Mapbox GL](https://docs.mapbox.com/mapbox-gl-js/style-spec/).
+      Lorsque Style de Vecteur est choisi, vous pouvez ajouter une valeur pour "Avant l'identifiant de la couche". Cette valeur indique l'identifiant de la couche dans la pile de tuiles du Vecteur (couches) dans laquelle les couches de l'utilisateur (telles que les couches thématiques et d'événements) seront insérées. Si cette valeur n'est pas définie, les couches de l'utilisateur seront placés au-dessus des couches présentes dans Style de Vecteur. L'URL du service de cartographie doit être un document JSON conforme à la [Spécification de style Mapbox GL](https://docs.mapbox.com/mapbox-gl-js/style-spec/).
 
-6.  Entrez le **URL** dans le service de cartographie.
+6.  Entrez l' **URL** dans le service de cartographie.
 
     > **Note**
     >
@@ -4265,7 +4327,7 @@ Tableau : Objets de couche de carte externe dans l'application Maintenance
 
 8.  Sélectionnez un **Positionnement** :
 
-      - **Bas - fond de carte** : pour l'application Cartes, cela rend la couche de carte externe
+      - **Bas - fond de carte** : dans l'application Cartes, cela rend la couche de carte externe
         sélectionnable en tant que fond de carte (c'est-à-dire comme alternative aux fonds de carte de 
         DHIS2).
 
@@ -4291,7 +4353,7 @@ Tableau : Objets de couche de carte externe dans l'application Maintenance
       - Saisissez un lien qui conduit vers une légende d'image externe dans **URL de l'image de 
         légende**.
 
-        Ceux-ci sont souvent fournis pour le WMS. Voir l'URL de la légende dans le document 
+        Tout ceci est souvent fournis pour le WMS. Voir l'URL de la légende dans le document 
         GetCapabilites de WMS.
 
 10. Cliquez sur **Sauvegarder**.
@@ -4303,9 +4365,9 @@ Le clonage d'un élément de données ou d'autres objets peut faire gagner du te
 1.  Ouvrez l'application **Maintenance** et cherchez le type d'objet de métadonnées 
     que vous voulez cloner.
 
-2.  Dans la liste des objets, cliquez sur le menu des options et sélectionnez **Cloner**.
+2.  Dans la liste des objets, cliquez sur le menu Options et sélectionnez **Cloner**.
 
-3.  Modifiez les options que vous souhaitez.
+3.  Modifiez les options que vous voulez.
 
 4.  Cliquez sur **Sauvegarder**.
 
@@ -4323,7 +4385,7 @@ Le clonage d'un élément de données ou d'autres objets peut faire gagner du te
 1.  Ouvrez l'application **Maintenance** et cherchez le type d'objet de métadonnées 
     que vous voulez supprimer.
 
-2.  Dans la liste des objets, cliquez sur le menu des options et sélectionnez **Supprimer**.
+2.  Dans la liste des objets, cliquez sur le menu Options et sélectionnez **Supprimer**.
 
 3.  Cliquez sur **Confirmer**.
 
@@ -4337,7 +4399,7 @@ Le clonage d'un élément de données ou d'autres objets peut faire gagner du te
 
 ### Traduire les objets de métadonnées { #translate-metadata-objects } 
 
-Le DHIS2 dispose des fonctionnalités pour la traduction du contenu des bases de données, par exemple les éléments de données, les groupes d'éléments de données, les indicateurs, les groupes d'indicateurs ou les unités d'organisation. Vous pouvez traduire ces éléments pour plusieurs emplacements. Un emplacement représente une région géographique, politique ou culturelle spécifique.
+DHIS2 dispose des fonctionnalités pour la traduction du contenu des bases de données, par exemple les éléments de données, les groupes d'éléments de données, les indicateurs, les groupes d'indicateurs ou les unités d'organisation. Vous pouvez traduire ces éléments pour plusieurs emplacements. Un emplacement représente une région géographique, politique ou culturelle spécifique.
 
 > **Astuce**
 >
@@ -4346,16 +4408,16 @@ Le DHIS2 dispose des fonctionnalités pour la traduction du contenu des bases de
 1.  Ouvrez l'application **Maintenance** et cherchez le type d'objet de métadonnées 
     que vous voulez traduire.
 
-2.  Dans la liste des objets, cliquez sur le menu des options et sélectionnez **Traduire**.
+2.  Dans la liste des objets, cliquez sur le menu Options et sélectionnez **Traduire**.
 
     > **Tip**
     >
     > If you want to translate an organisation unit level, click
     > directly on the **Translate** icon next to each list item.
 
-3.  Sélectionnez un lieu.
+3.  Sélectionnez un emplacement.
 
-4.  Tapez un **Nom**, **Nom abrégé** et **Description**.
+4.  Tapez un **Nom**, **Nom court** et **Description**.
 
 5.  Cliquez sur **Sauvegarder**.
 
@@ -4365,7 +4427,7 @@ La fonctionnalité de vue SQL de DHIS2 permet de stocker la définition de la vu
 
 Les administrateurs de bases de données doivent faire attention à ne pas créer des vues de base de données directement dans la base de données de DHIS2. Par exemple, lorsque les tableaux de ressources sont générés, ils seront d'abord tous supprimés puis recrées. Si des vues SQL dépendent de ces tableaux, une exception de violation de l'intégrité sera alors lancée et le processus sera interrompu.
 
-Les vues SQL sont déposées par ordre alphabétique inverse en fonction de leurs noms dans DHIS2, et créées dans l'ordre alphabétique normal. Cela vous permet d'avoir des dépendances entre les vues SQL, étant donné que les vues ne dépendent que des autres vues qui arrivent plus tôt dans l'ordre alphabétique. Par exemple, "Vue B" peut dépendre sans risque de "Vue A". Sinon, le fait d'avoir des vues dépendantes d'autres vues entraîne une erreur de violation de l'intégrité.
+Les vues SQL sont déposées par ordre alphabétique inverse en fonction de leurs noms dans DHIS2, et créées dans l'ordre alphabétique normal. Cela vous permet d'avoir des dépendances entre les vues SQL, étant donné que les vues ne dépendent que des autres vues qui arrivent plus tôt dans l'ordre alphabétique. Par exemple, "Vue B" peut dépendre sans risque de "Vue A". Sinon, le fait d'avoir des vues dépendantes d'autres vues entraîne une erreur de violation d'intégrité.
 
 ### Créer une nouvelle vue SQL { #creating-a-new-sql-view } 
 
@@ -4398,7 +4460,7 @@ sélectionnez jsonb_chacun_texte(donnéesévènements)::texte...
 
 ### Vues SQL qui appellent d'autres vues SQL { #sql-views-that-call-other-sql-views }
 
-Si vous voulez créer une vue SQL qui peut être appelée par d'autres vues SQL, son **type de SQL** doit être " Vue " ou " Vue matérialisée " (et non " Requête "). Elle doit également faire l'objet d'une **exécution de requête** avant d'être appelée.
+Si vous voulez effectuer une requête SQL sous forme de "vue", son **type de SQL** doit être " Vue " ou " Vue matérialisée " (et non " Requête "). Elle doit également faire l'objet d'une **exécution de requête** avant d'être affichée.
 
 Par exemple, si vous avez créé une vue nommée **Nombre d'éléments de données** avec le type de SQL "Vue" et ce SQL :
 
@@ -4406,7 +4468,7 @@ Par exemple, si vous avez créé une vue nommée **Nombre d'éléments de donné
 sélectionnez nombre(*) comme nombre d'éléments de données ;
 ```
 
-... ensuite vous pouvez exécuter **Exécuter la requête** à partir du menu contextuel et créer une deuxième vue SQL nommée **Plus de 100 éléments de données** avec ce SQL :
+... ensuite vous pouvez cliquer sur **Exécuter la requête** à partir du menu contextuel et créer une deuxième vue SQL nommée **Plus de 100 éléments de données** avec ce SQL :
 
 ```sql
 sélectionnez le cas lorsque le nombre > 100 puis 1 sinon le résultat pour _voir_le nombre_d'élément_de données sera 0 ;
@@ -4420,7 +4482,7 @@ Pour utiliser les vues SQL, il suffit de cliquer sur la vue et, dans le menu con
 >
 > Si vous avez une vue qui dépend d'une autre vue, vous devez donc faire attention à la façon dont les vues sont nommées. Lorsque l'analyse est exécutée sur le serveur DHIS2, toutes les vues doivent être supprimées et recréées. Lorsque vous lancez l'analyse, les vues sont supprimées par ordre alphabétique, puis recréées par ordre alphabétique inverse. Ainsi, si la vue A dépend de la vue B, elle doit apparaître avant la vue B dans l'ordre alphabétique. Si elle apparaît après la vue B dans l'ordre alphabétique, l'analyse peut échouer, car la vue et les dépendances ne seront pas disposées dans le bon ordre. >>>>>>>
 
-## Gérer les lieux { #maintenance_locale_management } 
+## Gérer les emplacements{ #maintenance_locale_management } 
 
 Il est possible de créer des emplacements personnalisés dans DHIS2. En plus des lieux disponibles dans le système, vous pouvez ajouter au système un emplacement personnalisé tel que "Anglais" et "Zambie". Cela vous permet de traduire les objets de métadonnées dans les langues locales, ou de tenir compte de légères variations entre pays utilisant une même définition des métadonnées.
 
@@ -4435,7 +4497,7 @@ L'**Éditeur de groupes de métadonnées** de l'application **Maintenance** vous
 
 
 
-Tableau : Types d'objets dans l'éditeur de groupe de Métadonnées
+Tableau : Types d'objets dans l'Editeur de groupes de métadonnées
 
 | Type d'objet | Fonctions disponibles |
 |---|---|
@@ -4466,7 +4528,7 @@ Tableau : Types d'objets dans l'éditeur de groupe de Métadonnées
 
 1.  Ouvrez l'application **Maintenance** et cliquez sur **Éditeur de groupes de métadonnées**.
 
-2.  Cliquez sur **Gérer les groupes pour l'article**.
+2.  Cliquez sur **Gérer les groupes pour l'élément**.
 
 3.  Sélectionnez un type d'objet, par exemple **Indicateurs**.
 
