@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/sysadmin/installation.md"
-revision_date: '2024-02-26'
+revision_date: '2024-04-05'
 tags:
 - DHIS核心 主版
 - Manage
@@ -588,10 +588,13 @@ AWS S3）。
 
 ## Google服务帐户配置 { #install_google_service_account_configuration } 
 
-DHIS2可以连接到各种Google服务API。例如，
-DHIS2 GIS组件可以利用Google Earth Engine API加载地图
-层。为了提供API访问令牌，您必须设置一个Google
-服务帐户并创建私钥：
+DHIS2 can connect to various Google service APIs. For instance, the
+DHIS2 Maps app can utilize the Google Earth Engine API to load Earth Engine map
+layers. There are 2 ways to obtain the Google API key.
+
+### Set it up yourself { #set-it-up-yourself } 
+
+Set up a Google service account and create a private key:
 
   - 创建一个Google服务帐户。请咨询[Google身份
     平台]（https://developers.google.com/identity/protocols/OAuth2ServiceAccount#overview）
@@ -604,100 +607,109 @@ DHIS2 GIS组件可以利用Google Earth Engine API加载地图
 
   - 将JSON密钥重命名为* dhis-google-auth.json *。
 
-下载密钥文件后，将`dhis-google-auth.json`文件放入
-`DHIS2_HOME` 目录（与 `dhis.conf` 文件位于同一位置）。
-作为示例，该位置可以是：
+After downloading the key file, put the `dhis-google-auth.json` file in
+the `DHIS2_HOME` directory (the same location as the `dhis.conf` file).
+As an example this location could be:
 
     /home/dhis/config/dhis-google-auth.json
 
+### Send an email to set up the Google Earth Engine API key { #send-an-email-to-set-up-the-google-earth-engine-api-key } 
+
+If you only intend to use the key for the Google Earth Engine map layers,
+you can simply send an email. See the [Google Earth Engine API key documentation](https://docs.dhis2.org/en/topics/tutorials/google-earth-engine-sign-up.html).
+
+## Bing Maps API key { #install_bing_maps_api_key }
+
+To enable use of Bing Maps basemap layers, you need to set up the Bing Maps API key. See [Bing Maps API key documentation](https://www.microsoft.com/en-us/maps/bing-maps/create-a-bing-maps-key) for information on setting up the key.
+
 ## OpenID Connect（OIDC）配置 { #install_oidc_configuration } 
 
-DHIS2 支持用于单点登录 (SSO) 的 OpenID Connect (OIDC) 身份层。 OIDC 是一种标准身份验证协议，允许用户使用身份提供商 (IdP)（例如 Google）登录。用户成功登录其 IdP 后，将自动登录 DHIS2。
+DHIS2 supports the OpenID Connect (OIDC) identity layer for single sign-in (SSO). OIDC is a standard authentication protocol that lets users sign in with an identity provider (IdP) such as for example Google. After users have successfully signed in to their IdP, they will be automatically signed in to DHIS2.
 
-本节提供有关将 DHIS2 与 OIDC 提供商一起使用的一般信息，以及完整的配置示例。
+This section provides general information about using DHIS2 with an OIDC provider, as well as complete configuration examples.
 
-DHIS2 OIDC“授权码”身份验证流程：
+The DHIS2 OIDC 'authorization code' authentication flow:
 
-1. 用户尝试登录 DHIS2 并单击登录页面上的 OIDC 提供商按钮。
+1. A user attempts to log in to DHIS2 and clicks the OIDC provider button on the login page.
 
-2. DHIS2 将浏览器重定向到 IdP 的登录页面。
+2. DHIS2 redirects the browser to the IdP's login page.
 
-3. 如果尚未登录，系统会提示用户输入凭据。成功通过身份验证后，IdP 将重定向回 DHIS2 服务器进行响应。重定向包括为用户生成的唯一授权代码。
+3. If not already logged in, the user is prompted for credentials. When successfully authenticated, the IdP responds with a redirect back to the DHIS2 server. The redirect includes a unique authorization code generated for the user.
 
-4. DHIS2 服务器在内部将用户的授权代码连同其自己的客户端 ID 和客户端机密凭证发送回 IdP 服务器。
+4. The DHIS2 server internally sends the user's authorization code back to the IdP server along with its own client id and client secret credentials.
 
-5. IdP 将 ID 令牌返回给 DHIS2 服务器。 DHIS2 服务器执行令牌验证。
+5. The IdP returns an ID token back to the DHIS2 server. DHIS2 server performs validation of the token.
 
-6. DHIS2 服务器使用 ID 令牌（默认为电子邮件）中找到的映射声明查找内部 DHIS2 用户，授权用户并完成登录过程。
+6. The DHIS2 server looks up the internal DHIS2 user with the mapping claims found in the ID token (defaults to email), authorizes the user and completes the login process.
 
-### 将 OIDC 与 DHIS2 结合使用的要求：{ #requirements-for-using-oidc-with-dhis2 }
+### Requirements for using OIDC with DHIS2: { #requirements-for-using-oidc-with-dhis2 } 
 
-#### IdP 服务器帐户 { #idp-server-account }
+#### IdP server account { #idp-server-account } 
 
-您必须在 DHIS2 支持的在线身份提供商 (IdP) 或独立服务器上拥有管理员帐户。
+You must have an admin account on an online identity provider (IdP) or on a standalone server that are supported by DHIS2.
 
-目前支持并测试以下 IdP：
+The following IdPs are currently supported and tested:
 
 * 谷歌
 * Azure AD
 * WSO2
-* Okta（请参阅单独的教程：[此处](#configure-openid-connect-with-okta)）
+* Okta (See separate tutorial: [here](#configure-openid-connect-with-okta))
 
-还有一个**通用提供程序**配置，可以支持“任何”OIDC 兼容提供程序。
+There is also a **generic provider** config which can support "any" OIDC compatible provider.
 
-#### DHIS2 用户帐户 { #dhis2-user-account }
+#### DHIS2 user account { #dhis2-user-account } 
 
-您必须在 DHIS2 服务器中显式创建用户，然后他们才能使用身份提供程序登录。当前不支持从外部目录（例如 Active Directory）导入它们。 OIDC 标准不支持使用外部身份存储来配置和管理用户。
+You must explicitly create the users in the DHIS2 server before they can log in with the identity provider. Importing them from an external directory such as Active Directory is currently not supported. Provisioning and management of users with an external identity store is not supported by the OIDC standard.
 
 #### 用户的IdP声明和映射 { #idp-claims-and-mapping-of-users } 
 
-要使用 OIDC 登录 DHIS2，必须在 IdP 中配置给定用户，然后将其映射到 DHIS2 中预先创建的用户帐户。 OIDC 使用依赖声明的方法与其他应用程序共享用户帐户属性。声明包括用户帐户属性，例如电子邮件、电话号码、姓名等。DHIS2 依赖 IdP 声明将用户帐户从 IdP 映射到 DHIS2 服务器中的帐户。默认情况下，DHIS2 希望 IdP 通过 _email_ 声明。根据您的 IdP，您可能需要配置 DHIS2 以使用不同的 IdP 声明。
+To sign in to DHIS2 with OIDC, a given user must be provisioned in the IdP and then mapped to a pre created user account in DHIS2. OIDC uses a method that relies on claims to share user account attributes with other applications. Claims include user account attributes such as email, phone number, name, etc. DHIS2 relies on a IdP claim to map user accounts from the IdP to those in the DHIS2 server. By default, DHIS2 expects the IdP to pass the _email_ claim. Depending on your IdP, you may need to configure DHIS2 to use a different IdP claim.
 
-如果您使用 Google 或 Azure AD 作为 IdP，默认行为是使用 _email_ 声明将 IdP 身份映射到 DHIS2 用户帐户。
+If you are using Google or Azure AD as an IdP, the default behavior is to use the _email_ claim to map IdP identities to DHIS2 user accounts.
 
-> **注意**
+> **Note**
 >
-> 为了使 DHIS2 用户能够使用 IdP 登录，用户配置文件复选框：必须选中 *仅外部身份验证 OpenID 或 LDAP* 并且 *OpenID* 字段必须与 IdP 返回的声明（映射声明）匹配。电子邮件是 Google 和 Azure AD 使用的默认声明。
+> In order for a DHIS2 user to be able to log in with an IdP, the user profile checkbox: *External authentication only OpenID or LDAP* must be checked and *OpenID* field must match the claim (mapping claim) returned by the IdP. Email is the default claim used by both Google and Azure AD.
 
 ### 为OIDC配置身份提供者 { #configure-the-identity-provider-for-oidc } 
 
-本主题提供有关配置身份提供商 (IdP) 以将 OIDC 与 DHIS2 结合使用的一般信息。这是多步骤过程中的一步。每个 IdP 的配置方法都略有不同。查看 IdP 自己的文档，了解如何创建和配置 OIDC 应用程序。这里我们将 DHIS2 服务器称为 OIDC“应用程序”。
+This topic provides general information about configuring an identity provider (IdP) to use OIDC with DHIS2. This is one step in a multi-step process. Each IdP has slightly different ways to configure it. Check your IdP's own documentation for how to create and configure an OIDC application. Here we refer to the DHIS2 server as the OIDC "application".
 
 #### 重定向网址 { #redirect-url } 
 
-所有 IdP 都需要一个指向您的 DHIS2 服务器的重定向 URL。
-您可以使用以下模式构建它：
+All IdPs will require a redirect URL to your DHIS2 server. 
+You can construct it using the following pattern:
 
 ```
 (protocol):/(your DHIS2 host)/oauth2/code/PROVIDER_KEY
 ```
 
-使用 Google IdP 时的示例：
+Example when using Google IdP:
 
 ```
 https://mydhis2-server.org/oauth2/code/google
 ```
 
-配置 IdP 的说明的外部链接：
+External links to instructions for configuring your IdP:
 
-* [谷歌](https://developers.google.com/identity/protocols/oauth2/openid-connect)
-* [Azure AD 教程](https://medium.com/xebia-engineering/authentication-and-authorization-using-azure-active-directory-266980586ab8)
+* [Google](https://developers.google.com/identity/protocols/oauth2/openid-connect)
+* [Azure AD tutorial](https://medium.com/xebia-engineering/authentication-and-authorization-using-azure-active-directory-266980586ab8)
 
 
-### Google { #example-setup-for-google } 的示例设置
+### Example setup for Google { #example-setup-for-google } 
 
-1. 注册帐户并登录。例如，对于 Google，您可以转到 Google [开发者控制台](https://console.developers.google.com)。
-2. 在 Google 开发人员仪表板中，单击“创建新项目”。
-3. 按照创建 OAuth 2.0 客户端 ID 和客户端密钥的说明进行操作。
-4. 将您的“授权重定向 URL”设置为：`https://mydhis2-server.org/oauth2/code/google`
-5. 复制“客户端 ID”和“客户端密码”并将其保存在安全的地方。
+1. Register an account and sign in. For example, for Google, you can go to the Google [developer console](https://console.developers.google.com).
+2. In the Google developer dashboard, click 'create a new project'.
+3. Follow the instructions for creating an OAuth 2.0 client ID and client secret.
+4. Set your "Authorized redirect URL" to: `https://mydhis2-server.org/oauth2/code/google`
+5. Copy and keep the "client id" and "client secret" in a secure place.
 
-> **提示**
+> **Tip**
 >
-> 当在笔记本电脑上运行的本地 DHIS2 实例上进行测试时，您可以使用 localhost 作为重定向 URL，如下所示：`https://localhost:8080/oauth2/code/google`
-> *记住还要在 Google 开发者控制台中添加重定向 URL*
+> When testing on a local DHIS2 instance running for example on your laptop, you can use localhost as the redirect URL, like this: `https://localhost:8080/oauth2/code/google`
+> *Remember to also add the redirect URL in the Google developer console*
 
-#### Google dhis.conf 示例：{ #google-dhisconf-example }
+#### Google dhis.conf example: { #google-dhisconf-example } 
 ```properties
 
 # Enables OIDC login
@@ -721,24 +733,24 @@ oidc.logout.redirect_url = https://mydhis2-server.org
 
 ```
 
-### Azure AD 设置示例 { #example-setup-for-azure-ad }
+### Example setup for Azure AD { #example-setup-for-azure-ad } 
 
 Make sure your Azure AD account in the Azure portal is configured with a redirect URL like: `(protocol):/(host)/oauth2/code/PROVIDER_KEY`. 
 To register your DHIS2 server as an "application" in the Azure portal, follow these steps:
 
-> **注意**
+> **Note**
 >
-> PROVIDER_KEY 是配置密钥的“名称”部分，例如：“oidc.provider.PROVIDER_KEY.tenant = My Azure SSO”
-> 如果您要配置多个 Azure 提供程序，您可以使用以下名称形式：(azure.0)、(azure.1) 等。
-> 重定向 URL 示例：https://mydhis2-server.org/oauth2/code/azure.0
+> PROVIDER_KEY is the "name" part of the configuration key, example: "oidc.provider.PROVIDER_KEY.tenant = My Azure SSO"
+> If you have multiple Azure providers you want to configure, you can use this name form: (azure.0), (azure.1) etc.
+> Redirect URL example: https://mydhis2-server.org/oauth2/code/azure.0
 
 1. 搜索并选择*应用程序注册*。
 2. 点击*新注册*。
-3. 在*名称*字段中，输入 DHIS2 实例的描述性名称。
-4. 在*重定向 URI* 字段中，输入上面指定的重定向 URL。
+3. In the *Name* field, enter a descriptive name for your DHIS2 instance.
+4. In the *Redirect URI* field, enter the redirect URL as specified above.
 5. 点击*注册*。
 
-#### Azure AD dhis.conf 示例：{ #azure-ad-dhisconf-example }
+#### Azure AD dhis.conf example: { #azure-ad-dhisconf-example } 
 ```properties
 
 # Enables OIDC login
@@ -778,9 +790,9 @@ oidc.provider.azure.1.tenant = other organization name
 ...
 ```
 
-### 通用提供程序{ #generic-providers }
+### Generic providers { #generic-providers } 
 
-通用提供程序可用于配置与“Spring Security”兼容的“任何”标准 OIDC 提供程序。
+The generic provider can be used to configure "any" standard OIDC provider which are compatible with "Spring Security".
 
 在下面的示例中，我们将使用提供商密钥`helseid`配置挪威政府 _HelseID_ OIDC 提供商。
 
@@ -788,13 +800,13 @@ The defined provider will appear as a button on the login page with the provider
 or the value of the `display_alias` if defined. The provider key is arbitrary and can be any alphanumeric string, 
 except for the reserved names used by the specific providers (`google`, `azure.0,azure.1...`, `wso2`).
 
-> **注意**
-> 通用提供程序使用以下硬编码配置默认值：
-> **（这些无法更改）**
-> * 客户端身份验证，`ClientAuthenticationMethod.BASIC`: [rfc](https://tools.ietf.org/html/rfc6749#section-2.3)
-> * 经过身份验证的请求，`AuthenticationMethod.HEADER`：[rfc](https://tools.ietf.org/html/rfc6750#section-2)
+> **Note**
+> The generic provider uses the following hardcoded configuration defaults:
+> **(These are not possible to change)**
+> * Client Authentication, `ClientAuthenticationMethod.BASIC`: [rfc](https://tools.ietf.org/html/rfc6749#section-2.3)
+> * Authenticated Requests, `AuthenticationMethod.HEADER`: [rfc](https://tools.ietf.org/html/rfc6750#section-2) 
 
-#### 通用 (helseid) dhis.conf 示例：{ #generic-helseid-dhisconf-example }
+#### Generic (helseid) dhis.conf example: { #generic-helseid-dhisconf-example } 
 
 ```properties
 
@@ -841,24 +853,24 @@ oidc.provider.helseid.logo_image = ../security/btn_helseid.svg
 oidc.provider.helseid.logo_image_padding = 0px 1px
 ```
 
-### JWT 不记名令牌身份验证 { #jwt-bearer-token-authentication }
+### JWT bearer token authentication { #jwt-bearer-token-authentication } 
 
-配置 OIDC 时，可以为基于 API 的客户端启用 *JWT 持有者令牌* 的身份验证。
-DHIS2 Android 客户端就是此类客户端，如果启用了 OIDC 登录，则必须使用 JWT 身份验证。
+Authentication with *JWT bearer tokens* can be enabled for clients which API-based when OIDC is configured. 
+The DHIS2 Android client is such a type of client and have to use JWT authentication if OIDC login is enabled.
 
-> **注意**
+> **Note**
 >
-> DHIS2 目前仅支持使用 JWT 进行身份验证的 OAuth2 授权码授予流程（也称为“三足 OAuth”）
-> DHIS2 目前仅支持在使用 JWT 令牌时使用 Google 作为 OIDC 提供商
+> DHIS2 currently only supports the OAuth2 authorization code grant flow for authentication with JWT, (also known as "three-legged OAuth")
+> DHIS2 currently only supports using Google as an OIDC provider when using JWT tokens
 
 
 ### 要求 { #requirements } 
-* 如上所述配置您的 Google OIDC 提供商
+* Configure your Google OIDC provider as described above 
 * Disable the config parameter ```oauth2.authorization.server.enabled``` by setting it to 'off'
 * Enable the config parameter ```oidc.jwt.token.authentication.enabled``` by setting it to 'on'
-* 按照[此处](https://developers.google.com/identity/protocols/oauth2/native-app#creatingcred)所述生成 Android OAuth2 client_id
+* Generate an Android OAuth2 client_id as described [here](https://developers.google.com/identity/protocols/oauth2/native-app#creatingcred)
 
-### JWT 身份验证示例 { #jwt-authentication-example }
+### JWT authentication example { #jwt-authentication-example } 
 
 以下`dhis.conf`部分显示了如何为基于 API 的客户端启用 JWT 身份验证的示例。
 
@@ -883,13 +895,13 @@ oidc.provider.google.ext_client.1.client_id = JWT_CLIENT_ID
 
 ```
 
-> **注意**
+> **Note**
 >
-> [查看我们将 Okta 设置为通用 OIDC 提供程序的教程。](../../../topics/tutorials/configure-oidc-with-okta.md)
+> [Check out our tutorial for setting up Okta as a generic OIDC provider.](../../../topics/tutorials/configure-oidc-with-okta.md)
 
-### 将单个身份提供商帐户连接到多个 DHIS2 帐户 { #connecting-a-single-identity-provider-account-to-multiple-dhis2-accounts }
+### Connecting a single identity provider account to multiple DHIS2 accounts { #connecting-a-single-identity-provider-account-to-multiple-dhis2-accounts } 
 
-DHIS2 能够将单个身份提供商帐户映射到多个 DHIS2 帐户。 API 调用可用于列出链接的帐户并在它们之间进行切换。
+DHIS2 has the ability to map a single identity provider account to multiple DHIS2 accounts. API calls are available to list the linked accounts and also switch between then.
 
 When this option is selected, the `openid` database field in the `userinfo` table does not need to be unique.  When presented with an `openid` value from the identity provider, DHIS2 will log in the user that most recently logged in.
 
@@ -900,7 +912,7 @@ The following `dhis.conf` section shows how to enable linked accounts.
 linked_accounts.enabled = on
 ```
 
-有关如何列出链接帐户并在它们之间切换的说明，请参阅开发人员文档的“用户”章节中的[*在连接到同一身份提供商帐户的用户帐户之间切换*。](../../../develop/使用-api/dhis-core-version-master/users.html#switching- Between-user-accounts-connected-to-the-same-identity-provider-account)
+For instructions on how to list linked accounts and switch between them, see [*Switching between user accounts connected to the same identity provider account* in the Users chapter of the developer documentation.](../../../develop/using-the-api/dhis-core-version-master/users.html#switching-between-user-accounts-connected-to-the-same-identity-provider-account)
 
 ## LDAP配置 { #install_ldap_configuration } 
 
@@ -976,23 +988,23 @@ DHIS2用户帐户。可以通过DHIS2用户模块用户来完成
 
 ## 加密配置 { #install_encryption_configuration } 
 
-DHIS2 允许数据加密。启用它需要一些额外的
-设置。为了提供加密算法的安全性，您必须设置一个
-通过`dhis.conf`配置文件中的密码（密钥）
-*加密.密码*属性：
+DHIS2 allows for encryption of data. Enabling it requires some extra
+setup. To provide security to the encryption algorithm you will have to set a
+password (key) in the `dhis.conf` configuration file through the
+*encryption.password* property:
 
 ```属性
 加密密码= xxxx
 ```
 
-*encryption.password* 属性是加密时使用的密码（密钥）
-并解密数据库中的数据。
+The *encryption.password* property is the password (key) used when encrypting
+and decrypting data in the database.
 
 If an encryption password is not defined in `dhis.conf`, a default password will be
 used. Note that using the default password does not offer any added security due to 
 the open source nature of DHIS 2.
 
-请注意，一旦设置密码且数据已加密，就不得更改密码，因为应用程序将无法再解密数据。
+Note that the password must not be changed once it has been set and data has been encrypted, as the data can then no longer be decrypted by the application.
 
 密码必须至少为** 24个字符长**。混合数字
 建议使用大小写字母。加密密码
@@ -1007,7 +1019,7 @@ Note that since the encryption key is stored in the `dhis.conf` configuration fi
 within the database, when moving a database between server environments thorugh a dump and restore, the encryption key must be the same across environments to allow DHIS 2 to
 decrypt database content.
 
-请注意，加密支持取决于可用的 *Java Cryptography Extension* (JCE) 策略文件。这些包含在 OpenJDK 和 Oracle JDK 8 Update 144 或更高版本的所有版本中。
+Note that encryption support depends on the *Java Cryptography Extension* (JCE) policy files to be available. These are included in all versions of OpenJDK and Oracle JDK 8 Update 144 or later.
 
 ## 读取副本数据库配置 { #install_read_replica_configuration } 
 
@@ -1029,9 +1041,9 @@ be defined per replica. The username and password can be specified; if
 not, the username and password for the master database will be used
 instead.
 
-`dhis.conf` 中只读副本的配置如下所示。
-每个副本都使用配置键 *readN* 前缀指定，
-其中N指的是副本数。
+The configuration for read replicas in `dhis.conf` looks like the below.
+Each replica is specified with the configuration key *readN* prefix,
+where N refers to the replica number.
 
 ```属性
 ＃读取副本1的配置
@@ -1083,32 +1095,32 @@ be provided for each DHIS 2 application instance in`dhis.conf`.
 应用程序和文件上传，通过* AWS S3云文件存储*选项
 或共享的网络驱动器。
 
-* 必须启用 DHIS 2 实例缓存失效。
+* DHIS 2 instance cache invalidation must be enabled.
 
-* 应配置负载均衡器（例如 nginx）来分发 Web 请求
+* A load balancer such as nginx should be configured to distribute Web requests
 跨集群实例。
 
-### Redis 的 DHIS 2 实例缓存失效 { #install_cluster_cache_invalidation_redis }
+### DHIS 2 instance cache invalidation with Redis { #install_cluster_cache_invalidation_redis }
 
-如果配置为这样做，DHIS 2 可以通过侦听从 Redis 服务器发送和发出的事件来使各种实例的缓存失效。
+DHIS 2 can invalidate the various instance's caches by listening for events sent and emitted from a Redis server, when configured to do so.
 
-如果您已经计划使用 [Redis for
-共享数据存储集群配置](#install_cluster_configuration_redis)，它将共享此Redis服务器用于这两个目的。
+This is considered the easiest and preferred way to enable cache invalidation, if you already plan to use [Redis for
+shared data store cluster configuration](#install_cluster_configuration_redis), it will share this Redis server for both purposes.
 
-#### 先决条件 { #prerequisites }
+#### Prerequisites { #prerequisites } 
 
-* Redis服务器
+* Redis server
 
-#### Redis 配置{ #redis-configuration }
+#### Redis configuration { #redis-configuration } 
 
-DHIS 2 缓存失效功能无需在 Redis 中进行任何特定配置即可发挥作用。
+No specific configuration in Redis is needed for DHIS 2 cache invalidation to work.
 
-当您选择启用 Redis 共享数据存储集群配置时，您将共享 Redis 主机/端口
-缓存失效系统的配置。换句话说，您只能配置 **一个** 共享 Redis 服务器。
+When you chose to enable shared data store cluster configuration with Redis, you will share the Redis host/port
+configuration with the cache invalidation system. In other words you can only have **one** shared Redis server configured.
 
-#### DHIS 2 配置{ #dhis-2-configuration }
+#### DHIS 2 configuration { #dhis-2-configuration } 
 
-必须在 DHIS 2 `dhis.conf` 配置文件中指定以下属性：
+The following properties must be specified in the DHIS 2 `dhis.conf` configuration file:
 
 ```properties
 # Cache invalidation config
@@ -1124,23 +1136,23 @@ redis.use.ssl = true (Optional, only if enabled on Redis server)
 
 ### Redis共享数据存储集群配置 { #install_cluster_configuration_redis } 
 
-在集群设置中，需要 Redis 服务器来处理
-共享用户会话、应用程序缓存和集群节点领导权。
+In a cluster setup, a Redis server is required and will handle
+shared user sessions, application cache and cluster node leadership.
 
-为了获得最佳性能，*Redis Keyspace events* 用于_通用命令_
-和 _expired events_ 需要在 Redis 服务器中启用。如果你是
-使用云平台管理的 Redis 服务器（例如 *AWS ElastiCache for Redis*
-或*Azure Redis 缓存*），您必须启用键空间事件通知
-使用相应的云控制台界面。如果您要设置独立的
-Redis服务器，启用keyspace事件通知可以在
-通过添加或取消注释以下行来创建 *redis.conf* 文件：
+For optimum performance, *Redis Keyspace events* for _generic commands_ 
+and _expired events_ need to be enabled in the Redis Server. If you are 
+using a cloud platform-managed Redis server (like *AWS ElastiCache for Redis* 
+or *Azure Cache for Redis*), you will have to enable keyspace event notifications 
+using the respective cloud console interfaces. If you are setting up a standalone 
+Redis server, enabling keyspace event notifications can be done in the 
+*redis.conf* file by adding or uncommenting the following line:
 
 ```
 notify-keyspace-events Egx
 ```
 
-如果 *redis.enabled* 配置为 DHIS2 将连接到 Redis
-`dhis.conf` 中的属性设置为 *on* 以及以下属性：
+DHIS2 will connect to Redis if the *redis.enabled* configuration
+property in `dhis.conf` is set to *on* along with the following properties:
 
 - * redis.host *：指定Redis服务器在何处运行。默认为* localhost *。必选
 
@@ -1150,18 +1162,18 @@ notify-keyspace-events Egx
 
 - * redis.use.ssl *：指定Redis服务器是否启用了SSL。默认为false。可选的。默认为* false *。
 
-启用 Redis 后，DHIS2 将自动分配其中之一
-作为集群的领导者运行实例。领导者实例将
-用于执行应运行的作业或计划任务
-仅由一个实例。您可以选择配置
-`dhis.conf` 中的 *leader.time.to.live.months* 属性来设置如何
-经常需要进行领导者选举。它还给出了一个
-指示另一个实例接管需要多长时间
-在前任领导者不可用后作为领导者。这
-默认值为 2 分钟。请注意，在集群中分配领导者
-仅当启用 Redis 时才会完成。 `dhis.conf` 的示例片段
-启用 Redis 和领导者选举时间的配置文件
-配置如下图所示。
+When Redis is enabled, DHIS2 will automatically assign one of the
+running instances as the leader of the cluster. The leader instance will
+be used to execute jobs or scheduled tasks that should be run
+exclusively by one instance. Optionally you can configure the
+*leader.time.to.live.minutes* property in `dhis.conf` to set up how
+frequently the leader election needs to occur. It also gives an
+indication of how long it would take for another instance to take over
+as the leader after the previous leader has become unavailable. The
+default value is 2 minutes. Note that assigning a leader in the cluster
+is only done if Redis is enabled. An example snippet of the `dhis.conf`
+configuration file with Redis enabled and leader election time
+configured is shown below.
 
 ```properties
 # Redis Configuration
@@ -1249,18 +1261,18 @@ DHIS 2在一定程度上将用户会话的服务器端状态保持不变。
 请注意，为简洁起见，已省略了几条说明
 上面的例子。请查阅反向代理部分以获取详细指南。
 
-## ActiveMQ Artemis 配置 { #webapi_artemis_configuration }
+## ActiveMQ Artemis configuration { #webapi_artemis_configuration } 
 
 By default DHIS2 will start an embedded instance of ActiveMQ Artemis when booting up. For most use-cases, you do not need to do anything. If you have an existing ActiveMQ Artemis service you want to use instead of the embedded instance you can change the default configuration in your `dhis.conf` file with the configuration properties in the following table.
 
-| 财产                  | 值（默认优先） | 描述                                                  |
+| Property                  | Value (default first) | 描述                                                  |
 | ------------------------- | --------------------- | ------------------------------------------------------------ |
-| 阿尔忒弥斯模式                 | 嵌入式\| 本国的    | 默认的`EMBEDDED`模式会在 DHIS2 实例启动时启动内部 AMQP 服务。如果要连接到外部 AMQP 服务，请将模式设置为`NATIVE`。 |
-| artemis.host                 | 127.0.0.1             | 要绑定的主机。                                             |
-| 阿尔忒弥斯港                 | 15672                 | 如果 mode 为`EMBEDDED`，则嵌入式服务器将绑定到此端口。如果模式为`NATIVE`，客户端将使用此端口进行连接。 |
-| artemis.用户名             | 客人                 | 使用`NATIVE`模式时要连接的用户名。               |
-| artemis.密码             | 客人                 | 如果使用`NATIVE`模式连接到的密码。               |
-| artemis.embedded.persistence | 离开 \| 在         | 如果 mode 为`EMBEDDED`，则此属性控制内部队列的持久性。 |
+| artemis.mode                 | EMBEDDED \| NATIVE    | 默认的`EMBEDDED`模式会在 DHIS2 实例启动时启动内部 AMQP 服务。如果要连接到外部 AMQP 服务，请将模式设置为`NATIVE`。 |
+| artemis.host                 | 127.0.0.1             | Host to bind to.                                             |
+| artemis.port                 | 15672                 | 如果 mode 为`EMBEDDED`，则嵌入式服务器将绑定到此端口。如果模式为`NATIVE`，客户端将使用此端口进行连接。 |
+| artemis.username             | guest                 | 使用`NATIVE`模式时要连接的用户名。               |
+| artemis.password             | guest                 | 如果使用`NATIVE`模式连接到的密码。               |
+| artemis.embedded.persistence | off \| on         | 如果 mode 为`EMBEDDED`，则此属性控制内部队列的持久性。 |
 
 
 ## 监控 { #monitoring } 
@@ -1289,11 +1301,11 @@ monitoring.cpu.enabled =开
 
 推荐使用Prometheus和Grafana收集和可视化这些指标的方法。
 
-有关更多信息，请参阅[监控基础设施](https://github.com/dhis2/wow-backend/blob/master/guides/monitoring.md)页面和[Prometheus 和 Grafana 安装](#monitoring) 章节。
+For more information, see the [monitoring infrastructure](https://github.com/dhis2/wow-backend/blob/master/guides/monitoring.md) page and the [Prometheus and Grafana install](#monitoring) chapter.
 
 ## 系统配置 { #install_system_configuration } 
 
-本节介绍各种系统配置属性。
+This section covers various system configuration properties.
 
 ```properties
 system.read_only_mode = on | off
@@ -1305,7 +1317,7 @@ system.read_only_mode = on | off
 system.session.timeout = (seconds)
 ```
 
-设置用户会话超时（以秒为单位）。默认值为 3600 秒（1 小时）。
+Sets the user session timeout in seconds. Default is 3600 seconds (1 hour).
 
 ```properties
 system.sql_view_table_protection = on | off
