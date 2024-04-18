@@ -1,8 +1,8 @@
 ---
-revision_date: '2024-04-05'
+revision_date: '2024-04-17'
 tags:
-- Hlavní verze jádra DHIS
 - Správa
+- Hlavní verze jádra DHIS
 template: single.html
 ---
 
@@ -484,53 +484,79 @@ DHIS2 instance at the following URL:
 
 ## Konfigurace úložiště souborů { #install_file_store_configuration } 
 
-DHIS2 is capable of capturing and storing files. By default, files will
-be stored on the local file system of the server which runs DHIS2 in a *files*
-directory under the `DHIS2_HOME` external directory location. 
+DHIS2 is capable of capturing and storing files. By default, files will be stored on the local file
+system of the server which runs DHIS2 in a *files* directory under the `DHIS2_HOME` external
+directory location. The directory *files* can be changed via the `filestore.container` property in
+the `dhis.conf`.
 
-You can also configure DHIS2 to store files on cloud-based storage
-providers. AWS S3 is the only supported provider currently. To enable
-cloud-based storage you must define the following additional properties
-in your `dhis.conf` file:
+You can also configure DHIS2 to store files on cloud-based storage providers. AWS S3 or S3
+compatible object stores are currently supported.
+
+To enable storage in AWS S3 you must define the following additional properties in your `dhis.conf`
+file:
 
 ```properties
-# File store provider. Currently 'filesystem' and 'aws-s3' are supported.
+# File store provider. Currently 'filesystem' (default), 'aws-s3' and 's3' are supported.
 filestore.provider = 'aws-s3'
 
-# Directory in external directory on local file system and bucket on AWS S3
+# Directory in external directory on local file system or bucket in AWS S3 or S3 API
 filestore.container = files
 
-# The following configuration is applicable to cloud storage only (AWS S3)
+# The following configuration is applicable to cloud storage only (provider 'aws-s3' or 's3')
 
 # Datacenter location. Optional but recommended for performance reasons.
 filestore.location = eu-west-1
 
-# Username / Access key on AWS S3
+# Username / Access key for AWS S3 or S3 APIs
 filestore.identity = xxxx
 
-# Password / Secret key on AWS S3 (sensitive)
+# Password / Secret key for AWS S3 or S3 APIs (sensitive)
 filestore.secret = xxxx
 ```
 
-This configuration is an example reflecting the defaults and should be
-changed to fit your needs. In other words, you can omit it entirely if
-you plan to use the default values. If you want to use an external
-provider the last block of properties needs to be defined, as well as the
-*provider* property is set to a supported provider (currently only
-AWS S3).
+To enable storage in an S3 compatible object store you must define the following additional
+properties in your `dhis.conf` file:
+
+```properties
+# File store provider. Currently 'filesystem' (default), 'aws-s3' and 's3' are supported.
+filestore.provider = 's3'
+
+# Directory in external directory on local file system or bucket in AWS S3
+filestore.container = files
+
+# The following configuration is applicable to cloud storage only (provider 'aws-s3' or 's3')
+
+# URL where the S3 compatible API can be accessed (only for provider 's3')
+filestore.endpoint = http://minio:9000 
+
+# Datacenter location. Optional but recommended for performance reasons.
+filestore.location = eu-west-1
+
+# Username / Access key for AWS S3 or S3 APIs
+filestore.identity = xxxx
+
+# Password / Secret key for AWS S3 or S3 APIs (sensitive)
+filestore.secret = xxxx
+```
 
 > **Poznámka**
 >
 > Pokud jste v dhis.conf nakonfigurovali cloudové úložiště, všechny soubory, které nahrajete
 > nebo soubory, které systém generuje, budou využívat cloudové úložiště.
 
-U produkčního systému je třeba pečlivě zvážit počáteční nastavení úložiště souborů, protože přesun souborů mezi poskytovateli úložišť při zachování integrity databázových odkazů by mohl být složitý. Mějte na paměti, že obsah úložiště souborů může obsahovat citlivé i nedílné informace, a proto se při produkční implementaci doporučuje chránit přístup ke složce a zajistit plán zálohování.
+These configurations are examples and should be changed to fit your needs.
+For a production system the initial setup of the file store should be
+carefully considered as moving files across storage providers while
+keeping the integrity of the database references could be complex. Keep
+in mind that the contents of the file store might contain both sensitive
+and integral information and protecting access to the folder as well as
+making sure a backup plan is in place is recommended on a production
+implementation.
 
 > **Note**
 > 
-> AWS S3 is the only supported provider but more providers are likely to 
-> be added in the future, such as Google Cloud Store and Azure Blob Storage.
-> Let us know if you have a use case for additional providers.
+> AWS S3 and S3 compatible object stores are the only supported cloud providers but more providers
+> could be added. Let us know if you have a use case for additional providers.
 
 ## Konfigurace účtu služby Google { #install_google_service_account_configuration } 
 
@@ -1764,11 +1790,14 @@ encryption.password = xxxx
 # File store [Optional]
 # ----------------------------------------------------------------------
 
-# File store provider, currently 'filesystem' and 'aws-s3' are supported
+# File store provider. Currently 'filesystem' (default), 'aws-s3' and 's3' are supported.
 filestore.provider = filesystem
 
-# Directory / bucket name, folder below DHIS2_HOME on file system, 'bucket' on AWS S3
+# Directory / bucket name, folder below DHIS2_HOME on file system, 'bucket' in AWS S3
 filestore.container = files
+
+# URL where the S3 compatible API can be accessed (only for provider 's3')
+filestore.endpoint = http://minio:9000 
 
 # Datacenter location (not required)
 filestore.location = eu-west-1

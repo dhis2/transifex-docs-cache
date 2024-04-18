@@ -1,8 +1,8 @@
 ---
-revision_date: '2024-04-05'
+revision_date: '2024-04-17'
 tags:
-- Version Master de DHIS2 Central
 - Gestion
+- Version Master de DHIS2 Central
 template: single.html
 ---
 
@@ -418,43 +418,79 @@ En supposant que le fichier WAR s'appelle ROOT.war, vous pouvez maintenant accé
 
 ## Configuration de l'entrepôt de fichiers { #install_file_store_configuration }
 
-DHIS2 peut recueillir et stocker des fichiers. Par défaut, les fichiers seront stockés sur le système de fichiers local du serveur qui fait fonctionner DHIS2 dans un répertoire de *fichiers* sous l'emplacement du répertoire externe `DHIS2_HOME`.
+DHIS2 is capable of capturing and storing files. By default, files will be stored on the local file
+system of the server which runs DHIS2 in a *files* directory under the `DHIS2_HOME` external
+directory location. The directory *files* can be changed via the `filestore.container` property in
+the `dhis.conf`.
 
-Vous pouvez également configurer DHIS2 pour qu'il stocke les fichiers sur des fournisseurs de stockage basés sur le cloud. AWS S3 est le seul fournisseur pris en charge actuellement. Pour activer le stockage sur le cloud, vous devez définir les propriétés supplémentaires suivantes dans votre fichier `dhis.conf` :
+You can also configure DHIS2 to store files on cloud-based storage providers. AWS S3 or S3
+compatible object stores are currently supported.
 
-```propriétés
-# Fournisseur d'entrepôts de fichiers. Actuellement, 'filesystem' et 'aws-s3' sont pris en charge.
+To enable storage in AWS S3 you must define the following additional properties in your `dhis.conf`
+file:
+
+```properties
+# File store provider. Currently 'filesystem' (default), 'aws-s3' and 's3' are supported.
 filestore.provider = 'aws-s3'
 
-# Répertoire dans le répertoire externe sur le système de fichiers local et le compartiment sur AWS S3
-filestore.container = fichiers
+# Directory in external directory on local file system or bucket in AWS S3 or S3 API
+filestore.container = files
 
-# La configuration suivante s'applique uniquement au stockage sur cloud (AWS S3)
+# The following configuration is applicable to cloud storage only (provider 'aws-s3' or 's3')
 
-# Emplacement du centre de données. Facultatif mais recommandé pour des raisons de performances.
-filestore.emplacement = eu-west-1
+# Datacenter location. Optional but recommended for performance reasons.
+filestore.location = eu-west-1
 
-# Nom d'utilisateur / Clé d'accès sur AWS S3
-filestore.identité = xxxx
+# Username / Access key for AWS S3 or S3 APIs
+filestore.identity = xxxx
 
-# Mot de passe / Clé secrète sur AWS S3 (sensible)
+# Password / Secret key for AWS S3 or S3 APIs (sensitive)
 filestore.secret = xxxx
 ```
 
-Cette configuration est un exemple qui reflète les paramètres par défaut et doit être modifiée en fonction de vos besoins. En d'autres termes, vous pouvez l'omettre complètement si vous prévoyez d'utiliser les valeurs par défaut. Si vous voulez utiliser un fournisseur externe, le dernier bloc de propriétés doit être défini, et la propriété *fournisseur* doit être réglée sur un fournisseur pris en charge (actuellement, c'est uniquement AWS S3).
+To enable storage in an S3 compatible object store you must define the following additional
+properties in your `dhis.conf` file:
+
+```properties
+# File store provider. Currently 'filesystem' (default), 'aws-s3' and 's3' are supported.
+filestore.provider = 's3'
+
+# Directory in external directory on local file system or bucket in AWS S3
+filestore.container = files
+
+# The following configuration is applicable to cloud storage only (provider 'aws-s3' or 's3')
+
+# URL where the S3 compatible API can be accessed (only for provider 's3')
+filestore.endpoint = http://minio:9000 
+
+# Datacenter location. Optional but recommended for performance reasons.
+filestore.location = eu-west-1
+
+# Username / Access key for AWS S3 or S3 APIs
+filestore.identity = xxxx
+
+# Password / Secret key for AWS S3 or S3 APIs (sensitive)
+filestore.secret = xxxx
+```
 
 > **Remarque**
 >
 > Si vous avez configuré le stockage SUR cloud dans dhis.conf, tous les fichiers que vous téléchargez
 > ou les fichiers générés par le système utiliseront le stockage sur cloud.
 
-Pour un système de production, la configuration initiale de l'entrepôt de fichiers doit être soigneusement étudiée, car le déplacement des fichiers entre les fournisseurs de stockage tout en conservant l'intégrité des références de la base de données peut s'avérer complexe. Gardez à l'esprit que le contenu de l'entrepôt de fichiers peut contenir des informations sensibles et intégrales et qu'il est recommandé de protéger l'accès au dossier et de s'assurer qu'un plan de sauvegarde est prévu dans le cadre d'une implémentation de production.
+These configurations are examples and should be changed to fit your needs.
+For a production system the initial setup of the file store should be
+carefully considered as moving files across storage providers while
+keeping the integrity of the database references could be complex. Keep
+in mind that the contents of the file store might contain both sensitive
+and integral information and protecting access to the folder as well as
+making sure a backup plan is in place is recommended on a production
+implementation.
 
-> **Remarque**
->
-> AWS S3 est le seul fournisseur pris en charge, mais d'autres fournisseurs devraient
-> être ajoutés à l'avenir, comme Google Cloud Store et Azure Blob Storage.
-> Faites-nous savoir si vous avez d'autres exemples de fournisseurs.
+> **Note**
+> 
+> AWS S3 and S3 compatible object stores are the only supported cloud providers but more providers
+> could be added. Let us know if you have a use case for additional providers.
 
 ## Configuration du compte de service Google { #install_google_service_account_configuration }
 
@@ -1523,11 +1559,14 @@ encryption.password = xxxx
 # File store [Optional]
 # ----------------------------------------------------------------------
 
-# File store provider, currently 'filesystem' and 'aws-s3' are supported
+# File store provider. Currently 'filesystem' (default), 'aws-s3' and 's3' are supported.
 filestore.provider = filesystem
 
-# Directory / bucket name, folder below DHIS2_HOME on file system, 'bucket' on AWS S3
+# Directory / bucket name, folder below DHIS2_HOME on file system, 'bucket' in AWS S3
 filestore.container = files
+
+# URL where the S3 compatible API can be accessed (only for provider 's3')
+filestore.endpoint = http://minio:9000 
 
 # Datacenter location (not required)
 filestore.location = eu-west-1
