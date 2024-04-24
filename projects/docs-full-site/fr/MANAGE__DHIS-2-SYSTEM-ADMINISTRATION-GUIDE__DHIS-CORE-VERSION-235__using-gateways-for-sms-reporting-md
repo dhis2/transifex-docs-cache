@@ -1,0 +1,89 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.35/src/commonmark/en/content/sysadmin/SMS-reporting.md"
+---
+
+# Using Gateways for SMS reporting 
+
+<!--DHIS2-SECTION-ID:sms_report_sending-->
+
+DHIS2 supports accepting data via [SMS](https://docs.dhis2.org/master/en/dhis2_user_manual_en/mobile.html), however, the SMS needs to be composed in a cryptic way to protect the information. The DHIS2 Android App acts as a transparent layer to send the information via SMS where the user does not have to worry about writing the SMS. To send SMSs with the Android App the SMS gateway need to be properly configured. This section explains the different options available and how to achieve that.
+
+## Sending SMS
+
+<!--DHIS2-SECTION-ID:sms_report_sening-->
+
+It is important to clarify firstly, that this section mainly concerns the set up of **receiving SMS** (from mobile devices to the DHIS2 server), which is necessary when considering using the App to send (sync) information recorded in the app to the DHIS2 server via SMS. In the App this can be set-up under the *Settings* > *SMS Settings*
+
+L’envoi de SMS, du serveur DHIS2 vers les appareils mobiles, est relativement simple à configurer. S'il s'agit juste d'envoyer des notifications aux téléphones des utilisateurs depuis DHIS2 lorsque certains événements se produisent (messagerie, seuils, etc.), seul l'envoi de SMS est requis.
+
+Tout ceci peut être configuré sur la page de configuration du service SMS dans la [section Configuration mobile](https://docs.dhis2.org/master/en/user/html/mobile_sms_service.html).
+
+Les fournisseurs habituels tels que *Bulk SMS* et *Clickatell* sont pris en charge par défaut, et ces deux fournisseurs permettent d'envoyer des SMS vers des numéros de la plupart des pays.
+
+Notez également qu'il est possible d'utiliser différentes passerelles SMS pour l'envoi et la réception de SMS. Ainsi, même si vous mettez en place une des solutions ci-dessous pour la réception de SMS, vous pouvez toujours utiliser l'une des solutions susmentionnées pour l'envoi.
+
+## Using an Android device as SMS Gateway
+
+<!--DHIS2-SECTION-ID:sms_report_android_gateway-->
+
+La solution la plus simple, et de loin, consiste à utiliser un appareil Android comme passerelle SMS. Tout téléphone ou tablette fonctionnant sous Android OS (4.4, Kitkat ou supérieur) devrait faire l'affaire. L'appareil aura besoin d'une connexion internet permanente pour transférer les messages vers votre serveur DHIS2 et d'une carte SIM pour recevoir les SMS.
+
+Il vous faudra télécharger et installer l'application Passerelle SMS Android de DHIS2 sur l'appareil mobile. Vous trouverez une liste des [versions] disponibles à cette adresse : (https://github.com/dhis2/dhis2-sms-android-gateway/releases). Vous pourrez y télécharger le fichier APK le plus récent et l'installer. Des instructions sont fournies sur la page de l'application elle-même, mais il suffit de lancer l'application et d'entrer les informations de votre serveur DHIS2 (URL, nom d'utilisateur et mot de passe).
+
+Une fois l'application installée et opérationnelle, entrez le numéro de téléphone de cette passerelle sur la page de configuration des appareils mobiles qui utilisent l'application DHIS2 Capture. Ainsi, lorsque des SMS seront envoyés à partir de ces appareils, ils sont reçus par la passerelle et automatiquement transmis au serveur DHIS2 où ils sont traités.
+
+**Using this gateway device is perfect when testing the SMS functionality.** It would be fine when piloting projects that require SMS reporting. As long as the device is plugged into a power supply and has a constant internet connection it works well for small scale projects.
+
+However, when considering moving a project to production it would be necessary to investigate one of the more permanent and reliable solutions for gateways below.
+
+### Sending SMS using an Android Device Gateway
+
+Cette option n'est actuellement ni prise en charge ni documentée.
+
+## Dedicated SMS Gateways
+
+<!--DHIS2-SECTION-ID:sms_report_dedicated_gateway-->
+
+Cette section traite de l'utilisation de passerelles SMS plus permanentes et dédiées, ainsi que des options disponibles. Chacune des options ci-dessous suppose qu'un fournisseur (ou vous-même) dispose d'une connexion SMPP avec un opérateur téléphonique dans le pays et utilise cette connexion pour recevoir des SMS et les transmettre à votre serveur DHIS2 via Internet à l'aide du protocole HTTP.
+
+Ces solutions peuvent utiliser un **numéro long** ou un **code court**. Un numéro long est un numéro de téléphone mobile standard du type que la plupart des particuliers utilisent, par exemple +61 400123123. Un code court est simplement un numéro court, tel que 311. La configuration et la gestion des codes courts sont généralement plus coûteuses.
+
+### Ensuring incoming SMS to DHIS2 server are formatted correctly
+
+Lors de l'envoi de SMS vers un serveur DHIS2 via l'API, utilisez l'URL suivante : *https://<DHIS2_server_url>/api/sms/inbound*
+
+Dans la version 2.34 et les versions antérieures de DHIS2, ce point d'extrémité exige que le format des SMS entrants soient très spécifique, c'est-à-dire que le message lui-même doit être un paramètre appelé "texte" et le numéro de téléphone de l'expéditeur doit être un paramètre appelé "expéditeur".
+
+Lorsque vous utilisez toutes les options de passerelle SMS ci-dessous, et que vous les configurez pour transmettre les SMS à un autre service Web, elles auront chacune leur propre format, lequel sera différent de celui attendu par l'API DHIS2. Voilà pourquoi il est nécessaire de les reformater avant de les envoyer au serveur DHIS2.
+
+Une option consiste à exécuter simplement votre propre service Web, qui reçoit le SMS du fournisseur de la passerelle, le reformate au format requis pour DHIS2 et le transmet à votre API DHIS2. Un tel service devrait être écrit par un développeur de logiciels.
+
+Dans la version 2.35 de DHIS2, il est prévu de prendre en charge ces cas avec un système de template pour les SMS entrants, de sorte que vous puissiez spécifier le format des messages qui seront envoyés depuis votre fournisseur. De cette manière, vous pouvez configurer le serveur DHIS2 pour qu'il accepte les SMS entrants de tout autre fournisseur de passerelle SMS. Ces derniers pourrons alors envoyer directement des SMS entrants à l'API DHIS2, sans avoir besoin d'un service Web de formatage.
+
+### Using RapidPro
+
+[RapidPro] (https://rapidpro.io/) est un service géré par l'UNICEF dans plus de 50 pays à travers le monde. Il s'agit d'un ensemble de logiciels qui travaille avec les opérateurs téléphoniques nationaux pour permettre aux organisations de concevoir des solutions SMS pour leurs projets, tels que des rapports SMS ou des campagnes de sensibilisation.
+
+Le service RapidPro implique une connexion SMPP avec un ou plusieurs opérateurs téléphoniques nationaux, généralement par le biais d'un code court, qui peut être dédié aux activités liées à la santé des ONG. Il est alors possible d'ajouter un webhook (crochet Web) pour que les SMS entrants soient transmis à un autre service Web, tel que le service Web de formatage décrit ci-dessus. Si le code court est également utilisé à d'autres fins, il peut être nécessaire d'ajouter les numéros de téléphone de vos appareils d'établissement de rapports à un groupe distinct, de sorte que seuls les SMS entrants provenant de ces appareils soient transmis au webhook.
+
+RapidPro est actuellement opérationnel dans près de la moitié des pays qui utilisent DHIS2 ou qui sont à une phase pilote. Avant d'envisager l'une des solutions ci-dessous, qui peuvent être coûteuses en termes de temps et d'argent, il convient de prendre contact avec l'Unicef pour voir si RapidPro est disponible et s'il peut être utilisé pour l'établissement de rapports sur la santé dans votre pays.
+
+### Using commercial SMS gateway providers
+
+Les fournisseurs de passerelles SMS commerciaux mentionnés dans la section « Envoi de SMS » ci-dessus sont généralement en mesure d'*envoyer* des SMS dans la plupart des pays, mais ne peuvent *recevoir* des SMS que dans un nombre limité de pays. La majorité des pays dans lesquels ils prennent en charge la réception de SMS n'utilisent pas le système DHIS2. Parmi les pays qui utilisent DHIS2, la plupart sont déjà couverts par un service RapidPro opérationnel dans le pays.
+
+Toutefois, il est utile de se renseigner sur les options commerciales disponibles pour votre pays. Dans certains pays, il existe de petites entreprises nationales qui fournissent des services SMS et qui disposent de connexions SMPP avec les opérateurs téléphoniques que vous pouvez contacter.
+
+### Using phone carriers directly
+
+Si aucune des solutions ci-dessus n'est disponible, vous devrez vous adresser directement aux opérateurs téléphoniques de votre pays. La première question à leur poser est de savoir s'ils connaissent des entreprises qui exploitent des connexions SMPP avec eux et que vous pourriez contacter.
+
+Sinon, comme dernière option, vous devrez envisager de configurer et de gérer votre propre connexion SMPP avec l'opérateur téléphonique. Cependant, tous ne proposent pas un tel service.
+
+Il vous faudra faire fonctionner votre propre serveur avec un logiciel tel que [Kannel] (https://www.kannel.org/), qui se connecte (généralement via un VPN) à un service SMPP fonctionnant sur le réseau de l'opérateur téléphonique. Ainsi, tout SMS entrant pour le numéro long ou le code court configuré est envoyé par l'opérateur téléphonique à votre serveur Kannel et vous pouvez ensuite transférer ces messages tel que décrit plus haut.
+
+### Receiving concatenated or multipart SMS
+
+When syncing data via SMS with the DHIS2 Android App, it uses a compressed format to use as little space (characters of text) as possible. Despite this, it will quite often be the case that a message will extend over the 160 character limit of one standard SMS. On most modern mobile devices these messages will still be sent as one concatenated or multipart SMS, and received as one message. When sending between two mobile devices, when an Android device is used as the gateway, this should be handled without issue.
+
+Lors de la sélection d'une passerelle SMS, il est important de confirmer que l'opérateur téléphonique utilisé prend en charge les SMS concaténés. La plupart d'entre eux le prendront en charge, mais il est important de confirmer que la fonctionnalité SMS ne fonctionnera pas si les SMS sont fractionnés. Cela repose sur quelque chose appelé UDH (User Data Header). Lorsque vous discutez avec les fournisseurs, assurez-vous de demander si cela est pris en charge.

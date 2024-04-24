@@ -6,62 +6,62 @@ tags:
 - Gestion
 ---
 
-# Audit { #audit } 
+# Audit { #audit }
 
 ## Introduction { #introduction } 
 
-DHIS2 supports a new audit service based on _Apache ActiveMQ Artemis_. Artemis is used as an asynchronous messaging system by DHIS2.
+DHIS2 prend en charge un nouveau service d'audit basé sur _Apache ActiveMQ Artemis_. Artemis est utilisé comme système de messagerie asynchrone par DHIS2.
 
-After an entity is saved to database, an audit message will be created and sent to the Artemis message consumer service. The message will then be processed in a different thread.
+Une fois qu'une entité est enregistrée dans la base de données, un message d'audit sera généré et envoyé au service utilisateur de la messagerie Artemis. Le message sera ensuite traité dans un autre fil de discussion.
 
-Audit logs can be retrieved from the DHIS2 database. Currently there is no UI or API endpoint available for retrieving audit entries.
+Les journaux d'audit peuvent être récupérés à partir de la base de données de DHIS2. Actuellement, aucun point d'extrémité d'une interface utilisateur ou d'une API n’est disponible pour récupérer les entrées d’audit.
 
 
-## Single Audit table { #audit_table } 
+## Table d'audit unique { #audit_table }
 
 All audit entries will be saved into one single table named `audit`
 
 | Colonne     | Type                        | Description |   |
 |------------|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|---|
-| auditid    | integer                     | Primary key. |   |
-| audittype  | texte                        | READ, CREATE, UPDATE, DELETE, SEARCH                                                                                                                  |   |
-| auditscope | texte                        | METADATA, AGGREGATE, TRACKER                                                                                                                        |   |
-| klass      | texte                        | Audit Entity Java class name.                                                                                                                     |   |
-| attributes | jsonb                       | A JSON string with attributes of the audited object. Example: `{"valueType":"TEXT", "categoryCombo":"SWQW313FQY", "domainType":"TRACKER"}`. |   |
-| données       | bytea                       | Compressed JSON string of the audit entity in byte array format (not humanly readable).                                                                                             |   |
-| createdat  | timestamp without time zone | Time of creation. |   |
-| createdby  | texte                        | Username of the user performing the audited operation. |   |
-| uid        | texte                        | The UID of the audited object. |   |
-| code       | texte                        | The code of the audited object. |   |
+| Identifiant de l'audit    | entier                     | Clé primaire. |   |
+| type d'audit  | texte                        | LIRE, CRÉER, METTRE À JOUR, SUPPRIMER, RECHERCHER                                                                                                                  |   |
+| champ d'application de l'audit | texte                        | MÉTADONNÉES, AGRÉGÉ, TRACKER                                                                                                                        |   |
+| classe      | texte                        | Nom de classe Java de l’entité d’audit.                                                                                                                     |   |
+| les attributs | jsonb                       | Une chaîne JSON avec les attributs de l'objet audité. Exemple : `{"valueType": "TEXT", "categoryCombo": "SWQW313FQY", "domainType": "TRACKER"}`. |   |
+| données       | bytea                       | Chaîne JSON compressée de l'entité d'audit au format "tableau d'octets" (non lisible par l'homme).                                                                                             |   |
+| créé à  | horodatage sans fuseau horaire | Temps de création. |   |
+| créé par  | texte                        | Nom d'utilisateur de l'utilisateur effectuant l'opération auditée. |   |
+| uid        | texte                        | L'UID de l'objet audité. |   |
+| code       | texte                        | Le code de l'objet audité. |   |
 
-The audit service makes use of two new concepts: *Audit Scope* and *Audit Type*.
+Le service d'audit utilise deux nouveaux concepts : *Champ d'application de l'audit* et *Type d'audit*.
 
-## Audit Scope { #audit_scope } 
+## Champ d'application de l'audit { #audit_scope }
 
-An audit scope is a logical area of the application which can be audited. Currently there are three audit scopes.
+Un champ d'application d'audit est une zone logique de l'application qui peut être auditée. Il existe actuellement trois champs d'application d'audit.
 
-| **Scope** | Clé       | Audited objects                                              |
+| **Portée** | Clé       | Objets audités                                              |
 | --------- | --------- | ------------------------------------------------------------ |
-| Tracker   | tracker   | Tracked Entity Instance, Tracked Entity Attribute Value, Enrollment, Event. |
-| Métadonnées  | metadata  | All metadata objects (e.g. Data Element, Organisation Unit). |
-| Agrégat | aggregate | Aggregate Data Value.                                        |
+| Tracker   | tracker   | Instance d'entité suivie, Valeur d'attribut d'entité suivie, inscription, Événement. |
+| Métadonnées  | métadonnées  | Tous les objets de métadonnées (par exemple, les éléments de données, les unités d'organisation). |
+| Agrégat | agrégation | Valeur de données agrégée.                                        |
 
 
-## Audit Type { #audit_type } 
+## Type d'audit { #audit_type }
 
-An audit type is an action that triggers an audit operation. Currently we support the following four types.
+Un type d'audit est une action qui déclenche une opération d'audit. Actuellement, nous prenons en charge les quatre types suivants.
 
 | Nom     | Clé      | Description         |
 | -------- | -------- | ------------------- |
-| Read     | READ     | Object was read.    |
-| Créer   | CREATE   | Object was created. |
-| Mise à jour   | UPDATE   | Object was updated. |
-| Supprimer   | DELETE   | Object was deleted. |
-| Disabled | DISABLED | Disable audit.      |
+| Lire     | LIRE     | L'objet a été lu.    |
+| Créer   | CRÉER   | L'objet a été créé. |
+| Mise à jour   | METTRE À JOUR   | L'objet a été mis à jour. |
+| Supprimer   | SUPPRIMER   | L'objet a été supprimé. |
+| Désactivé | DÉSACTIVÉ | Désactiver l'audit.      |
 
-> **Caution**
+> **Attention**
 >
-> The READ audit type may generate a lot of data in the database and may have an impact on the performance.
+> Le type d'audit LIRE peut générer beaucoup de données dans la base de données et avoir un impact sur les performances.
 
 ## Setup { #audit_configuration } 
 

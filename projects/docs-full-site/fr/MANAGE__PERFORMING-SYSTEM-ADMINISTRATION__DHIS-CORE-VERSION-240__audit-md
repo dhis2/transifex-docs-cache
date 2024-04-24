@@ -6,105 +6,105 @@ tags:
 - Gestion
 ---
 
-# Audit { #audit } 
+# Audit { #audit }
 
 ## Introduction { #introduction } 
 
-DHIS2 supports a new audit service based on _Apache ActiveMQ Artemis_. Artemis is used as an asynchronous messaging system by DHIS2.
+DHIS2 prend en charge un nouveau service d'audit basé sur _Apache ActiveMQ Artemis_. Artemis est utilisé comme système de messagerie asynchrone par DHIS2.
 
-After an entity is saved to database, an audit message will be created and sent to the Artemis message consumer service. The message will then be processed in a different thread.
+Une fois qu'une entité est enregistrée dans la base de données, un message d'audit sera généré et envoyé au service utilisateur de la messagerie Artemis. Le message sera ensuite traité dans un autre fil de discussion.
 
-Audit logs can be retrieved from the DHIS2 database. Currently there is no UI or API endpoint available for retrieving audit entries.
+Les journaux d'audit peuvent être récupérés à partir de la base de données de DHIS2. Actuellement, aucun point d'extrémité d'une interface utilisateur ou d'une API n’est disponible pour récupérer les entrées d’audit.
 
-Detailed explanation of the audit system architecture can be found [here](https://github.com/dhis2/wow-backend/blob/master/guides/auditing.md).
+Vous trouverez une explication détaillée de l'architecture du système d'audit [ici](https://github.com/dhis2/wow-backend/blob/master/guides/auditing.md).
 
-## What we log { #what_we_log }
+## Ce que nous enregistrons { #what_we_log }
 
-This is the list of operations we log as part of the audit system:
+Voici la liste des opérations que nous enregistrons dans le cadre du système d'audit :
 
-- Operations on user accounts (like but not limited to creation, profile edits)
-- Operations on user roles, groups and authority groups
-- Operations on metadata objects (like but not limited to categories, organization units, reports)
-- Operations on tracked objects (like but not limited to instances, attributes, data values)
-- Jobs configuration
-- Breaking the glass operations
+- Opérations sur les comptes d'utilisateurs (par exemple, mais sans s'y limiter, la création, les modifications de profil)
+- Opérations sur les rôles d'utilisateurs, les groupes et les groupes d'autorités
+- Opérations sur les objets de métadonnées (par exemple, mais sans s'y limiter, les catégories, les unités d'organisation, les rapports)
+- Opérations sur les objets suivis (par exemple, mais sans s'y limiter, les instances, les attributs, les valeurs de données)
+- Configuration des tâches
+- Opérations "Briser le verre"
 
-## Single Audit table { #audit_table } 
+## Tableau d'audit unique { #audit_table }
 
-All audit entries, except the ones related to tracked entities, will be saved into one single table named `audit`
+Toutes les entrées d'audit, à l'exception de celles liées aux entités suivies, seront sauvegardées dans un même tableau nommée `audit`
 
 | Colonne     | Type                        | Description |
 |------------|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
-| auditid    | integer                     | Primary key. |
-| audittype  | texte                        | READ, CREATE, UPDATE, DELETE, SEARCH |
-| auditscope | texte                        | METADATA, AGGREGATE, TRACKER |
-| klass      | texte                        | Audit Entity Java class name. |
-| attributes | jsonb                       | A JSON string with attributes of the audited object. Example: `{"valueType":"TEXT", "categoryCombo":"SWQW313FQY", "domainType":"TRACKER"}`. |
-| données       | bytea                       | Compressed JSON string of the audit entity in byte array format (not humanly readable). |
-| createdat  | timestamp without time zone | Time of creation. |
-| createdby  | texte                        | Username of the user performing the audited operation. |
-| uid        | texte                        | The UID of the audited object. |
-| code       | texte                        | The code of the audited object. |
+| identifiant de l'audit    | entier                     | Clé primaire. |
+| type d'audit  | texte                        | LIRE, CRÉER, METTRE À JOUR, SUPPRIMER, RECHERCHER |
+| portée de l'audit | texte                        | MÉTADONNÉES, AGRÉGÉ, TRACKER |
+| klass      | texte                        | Nom de classe Java de l’entité d’audit. |
+| attributs | jsonb                       | Une chaîne JSON avec les attributs de l'objet audité. Exemple : `{"valueType": "TEXT", "categoryCombo": "SWQW313FQY", "domainType": "TRACKER"}`. |
+| données       | bytea                       | Chaîne JSON compressée de l'entité d'audit au format "tableau d'octets" (non lisible par l'homme). |
+| créé à  | horodatage sans fuseau horaire | Temps de création. |
+| créé par  | texte                        | Nom d'utilisateur de l'utilisateur effectuant l'opération auditée. |
+| uid        | texte                        | L'UID de l'objet audité. |
+| code       | texte                        | Le code de l'objet audité. |
 
-The audit service makes use of two new concepts: *Audit Scope* and *Audit Type*.
+Le service d'audit utilise deux nouveaux concepts : *Portée de l'audit* et *Type d'audit*.
 
-## Audit Scope { #audit_scope } 
+## Portée de l'audit { #audit_scope }
 
-An audit scope is a logical area of the application which can be audited. Currently there are three audit scopes.
+Une portée d'audit est une zone logique de l'application qui peut être auditée. Il existe actuellement trois portée d'audit.
 
-| **Scope** | Clé       | Audited objects                                              |
+| **Portée** | Clé       | Objets audités                                              |
 | --------- | --------- | ------------------------------------------------------------ |
-| Tracker   | tracker   | Tracked Entity Instance, Tracked Entity Attribute Value, Enrollment, Event. |
-| Métadonnées  | metadata  | All metadata objects (e.g. Data Element, Organisation Unit). |
-| Agrégation | aggregate | Aggregate Data Value.                                        |
+| Tracker   | tracker   | Instance d'entité suivie, Valeur d'attribut d'entité suivie, inscription, Événement. |
+| Métadonnées  | métadonnées  | Tous les objets de métadonnées (par exemple, les éléments de données, les unités d'organisation). |
+| Agrégation | agrégation | Valeur de données agrégée.                                        |
 
 
-## Audit Type { #audit_type } 
+## Type d'audit { #audit_type }
 
-An audit type is an action that triggers an audit operation. Currently we support the following four types.
+Un type d'audit est une action qui déclenche une opération d'audit. Actuellement, nous prenons en charge les quatre types suivants.
 
 | Nom     | Clé      | Description         |
 | -------- | -------- | ------------------- |
-| Read     | READ     | Object was read.    |
-| Créer   | CREATE   | Object was created. |
-| Mise à jour   | UPDATE   | Object was updated. |
-| Supprimer   | DELETE   | Object was deleted. |
-| Disabled | DISABLED | Disable audit.      |
+| Lire     | LIRE     | L'objet a été lu.    |
+| Créer   | CRÉER   | L'objet a été créé. |
+| Mettre à jour   | METTRE À JOUR   | L'objet a été mis à jour. |
+| Supprimer   | SUPPRIMER   | L'objet a été supprimé. |
+| Désactivé | DÉSACTIVÉ | Désactiver l'audit.      |
 
-> **Caution**
+> **Attention**
 >
-> The READ audit type may generate a lot of data in the database and may have an impact on the performance.
+> Le type d'audit LIRE peut générer beaucoup de données dans la base de données et avoir un impact sur les performances.
 
 
-## Tracked entity audits { #tracked-entity-audits } 
+## Audits d'entités suivies { #tracked-entity-audits }
 
-Operations on tracked entities like instances, attributes and values are stored, respectively in the `trackedentityinstanceaudit`, `trackedentityattributevalueaudit` and `trackedentitydatavalueaudit` tables.
+Les opérations sur les entités suivies telles que les instances, les attributs et les valeurs, sont stockées respectivement dans les tableaux `trackedentityinstanceaudit` (audit d'instance d'entité suivie), `trackedentityattributevalueaudit` (audit de valeur d'attribut d'entité suivie), et `trackedentitydatavalueaudit` (audit de valeur de données d'entité suivie).
 
 ### trackedentityinstanceaudit { #trackedentityinstanceaudit } 
 
 | Colonne     | Type                        | Description |
 |------------|-----------------------------|-------------|
-| trackedentityinstanceauditid | integer | Primary key. |
-| trackedentityinstance | texte  | Tracked entity instance name.  |
-| créé  | timestamp without time zone | Time of creation. |
-| accessedby | texte | Username of the user performing the audited operation. |
-| audittype | texte | READ, CREATE, UPDATE, DELETE, SEARCH |
-| commentaire | texte | The code of the audited object. |
+| trackedentityinstanceauditid | entier | Clé primaire. |
+| trackedentityinstance | texte  | Nom de l'instance d'entité suivie.  |
+| créé  | horodatage sans fuseau horaire | Temps de création. |
+| accessible par | texte | Nom d'utilisateur de l'utilisateur effectuant l'opération auditée. |
+| type d'audit | texte | LIRE, CRÉER, METTRE À JOUR, SUPPRIMER, RECHERCHER |
+| commentaire | texte | Le code de l'objet audité. |
 
-This data can be retrieved via [API](#webapi_tracked_entity_instance_audits).
+Ces données peuvent être récupérées via [API](#webapi_tracked_entity_instance_audits).
 
 ### trackedentityattributevalueaudit { #trackedentityattributevalueaudit } 
 
 | Colonne     | Type                        | Description |
 |------------|-----------------------------|-------------|
-| trackedentityattributevalueauditid | integer | Primary key. |
-| trackedentityinstanceid | integer | Instance ID of which the attribute value belongs to.  |
-| trackedentityattributeid | integer | Attribute ID.  |
-| créé  | timestamp without time zone | Time of creation. |
-| modifiedby  | texte | Username of the user performing the audited operation. |
-| audittype | texte  | READ, CREATE, UPDATE, DELETE, SEARCH |
-| valeur | texte | The value of the audited object. |
-| encryptedvalue | texte | The encrypted value if confidentiality flag is set. |
+| trackedentityattributevalueauditid (Id d'audit de valeur d'attribut d'entité suivie) | entier | Clé primaire. |
+| trackedentityinstanceid (Id d'instance d'entité suivie)  | entier | ID de l'instance à laquelle appartient la valeur d'attribut.  |
+| trackedentityattributeid (ID d'attribut d'entité suivi) | entier | ID d'attribut.  |
+| créé  | horodatage sans fuseau horaire | Temps de création. |
+| modifié par  | texte | Nom d'utilisateur de l'utilisateur effectuant l'opération auditée. |
+| type d'audit | texte  | LIRE, CRÉER, METTRE À JOUR, SUPPRIMER, RECHERCHER |
+| valeur | texte | La valeur de l'objet audité. |
+| valeur cryptée | texte | The encrypted value if confidentiality flag is set. |
 
 
 This data can be retrieved via [API](#webapi_tracked_entity_attribute_value_audits).
@@ -113,13 +113,13 @@ This data can be retrieved via [API](#webapi_tracked_entity_attribute_value_audi
 
 | Colonne     | Type                        | Description |
 |------------|-----------------------------|-------------|
-| trackedentitydatavalueauditid | integer | Primary key. |
-| programstageinstanceid | integer | Program stage ID of which the data value belongs to.  |
-| dataelementid | integer | ID of the data element.  |
-| créé | timestamp without time zone | Time of creation. |
-| modifiedby | texte | Username of the user performing the audited operation. |
-| audittype | texte | READ, CREATE, UPDATE, DELETE, SEARCH |
-| valeur | texte | The value of the audited object. |
+| trackedentitydatavalueauditid | entier | Clé primaire. |
+| programstageinstanceid | entier | Program stage ID of which the data value belongs to.  |
+| dataelementid | entier | ID of the data element.  |
+| créé | horodatage sans fuseau horaire | Temps de création. |
+| modifié par | texte | Nom d'utilisateur de l'utilisateur effectuant l'opération auditée. |
+| type d'audit | texte | LIRE, CRÉER, METTRE À JOUR, SUPPRIMER, RECHERCHER |
+| valeur | texte | La valeur de l'objet audité. |
 | providedelsewhere | bool | Indicates whether the user provided the value elsewhere or not. |
 
 This data can be retrieved via [API](#webapi_tracked_entity_data_value_audits).
@@ -133,11 +133,11 @@ The breaking the glass event is stored in the `programtempownershipaudit` table,
 
 | Colonne     | Type  | Description |
 |------------|-------|-------------|
-| programtempownershipauditid | integer | Primary key. |
-| programid | integer | Program ID of which the tracked entity belongs to.  |
-| trackedentityinstanceid | integer | Instance ID of which the attribute value belongs to.  |
-| créé  | timestamp without time zone | Time of creation. |
-| accessedby  | texte | Username of the user performing the audited operation. |
+| programtempownershipauditid | entier | Clé primaire. |
+| programid | entier | Program ID of which the tracked entity belongs to.  |
+| trackedentityinstanceid | entier | ID de l'instance à laquelle appartient la valeur d'attribut.  |
+| créé  | horodatage sans fuseau horaire | Temps de création. |
+| accessible par  | texte | Nom d'utilisateur de l'utilisateur effectuant l'opération auditée. |
 | reason       | texte | The reason as inserted in the dialog. |
 
 
