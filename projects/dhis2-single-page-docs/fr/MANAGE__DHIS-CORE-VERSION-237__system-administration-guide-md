@@ -1,8 +1,8 @@
 ---
 revision_date: '2023-03-22'
 tags:
-- DHIS core version 2.37
 - Gestion
+- DHIS core version 2.37
 template: single.html
 ---
 
@@ -1751,7 +1751,7 @@ If you are starting from at least v2.30:
 3. Drop any materialized SQL views from your database
 4. Stop the server
 5. Replace the war file with the target version (There is no need to upgrade to intermediate versions; in fact, it is not recommended)
-6. Start the server
+6. Démarrer le serveur
 
 You should now be ready to enjoy the new fixes and features.
 
@@ -1805,7 +1805,7 @@ L'archive contient de nombreux fichiers importants, mais voici les principaux qu
 useradd -rs /bin/false prometheus
 ```
 
-- Move the Prometheus binaries to the local bin directory
+- Déplacer les binaires Prometheus dans un répertoire bin local
 
 ```
 cd prometheus-2.15.2.linux-amd64/ 
@@ -1813,88 +1813,88 @@ cp prometheus promtool /usr/local/bin
 chown prometheus:prometheus /usr/local/bin/prometheus
 ```
 
-- Create a folder in the `/etc` folder for Prometheus and move the console files, console libraries and the prometheus configuration file to this newly created folder.
+- Créez un dossier dans le dossier `/etc` pour Prometheus et déplacez les fichiers de la console, les bibliothèques de la console et le fichier de configuration de Prometheus dans ce dossier nouvellement créé.
 
 ```
 mkdir /etc/prometheus
 cp -R consoles/ console_libraries/ prometheus.yml /etc/prometheus
 ```
 
-Create a data folder at the root directory, with a prometheus folder inside.
+Créez un dossier de données à la racine du répertoire, avec un dossier prometheus à l'intérieur.
 
 ```
 mkdir -p data/prometheus
 chown -R prometheus:prometheus /data/prometheus /etc/prometheus/*
 ```
 
-### Create a Prometheus service { #prometheus_create_service } 
+### Créer un service Prometheus { #prometheus_create_service } 
 
-To create a Prometheus _systemd_ service, head over to the `/lib/systemd/system` folder and create a new systemd file named `prometheus.service`.
+Pour créer un service _systemd_ Prometheus, rendez-vous dans le dossier `/lib/systemd/system` et créez un nouveau fichier systemd nommé `prometheus.service`.
 
 ```
 cd /lib/systemd/system
 touch prometheus.service
 ```
 
-- Edit the newly created file, and paste the following content inside:
+- Modifiez le fichier nouvellement créé et coller le contenu suivant à l'intérieur :
 
-```properties
-[Unit]
+```propriétés
+[Unité]
 Description=Prometheus
-Wants=network-online.target
-After=network-online.target
+Souhaite=réseau-cible.en ligne
+Après=éseau-cible.en ligne
 
 [Service]
 Type=simple
-User=prometheus
-Group=prometheus
+Utilisateur=prometheus
+Groupe=prometheus
 ExecStart=/usr/local/bin/prometheus \
-  --config.file=/etc/prometheus/prometheus.yml \
+  --fichier.de configuration=/etc/prometheus/prometheus.yml \
   --storage.tsdb.path="/data/prometheus" \
-  --web.console.templates=/etc/prometheus/consoles \
-  --web.console.libraries=/etc/prometheus/console_libraries \
-  --web.listen-address=0.0.0.0:9090 \
-  --web.enable-admin-api
+  --web.console.modèles=/etc/prometheus/consoles \
+  --web.console.bibliothèque=/etc/prometheus/console_libraries \
+  --web.adresse-écoute=0.0.0.0:9090 \
+  --web. activer-l'api de-l'administrateur
 
-Restart=always
+Redémarrer=toujours
 
-[Install]
-WantedBy=multi-user.target
+[Installer]
+Requis par=multi-utilisateur.cible
 ```
 
-- Save the file and enable the Prometheus service at startup
+- Enregistrer le fichier et activer le service Prometheus au démarrage
 
 ```
 systemctl enable prometheus
 systemctl start prometheus
 ```
 
-- Test that the service is running
+- Tester que le service est en cours d'exécution
 
 ```
 systemctl status prometheus
 
 ...
-Active: active (running)
+Active : active (en cours d'exécution)
 ```
 
-- It should be now possible to access the Prometheus UI by accessing `http://localhost:9090`.
+- Il devrait maintenant être possible d'accéder à l'interface utilisateur de Prometheus en accédant à `http://localhost:9090`.
 
 
-### Set-up Nginx reverse proxy { #prometheus_nginx } 
+### Mise en place du proxy inverse Nginx { #prometheus_nginx } 
 
-Prometheus does not natively support authentication or TLS encryption. If Prometheus has to be exposed outside the boundaries of the local network, it is important to enable authentication and TLS encryption. The following steps show how to use Nginx as a reverse proxy.
+Prometheus ne prend pas en charge l'authentification ou le cryptage TLS de manière automatique. Si Prometheus doit être exposé en dehors des limites du réseau local, il est important d'activer l'authentification et le cryptage TLS. Les étapes suivantes montrent comment utiliser Nginx comme proxy inverse.
 
-- Install Nginx, if not already installed
+- Installer Nginx, s'il n'est pas déjà installé
 
 ```
-apt update
-apt-get install nginx
+apt mise à jour
+apt-installer nginx
 ```
 
-By default, Nginx will start listening for HTTP requests in the default `http` port, which is `80`.
+Par défaut, Nginx commence à écouter les requêtes HTTP sur le port `http` par défaut, qui est `80`.
 
-If there is already an Nginx instance running on the machine and you are unsure on which port it is listening on, run the following command:
+Si une instance Nginx fonctionne déjà sur la machine et que vous ne savez pas sur quel port elle est à l'écoute, exécutez la commande suivante :
 
 ```
 > lsof | grep LISTEN | grep nginx
@@ -1902,92 +1902,92 @@ If there is already an Nginx instance running on the machine and you are unsure 
 nginx   15792   root   8u   IPv4   1140223421   0t0   TCP *:http (LISTEN)
 ```
 
-The last column shows the port used by Nginx (`http` -> `80`).
+La dernière colonne indique le port utilisé par Nginx (`http` -> `80`).
 
-By default, Nginx configuration is located in `/etc/nginx/nginx.conf`
+Par défaut, la configuration de Nginx est située dans `/etc/nginx/nginx.conf`
 
-Make sure that `nginx.conf` contains the `Virtual Host Config` section
+Assurez-vous que `nginx.conf` contient la section `Virtual Host Config`
 
 ```
 ##
-# Virtual Host Configs
+# Configurations du serveur virtuel
 ##
 
-include /etc/nginx/conf.d/*.conf;
-include /etc/nginx/sites-enabled/*;
+Inclut  /etc/nginx/conf.d/*.conf;
+Inclut  /etc/nginx/sites-enabled/*;
 
 ```
 
-- Create a new file in `/etc/nginx/conf.d` called `prometheus.conf`
+- Créez un nouveau fichier dans `/etc/nginx/conf.d` du nom de `prometheus.conf`
 
 ```
 touch /etc/nginx/conf.d/prometheus.conf
 ```
 
-- Edit the newly created file, and paste the following content inside:
+- Modifiez le fichier nouvellement créé et coller le contenu suivant à l'intérieur :
 
 ```
-server {
-  listen 1234;
+serveur {
+  écoute 1234;
 
-  location / {
+  localisation / {
     proxy_pass           http://localhost:9090/;
   }
 }
 ```
 
-- Restart Nginx  and browse to http://localhost:1234
+- Redémarrez Nginx et accédez à http://localhost:1234
 
 ```
-systemctl restart nginx
+systemctl redémarrer nginx
 
-# in case of start-up errors
+# en cas d'erreurs de démarrage
 journalctl -f -u nginx.service
 ```
 
-- Configure Prometheus for reverse proxying, by editing `/lib/systemd/system/prometheus.service` and add the following argument to the list of arguments passed to the Prometheus executable.
+- Configurez Prometheus pour le proxy inverse, en éditant `/lib/systemd/system/prometheus.service` et ajoutez l'argument suivant à la liste des arguments transmis à la commande  Prometheus.
 
 ```
---web.external-url=https://localhost:1234
+--web.externe-url=https://localhost:1234
 ```
 
-- Restart the service
+- Redémarrer le service
 
 ```
 systemctl daemon-reload
-systemctl restart prometheus
+systemctl redémarrer prometheus
 
 
-# in case of errors
+# en cas d'erreurs
 journalctl -f -u prometheus.service
 ```
 
-### Enable reverse proxy authentication { #prometheus_auth } 
+### Activer l'authentification du proxy inverse { #prometheus_auth } 
 
-This section shows how to configure basic authentication via the reverse proxy. If you need a different authentication mechanism (SSO, etc.) please check the relevant documentation.
+Cette section montre comment configurer l'authentification de base via le proxy inverse. Si vous avez besoin d'un mécanisme d'authentification différent (SSO, etc.), veuillez consulter la documentation correspondante.
 
-- Make sure that `htpasswd` is installed on the system
+- Assurez-vous que `htpasswd` est installé sur le système
 
 ```
 apt-get install apache2-utils
 ```
 
-- Create an authentication file
+- Créer un fichier d'authentification
 
 ```
 cd /etc/prometheus
 htpasswd -c .credentials admin 
 ```
 
-Choose a strong password, and make sure that the pass file was correctly created.
+Choisissez un mot de passe efficace et assurez-vous que le fichier pass a été correctement créé.
 
-- Edit the previously created Nginx configuration file (`/etc/nginx/conf.d/prometheus.conf`), and add the authentication information.
+- Editez le fichier de configuration Nginx créé précédemment (`/etc/nginx/conf.d/prometheus.conf`), et ajoutez les informations d'authentification.
 
 ```
-server {
-  listen 1234;
+serveur {
+ écoute 1234;
 
-  location / {
+  localisation / {
     auth_basic           "Prometheus";
     auth_basic_user_file /etc/prometheus/.credentials;
     proxy_pass           http://localhost:9090/;
@@ -1995,156 +1995,156 @@ server {
 }
 ```
 
-- Restart Nginx
+- Redémarrer Nginx
 
 ```
-systemctl restart nginx
+systemctl redémarrer nginx
 
-# in case of errors
+# en cas d'erreurs
 journalctl -f -u nginx.service
 ```
 
-- `http://localhost:1234` should now prompt for username and password.
+- `http://localhost:1234` devrait maintenant vous demander votre nom d'utilisateur et votre mot de passe.
 
-### Installing Grafana on Ubuntu and Debian { #grafana } 
+### Installer Grafana sur Ubuntu et Debian { #grafana } 
 
-- Add a `gpg` key and install the OSS Grafana package from APT repo
+- Ajouter une clé `gpg` et installer le paquet OSS Grafana depuis le repo APT
 
 ```sh
-apt-get install -y apt-transport-https
+apt-installer -y apt-transport-https
 
 wget -q -O - "https://packages.grafana.com/gpg.key" | sudo apt-key add -
 
-add-apt-repository "deb https://packages.grafana.com/oss/deb stable main"
+add-apt-repositoire "deb https://packages.grafana.com/oss/deb stable main"
 
-apt-get update
+apt-mettre à jour
 
-apt-get install grafana
+apt-installer grafana
 ```
 
-- If the system is using `systemd`, a new `grafana-service` is automatically created. Check the `systemd` file to gain some insight on the Grafana installation
+- Si le système utilise `systemd`, un nouveau `grafana-service` est automatiquement créé. Vérifiez le fichier `systemd` pour avoir un aperçu de l'installation de Grafana.
 
 ```
 cat /usr/lib/systemd/system/grafana-server.service
 ```
 
-This file is quite important because it offers information about the newly installed Grafana instance.
+Ce fichier est très important car il fournit des informations sur l'instance Grafana nouvellement installée.
 
-The file shows:
+Le fichier affiche :
 
-The **Grafana server binary** is located at `/usr/sbin/grafana-server`.
-The file that defines all the **environment variables** is located at `/etc/default/grafana-server`
-The **configuration file** is given via the `CONF_FILE` environment variable.
-The **PID of the file** is also determined by the `PID_FILE_DIR` environment variable.
-**Logging**, **data**, **plugins** and **provisioning** paths are given by environment variables.
+Le **serveur binaire de Grafana** est situé dans `/usr/sbin/grafana-server`.
+Le fichier qui définit toutes les **variables d'environnement** est situé dans `/etc/default/grafana-server`
+Le **fichier de configuration** est donné par la variable d'environnement `CONF_FILE`.
+Le **PID du fichier** est également déterminé par la variable d'environnement `PID_FILE_DIR`.
+Les chemins de **logging**(enregistrement), **data** (données), **plugins** (extensions) et **provisioning** (approvisionnement) sont donnés par des variables d'environnement.
 
-- Start the server
+- Démarrer le serveur
 
 ```
 systemctl start grafana-server
 ```
 
-- Access Grafana web console: http://localhost:3000
+- Accéder à la console web Grafana : http://localhost:3000
 
-The default login for Grafana is `admin` and the default password is also `admin`.
-You will be prompted to change the password on first access.
+Le nom d'utilisateur par défaut pour Grafana est `admin` et le mot de passe par défaut est également `admin`.
+Vous serez invité à changer le mot de passe lors de votre premier accès.
 
-- Configure Prometheus as a Grafana datasource
+- Configurer Prometheus comme source de données Grafana
 
-Access to the datasources panel by clicking on `Configuration` > `Data sources` via the left menu.
+Accédez au panneau des sources de données en cliquant sur `Configuration` > `Sources de données` dans le menu à gauche.
 
-Click on `Add a datasource`
+Cliquez sur `Add a datasource` (Ajouter une source de données)
 
-Select a Prometheus data source on the next window.
+Sélectionnez une source de données Prometheus dans la fenêtre suivante.
 
-Configure the datasource according to the Prometheus setup (use authentication, TSL, etc.)
+Configurer la source de données en fonction de la configuration de Prometheus (utiliser l'authentification, TSL, etc.)
 
-### Installing Prometheus + Grafana using Docker { #prometheus_grafana_docker } 
+### Installation de Prometheus + Grafana à l'aide de Docker { #prometheus_grafana_docker } 
 
-This section describes how to start-up a Prometheus stack containing Prometheus and Grafana.
+Cette section décrit comment démarrer une pile Prometheus contenant Prometheus et Grafana.
 
-The configuration is based on this project: https://github.com/vegasbrianc/prometheus
+La configuration est basée sur ce projet : https://github.com/vegasbrianc/prometheus
 
-- Clone this Github project: https://github.com/vegasbrianc/prometheus
+- Cloner ce projet Github : https://github.com/vegasbrianc/prometheus
 
-- Start the Prometheus stack using:
+- Démarrer la pile Prometheus en utilisant :
 
 ```
-docker stack deploy -c docker-stack.yml prom
+déploiement de la pile docker -c docker-stack.yml prom
 ```
 
-The above command, may result in the following error:
+La commande ci-dessus peut entraîner l'erreur suivante :
 
-*This node is not a swarm manager. Use "docker swarm init" or "docker swarm join" to connect this node to swarm and try again*
+*Ce nœud n'est pas un gestionnaire swarm. Utilisez "docker swarm init" ou "docker swarm join" pour connecter ce noeud au swarm et réessayez*.
 
-If that happens, you need to start Swarm. You can use the following command line:
+Identifier les valeurs qui diffèrent significativement des autres dans les ensembles de données 
 
 ```
 docker swarm init --advertise-addr <YOUR_IP>
 ```
 
-Once this command runs successfully, you should be able to run the previous command without problems.
+Une fois cette commande exécutée avec succès, vous devriez pouvoir exécuter la commande précédente sans problème.
 
-The stack contains also a Node exporter for Docker monitoring. If you are not interested in Docker monitoring, you can comment out the relevant sections in the `docker-stack.yml` file:
+La pile contient également un exportateur Node pour le suivi de Docker. Si vous n'êtes pas intéressé par le suivi de Docker, vous pouvez commenter les sections concernées dans le fichier `docker-stack.yml` :
 
 - `node-exporter`
 - `cadvisor`
 
-- To stop the Prometheus stack:
+- Pour arrêter la pile Prometheus :
 
 ```
 docker stack rm prom
 ```
 
-The Prometheus configuration (`prometheus.yml`) file is located in the `prometheus` folder.
+Le fichier de configuration de Prometheus (`prometheus.yml`) est situé dans le dossier `prometheus`.
 
-- Access Grafana web console at: http://localhost:3000 with username: `admin` and password: `foobar`
+- Accédez à la console web de Grafana à l'adresse suivante : http://localhost:3000 avec le nom d'utilisateur : `admin` et le mot de passe : `foobar`.
 
-### Configure Prometheus to pull metrics from one or more DHIS2 instances { #prometheus_dhis2 } 
+### Configurer Prometheus pour obtenir des indicateurs à partir d'une ou plusieurs instances DHIS2 { #prometheus_dhis2 } 
 
-Prior to using Prometheus, it needs basic configuring. Thus, we need to create a configuration file named `prometheus.yml`
+Avant d'utiliser Prometheus, il faut le configurer. Nous devons donc créer un fichier de configuration nommé `prometheus.yml`
 
-> **Note**
+> **Remarque**
 >
-> The configuration file of Prometheus is written in YAML which strictly forbids to use tabs. If your file is incorrectly formatted, Prometheus will not start. Be careful when you edit it.
+> Le fichier de configuration de Prometheus est écrit en YAML ce qui interdit formellement l'utilisation de tabulations. Si votre fichier est mal formaté, Prometheus ne démarrera pas. Faites attention lorsque vous l'éditez.
 
-Prometheus’ configuration file is divided into three parts: `global`, `rule_files`, and `scrape_configs`.
+Le fichier de configuration de Prometheus est divisé en trois parties : `global`, `rule_files`, et `scrape_configs`.
 
-In the global part we can find the general configuration of Prometheus: `scrape_interval` defines how often Prometheus scrapes targets, `evaluation_interval` controls how often the software will evaluate rules. Rules are used to create new time series and for the generation of alerts.
+Dans la partie générale, on trouve la configuration générale de Prometheus : `scrape_interval`(intervalle d'analyse) définit la fréquence à laquelle Prometheus analyse les cibles, `evaluation_interval` (intervalle d'évaluation) contrôle la fréquence à laquelle le logiciel évalue les règles. Les règles sont utilisées pour créer de nouvelles séries temporelles et pour générer des alertes.
 
-The `rule_files` block contains information of the location of any rules we want the Prometheus server to load.
+Le bloc `rule_files`(dossiers de règles) contient des informations sur l'emplacement de toutes les règles que nous voulons que le serveur Prometheus charge.
 
-The last block of the configuration file is named `scape_configs` and contains the information which resources Prometheus monitors.
+Le dernier bloc du fichier de configuration est nommé `scape_configs` (configuration du cadre) et contient les informations sur les ressources que Prometheus suit.
 
-A simple DHIS2 Prometheus monitoring file looks like this example:
+Un fichier de suivi simple de DHIS2 Prometheus ressemble à cet exemple :
 
 ```yaml
-global:
-  scrape_interval:     15s
-  evaluation_interval: 15s 
+global :
+scrape_interval : 15s
+Evaluation_interval : 15s 
 
-scrape_configs:
-  - job_name: 'dhis2'
-    metrics_path: '/dhis/api/metrics'
-    basic_auth:
-      username: admin
-      password: district
-    static_configs:
-      - targets: ['localhost:80']
+scrape_configs :
+- nom_de l'emploi : 'dhis2'
+metrics_path : '/dhis/api/metrics'
+basic_auth :
+nom d'utilisateur : admin
+mot de passe : district
+static_configs :
+- cibles : ['localhost:80']
 ```
 
-The global `scrape_interval` is set to 15 seconds which is enough for most use cases.
+L'intervalle général `scrape_interval` est fixé à 15 secondes, ce qui est suffisant pour la plupart des cas d'utilisation.
 
-In the `scrape_configs` part we have defined the DHIS2 exporter.
-The `basic_auth` blocks contains the credentials required to access the `metrics` API: consider creating an ad-hoc user only for accessing the `metrics` endpoint.
+Dans la partie `scrape_configs` nous avons défini l'exportateur DHIS2.
+Le bloc `basic_auth` contient les informations d'identification requises pour accéder à l'API `metrics` : envisagez de créer un utilisateur ad-hoc uniquement pour accéder au point de terminaison `metrics`.
 
-Prometheus may or may not run on the same server as DHIS2: in the above configuration, it is assumed that Prometheus monitors only one DHIS2 instance, running on the same server as Prometheus, so we use `localhost`.
+Prometheus peut ou non fonctionner sur le même serveur que DHIS2 : dans la configuration ci-dessus, on suppose que Prometheus ne suit qu'une seule instance de DHIS2, fonctionnant sur le même serveur que Prometheus, nous utilisons donc `localhost`.
 
-### Configure the DHIS2 exporter { #dhis2_metrics_conf } 
+### Configurer l'exportateur DHIS2 { #dhis2_metrics_conf } 
 
-The monitoring subsystem is disabled by default in DHIS2.
+Le sous-système de suivi est désactivé par défaut dans DHIS2.
 
-Each metrics cluster has to be explicitly enabled in order for the metrics to be exported. To configure DHIS2 to export one or more metrics, check this [document](https://github.com/dhis2/wow-backend/blob/master/guides/monitoring.md#dhis2-monitoring-configuration).
+Chaque groupe de mesures doit être explicitement activé pour que les mesures puissent être exportées. Pour configurer DHIS2 afin d'exporter une ou plusieurs mesures, consultez ce [document] (https://github.com/dhis2/wow-backend/blob/master/guides/monitoring.md#dhis2-monitoring-configuration).
 
 
 
@@ -2206,41 +2206,41 @@ Un type d'audit est une action qui déclenche une opération d'audit. Actuelleme
 >
 > Le type d'audit LIRE peut générer beaucoup de données dans la base de données et avoir un impact sur les performances.
 
-## Setup { #audit_configuration } 
+## Configuration { #audit_configuration }
 
-The audit system is enabled by default for the following scopes and types.
+Le système d'audit est activé par défaut pour les portées et types suivants.
 
 Scopes:
 
-- `CREATE`
-- `UPDATE`
-- `DELETE`
+- `CRÉER`
+- `METTRE À JOUR`
+- `SUPPRIMER`
 
-Types:
+Les types:
 
-- `METADATA`
+- `MÉTADONNÉES`
 - `TRACKER`
-- `AGGREGATE`
+- `AGRÉGÉ`
 
-This means that **no action is required** to enable the default audit system. The default setting is equivalent to the following `dhis.conf` configuration.
+Cela signifie qu'**aucune action n'est requise** pour activer le système d'audit par défaut. Le paramètre par défaut équivaut à la configuration `dhis.conf` suivante.
 
-```properties
-audit.metadata = CREATE;UPDATE;DELETE
-audit.tracker = CREATE;UPDATE;DELETE
-audit.aggregate = CREATE;UPDATE;DELETE
+```propriétés
+audit.metadata = CRÉER; METTRE À JOUR; SUPPRIMER
+audit.tracker = CRÉER; METTRE À JOUR; SUPPRIMER
+audit.aggregate = CRÉER; METTRE À JOUR; SUPPRIMER
 ```
 
-The audit can be configured using the _audit matrix_. The audit matrix represents the valid combinations of scopes and types, and is defined with the following properties in the `dhis.conf` configuration file. Each property accepts a semicolon (`;`) delimited list of audit types.
+L'audit peut être configuré à l'aide du _référentiel d'audit_. Le référentiel d'audit représente les combinaisons valides de portées et de types, et est défini avec les propriétés suivantes dans le fichier de configuration `dhis.conf`. Chaque propriété accepte une liste de types d'audit délimitée par un point-virgule (`;`).
 
 * `audit.metadata`
 * `audit.tracker`
 * `audit.aggregate`
 
-## Examples { #examples } 
+## Exemples { #examples }
 
-This section demonstrates how to configure the audit system in `dhis.conf`.
+Cette section montre comment configurer le système d'audit dans `dhis.conf`.
 
-To enable audit of create and update of metadata and tracker only:
+Pour activer l'audit de création et de mise à jour des métadonnées et du tracker uniquement :
 
 ```properties
 audit.metadata = CREATE;UPDATE
@@ -2248,7 +2248,7 @@ audit.tracker = CREATE;UPDATE
 audit.aggregate = DISABLED
 ```
 
-To only audit tracker related objects create and delete:
+Pour auditer uniquement les objets liés au tracker "créer" et "supprimer" :
 
 ```properties
 audit.metadata = DISABLED
@@ -2256,7 +2256,7 @@ audit.tracker = CREATE;DELETE
 audit.aggregate = DISABLED
 ```
 
-To completely disable audit for all scopes:
+Pour désactiver complètement l'audit pour toutes les portées :
 ```properties
 audit.metadata = DISABLED
 audit.tracker = DISABLED
