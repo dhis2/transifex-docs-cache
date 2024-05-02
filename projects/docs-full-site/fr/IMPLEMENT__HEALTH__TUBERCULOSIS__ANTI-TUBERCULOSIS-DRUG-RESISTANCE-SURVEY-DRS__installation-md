@@ -1,0 +1,407 @@
+---
+edit_url: "https://github.com/dhis2-metadata/TB_DRS/blob/master/docs/tb_drs-installation.md"
+revision_date: '2022-05-25'
+tags:
+- Implémentation
+---
+
+# WHO Anti-Tuberculosis Drugs Resistance Survey (DRS) - Tracker Installation Guide { #tb-drs-installation }
+
+Package Version 1.0.1
+
+Langue par défaut du système : anglais
+
+Traductions disponibles : français, espagnol, portugais
+
+## Aperçu { #overview } 
+
+Les fichiers .json de métadonnées du package contiennent un composant « package » qui fournit des détails techniques sur la version et le contenu du package. Les fichiers disponibles dans la version actuelle du package sont énumérés ci-dessous.
+
+### DHIS2.35 { #dhis235 } 
+
+=== « Package complet »
+
+    ```json
+    "package": {
+        "DHIS2Build": "35d663a",
+        "DHIS2Version": "2.35.11",
+        "code": "TBDR00",
+        "description": "Anti-Tuberculosis Drug Resistance Survey (DRS)",
+        "lastUpdated": "20220124T083253",
+        "locale": "en",
+        "name": "TB_DRS_TKR_1.0.1_DHIS2.35.11-en",
+        "type": "TKR",
+        "version": "1.0.1"
+    }
+    ```
+
+### DHIS2.36 { #dhis236 } 
+
+=== « Package complet »
+
+    ```json
+    "package": {
+        "DHIS2Build": "5d136cb",
+        "DHIS2Version": "2.36.6",
+        "code": "TBDR00",
+        "description": "Anti-Tuberculosis Drug Resistance Survey (DRS)",
+        "lastUpdated": "20220124T073407",
+        "locale": "en",
+        "name": "TB_DRS_TKR_1.0.1_DHIS2.36.6-en",
+        "type": "TKR",
+        "version": "1.0.1"
+    }
+    ```
+
+When importing this package into a new/blank instance, please refer to the [DHIS2 installation guide](https://docs.dhis2.org/master/en/dhis2_system_administration_guide/installation.html).
+
+## Installation { #installation }
+
+L'installation du module se fait en plusieurs étapes :
+
+1. [Preparing](#preparing-the-metadata-file) the metadata file.
+2. [Importer](#importing-metadata) le fichier de métadonnées DHIS2.
+3. [Configuration](#configuration-additionnelle) des métadonnées importées.
+4. [Adaptation](#adapting-the-tracker-program) du programme après son importation
+
+Il est recommandé de lire d'abord chaque section avant de commencer le processus d'installation et de configuration dans le DHIS2. Les sections non applicables ont été identifiées, selon que vous importiez dans une nouvelle instance de DHIS2 ou dans une instance de DHIS2 ayant déjà des métadonnées. La procédure décrite dans le présent document doit être testée dans un environnement de test et de simulation avant d'être répétée ou transférée dans une instance de production du DHIS2.
+
+## Conditions requises { #requirements } 
+
+Pour installer le module, il faut nécessairement un compte d'utilisateur administrateur sur DHIS2. La procédure décrite dans le présent document doit être testée dans un environnement de test et de simulation avant d'être exécutée sur une instance de production du DHIS2.
+
+Great care should be taken to ensure that the server itself and the DHIS2 application is well secured, to restrict access to the data being collected. Details on securing a DHIS2 system is outside the scope of this document, and we refer to the [DHIS2 documentation](https://docs.dhis2.org/).
+
+## Préparation du fichier de métadonnées { #preparing-the-metadata-file } 
+
+**NOTE:** If you are installing the package on a new instance of DHIS2, you can skip the “Preparing the metadata file” section and move immediately to the section [Importing a metadata file into DHIS2](#importing-metadata)
+
+Bien que ce ne soit pas toujours nécessaire, il peut souvent être avantageux d'apporter certaines modifications au fichier de métadonnées avant son importation dans DHIS2.
+
+### Dimension de données par défaut { #default-data-dimension } 
+
+Dans les premières versions du système DHIS2, les UID des dimensions de données par défaut étaient générés automatiquement. Ainsi, bien que toutes les instances du système DHIS2 possèdent une option de catégorie par défaut, une catégorie d’élément de données, une combinaison de catégories et une combinaison d’options de catégorie, les UID de ces valeurs par défaut peuvent être différents. Les versions ultérieures du système DHIS2 utilisent des UID codés en dur pour la taille par défaut, lesquels sont utilisés dans les packages de configuration.
+
+Pour éviter tout conflit lors de l’importation des métadonnées, nous vous recommandons de rechercher et de remplacer toutes les occurrences de ces objets par défaut dans l’ensemble du fichier .json, en remplaçant les UID du fichier .json par ceux de l’instance dans laquelle le fichier sera importé. Le tableau 1 présente les UID à remplacer, ainsi que les points de terminaison d’API permettant d’identifier les UID existants.
+
+| Objet                      | UID           | Chemin vers l'API                                              |
+|-----------------------------|---------------|-----------------------------------------------------------|
+| Catégorie                    | `GLevLNI9wkl` | `../api/categories.json?filter=name:eq:default`           |
+| Option de catégorie             | `xYerKDKCefk` | `../api/categoryOptions.json?filter=name:eq:default`      |
+| La combinaison de catégories        | `bjDvmb4bfuf` | `../api/categoryCombos.json?filter=name:eq:default`       |
+| Combinaison d’options catégorie | `HllvX50cXC0` | `../api/categoryOptionCombos.json?filter=name:eq:default` |
+
+Identifiez les UID des tailles par défaut de votre instance à l’aide des requêtes API affichées et remplacez les UID dans le fichier .json par ceux de l’instance.
+
+> **N.B.**
+>
+> Notez que cette opération de recherche et de remplacement doit être effectuée via un éditeur de texte brut, et non un traitement de texte comme Microsoft Word.
+
+### Types d'indicateurs { #indicator-types } 
+
+Le type d’indicateur est également un type d’objet susceptible de créer un conflit lors de l’importation, car certains noms sont utilisés dans différentes bases de données DHIS2 (par ex. « Pourcentage »). Comme les types d’indicateurs sont définis par leur facteur (y compris 1 pour les indicateurs « numérateur seulement »), ils ne laissent aucune ambiguïté et peuvent être remplacés en recherchant et remplaçant des UID. Cette méthode permet d’éviter les éventuels conflits d’importation et empêche le responsable de la mise en œuvre de créer des doublons de types d’indicateurs. Le tableau ci-dessous contient les UID pouvant être remplacés, ainsi que les points de terminaison d’API permettant d’identifier les UID existants :
+
+|Objet                  | UID           | Chemin vers l'API                                                          |
+|------------------------|---------------|-----------------------------------------------------------------------|
+| Numérateur seulement (nombre)| `CqNPn5KzksS` | `../api/indicatorTypes.json?filter=number:eq:true&filter=factor:eq:1` |
+
+### TrackedEntityType (Type d'entité suivie) { #tracked-entity-type } 
+
+Comme pour les types d’indicateurs, il se peut que des types d’entités suivies existent déjà dans votre base de données DHIS2. Pour éviter de créer des doublons, les références au type d’entité suivie doivent être modifiées pour refléter les éléments de votre système. Le tableau ci-dessous contient les UID pouvant être remplacés, ainsi que les points de terminaison d’API permettant d’identifier les UID existants :
+
+|Objet  | UID           | Chemin vers l'API                                           |
+|------------------------|---------------|----------------------------------------|
+| Personne | `MCPQUTHX1Ze` | `../api/trackedEntityTypes.json?filter=name:eq:Person` |
+
+### Sort order for options { #sort-order-for-options } 
+
+Vérifiez si l’ordre de tri `sortOrder` des options de votre système correspond à celui inclus dans le package de métadonnées. Cela ne s’applique que si le fichier .json et l’instance cible contiennent des options et des ensembles d’options avec le même UID.
+
+Après l’importation, assurez-vous que l’ordre de tri des options d’un ensemble d’options commence par 1. Les valeurs de l’ordre de tri ne doivent avoir aucun écart (par exemple 1, 2, 3, 5, 6).
+
+L’ordre de tri peut être modifié dans l’application Maintenance.
+
+1. Accédez à l’ensemble d’options applicable
+2. Ouvrez la section « Options »
+3. Utilisez « TRIER PAR NOM », « TRIER PAR CODE/VALEUR » ou « TRIER MANUELLEMENT » comme alternative.
+
+### Dashboards and visualizations { #dashboards-and-visualizations } 
+
+The dashboards and visualizations in each dashboard cannot be hidden/unhidden by constants. Therefore the unapplicable dashboards/visualizations have to be manually removed during package installation based on the selection of tests/drugs.
+
+Visualizations in the metadata file may contain a placeholder <OU_ROOT_UID>. This placeholder in the metadata.json file has to be replaced by the Root Organisation unit UID from the target instance before the package can be imported.
+
+Some visualizations and maps may contain references to organisation unit levels. Maps that consist of several map views may contain vaious Organisation unit level references based on the configuration of the map layer. The table below provides an overview of such items included in the package. Adjust the organisation unit level references in the metadata json file to match the organisation unit structure in the target instance before importing the metadata file.
+
+Exemple:
+
+| UID           | Nom                                                                    | Type                        | Niveaux d'unité d'organisation  | Mapping guidance                    |
+|---------------|-------------------------------------------------------------------------|-----------------------------|---------------------------|-------------------------------------|
+| `vgIrIjzONuV` | Patients with Inh-resistant and Rif-susceptible TB (by health facility) | map (mapview)               | 3,2                       | District, Region                    |
+| `vgIrIjzONuV` | Patients with Inh-resistant and Rif-susceptible TB (by health facility) | map (mapview)               | 4                         | Établissement                            |
+| `JUbkmvmNxbB` | RR-TB patients (by health facility)                                     | map (mapview)               | 3,2                       | District, Region                    |
+| `JUbkmvmNxbB` | RR-TB patients (by health facility)                                     | map (mapview)               | 4                         | Établissement                            |
+| `u4FxBzXoiml` | RR-TB patients resistant to Fq (by health facility)                     | map (mapview)               | 3,2                       | District, Region                    |
+| `u4FxBzXoiml` | RR-TB patients resistant to Fq (by health facility)                     | map (mapview)               | 4                         | Établissement                            |
+| `CrxqCiQyhay` | Enrolled patients by facility (cumulative)                              | visualization (pivot table) | 4                         | Établissement                            |
+| `PazB6GSITwK` | Missing data report                                                     | visualization (pivot table) | 4                         | Établissement                            |
+| `GinRhTtdKnI` | Percentage of samples rejected on arrival at NTRL                       | visualization (pivot table) | 1,2,3,4                   | Country, Region, District, Facility |
+
+## Importation de métadonnées { #importing-metadata } 
+
+Utilisez l’application DHIS2 [Import/Export](#import_export) pour importer des packages de métadonnées. Nous vous recommandons d’utiliser la fonction « test » pour identifier les problèmes avant de tenter d’effectuer une importation réelle des métadonnées. Si le « test » signale des problèmes ou des conflits, consultez la section [conflits lors de l’importation](#handling-import-conflicts) ci-dessous. Si aucune erreur n’est signalée lors de l’importation « test »/« validée », essayez d’importer les métadonnées. Si l’importation s’est déroulée sans erreur, vous pouvez passer à la [configuration](#configuration) du module. Dans certains cas, les conflits ou les problèmes d’importation n’apparaissent pas pendant le test, mais durant l’importation réelle. Dans ce cas, le résumé de l’importation indiquera les erreurs à résoudre.
+
+### Gestion des conflits d'importation { #handling-import-conflicts } 
+
+> **REMARQUE**
+>
+> Si vous importez le package dans une nouvelle instance du système DHIS2, il n’y aura aucun conflit lors de l’importation, car ia base de données cible ne contient aucune métadonnée. Après avoir importé les métadonnées, passez à la section « [Configuration](#configuration) ».
+
+Différents types de conflit peuvent survenir, mais le plus courant est le fait que le nom, le nom abrégé et/ou le code des objets de métadonnées du package de configuration existent déjà dans la base de données cible. Il existe plusieurs solutions alternatives à ces problèmes, chacun avec ses avantages et ses inconvénients. La solution la plus appropriée dépend, par exemple, du type d’objet à l’origine du conflit.
+
+#### Option 1 { #alternative-1 } 
+
+Renommez l'objet existant dans votre base de données DHIS2 pour lequel il existe un conflit. L'avantage de cette approche est qu'il n'est pas nécessaire de modifier le fichier .json, les changements étant effectués par l'interface utilisateur de DHIS2. Il est probable que cela soit moins sujet à des erreurs. Cela signifie également que le paquet de configuration est laissé tel quel, ce qui peut être un avantage, par exemple lorsque des mises à jour du package sont publiées. Les objets du package d'origine sont également souvent référencés dans le matériel de formation et la documentation.
+
+#### Option 2 { #alternative-2 } 
+
+Renommez l'objet pour lequel il y a un conflit dans le fichier .json. L'avantage de cette approche est que les métadonnées DHIS2 existantes sont laissées telles quelles. Cela peut être un facteur lorsqu'il y a du matériel de formation ou de la documentation, comme les procédure normale d'exploitation des dictionnaires de données liés à l'objet en question, et cela n'implique aucun risque de confusion pour les utilisateurs lors de la modification des métadonnées qui leur sont familières.
+
+Notez que pour les deux options 1 et 2, la modification peut être aussi simple que l'ajout d'un petit pré/post-fixe au nom, pour minimiser le risque de confusion.
+
+#### Option 3 { #alternative-3 } 
+
+Une troisième approche, plus complexe, consiste à modifier le fichier .json pour réutiliser les métadonnées existantes. Par exemple, dans les cas où un ensemble d'options existe déjà pour un certain concept (par exemple "sexe"), cet ensemble d'options pourrait être supprimé du fichier .json et toutes les références à son UID remplacées par l'ensemble d'options correspondant existant déjà dans la base de données. Le grand avantage de cette méthode (qui n'est pas limitée aux seuls cas où il y a un conflit d'importation directe) est d'éviter de créer des métadonnées dupliquées dans la base de données. Il y a des aspects essentiels à prendre en compte lors de ce type de modification :
+
+* il nécessite une connaissance approfondie de la structure détaillée des métadonnées du DHIS2
+* Cette approche ne fonctionne pas pour tous les types d'objets. En particulier, certains types d'objets ont des dépendances compliquées à résoudre de cette manière, par exemple en ce qui concerne les désagrégations.
+* il sera compliqué de procéder aux futures mises à jour du package de configuration.
+
+### Configuration supplémentaire { #additional-configuration } 
+
+Une fois que toutes les métadonnées sont importées avec succès, des étapes doivent être mises en oeuvre avant que le module ne soit fonctionnel.
+
+### Partage { #sharing } 
+
+Tout d'abord, vous devrez utiliser la fonctionnalité _Partage_ du DHIS2 pour configurer quels utilisateurs (groupes d'utilisateurs) doivent voir les métadonnées et les données associées au programme ainsi que qui peut enregistrer/saisir des données dans le programme. Par défaut, le partage a été configuré pour ce qui suit :
+
+* Type d'entité suivie
+* Programme
+* Étapes du programme
+* Tableaux de bord
+
+There are four user groups that come with the package:
+
+* DRS - admin
+* DRS - access
+* DRS - data capture
+
+Les éléments suivants sont attribués par défaut à ces groupes d'utilisateurs
+
+|Objet|Groupes d'utilisateurs| | |
+|:--|:--|:--|:--|
+| |TB access|TB admin|TB data capture|
+|Type d'entité suivie|**Metadata:** can view <br> **Data:** can view|**Metadata:** can edit and view <br> **Data:** can view|**Metadata:** can view <br> **Data:** can capture and view|
+|Programme|**Metadata:** can view <br> **Data:** can view|**Metadata:** can edit and view <br> **Data:** can view|**Metadata:** can view <br> **Data:** can capture and view|
+|Étapes du programme|**Metadata:** can view <br> **Data:** can view|**Metadata:** can edit and view <br> **Data:** can view|**Metadata:** can view <br> **Data:** can capture and view|
+|Tableaux de bord|**Metadata:** can view <br> **Data:** can view|**Metadata:** can edit and view <br> **Data:** can view|**Metadata:** can view <br> **Data:** can view|
+
+You will want to assign your users to the appropriate user group based on their role within the system. You may want to enable sharing for other objects in the package depending on your set up. Refer to the [DHIS2 Documentation](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/about-sharing-of-objects.html) for more information on configuring sharing.
+
+### User roles { #user-roles } 
+
+Les utilisateurs auront besoin de rôles utilisateur pour pouvoir utiliser les différentes applications du DHIS2. Les rôles minimums suivants sont recommandés :
+
+1. Analyse des données Tracker : Il peut visualiser des analyses d'événements et accéder à des tableaux de bord, des rapports d'événements, un visualiseur d'événements, un visualiseur de données, des tableaux croisés dynamiques, des rapports et des cartes.
+2. Saisie de données Tracker : possibilité d'ajouter des valeurs de données, de mettre à jour les entités suivies, de rechercher des entités suivies dans les unités d'organisation et d'accéder à l'application Saisie Tracker
+
+Consultez le site [Documentation de DHIS2](https://docs.dhis2.org/) pour plus d’informations sur la configuration des rôles des utilisateurs.
+
+### Unités d’organisation { #organisation-units }
+
+Le programme et les ensembles de données doivent être attribués à des unités d’organisation dans la hiérarchie existante afin d’être accessibles via les applications tracker capture ou capture.
+
+### Métadonnées dupliquées { #duplicated-metadata } 
+
+> **NOTE**
+>
+> This section only applies if you are importing into a DHIS2 database in which there is already meta-data present. If you are working with a new DHIS2 instance, please skip this section and go to [Adapting the tracker program](#adapting-the-program).
+> If you are using any third party applications that rely on the current metadata, please take into account that this update could break them.
+
+Même lorsque les métadonnées sont importées avec succès sans aucun conflit d'importation, il peut y avoir des doublons dans les métadonnées - éléments de données, attributs d'entités suivies ou ensembles d'options qui existent déjà. Comme indiqué dans la section ci-dessus sur la résolution des conflits, il est important de garder à l'esprit que les décisions relatives à la modification des métadonnées dans le DHIS2 doivent également tenir compte d'autres documents et ressources associés de différentes manières aux métadonnées existantes et aux métadonnées importées par le biais du package de configuration. La résolution des doublons ne consiste donc pas seulement à "nettoyer la base de données", mais aussi à s'assurer que cela est fait sans, par exemple, briser le potentiel d'intégration avec d'autres systèmes, la possibilité d'utiliser du matériel de formation, la rupture des SOP, etc. Cela dépend beaucoup du contexte.
+
+Il est important de garder à l’esprit que le DHIS2 dispose d’outils pouvant dissimuler certaines des complexités des duplications potentielles dans les métadonnées. Par exemple, lorsqu’il existe des ensembles d’options en double, ils peuvent être masqués pour des groupes d’utilisateurs par le biais de [Partage](#sharing).
+
+### Les constantes { #constants } 
+
+WHO Anti-Tuberculosis Drugs Resistance Survey (DRS) Tracker package includes a set of tests and a list of drugs that can be modified by the implementing country according to national context (e.g. which drugs and tests are used/available in country). The use of constants and corresponding program rules enables a system admin in an implementing country to easily ‘turn on’ or ‘turn off’ types of drugs and tests depending on availability. When the complete package is installed into a DHIS2 instance, all data elements for all tests and drugs included in this package are included in the system. All constant values are initially set to **1** (enabling the related data elements for data entry) and can be set to **0** by an implementer or system admin according to country context if not needed (disabling the related data elements for data entry). If a test or drug later becomes available, the admin can simply re-enable the data elements by changing the constant from a value of **0** to a value of **1**.
+
+#### Cluster Sampling / Exhaustive Sampling of all Health Facilities { #cluster-sampling-exhaustive-sampling-of-all-health-facilities } 
+
+Configure whether the country is using Cluster Sampling or Exhaustive Sampling of all Health Facilities
+
+| Constante | Paramètres | UID |
+|---|---|---|
+| Cluster Sampling | Value "1" = Include Cluster Sampling for DRS. <br> Value "0" = Exclude Cluster Sampling from DRS. | aYPQMlxAZsz |
+
+#### Number of DRS Samples sent to NRL { #number-of-drs-samples-sent-to-nrl } 
+
+Configure the number of samples are sent to NRL processing
+
+| Constante | Paramètres | UID |
+|---|---|---|
+| Sample 2 for NRL Processing | Value "1" = Add DRS Sample 2 collected for NRL processing to program configuration <br> Value "0" = Remove DRS Sample 2 from program configuration | rSS2dY6gwLJ |
+| Sample 3 for NRL Processing | Value "1" = Add DRS Sample 3 collected for NRL processing to program configuration <br> Value "0" = Remove DRS Sample 3 from program configuration | sqgp1l0s4wp |
+| Sample 4 for NRL Processing | Value "1" = Add DRS Sample 4 collected for NRL processing to program configuration <br> Value "0" = Remove DRS Sample 4 from program configuration | NXr7RH56Q1R |
+
+#### Initial Screening Tests { #initial-screening-tests } 
+
+Configure which initial screening tests are used for bacteriological confirmation of TB: **Sputum Smear Microscopy, Xpert MTB/RIF** or **both**.
+
+| Constante | Paramètres | UID |
+|---|---|---|
+| Bacteriological Confirmation of TB | Value "1" = Include both "Sputum Smear Microscopy" and "Xpert MTB/RIF" for Bacteriological Confirmation of TB. <br> Value "2" = Include only "Sputum smear microscopy" for Bacteriological Confirmation of TB. <br> Value "3" = Include only "Xpert MTB/RIF" for Bacteriological Confirmation of TB. | gYj2CUoep4O |
+
+#### SRL Sample Processing { #srl-sample-processing } 
+
+Configure whether the country has an option of sending samples to SRL (supranational lab).
+
+| Constante | Paramètres | UID |
+|---|---|---|
+| SRL | Value "1" = include an option of sending Samples to SRL <br> Value "0" = exclude an option of sending Samples to SRL | AUltNkQXzdm |
+
+#### Tests at NRL { #tests-at-nrl } 
+
+| Constante | Paramètres | UID |
+|---|---|---|
+| Sputum Smear Microscopy | Value "1" = include Sputum Smear Microscopy in the list of tests. <br> Value "0" = exclude Sputum Smear Microscopy from the list of tests. | q1ah12sKfG3 |
+| Culture in Solid Media (e.g. LJ) | Value "1" = include Culture in Solid Media (e.g. LG) in the list of tests. <br> Value "0" = exclude Culture in Solid Media (e.g. LG) from the list of tests. | iSKEqcuVAui |
+| Culture in Liquid Media (e.g. MGIT) | Value "1" = include Culture in Liquid Media (e.g. MGIT) in the list of tests. <br> Value "0" = exclude Culture in Liquid Media (e.g. MGIT) from the list of tests. | qpAseG5vJyS |
+| Xpert MTB/RIF | Value "1" = include Xpert MTB/RIF in the list of tests. <br> Value "0" = exclude Xpert MTB/RIF from the list of tests. | H4ObQDbhnTA |
+| Xpert MTB/RIF Ultra | Value "1" = include Xpert MTB/RIF Ultra in the list of tests. <br> Value "0" = exclude Xpert MTB/RIF Ultra from the list of tests. | cFoFDkXKcXC |
+| Initial Phenotypic DST in Solid Media (eg. LJ) | Value "1" = include Initial Phenotypic DST in Solid Media (eg. LJ) in the list of tests. <br> Value "0" = exclude Initial Phenotypic DST in Solid Media (eg. LJ) from the list of tests. | HjN2Bgnusyy |
+| Initial Phenotypic DST in Liquid Media (eg. MGIT) | Value "1" = include Initial Phenotypic DST in Liquid Media (eg. MGIT) in the list of tests. <br> Value "0" = exclude Initial Phenotypic DST in Liquid Media (eg. MGIT) from the list of tests. | OQxeAIyQUeB |
+| Subsequent Phenotypic DST in Solid Media (eg. LJ) | Value "1" = include Subsequent Phenotypic DST in Solid Media (eg. LJ) in the list of tests. <br> Value "0" = exclude Subsequent Phenotypic DST in Solid Media (eg. LJ) from the list of tests. | BpRfvWQcvTo |
+| LPA (Rif/Inh) | Value "1" = include LPA (Rif/Inh) in the list of tests. <br> Value "0" = exclude LPA (Rif/Inh) from the list of tests. | ESUffSPwmju |
+| LPA (Fq/2LI) | Value "1" = include LPA (Fq/2LI) in the list of tests. <br> Value "0" = exclude LPA (Fq/2LI) from the list of tests. | govArZqiFzY |
+| Subsequent Phenotypic DST in Liquid Media (eg. MGIT) | Value "1" = include Subsequent Phenotypic DST in Liquid Media (eg. MGIT) in the list of tests. <br> Value "0" = exclude Subsequent Phenotypic DST in Liquid Media (eg. MGIT) from the list of tests. | W8Fm1pJuJPL |
+| Targeted Gene Sequencing | Value "1" = include Targeted Gene Sequencing in the list of tests. <br> Value "0" = exclude Targeted Gene Sequencing from the list of tests. | KkypNdLNW1f |
+| Whole Genome Sequencing | Value "1" = include WGS in the list of tests. <br> Value "0" = exclude WGS from the list of tests. | MC7QUDr9YKC |
+
+#### List of Available Drugs { #list-of-available-drugs } 
+
+| Initial Phenotypic DST in Solid Media (eg. LJ) |||
+|---|---|---|
+| Constante | Paramètres | UID |
+| Initial Phenotypic DST in Solid Media - Rifampicin | Value "1" = include Rifampicin in the list of drugs available for Initial Phenotypic DST testing in solid media. <br> Value "0" = exclude Rifampicin from the list of drugs available for Initial Phenotypic DST testing in solid media. | Q67DDsupq7v |
+| Initial Phenotypic DST in Solid Media - Isoniazid (CC) | Value "1" = include Isoniazid (CC) in the list of drugs available for Initial Phenotypic DST testing in solid media. <br> Value "0" = exclude Isoniazid (CC) from the list of drugs available for Initial Phenotypic DST testing in solid media. | dAPAScvFPfX |
+| Initial Phenotypic DST in Solid Media - Isoniazid (CB) | Value "1" = include Isoniazid (CB) in the list of drugs available for Initial Phenotypic DST testing in solid media. <br> Value "0" = exclude Isoniazid (CB) from the list of drugs available for Initial Phenotypic DST testing in solid media. | anpSc1tmlft |
+| Initial Phenotypic DST in Solid Media - Pyrazinamide | Value "1" = include Pyrazinamide in the list of drugs available for Initial Phenotypic DST testing in solid media. <br> Value "0" = exclude Pyrazinamide from the list of drugs available for Initial Phenotypic DST testing in solid media. <br> Pyrazinamide can only be tested using liquid media. | aCaNdqUIDZl |
+| Initial Phenotypic DST in Solid Media - Ethambutol | Value "1" = include Ethambutol in the list of drugs available for Initial Phenotypic DST testing in solid media. <br> Value "0" = exclude Ethambutol from the list of drugs available for Initial Phenotypic DST testing in solid media. | yxPHZFwMTN6 |
+| Initial Phenotypic DST in Solid Media - Levofloxacin | Value "1" = include Levofloxacin in the list of drugs available for Initial Phenotypic DST testing in solid media. <br> Value "0" = exclude Levofloxacin from the list of drugs available for Initial Phenotypic DST testing in solid media. | NlOX3oV4gWe |
+| Initial Phenotypic DST in Solid Media - Moxifloxacin (CC) | Value "1" = include Moxifloxacin (CC) in the list of drugs available for Initial Phenotypic DST testing in solid media. <br> Value "0" = exclude Moxifloxacin (CC) from the list of drugs available for Initial Phenotypic DST testing in solid media. | RJNE1o9cw7Y |
+| Initial Phenotypic DST in Solid Media - Moxifloxacin (CB) | Value "1" = include Moxifloxacin (CB) in the list of drugs available for Initial Phenotypic DST testing in solid media. <br> Value "0" = exclude Moxifloxacin (CB) from the list of drugs available for Initial Phenotypic DST testing in solid media. | m4c79OHEKCG |
+| Initial Phenotypic DST in Solid Media - Amikacin | Value "1" = include Amikacin in the list of drugs available for Initial Phenotypic DST testing in solid media. <br> Value "0" = exclude Amikacin from the list of drugs available for Initial Phenotypic DST testing in solid media. | XO1V9o5C95J |
+| Initial Phenotypic DST in Solid Media - Bedaquiline | Value "1" = include Bedaquiline in the list of drugs available for Initial Phenotypic DST testing in solid media. <br> Value "0" = exclude Bedaquiline from the list of drugs available for Initial Phenotypic DST testing in solid media. | UxcTzMRQsfa |
+| Initial Phenotypic DST in Solid Media - Delamanid | Value "1" = include Delamanid in the list of drugs available for Initial Phenotypic DST testing in solid media. <br> Value "0" = exclude Delamanid from the list of drugs available for Initial Phenotypic DST testing in solid media. | VUlsMrm4D8k |
+| Initial Phenotypic DST in Solid Media - Linezolid | Value "1" = include Linezolid in the list of drugs available for Initial Phenotypic DST testing in solid media. <br> Value "0" = exclude Linezolid from the list of drugs available for Initial Phenotypic DST testing in solid media. | CVQR2ZtZWxk |
+| Initial Phenotypic DST in Solid Media - Clofazimine | Value "1" = include Clofazimine in the list of drugs available for Initial Phenotypic DST testing in solid media. <br> Value "0" = exclude Clofazimine from the list of drugs available for Initial Phenotypic DST testing in solid media. <br> Clofazimine can only be tested using liquid media. | ZDpLleSK08x |
+
+| Initial Phenotypic DST in Liquid Media (eg. MGIT) |||
+|---|---|---|
+| Initial Phenotypic DST in Liquid Media - Rifampicin | Value "1" = include Rifampicin in the list of drugs available for Initial Phenotypic DST testing in liquid media. <br> Value "0" = exclude Rifampicin from the list of drugs available for Initial Phenotypic DST testing in liquid media. | uOJYEwV7XfN |
+| Initial Phenotypic DST in Liquid Media - Isoniazid (CC) | Value "1" = include Isoniazid (CC) in the list of drugs available for Initial Phenotypic DST testing in liquid media. <br> Value "0" = exclude Isoniazid (CC) from the list of drugs available for Initial Phenotypic DST testing in liquid media. | cRldkiBh5xv |
+| Initial Phenotypic DST in Liquid Media - Isoniazid (CB) | Value "1" = include Isoniazid (CB) in the list of drugs available for Initial Phenotypic DST testing in liquid media. <br> Value "0" = exclude Isoniazid (CB) from the list of drugs available for Initial Phenotypic DST testing in liquid media. | lqaf0KfpHGd |
+| Initial Phenotypic DST in Liquid Media - Pyrazinamide | Value "1" = include Pyrazinamide in the list of drugs available for Initial Phenotypic DST testing in liquid media. <br> Value "0" = exclude Pyrazinamide from the list of drugs available for Initial Phenotypic DST testing in liquid media. | FDtk4otxDse |
+| Initial Phenotypic DST in Liquid Media - Ethambutol | Value "1" = include Ethambutol in the list of drugs available for Initial Phenotypic DST testing in liquid media. <br> Value "0" = exclude Ethambutol from the list of drugs available for Initial Phenotypic DST testing in liquid media. | n9zOOsLO0QP |
+| Initial Phenotypic DST in Liquid Media - Levofloxacin | Value "1" = include Levofloxacin in the list of drugs available for Initial Phenotypic DST testing in liquid media. <br> Value "0" = exclude Levofloxacin from the list of drugs available for Initial Phenotypic DST testing in liquid media. | t7Okdm8VgDV |
+| Initial Phenotypic DST in Liquid Media - Moxifloxacin (CC) | Value "1" = include Moxifloxacin (CC) in the list of drugs available for Initial Phenotypic DST testing in liquid media. <br> Value "0" = exclude Moxifloxacin (CC) from the list of drugs available for Initial Phenotypic DST testing in liquid media. | dgjpdQO2Iva |
+| Initial Phenotypic DST in Liquid Media - Moxifloxacin (CB) | Value "1" = include Moxifloxacin (CB) in the list of drugs available for Initial Phenotypic DST testing in liquid media. <br> Value "0" = exclude Moxifloxacin (CB) from the list of drugs available for Initial Phenotypic DST testing in liquid media. | UL61U78GWCg |
+| Initial Phenotypic DST in Liquid Media - Amikacin | Value "1" = include Amikacin in the list of drugs available for Initial Phenotypic DST testing in liquid media. <br> Value "0" = exclude Amikacin from the list of drugs available for Initial Phenotypic DST testing in liquid media. | x6v8O6EZo0U |
+| Initial Phenotypic DST in Liquid Media - Bedaquiline | Value "1" = include Bedaquiline in the list of drugs available for Initial Phenotypic DST testing in liquid media. <br> Value "0" = exclude Bedaquiline from the list of drugs available for Initial Phenotypic DST testing in liquid media. | KjvwSybuWJU |
+| Initial Phenotypic DST in Liquid Media - Delamanid | Value "1" = include Delamanid in the list of drugs available for Initial Phenotypic DST testing in liquid media. <br> Value "0" = exclude Delamanid from the list of drugs available for Initial Phenotypic DST testing in liquid media. | BJTzi3WWjhT |
+| Initial Phenotypic DST in Liquid Media - Linezolid | Value "1" = include Linezolid in the list of drugs available for Initial Phenotypic DST testing in liquid media. <br> Value "0" = exclude Linezolid from the list of drugs available for Initial Phenotypic DST testing in liquid media. | aZq11UuXPP6 |
+| Initial Phenotypic DST in Liquid Media - Clofazimine | Value "1" = include Clofazimine in the list of drugs available for Initial Phenotypic DST testing in liquid media. <br> Value "0" = exclude Clofazimine from the list of drugs available for Initial Phenotypic DST testing in liquid media. | GL5JTtBvbEC |
+
+| Subsequent Phenotypic DST in Solid Media (eg. LJ) |||
+|---|---|---|
+| Constante | Paramètres | UID |
+| Subsequent Phenotypic DST in Solid Media - Rifampicin | Value "1" = include Rifampicin in the list of drugs available for Subsequent Phenotypic DST testing in solid media. <br> Value "0" = exclude Rifampicin from the list of drugs available for Subsequent Phenotypic DST testing in solid media. | zJoEjvstp2d |
+| Subsequent Phenotypic DST in Solid Media - Isoniazid (CC) | Value "1" = include Isoniazid (CC) in the list of drugs available for Subsequent Phenotypic DST testing in solid media. <br> Value "0" = exclude Isoniazid (CC) from the list of drugs available for Subsequent Phenotypic DST testing in solid media. | eM3UfUO7W8O |
+| Subsequent Phenotypic DST in Solid Media - Isoniazid (CB) | Value "1" = include Isoniazid (CB) in the list of drugs available for Subsequent Phenotypic DST testing in solid media. <br> Value "0" = exclude Isoniazid (CB) from the list of drugs available for Subsequent Phenotypic DST testing in solid media. | s8WPR943gGS |
+| Subsequent Phenotypic DST in Solid Media - Pyrazinamide | Value "1" = include Pyrazinamide in the list of drugs available for Subsequent Phenotypic DST testing in solid media. <br> Value "0" = exclude Pyrazinamide from the list of drugs available for Subsequent Phenotypic DST testing in solid media. <br> Pyrazinamide can only be tested using liquid media. | bHPYGfrFNV2 |
+| Subsequent Phenotypic DST in Solid Media - Ethambutol | Value "1" = include Ethambutol in the list of drugs available for Subsequent Phenotypic DST testing in solid media. <br> Value "0" = exclude Ethambutol from the list of drugs available for Subsequent Phenotypic DST testing in solid media. | wNxsAieLWYc |
+| Subsequent Phenotypic DST in Solid Media - Levofloxacin | Value "1" = include Levofloxacin in the list of drugs available for Subsequent Phenotypic DST testing in solid media. <br> Value "0" = exclude Levofloxacin from the list of drugs available for Subsequent Phenotypic DST testing in solid media. | Fw8wOlTETPt |
+| Subsequent Phenotypic DST in Solid Media - Moxifloxacin (CC) | Value "1" = include Moxifloxacin (CC) in the list of drugs available for Subsequent Phenotypic DST testing in solid media. <br> Value "0" = exclude Moxifloxacin (CC) from the list of drugs available for Subsequent Phenotypic DST testing in solid media. | Czx5FuOqF9i |
+| Subsequent Phenotypic DST in Solid Media - Moxifloxacin (CB) | Value "1" = include Moxifloxacin (CB) in the list of drugs available for Subsequent Phenotypic DST testing in solid media. <br> Value "0" = exclude Moxifloxacin (CB) from the list of drugs available for Subsequent Phenotypic DST testing in solid media. | NvA1K4hFJbc |
+| Subsequent Phenotypic DST in Solid Media - Amikacin | Value "1" = include Amikacin in the list of drugs available for Subsequent Phenotypic DST testing in solid media. <br> Value "0" = exclude Amikacin from the list of drugs available for Subsequent Phenotypic DST testing in solid media. | dTwKm1u2VhY |
+| Subsequent Phenotypic DST in Solid Media - Bedaquiline | Value "1" = include Bedaquiline in the list of drugs available for Subsequent Phenotypic DST testing in solid media. <br> Value "0" = exclude Bedaquiline from the list of drugs available for Subsequent Phenotypic DST testing in solid media. | r70ONQRhaHY |
+| Subsequent Phenotypic DST in Solid Media - Delamanid | Value "1" = include Delamanid in the list of drugs available for Subsequent Phenotypic DST testing in solid media. <br> Value "0" = exclude Delamanid from the list of drugs available for Subsequent Phenotypic DST testing in solid media. | RFqmLP5W5di |
+| Subsequent Phenotypic DST in Solid Media - Linezolid | Value "1" = include Linezolid in the list of drugs available for Subsequent Phenotypic DST testing in solid media. <br> Value "0" = exclude Linezolid from the list of drugs available for Subsequent Phenotypic DST testing in solid media. | KIeI2d8xalG |
+| Subsequent Phenotypic DST in Solid Media - Clofazimine | Value "1" = include Clofazimine in the list of drugs available for Subsequent Phenotypic DST testing in solid media. <br> Value "0" = exclude Clofazimine from the list of drugs available for Subsequent Phenotypic DST testing in solid media. <br> Clofazimine can only be tested using liquid media. | bywBn5DxVdi |
+
+| Subsequent Phenotypic DST in Liquid Media (eg. MGIT) |||
+|---|---|---|
+| Subsequent Phenotypic DST in Liquid Media - Rifampicin | Value "1" = include Rifampicin in the list of drugs available for Subsequent Phenotypic DST testing in liquid media. <br> Value "0" = exclude Rifampicin from the list of drugs available for Subsequent Phenotypic DST testing in liquid media. | lelJEADYpeI |
+| Subsequent Phenotypic DST in Liquid Media - Isoniazid (CC) | Value "1" = include Isoniazid (CC) in the list of drugs available for Subsequent Phenotypic DST testing in liquid media. <br> Value "0" = exclude Isoniazid (CC) from the list of drugs available for Subsequent Phenotypic DST testing in liquid media. | ZBpqH7xJLBO |
+| Subsequent Phenotypic DST in Liquid Media - Isoniazid (CB) | Value "1" = include Isoniazid (CB) in the list of drugs available for Subsequent Phenotypic DST testing in liquid media. <br> Value "0" = exclude Isoniazid (CB) from the list of drugs available for Subsequent Phenotypic DST testing in liquid media. | F9DTb5zl8rS |
+| Subsequent Phenotypic DST in Liquid Media - Pyrazinamide | Value "1" = include Pyrazinamide in the list of drugs available for Subsequent Phenotypic DST testing in liquid media. <br> Value "0" = exclude Pyrazinamide from the list of drugs available for Subsequent Phenotypic DST testing in liquid media. | VY15auehssY |
+| Subsequent Phenotypic DST in Liquid Media - Ethambutol | Value "1" = include Ethambutol in the list of drugs available for Subsequent Phenotypic DST testing in liquid media. <br> Value "0" = exclude Ethambutol from the list of drugs available for Subsequent Phenotypic DST testing in liquid media. | Ic5asMdbpH8 |
+| Subsequent Phenotypic DST in Liquid Media - Levofloxacin | Value "1" = include Levofloxacin in the list of drugs available for Subsequent Phenotypic DST testing in liquid media. <br> Value "0" = exclude Levofloxacin from the list of drugs available for Subsequent Phenotypic DST testing in liquid media. | b1KgVOel21P |
+| Subsequent Phenotypic DST in Liquid Media - Moxifloxacin (CC) | Value "1" = include Moxifloxacin (CC) in the list of drugs available for Subsequent Phenotypic DST testing in liquid media. <br> Value "0" = exclude Moxifloxacin (CC) from the list of drugs available for Subsequent Phenotypic DST testing in liquid media. | HhKitGif8RV |
+| Subsequent Phenotypic DST in Liquid Media - Moxifloxacin (CB) | Value "1" = include Moxifloxacin (CB) in the list of drugs available for Subsequent Phenotypic DST testing in liquid media. <br> Value "0" = exclude Moxifloxacin (CB) from the list of drugs available for Subsequent Phenotypic DST testing in liquid media. | xfltmyqC3p0 |
+| Subsequent Phenotypic DST in Liquid Media - Amikacin | Value "1" = include Amikacin in the list of drugs available for Subsequent Phenotypic DST testing in liquid media. <br> Value "0" = exclude Amikacin from the list of drugs available for Subsequent Phenotypic DST testing in liquid media. | a4PpEfSutcV |
+| Subsequent Phenotypic DST in Liquid Media - Bedaquiline | Value "1" = include Bedaquiline in the list of drugs available for Subsequent Phenotypic DST testing in liquid media. <br> Value "0" = exclude Bedaquiline from the list of drugs available for Subsequent Phenotypic DST testing in liquid media. | QaioqMbO0TX |
+| Subsequent Phenotypic DST in Liquid Media - Delamanid | Value "1" = include Delamanid in the list of drugs available for Subsequent Phenotypic DST testing in liquid media. <br> Value "0" = exclude Delamanid from the list of drugs available for Subsequent Phenotypic DST testing in liquid media. | Xt5GU9kBD7q |
+| Subsequent Phenotypic DST in Liquid Media - Linezolid | Value "1" = include Linezolid in the list of drugs available for Subsequent Phenotypic DST testing in liquid media. <br> Value "0" = exclude Linezolid from the list of drugs available for Subsequent Phenotypic DST testing in liquid media. | mU5iEABeF2K |
+| Subsequent Phenotypic DST in Liquid Media - Clofazimine | Value "1" = include Clofazimine in the list of drugs available for Subsequent Phenotypic DST testing in liquid media. <br> Value "0" = exclude Clofazimine from the list of drugs available for Subsequent Phenotypic DST testing in liquid media. | Nb6oHqjCCZq |
+
+| LPA (Fluoroquinolones / Second-line Injectables) |||
+|---|---|---|
+| LPA (Fq/2Li) - Ethambutol | Value "1" = include Ethambutol Result in LPA (Fq/2LI) Test. <br> Value "0" = exclude Ethambutol Result from LPA (Fq/2LI) Test. | AiyTLOJHMkl |
+
+Please note, that the constants help to hide certain sections and data element from the data entry without the need to delete them from the system/metadata.json file. However, the elements are still assigned to the program and will be included when exporting all data into  eg. csv files.
+
+### Configuring tracker capture interface, widgets and top bar { #configuring-tracker-capture-interface-widgets-and-top-bar } 
+
+You must configure tracker capture dashboard after the package has been installed. This configuration includes data entry forms, widgets and top bar.
+
+#### Modèles de saisie de données { #data-entry-forms } 
+
+* After registering the first (test) case, access the **Settings** menu in the tracker capture form and select **Show/Hide Widgets**
+* Switch from **Timeline Data Entry** to **Tabular Data Entry**
+* Make sure that **Enrollment**, **Feedback** and **Profile** widgets are selected. Click **Close**.
+* Adjust the widgets on the screen.
+
+#### Top Bar { #top-bar } 
+
+* Access the **Settings** menu and select **Top bar settings**
+* Select **Activate top bar**
+* Select required information fields and assign their **Sort order**
+
+| Recommended fields | Sort order |
+|:--|:--|
+| **Attributs** |  |
+| Sexe | 5 |
+| Des **Indicateurs** |  |
+| DRS ID (Attribute) | 1 |
+| DRS ID (concatenated) | 2 |
+| Patient's age (months)| 3 |
+| Patient's age (years) | 4 |
+| Treatment History | 6 |
+| Resistance | 7 |
+
+* Cliquez sur **Enregistrer**
+* Return to the **Settings** menu. Click **Saved dashboard layout as default**. Lock layout for all users.
+
+#### Adapter le programme tracker { #adapting-the-tracker-program } 
+
+Une fois le programme importé, il est possible que vous souhaitiez y apporter certaines modifications. Voici quelques exemples d'adaptations locales que vous _pourrez_ effectuer :
+
+* Ajout de variables supplémentaires au formulaire.
+* Adaptation des noms des éléments de données/options en fonction des usages au niveau national.
+* Ajout des traductions aux variables et/ou au formulaire de saisie des données.
+* Modifying program indicators based on local case definitions.
+
+Toutefois, il est fortement recommandé de faire preuve d'une grande prudence si vous décidez de modifier ou de supprimer l'un des formulaires/métadonnées inclus. Il y a donc un risque que des modifications brisent des fonctionnalités, par exemple les règles du programme et les indicateurs du programme.
+

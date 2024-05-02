@@ -2,130 +2,130 @@
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.37/src/developer/web-api/sharing.md"
 revision_date: '2021-10-26'
 tags:
-- Développement
 - DHIS core version 2.37
+- Développement
 ---
 
 # Partage { #sharing } 
 
 ## Partage { #webapi_sharing } 
 
-The sharing solution allows you to share most objects in the system with
-specific user groups and to define whether objects should be publicly
-accessible or private. To get and set sharing status for objects you can
-interact with the *sharing* resource.
+La solution de partage vous permet de partager la plupart des objets du système avec 
+des groupes d'utilisateurs spécifiques et de définir si les objets doivent être accessibles 
+au public ou privés. Pour obtenir et définir le statut de partage des objets, vous pouvez 
+interagir avec la ressource de *partage*.
 
     /api/33/sharing
 
-### Get sharing status { #webapi_get_sharing_status } 
+### Obtenir le statut de partage { #webapi_get_sharing_status } 
 
-To request the sharing status for an object use a GET request to:
+Pour demander le statut de partage d'un objet, faites une requête GET à :
 
     /api/33/sharing?type=dataElement&id=fbfJHSPpUQD
 
-The response looks like the below.
+La réponse se présente comme suit.
 
 ```json
 {
   "meta": {
-    "allowPublicAccess": true,
-    "allowExternalAccess": false
+    "autoriserl'accèspublic": vrai,
+    "autoriserl'accèsexterne": faux
   },
-  "object": {
+  "objet": {
     "id": "fbfJHSPpUQD",
-    "name": "ANC 1st visit",
-    "publicAccess": "rw------",
-    "externalAccess": false,
-    "user": {},
-    "userGroupAccesses": [
+    "nom": "CPN 1ère visite",
+    "accèspublic": "rw------",
+    "accèsexterne": faux,
+    "utilisateur": {},
+    "accès au groupe d'utilisateurs": [
       {
         "id": "hj0nnsVsPLU",
-        "access": "rw------"
+        "accès": "rw------"
       },
       {
         "id": "qMjBflJMOfB",
-        "access": "r-------"
+        "accès": "r-------"
       }
     ]
   }
 }
 ```
 
-### Set sharing status { #webapi_set_sharing_status } 
+### Définir le statut de partage { #webapi_set_sharing_status } 
 
-You can define the sharing status for an object using the same URL with
-a POST request, where the payload in JSON format looks like this:
+Vous pouvez définir le statut de partage d'un objet en utilisant la même URL avec 
+une requête POST, où la charge utile au format JSON ressemble à ceci :
 
 ```json
 {
-  "object": {
-    "publicAccess": "rw------",
-    "externalAccess": false,
-    "user": {},
-    "userGroupAccesses": [
+  "objet": {
+    "accèspublic": "rw------",
+    "accèsexterne": faux,
+    "utilisateur": {},
+    "accès au groupe d'utilisateurs": [
       {
         "id": "hj0nnsVsPLU",
-        "access": "rw------"
+        "accès": "rw------"
       },
       {
         "id": "qMjBflJMOfB",
-        "access": "r-------"
+        "accès": "r-------"
       }
     ]
   }
 }
 ```
 
-In this example, the payload defines the object to have read-write
-public access, no external access (without login), read-write access to
-one user group and read-only access to another user group. You can
-submit this to the sharing resource using curl:
+Dans cet exemple, la charge utile définit l'objet comme ayant un accès public en lecture et 
+en modification, aucun accès externe (sans connexion), un accès en lecture et en modification à 
+un groupe d'utilisateurs et un accès en lecture uniquement à un autre groupe d'utilisateurs. Vous pouvez 
+soumettre ceci à la ressource de partage en utilisant curl :
 
 ```bash
 curl -d @sharing.json "localhost/api/33/sharing?type=dataElement&id=fbfJHSPpUQD"
   -H "Content-Type:application/json" -u admin:district
 ```
-**Note**
-> It is possible to create surprising sharing combinations. For
-> instance, if `externalAccess` is set to `true` but `publicAccess` is
-> set to `--------`, then users will have access to the object 
-> only when they are logged out.
+**Remarque**
+> Il est possible de créer des combinaisons de partage surprenantes. Par
+> exemple, si `accèsexterne` est défini à `vrai` mais que `accèspublic` est
+> défini à `--------`, les utilisateurs n'auront accès à l'objet 
+> que lorsqu'ils seront déconnectés.
 
 
 
 
-## New Sharing object { #new-sharing-object } 
-From 2.36 a new `sharing` property has been introduced in order to replace the old sharing properties `userAccesses`, `userGroupAccesses`, `publicAccess`, `externalAccess` in all metadata classes that have sharing enabled. This `Sharing` object is saved as a JSONB column in database. 
-However, in order make it backward compatible the old sharing objects still work normally as before, for both import and export. In backend sharing data will be saved to new  JSONb `sharing` column instead of the old `*accesses` tables.
+## Nouvel objet de partage { #new-sharing-object } 
+Depuis la version 2.36, une nouvelle propriété `partage` a été introduite afin de remplacer les anciennes propriétés de partage `accès utilisateur`, `accès groupe utilisateur`, `accès public`, `accès externe` dans toutes les classes de métadonnées pour lesquelles le partage est activé. Cet objet `Partage` est sauvegardé en tant que colonne JSONB dans la base de données. 
+Cependant, afin de rendre le système compatible avec les anciennes versions, les anciens objets de partage continuent de fonctionner normalement, à la fois pour l'importation et l'exportation. Dans le backend, les données de partage seront sauvegardées dans la nouvelle colonne JSONb `Partage` au lieu des anciennes tables `*Accès`.
 
-The format looks like this:
+Le format est le suivant :
 ```json
 {
-  "name": "ANC 1st visit",
-  "publicAccess": "rw------",
-  "externalAccess": false,
-  "userGroupAccesses": [
+  "nom": "CPN 1ère visite",
+  "accès public": "rw------",
+  "accès externe": faux,
+  "accès aux groupes d'utilisateurs": [
       {
-          "access": "r-r-----",
-          "userGroupUid": "Rg8wusV7QYi",
-          "displayName": "HIV Program Coordinators",
+          "accès": "r-r-----",
+          "groupe d'utilisateur Uid": "Rg8wusV7QYi",
+          "nom d'affichage": "Coordinateurs du programme VIH",
           "id": "Rg8wusV7QYi"
       }
   ],
-  "userAccesses": [],
-  "user": {
-      "displayName": "Tom Wakiki",
-      "name": "Tom Wakiki",
+  "accès utilisateur": [],
+  "utilisateur": {
+      "nom d'affichage": "Tom Wakiki",
+      "nom": "Tom Wakiki",
       "id": "GOLswS44mh8",
-      "username": "system"
+      "Nom d'utilisateur": "système"
   },
-  "sharing": {
-      "owner": "GOLswS44mh8",
-      "external": false,
-      "users": {},
-      "userGroups": {
+  "partage": {
+      "propriétaire": "GOLswS44mh8",
+      "externe": faux,
+      "utilisateurs": {},
+      "groupes d'utilisateurs": {
           "Rg8wusV7QYi": {
-              "access": "r-r-----",
+              "accès": "r-r-----",
               "id": "Rg8wusV7QYi"
           }
       },
@@ -134,63 +134,63 @@ The format looks like this:
 }
 ```
 
-### Set sharing status using new JSON Patch Api { #webapi_set_sharing_status_using_json_patch_api } 
-You can use [JSON Patch API](#webapi_partial_updates) to update sharing for an object by sending a `PATCH` request to this endpoint with header `Content-Type: application/json-patch+json`
+### Définir le statut de partage en utilisant la nouvelle Api JSON Patch { #webapi_set_sharing_status_using_json_patch_api } 
+Vous pouvez utiliser [JSON Patch API](#webapi_partial_updates) pour mettre à jour le partage d'un objet en envoyant une requête `PATCH` à ce point de terminaison avec l'en-tête `Type de contenu : application/json-patch+json`
 ```
 api/dataElements/fbfJHSPpUQD
 ```
-Please note that this function ***only supports*** new `sharing` format. The payload in JSON format looks like this:
+Veuillez noter que cette fonction ***supporte uniquement*** le nouveau format `partage`. La charge utile au format JSON ressemble à ceci :
 ```json
 [
   {
-    "op": "replace",
-    "path": "/sharing/users",
-    "value": {
+    "op": "remplacer",
+    "chemin d'accès": "/partage/utilisateurs",
+    "valeur": {
       "NOOF56dveaZ": {
-        "access": "rw------",
+        "accès": "rw------",
         "id": "NOOF56dveaZ"
       },
       "Kh68cDMwZsg": {
-        "access": "rw------",
+        "accès": "rw------",
         "id": "Kh68cDMwZsg"
       }
     }
   }
 ]
 ```
-You can add users to `sharing` property of an object like this
+Vous pouvez ajouter des utilisateurs à la propriété `partage` d'un objet comme suit
 ```json
 [
   {
-    "op": "add",
-    "path": "/sharing/users",
-    "value": {
+    "op": "ajouter",
+    "chemin d'accès": "/partage/utilisateurs",
+    "valeur": {
       "NOOF56dveaZ": {
-        "access": "rw------",
+        "accès": "rw------",
         "id": "NOOF56dveaZ"
       },
       "Kh68cDMwZsg": {
-        "access": "rw------",
+        "accès": "rw------",
         "id": "Kh68cDMwZsg"
       }
     }
   }
 ]
 ```
-You can add one user to `sharing` like this
+Vous pouvez ajouter un utilisateur à `partage` comme ceci
 ```json
 [
   {
-    "op": "add",
-    "path": "/sharing/users/NOOF56dveaZ",
-    "value": {
-      "access": "rw------",
+    "op": "ajouter",
+    "chemin d'accès": "/partage/utilisateurs/NOOF56dveaZ",
+    "valeur": {
+      "accès": "rw------",
       "id": "NOOF56dveaZ"
     }
   }
 ]
 ```
-You can remove one user from `sharing` like this
+Vous pouvez supprimer un utilisateur de `partage` comme suit
 ```json
 [
   { 
@@ -200,7 +200,7 @@ You can remove one user from `sharing` like this
 ]
 ```
 
-## Cascade Sharing for Dashboard { #cascade-sharing-for-dashboard } 
+## Partage en cascade du tableau de bord { #cascade-sharing-for-dashboard } 
 
 ### Aperçu { #overview } 
 
@@ -214,61 +214,61 @@ You can remove one user from `sharing` like this
 
     - DashboardA is shared to userA with `METADATA_READ_WRITE` permission.
 
-    - DashboardA has VisualizationA which has DataElementA.
+    - Le tableau de bord A a une visualisation A qui a un élément de données A.
 
     - VisualizationA, DataElementA have `publicAccess`  *disabled* and are *not shared* to userA.
 
-    - After executing cascade sharing for DashboardA, userA will have `METADATA_READ` access to VisualizationA and DataElementA.
+    - Après avoir exécuté le partage en cascade pour le tableau de Bord A, l'utilisateur A aura un accès `LECTURE_DE METADONNEES` à la Visualisation A et à l'Élément de Données A.
 
-### API endpoint  { #api-endpoint } 
+### Point de terminaison de l'API  { #api-endpoint } 
 
-- Send `POST` request to endpoint 
+- Envoyer une requête `POST` au point de terminaison 
 ```
 api/dashboards/cascadeSharing/{dashboardUID}
 ```
 
 
-### API Parameters { #api-parameters } 
+### Paramètres de l'API { #api-parameters } 
 
-| Nom | Default | Description |
+| Nom | Par défaut | Description |
 | --- | --- | -- |
-| dryRun | false | If this is set to `true`, then cascade sharing function will proceed without updating any objects. </br> The response will includes errors if any and all objects which will be updated. </br>This helps user to know the result before actually executing the cascade sharing function.
-| atomic | false | If this is set to `true`, then the cascade sharing function will stop and not updating any objects if there is an error. </br>Otherwise, if this is `false` then the function will try to proceed with best effort mode.
+| dryRun | faux | Si ce paramètre est fixé à `vrai`, la fonction de partage en cascade sera exécutée sans mettre à jour aucun objet. </br>La réponse comprendra les erreurs éventuelles et tous les objets qui seront mis à jour. </br>Cela permet à l'utilisateur de connaître le résultat avant d'exécuter la fonction de partage en cascade.
+| atomic | faux | Si ce paramètre est fixé à `vrai`, alors la fonction de partage en cascade s'arrêtera et ne mettra à jour aucun objet s'il y a une erreur. </br>Sinon, si cette valeur est ` fausse `, la fonction essaiera de procéder avec le mode du best effort (meilleur effort).
 
-Sample response: 
+Exemple de réponse : 
 
 ```json
 {
-  "errorReports": [
+  "rapports d'erreur": [
     {
-      "message": "No matching object for reference. Identifier was s46m5MS0hxu, and object was DataElement.",
+      "message": "Pas d'objet correspondant à la référence. L'identificateur était s46m5MS0hxu, et l'objet était l'élément de données .",
       "mainKlass": "org.hisp.dhis.dataelement.DataElement",
-      "errorCode": "E5001",
-      "errorProperties": [
+      "code d'erreur": "E5001",
+      "Propriétés de l'erreur": [
         "s46m5MS0hxu",
-        "DataElement"
+        "élément de données "
       ]
     }
   ],
   "countUpdatedDashBoardItems": 1,
-  "updateObjects": {
-    "dataElements": [
+  "mettre à jour les objets": {
+    "élément de données ": [
       {
         "id": "YtbsuPPo010",
-        "name": "Measles doses given"
+        "nom": "Dose de rougeole administrée"
       },
       {
         "id": "l6byfWFUGaP",
-        "name": "Yellow Fever doses given"
+        "nom": "Doses de fièvre jaune administrées"
       }
     ]
   }
 }
 ```
 
-### Response properties: { #response-properties } 
+### Propriétés de la réponse : { #response-properties } 
 
-- `errorReports`: includes all errors during cascade sharing process.
-- `countUpdatedDashBoardItems`: Number of `DashboardItem` will be or has been updated depends on `dryRun` mode.
-- `updateObjects`: List of all objects which will be or has been updated depends on `dryRun` mode.
+- `Rapports d'erreurs` : inclut toutes les erreurs survenues au cours du processus de partage en cascade.
+- `countUpdatedDashBoardItems` : Nombre `d'éléments du tableau de bord` qui seront ou ont été mis à jour, en fonction du mode `dryRun`.
+- `updateObjects` (Mise à jour des objets): Liste de tous les objets qui seront ou ont été mis à jour en fonction du mode `dryRun`.
 

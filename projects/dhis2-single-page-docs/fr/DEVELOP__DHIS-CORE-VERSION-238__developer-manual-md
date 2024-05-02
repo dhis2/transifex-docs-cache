@@ -1,8 +1,8 @@
 ---
 revision_date: '2024-01-18'
 tags:
-- Version principale de DHIS 2.38
 - Développement
+- Version principale de DHIS 2.38
 template: single.html
 ---
 
@@ -475,7 +475,7 @@ Table: WebMessage properties
 |---|---|
 | httpStatus | HTTP Status message for this response, see RFC 2616 (Section 10) for more information. |
 | httpStatusCode | HTTP Status code for this response, see RFC 2616 (Section 10) for more information. |
-| status | DHIS2 status, possible values are *OK* &#124; *WARNING* &#124; *ERROR*, where `OK` means everything was successful, `ERROR` means that operation did not complete and `WARNING` means the operation was partially successful, if the message contains a `response` property, please look there for more information. |
+| statut | DHIS2 status, possible values are *OK* &#124; *WARNING* &#124; *ERROR*, where `OK` means everything was successful, `ERROR` means that operation did not complete and `WARNING` means the operation was partially successful, if the message contains a `response` property, please look there for more information. |
 | message | A user-friendly message telling whether the operation was a success or not. |
 | devMessage | A more technical, developer-friendly message (not currently in use). |
 | response | Extension point for future extension to the WebMessage format. This will be documented when it starts being used. |
@@ -3589,10 +3589,10 @@ List of available fields are:
 | ----------- | -------------------------------------------------------------- |
 | identifiant          | unique identifier of the proposal |
 | type        | `ADD` a new object, `UPDATE` an existing object, `REMOVE` an existing object |
-| status      | `PROPOSED` (open proposal), `ACCEPTED` (successful), `NEEDS_UPDATE` (accepting caused error or opposed), `REJECTED` |
+| statut      | `PROPOSED` (open proposal), `ACCEPTED` (successful), `NEEDS_UPDATE` (accepting caused error or opposed), `REJECTED` |
 | target      | type of metadata object to add/update/remove; currently only `ORGANISATION_UNIT` |
 | targetId    | UID of the updated or removed object, not defined for `ADD` |
-| createdBy   | the user that created the proposal |
+| createdBy (créé par)   | the user that created the proposal |
 | créé     | the date time when the proposal was created |
 | finalisedBy | the user that accepted or rejected the proposal |
 | finalised   | the date time when the proposal changed to a conclusive state of either accepted or rejected |
@@ -3610,47 +3610,47 @@ The `fields` parameter can be used to narrow the fields included for the shown o
     GET /api/metadata/proposals/<uid>?fields=id,type,status,change
 
 
-# Metadata Gist API { #gist_api } 
+# Métadonnées Gist API { #gist_api } 
 <!--DHIS2-SECTION-ID:gist_api-->
 
-The Metadata Gist API is a RESTful read-only JSON API to fetch and browse 
-metadata. Items in this API contain the gist of the same item in the Metadata API.
+L'API Gist des métadonnées est une API JSON RESTful en lecture uniquement qui permet de récupérer et de parcourir 
+des métadonnées. Les éléments de cette API contiennent la gist du même élément dans l'API Métadonnées.
 
-The API is specifically designed to avoid:
+L'API est spécifiquement conçue pour éviter :
 
-* Large response payloads because of the inclusion of partial nested object 
-  graphs.
-* Resource intensive in memory processing of requests 
-  (e.g. in memory filtering or object graph traversal).
-* _n + 1_ database queries as a result of object graph traversal while rendering
-  the response.
+* Les charges utiles des réponses volumineuses en raison de l'inclusion d'objets partiels imbriqués
+  imbriqués.
+* Traitement des demandes en mémoire, à forte intensité de ressources 
+  (par exemple, le filtrage en mémoire ou la navigation dans le graphe d'objets).
+* _n + 1_ requêtes de base de données à la suite de la navigation dans le graphe d'objets lors de la restitution de 
+  la réponse.
 
-## Comparison with Metadata API { #gist_vs_metadata_api } 
+## Comparaison avec l'API des métadonnées { #gist_vs_metadata_api } 
 <!--DHIS2-SECTION-ID:gist_vs_metadata_api-->
 
-The standard Metadata API is a flexible and powerful API built to serve any and 
-every use case.
-The downside of this is that not all features and combinations can scale while 
-keeping good performance in the presence of huge numbers of items.
-In particular lists with items where each item itself has a property which is a 
-large collection of complex objects have proven problematic as they quickly
-reference a large part of the entire object graph.
+L'API standard des métadonnées est une API flexible et puissante, conçue pour répondre à 
+tous les cas d'utilisation. 
+L'inconvénient est que toutes les fonctionnalités et combinaisons ne peuvent pas être mises à l'échelle tout en 
+conservant de bonnes performances en présence d'un grand nombre d'éléments. 
+En particulier, les listes d'éléments où chaque élément possède une propriété qui est une 
+grande collection d'objets complexes se sont avérées problématiques car elles font 
+rapidement référence à une grande partie du graphe d'objets entier.
 
-The `/gist` API was added to provide a metadata API where scaling well is our 
-first priority. The downside of this is that there are more distinct limits to
-what features are technically reasonable, which means not all features of the 
-standard Metadata API exist for the Gist API.
+L'API `/gist` a été ajoutée pour fournir une API de métadonnées où la mise à l'échelle est 
+notre première priorité. L'inconvénient est qu'il y a des limites plus distinctes à ce qui est 
+techniquement raisonnable, ce qui signifie que toutes les fonctionnalités de l'API standard 
+de métadonnées n'existent pas pour l'API Gist.
 
-The Gist API uses a divide and conquer strategy to avoid responses with large
-partial object graphs. Instead of including nested objects or lists it provides
-a `/gist` endpoint URI where this object or list can be viewed in isolation.
+L'API Gist utilise une stratégie de division et de conquête pour éviter les réponses avec de grands 
+graphes d'objets partiels. Au lieu d'inclure des objets ou des listes imbriqués, elle fournit
+un URI de point de terminaison `/gist` où cet objet ou cette liste peut être visualisé de manière isolée.
 
-**The `/gist` API refers to nested data using URIs rather than including it.**
-This means if a client is interested in this nested information more requests
-are required but each of them is kept reasonable small and will scale
-well in context of huge number of potential items.
+**L'API `/gist` se réfère aux données imbriquées en utilisant les URI plutôt que de les inclure.** 
+Cela signifie que si un client est intéressé par ces informations imbriquées, il faudra plus de 
+requêtes, mais chacune d'entre elles reste raisonnablement petite et s'adaptera 
+bien dans le contexte d'un grand nombre d'éléments potentiels.
 
-Known Differences:
+Les différences connues :
 
 * items only includes fields of referenced identifiable objects if these do not
   have an endpoint on their own
@@ -3670,7 +3670,7 @@ Known Differences:
   listing or filtering based on custom attribute values
 * Gist offers filter grouping
 
-Known Limitations:
+Les limites connues :
 
 * by default only persisted are included; a handful of special 
   non-persistent fields (synthetic fields) can be added explicitly; other 
@@ -3687,8 +3687,8 @@ Where possible to use the `/gist` API should be considered the preferable way
 of fetching metadata information.
 
 
-## Endpoints { #gist_endpoints } 
-<!--DHIS2-SECTION-ID:gist_endpoints-->
+## Points de terminaison { #gist_endpoints } 
+<!--DHIS2-SECTION-ID:gist_Points de terminaison-->
 
 The `/gist` API has 3 kinds of endpoints:
 
@@ -6831,7 +6831,7 @@ Table: Main properties
 | cronExpression | The cron expression which defines the interval for when the job should run. | String (Cron expression) |
 | jobType | The job type represent which task is run. In the next table, you can get an overview of existing job types. Each job type can have a specific set of parameters for job configuration. | String (Enum) |
 | jobParameters | Job parameters, if applicable for job type. | (See list of job types) |
-| enabled | A job can be added to the system without it being scheduled by setting `enabled` to false in the JSON payload. Use this if you want to temporarily stop scheduling for a job, or if a job configuration is not complete yet. | Boolean |
+| enabled | A job can be added to the system without it being scheduled by setting `enabled` to false in the JSON payload. Use this if you want to temporarily stop scheduling for a job, or if a job configuration is not complete yet. | Booléen |
 
 
 
@@ -12006,7 +12006,7 @@ Table: Data set report query parameters
 | pe | Period(s) to create the report from. May be a comma-separated list. | ISO String | Oui |
 | ou | Organisation unit to create the report from. | Organisation unit UID | Oui |
 | filter | Filters to be used as filters for the report. Can be repeated any number of times. Follows the analytics API syntax. | One or more UIDs | Non |
-| selectedUnitOnly | Whether to use captured data only or aggregated data. | Boolean | Non |
+| selectedUnitOnly | Whether to use captured data only or aggregated data. | Booléen | Non |
 
 The data set report resource accepts `GET` requests only. The response content type is `application/json` and returns data in a grid. This endpoint works for all types of data sets, including default, section and custom forms.
 
@@ -12075,7 +12075,7 @@ Table: Push analysis properties
 | dashboard | Dashboard on which reports are based | Dashboard UID | Oui |
 | message | Appears after title in reports | Chaîne | Non |
 | recipientUserGroups | A set of user groups who should receive the reports | One or more user Group UID | No. Scheduled jobs without any recipient will be skipped. |
-| enabled | Indicated whether this push analysis should be scheduled or not. False by default. | Boolean | Yes. Must be true to be scheduled. |
+| enabled | Indicated whether this push analysis should be scheduled or not. False by default. | Booléen | Yes. Must be true to be scheduled. |
 | schedulingFrequency | The frequency of which reports should be scheduled. | "DAILY", "WEEKLY", "MONTHLY" | No. Push analysis without a frequency will not be scheduled |
 | schedulingDayOfFrequency | The day in the frequency the job should be scheduled. | Integer. Any value when frequency is "DAILY". 0-7 when frequency is "WEEKLY". 1-31 when frequency is "MONTHLY" | No. Push analysis without a valid day of frequency for the frequency set will not be scheduled. |
 
@@ -13344,7 +13344,7 @@ Table: Min-max data element data structure
 | optionCombo | Data element category option combo identifier | Chaîne |
 | min | Valeur minimale | Entier |
 | max | Valeur maximum | Entier |
-| generated | Indicates whether this object is generated by the system (and not set manually). | Boolean |
+| generated | Indicates whether this object is generated by the system (and not set manually). | Booléen |
 
 You can retrieve a list of all min-max data elements from the following
 resource:
@@ -13936,15 +13936,15 @@ Table: Generic SMS gateway parameters
 |---|---|---|
 | nom | Chaîne | name of the gateway |
 | modèle de configuration | Chaîne | Configuration template which get populated with parameter values. For example configuration template given above will be populated like this { "to": "+27001234567", "body": "Hello World!"} |
-| useGet | Boolean | Http POST nethod will be used by default. In order to change it and Http GET, user can set useGet flag to true. |
+| useGet | Booléen | Http POST nethod will be used by default. In order to change it and Http GET, user can set useGet flag to true. |
 | type de contenu | Chaîne | Content type specify what type of data is being sent. Supported types are APPLICATION_JSON, APPLICATION_XML, FORM_URL_ENCODED, TEXT_PLAIN |
 | urlTemplate | Chaîne | Url template |
-| header | Boolean | If parameter needs to be sent in Http headers |
-| encode | Boolean | If parameter needs to be encoded |
+| header | Booléen | If parameter needs to be sent in Http headers |
+| encode | Booléen | If parameter needs to be encoded |
 | key | Chaîne | parameter key |
 | valeur | Chaîne | parameter value |
-| confidential | Boolean | If parameter is confidential. This parameter will not be exposed through API |
-| Paramètres d'envoi d'Url | Boolean | If this flag is checked then urlTemplate can be appended with query parameters. This is usefull if gateway API only support HTTP GET. Sample urlTemplate looks like this `"urlTemplate":"https://samplegateway.com/messages?apiKey={apiKey}&to={recipients},content={text},deliveryreport={dp}"` |
+| confidential | Booléen | If parameter is confidential. This parameter will not be exposed through API |
+| Paramètres d'envoi d'Url | Booléen | If this flag is checked then urlTemplate can be appended with query parameters. This is usefull if gateway API only support HTTP GET. Sample urlTemplate looks like this `"urlTemplate":"https://samplegateway.com/messages?apiKey={apiKey}&to={recipients},content={text},deliveryreport={dp}"` |
 
 HTTP.OK will be returned if configurations are saved successfully otherwise *Error*
 
@@ -15466,7 +15466,7 @@ Table: Tracked entity instances query parameters
 | suivi | Follow up status of the instance for the given program. Can be true &#124; false or omitted. |
 | programStartDate | Start date of enrollment in the given program for the tracked entity instance. |
 | programEndDate | End date of enrollment in the given program for the tracked entity instance. |
-| trackedEntity | Tracked entity identifier. Restricts instances to the given tracked instance type. |
+| Entité suivie | Tracked entity identifier. Restricts instances to the given tracked instance type. |
 | page | The page number. Default page is 1. |
 | pageSize | The page size. Default size is 50 rows per page. |
 | totalPages | Indicates whether to include the total number of pages in the paging response (implies higher response time). |
@@ -15762,7 +15762,7 @@ Table: Tracked entity instances query parameters
 | suivi | Follow up status of the instance for the given program. Can be true &#124; false or omitted. |
 | programStartDate | Start date of enrollment in the given program for the tracked entity instance. |
 | programEndDate | End date of enrollment in the given program for the tracked entity instance. |
-| trackedEntity | Tracked entity identifier. Restricts instances to the given tracked instance type. |
+| Entité suivie | Tracked entity identifier. Restricts instances to the given tracked instance type. |
 | eventStatus | Status of any event associated with the given program and the tracked entity instance. Can be ACTIVE &#124; COMPLETED &#124; VISITED &#124; SCHEDULED &#124; OVERDUE &#124; SKIPPED. |
 | eventStartDate | Start date of event associated with the given program and event status. |
 | eventEndDate | End date of event associated with the given program and event status. |
@@ -16055,7 +16055,7 @@ Table: Entity Query Criteria definition
 | order | To specify ordering/sorting of fields and its directions in comma separated values. A single item in order is of the form "orderDimension:direction". | "order"="a3kGcGDCuk6:desc,eventDate:asc" |
 | eventStatus | Any valid EventStatus | "eventStatus": "COMPLETED" |
 | programStage | To specify a programStage uid to filter on. TEIs will be filtered based on presence of enrollment in the specified program stage.| "programStage"="a3kGcGDCuk6" |
-| trackedEntityType | To specify a trackedEntityType filter TEIs on. | "trackedEntityType"="a3kGcGDCuk6" |
+| TrackedEntityType (Type d'entité suivie) | To specify a trackedEntityType filter TEIs on. | "trackedEntityType"="a3kGcGDCuk6" |
 | trackedEntityInstances | To specify a list of trackedEntityInstances to use when querying TEIs. | "trackedEntityInstances"=["a3kGcGDCuk6","b4jGcGDCuk7"] |
 | enrollmentIncidentDate | DateFilterPeriod object date filtering based on enrollment incident date. | "enrollmentIncidentDate": {     "startDate": "2014-05-01",     "endDate": "2019-03-20",     "startBuffer": -5,     "endBuffer": 5,     "period": "LAST_WEEK",     "type": "RELATIVE"   } |
 | eventDate | DateFilterPeriod object date filtering based on event date. | "eventDate": {     "startBuffer": -5,     "endBuffer": 5,     "type": "RELATIVE"   } |
@@ -16174,7 +16174,7 @@ Table: Enrollment query parameters
 | programStartDate | Start date of enrollment in the given program for the tracked entity instance. |
 | programEndDate | End date of enrollment in the given program for the tracked entity instance. |
 | lastUpdatedDuration (durée de la dernière mise à jour) | Include only items which are updated within the given duration. The format is , where the supported time units are “d” (days), “h” (hours), “m” (minutes) and “s” (seconds). |
-| trackedEntity | Tracked entity identifier. Restricts instances to the given tracked instance type. |
+| Entité suivie | Tracked entity identifier. Restricts instances to the given tracked instance type. |
 | trackedEntityInstance | Tracked entity instance identifier. Should not be used together with trackedEntity. |
 | page | The page number. Default page is 1. |
 | pageSize | The page size. Default size is 50 rows per page. |
@@ -16503,8 +16503,8 @@ Table: Events resource format
 | orgUnit (Unité d'organisation) | string | vrai || Identifier of the organisation unit where the event took place |
 | eventDate | date | vrai || The date of when the event occurred |
 | completedDate | date | faux || The date of when the event is completed. If not provided, the current date is selected as the event completed date |
-| status | enum | faux | ACTIVE &#124; COMPLETED &#124; VISITED &#124; SCHEDULE &#124; OVERDUE &#124; SKIPPED | Whether the event is complete or not |
-| storedBy | string | faux | Defaults to current user | Who stored this event (can be username, system-name, etc) |
+| statut | enum | faux | ACTIVE &#124; COMPLETED &#124; VISITED &#124; SCHEDULE &#124; OVERDUE &#124; SKIPPED | Whether the event is complete or not |
+| Stocké par | string | faux | Defaults to current user | Who stored this event (can be username, system-name, etc) |
 | coordinate | double | faux || Refers to where the event took place geographically (latitude and longitude) |
 | élément de données | string | vrai || Identifier of data element |
 | valeur | string | vrai || Data value or measure for this event |
@@ -16595,7 +16595,7 @@ Table: Events resource query parameters
 | ouMode | enum | faux | Org unit selection mode, can be SELECTED &#124; CHILDREN &#124; DESCENDANTS |
 | date de début | date | faux | Only events newer than this date |
 | date de fin | date | faux | Only events older than this date |
-| status | enum | faux | Status of event, can be ACTIVE &#124; COMPLETED &#124; VISITED &#124; SCHEDULED &#124; OVERDUE &#124; SKIPPED |
+| statut | enum | faux | Status of event, can be ACTIVE &#124; COMPLETED &#124; VISITED &#124; SCHEDULED &#124; OVERDUE &#124; SKIPPED |
 | lastUpdatedStartDate | date | faux | Filter for events which were updated after this date. Cannot be used together with *lastUpdatedDuration*. |
 | lastUpdatedEndDate | date | faux | Filter for events which were updated up until this date. Cannot be used together with *lastUpdatedDuration*. |
 | lastUpdatedDuration (durée de la dernière mise à jour) | string | faux | Include only items which are updated within the given duration. The format is , where the supported time units are “d” (days), “h” (hours), “m” (minutes) and “s” (seconds). Cannot be used together with *lastUpdatedStartDate* and/or *lastUpdatedEndDate*. |
@@ -16784,8 +16784,8 @@ Table: Event Query Criteria definition
 | displayOrderColumns | To specify the output ordering of columns | "displayOrderColumns": ["eventDate", "dueDate", "program"] |
 | order | To specify ordering/sorting of fields and its directions in comma separated values. A single item in order is of the form "dataItem:direction". | "order"="a3kGcGDCuk6:desc,eventDate:asc" |
 | dataFilters | To specify filters to be applied when listing events | "dataFilters"=[{       "dataItem": "abcDataElementUid",       "le": "20",       "ge": "10",       "lt": "20",       "gt": "10",       "in": ["India", "Norway"],       "like": "abc",       "dateFilter": {         "startDate": "2014-05-01",         "endDate": "2019-03-20",         "startBuffer": -5,         "endBuffer": 5,         "period": "LAST_WEEK",         "type": "RELATIVE"       }     }] |
-| status | Any valid EventStatus | "eventStatus": "COMPLETED" |
-| events | To specify list of events | "events"=["a3kGcGDCuk6"] |
+| statut | Any valid EventStatus | "eventStatus": "COMPLETED" |
+| événements | To specify list of events | "events"=["a3kGcGDCuk6"] |
 | completedDate | DateFilterPeriod object date filtering based on completed date. | "completedDate": {     "startDate": "2014-05-01",     "endDate": "2019-03-20",     "startBuffer": -5,     "endBuffer": 5,     "period": "LAST_WEEK",     "type": "RELATIVE"   } |
 | eventDate | DateFilterPeriod object date filtering based on event date. | "eventDate": {     "startBuffer": -5,     "endBuffer": 5,     "type": "RELATIVE"   } |
 | dueDate | DateFilterPeriod object date filtering based on due date. | "dueDate": {     "period": "LAST_WEEK",     "type": "RELATIVE"   } |
@@ -17120,10 +17120,10 @@ Table: CSV column
 | Index | Clé | Type | Description |
 |---|---|---|---|
 | 1 | event | identifier | Identifier of event |
-| 2 | status | enum | Status of event, can be ACTIVE &#124; COMPLETED &#124; VISITED &#124; SCHEDULED &#124; OVERDUE &#124; SKIPPED |
+| 2 | statut | enum | Status of event, can be ACTIVE &#124; COMPLETED &#124; VISITED &#124; SCHEDULED &#124; OVERDUE &#124; SKIPPED |
 | 3 | de paludisme) ». | identifier | Identifier of program |
 | 4 | programStage | identifier | Identifier of program stage |
-| 5 | enrollment | identifier | Identifier of enrollment (program instance) |
+| 5 | inscription | identifier | Identifier of enrollment (program instance) |
 | 6 | orgUnit (Unité d'organisation) | identifier | Identifier of organisation unit |
 | 7 | eventDate | date | Date de l'événement |
 | 8 | dueDate | date | Due Date |
@@ -17131,10 +17131,10 @@ Table: CSV column
 | 10 | longitude | double | Longitude where event happened |
 | 11 | élément de données | identifier | Identifier of data element |
 | 12 | valeur | string | Value / measure of event |
-| 13 | storedBy | string | Event was stored by (defaults to current user) |
+| 13 | Stocké par | string | Event was stored by (defaults to current user) |
 | 14 | providedElsewhere | boolean | Was this value collected somewhere else |
 | 14 | completedDate | date | Completed date of event |
-| 14 | completedBy | string | Username of user who completed event |
+| 14 | completedBy (terminé par) | string | Username of user who completed event |
 
 *Example of 2 events with 2 different data value
     each:*
@@ -17216,7 +17216,7 @@ You can retrieve a list of potential duplicates using the following endpoint:
 | Parameter name | Description | Type | Allowed values |
 |---|---|---|---|
 | teis | List of tracked entity instances | List of string (separated by comma)| existing tracked entity instance id |
-| status | Potential duplicate status | string | `OPEN <default>`, `INVALID`, `MERGED`, `ALL` |
+| statut | Potential duplicate status | string | `OPEN <default>`, `INVALID`, `MERGED`, `ALL` |
 
 | Status code | Description
 |---|---|
@@ -17236,7 +17236,7 @@ You can also filter potential duplicates by Tracked Entity Instance (referred as
 
 | Parameter name | Description | Type | Allowed values |
 |---|---|---|---|
-| status | Potential duplicate status | string | `OPEN`, `INVALID`, `MERGED`, `ALL <default>` |
+| statut | Potential duplicate status | string | `OPEN`, `INVALID`, `MERGED`, `ALL <default>` |
 
 | Status code | Description
 |---|---|
@@ -17270,7 +17270,7 @@ To update a potential duplicate status:
 
 | Parameter name | Description | Type | Allowed values |
 |---|---|---|---|
-| status | Potential duplicate status | string | `OPEN`, `INVALID`, `MERGED` |
+| statut | Potential duplicate status | string | `OPEN`, `INVALID`, `MERGED` |
 
 | Status code | Description
 |---|---|
@@ -17674,76 +17674,76 @@ These tables highlight the old endpoint differences in request parameters for `G
 
 ## Objets Tracker { #webapi_nti_tracker_objects }
 
-Tracker consists of a few different types of objects that are nested together to represent the data. In this section, we will show and describe each of the objects used in the Tracker API.
+Tracker est constitué de différents types d'objets interconnectés destinés à représenter les données. Dans cette section, nous montrerons et décrirons chacun des objets utilisés dans l'API du Tracker.
 
-### Tracked Entity { #tracked-entity } 
+### Entité suivie { #tracked-entity }
 
-`Tracked Entities` are the root object for the Tracker model.
+Les `entités suivies` constituent la base du modèle Tracker.
 
-| Propriété | Description | Obligatoire | Immutable | Type | Exemple |
+| Propriété | Description | Obligatoire | Immuable | Type | Exemple |
 |---|---|---|---|---|---|
-| trackedEntity | The identifier of the tracked entity. Generated if not supplied | Non | Oui | String:Uid | ABCDEF12345 |
-| trackedEntityType | The type of tracked entity. | Oui | Oui | String:Uid | ABCDEF12345 |
-| createdAt | Timestamp when the user created the tracked entity. Set on the server. | Non | Non | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| createdAtClient | Timestamp when the user created the tracked entity on the client. | Non | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| updatedAt | Timestamp when the object was last updated. Set on the server. | Non | Non | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| updatedAtClient | Timestamp when the object was last updated on the client. | Non | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| orgUnit (Unité d'organisation) | The organisation unit where the user created the tracked entity. | Oui | Oui | String:Uid | ABCDEF12345 |
-| inactive | Indicates whether the tracked entity is inactive or not. | Non | Oui | Boolean | Default: False, True |
-| deleted | Indicates whether the tracked entity has been deleted. It can only change when deleting. | Non | Non | Boolean | False until deleted |
-| geometry | A  geographical representation of the tracked entity. Based on the "featureType" of the TrackedEntityType. | Non | Oui | GeoJson | {<br>"type": "POINT",<br>"coordinates": [123.0, 123.0]<br>} |
-| storedBy | Client reference for who stored/created the tracked entity. | Non | Oui | String:Any | John Doe |
-| createdBy | Only for reading data. User that created the object. Set on the server | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"username": "username",<br>"firstName": "John",<br>"surname": "Doe"<br>} |
-| updatedBy | Only for reading data. User that last updated the object. Set on the server | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"username": "username",<br>"firstName": "John",<br>"surname": "Doe"<br>} |
-| les attributs | A list of tracked entity attribute values owned by the tracked entity. | Non | Oui | List of TrackedEntityAttributeValue | See Attribute |
-| enrollments | A list of enrollments owned by the tracked entity. | Non | Oui | List of Enrollment | See Enrollment |
-| relationships | A list of relationships connected to the tracked entity. | Non | Oui | List of Relationship | See Relationship |
-| programOwners | A list of organisation units that have access through specific programs to this tracked entity. See "Program Ownership" for more. | Non | Oui | List of ProgramOwner | See section "Program Ownership" |
+| Entité suivie | L’identifiant de l’entité suivie. Il est généré au cas où il n'est pas fourni | Non | Oui | Chaîne : Uid | ABCDEF12345 |
+| TrackedEntityType (Type d'entité suivie) | Le type d’entité suivie. | Oui | Oui | Chaîne : Uid | ABCDEF12345 |
+| créé à | Date à laquelle l'utilisateur a créé l'entité suivie. Elle est définie sur le serveur. | Non | Non | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| crééAtClient (Création au niveau du client) | Date à laquelle l'utilisateur a créé l'entité suivie au niveau du client. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| updatedAt (mis à jour à) | Date de la dernière mise à jour de l'objet. Elle est définie sur le serveur. | Non | Non | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| updatedAtClient (mise à jour au niveau du client) | Date de la dernière mise à jour de l'objet au niveau du client. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| orgUnit (Unité d'organisation) | L'unité d'organisation dans laquelle l'utilisateur a créé l'entité suivie. | Oui | Oui | Chaîne : Uid | ABCDEF12345 |
+| inactif | Indique si l'entité suivie est inactive ou non. | Non | Oui | Booléen | Par défaut : Faux, Vrai |
+| supprimé | Indique si l'entité suivie a été supprimée. Ne peut être modifié qu'au moment de la suppression. | Non | Non | Booléen | Faux jusqu'à suppression |
+| géométrie | Il s'agit d'une représentation géographique de l'entité suivie. Elle est basée sur le « type de fonctionnalité » du type d'entité suivie. | Non | Oui | GeoJson | {<br>"type": "POINT",<br>"coordonnées": [123.0, 123.0]<br>} |
+| Stocké par | Référence client indiquant celui a stocké/créé l’entité suivie. | Non | Oui | Chaîne : Toute | John Doe |
+| createdBy (créé par) | Uniquement pour lire des données. Il s'agit de l'utilisateur qui a créé l'objet. Défini sur le serveur | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"Nom d'utilisateur": "Nom d'utilisateur",<br>"Prénom": "John",<br>"Nom de famille": "Doe"<br>} |
+| updatedBy (mis à jour par) | Uniquement pour lire des données. Il s'agit de l'utilisateur qui a mis à jour l'objet. Défini sur le serveur | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"Nom d'utilisateur": "Nom d'utilisateur",<br>"Prénom": "John",<br>"Nom de famille": "Doe"<br>} |
+| les attributs | Une liste de valeurs d'attributs d'entité suivie appartenant à l'entité suivie. | Non | Oui | Liste des valeurs d'attributs d'entités suivies | Voir l'attribut |
+| inscriptions | Une liste des inscriptions appartenant à l’entité suivie. | Non | Oui | Liste des inscriptions | Voir les inscriptions |
+| relations | Une liste de relations connectées à l'entité suivie. | Non | Oui | Liste des relations | Voir les relations |
+| Propriétaires du programme | Liste des unités d'organisation qui ont accès via des programmes spécifiques à cette entité suivie. Voir « Propriété du programme » pour en savoir plus. | Non | Oui | Liste des propriétaires du programme | Voir la section « Propriété du programme » |
 
-> **Note**
+> **Remarque**
 >
-> `Tracked Entities` "owns" all `Tracked Entity Attribute Values` (Or "attributes" as described in the previous table). However, `Tracked Entity Attributes` are either connected to a `Tracked Entity` through its `Tracked Entity Type` or a `Program`. We often refer to this separation as `Tracked Entity Type Attributes` and `Tracked Entity Program Attributes`. The importance of this separation is related to access control and limiting what information the user can see.
+> Les `entités suivies` "possèdent" toutes les `Valeurs d'attribut d'entités suivies` (ou les "attributs" décrits dans le tableau précédent). Cependant, les `attributs d'entités suivies` sont soit connectés à une `entité suivie` via son `type d'entité suivie` soit à un `programme`. Nous désignons souvent cette séparation par `Attributs de type d'entité suivi` et `Attributs de programme d'entité suivi`. L'importance de cette distinction est liée au contrôle d'accès et à la limitation des informations que l'utilisateur peut voir.
 >
-> The "attributes" referred to in the `Tracked Entity` are `Tracked Entity Type Attributes`.
+> Les "attributs" mentionnés dans `Entité suivie` sont des `Attributs de type d'entité suivie`.
 
 
 ### Inscription { #enrollment } 
-`Tracked Entities` can enroll into `Programs` for which they are eligible. Tracked entities are eligible as long as the program is configured with the same `Tracked Entity Type` as the tracked entity. We represent the enrollment with the `Enrollment` object, which we describe in this section.
+Les `Entités suivies` peuvent s'inscrire aux `Programmes` pour lesquels elles sont éligibles. Les entités suivies sont éligibles tant que le programme est configuré avec le même `Type d'entité suivie` que l'entité suivie. Nous représentons l'inscription avec l'objet `Inscription`, que nous décrivons dans cette section.
 
 
-| Propriété | Description | Obligatoire | Immutable | Type | Exemple |
+| Propriété | Description | Obligatoire | Immuable | Type | Exemple |
 |---|---|---|---|---|---|
-| enrollment | The identifier of the enrollment. Generated if not supplied | Non | Oui | String:Uid | ABCDEF12345 |
-| de paludisme) ». | The program the enrollment represents. | Oui | Non | String:Uid | ABCDEF12345 |
-| trackedEntity | A reference to the tracked entity enrolled. | Oui | Oui | String:Uid | ABCDEF12345 |
-| trackedEntityType | Only for reading data. The type of tracked entity enrolled | Non | Oui | String:Uid | ABCDEF12345 |
-| status | Status of the enrollment. ACTIVE if not supplied. | Non | Non | Enum | ACTIVE, COMPLETED, CANCELLED |
-| orgUnit (Unité d'organisation) | The organisation unit where the user enrolled the tracked entity. | Oui | Non | String:Uid | ABCDEF12345 |
-| orgUnitName | Only for reading data. The name of the organisation unit where the enrollment took place. | Non | Non | String:Any | Sierra Leone |
-| createdAt | Timestamp when the user created the object. Set on the server. | Non | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| createdAtClient | Timestamp when the user created the object on client | Non | Non | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| updatedAt | Timestamp when the object was last updated. Set on the server. | Non | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| updatedAtClient | Timestamp when the object was last updated on client | Non | Non | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| enrolledAt | Timestamp when the user enrolled the tracked entity. | Oui | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| occurredAt | Timestamp when enrollment occurred. | Non | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| completedAt | Timestamp when the user completed the enrollment. Set on the server. | Non | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| completedBy | Reference to who completed the enrollment | Non | Non | String:any | John Doe |
-| Suivi | Indicates whether the enrollment requires follow-up. False if not supplied | Non | Non | Booelan | Default: False, True |
-| deleted | Indicates whether the enrollment has been deleted. It can only change when deleting. | Non | Oui | Boolean | False until deleted |
-| geometry | A  geographical representation of the enrollment. Based on the "featureType" of the Program | Non | Non | GeoJson | {<br>"type": "POINT",<br>"coordinates": [123.0, 123.0]<br>} |
-| storedBy | Client reference for who stored/created the enrollment. | Non | Non | String:Any | John Doe |
-| createdBy | Only for reading data. User that created the object. Set on the server | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"username": "username",<br>"firstName": "John",<br>"surname": "Doe"<br>} |
-| updatedBy | Only for reading data. User that last updated the object. Set on the server | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"username": "username",<br>"firstName": "John",<br>"surname": "Doe"<br>} |
-| les attributs | A list of tracked entity attribute values connected to the enrollment. | Non | Non | List of TrackedEntityAttributeValue | See Attribute |
-| events | A list of events owned by the enrollment. | Non | Non | List of Event | See Event |
-| relationships | A list of relationships connected to the enrollment. | Non | Non | List of Relationship | See Relationship |
-| notes | Notes connected to the enrollment. It can only be created. | Non | Oui | List of Note | See Note |
+| inscription | L’identifiant de l'inscription. Il est généré au cas où il n'est pas fourni | Non | Oui | Chaîne : Uid | ABCDEF12345 |
+| de paludisme) ». | Le programme que représente l’inscription. | Oui | Non | Chaîne : Uid | ABCDEF12345 |
+| Entité suivie | Une référence à l’entité suivie inscrite. | Oui | Oui | Chaîne : Uid | ABCDEF12345 |
+| TrackedEntityType (Type d'entité suivie) | Uniquement pour lire les données. Il s'agit du type de l'entité suivie inscrite | Non | Oui | Chaîne : Uid | ABCDEF12345 |
+| statut | Statut de l'inscription. Il est ACTIF au cas où n'est pas fourni. | Non | Non | Enum | ACTIF, TERMINÉ, ANNULÉ |
+| orgUnit (Unité d'organisation) | L'unité d'organisation dans laquelle l'utilisateur a inscrit l'entité suivie. | Oui | Non | Chaîne : Uid | ABCDEF12345 |
+| orgUnitName (nom de l'unité d'organisation) | Uniquement pour lire les données. Il s'agit du nom de l'unité d'organisation où l'inscription a eu lieu. | Non | Non | Chaîne : Toute | Sierra Leone |
+| créé à | Date à laquelle l'utilisateur a créé l'objet. Elle est définie sur le serveur. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| crééAtClient (Création au niveau du client) | Date à laquelle l'utilisateur a créé l'objet au nibveau du client | Non | Non | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| updatedAt (mis à jour à) | Date de la dernière mise à jour de l'objet. Elle est définie sur le serveur. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| updatedAtClient (mise à jour au niveau du client) | Date de la dernière mise à jour de l'objet au niveau du client. | Non | Non | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| enrolledAt (inscrit à) | Date à laquelle l'utilisateur a inscrit l'entité suivie. | Oui | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| occurredAt (s'est produit à) | Date à laquelle l'inscription a eu lieu. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| completedAt (terminé à) | Date à laquelle l'utilisateur a terminé l'inscription. Elle est définie sur le serveur. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| completedBy (terminé par) | Fait référence à la personne qui a effectué l'inscription | Non | Non | Chaîne : Toute | John Doe |
+| Suivi | Indicates whether the enrollment requires follow-up. False if not supplied | Non | Non | Booléen | Par défaut : Faux, Vrai |
+| supprimé | Indique si l'inscription a été supprimée. Ne peut être modifié qu'au moment de la suppression. | Non | Oui | Booléen | Faux jusqu'à suppression |
+| géométrie | Il s'agit d'une représentation géographique de l'inscription. Elle se base sur le « type de fonctionnalité » du programme. | Non | Non | GeoJson | {<br>"type": "POINT",<br>"coordonnées": [123.0, 123.0]<br>} |
+| Stocké par | Référence client indiquant celui a stocké/créé l'inscription. | Non | Non | Chaîne : Toute | John Doe |
+| createdBy (créé par) | Uniquement pour lire des données. Il s'agit de l'utilisateur qui a créé l'objet. Défini sur le serveur | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"Nom d'utilisateur": "Nom d'utilisateur",<br>"Prénom": "John",<br>"Nom de famille": "Doe"<br>} |
+| updatedBy (mis à jour par) | Uniquement pour lire des données. Il s'agit de l'utilisateur qui a mis à jour l'objet. Défini sur le serveur | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"Nom d'utilisateur": "Nom d'utilisateur",<br>"Prénom": "John",<br>"Nom de famille": "Doe"<br>} |
+| les attributs | Une liste de valeurs d'attributs d'entité suivie associées à l'inscription. | Non | Non | Liste des valeurs d'attributs d'entités suivies | Voir l'attribut |
+| événements | Une liste des événements appartenant à l'inscription. | Non | Non | Liste des événements | Voir les évènements |
+| relations | Une liste des relations liées à l'inscription. | Non | Non | Liste des relations | Voir les relations |
+| notes | Notes liées à l'inscription. Elles ne peuvent qu'être créées. | Non | Oui | Liste des notes | Voir les notes |
 
-> **Note**
+> **Remarque**
 >
-> `Tracked Entities` "owns" all `Tracked Entity Attribute Values` (Or "attributes" as described in the previous table). However, `Tracked Entity Attributes` are either connected to a `Tracked Entity` through its `Tracked Entity Type` or a `Program`. We often refer to this separation as `Tracked Entity Type Attributes` and `Tracked Entity Program Attributes`. The importance of this separation is related to access control and limiting what information the user can see.
+> Les `entités suivies` "possèdent" toutes les `Valeurs d'attribut d'entités suivies` (ou les "attributs" décrits dans le tableau précédent). Cependant, les `attributs d'entités suivies` sont soit connectés à une `entité suivie` via son `type d'entité suivie` soit à un `programme`. Nous désignons souvent cette séparation par `Attributs de type d'entité suivi` et `Attributs de programme d'entité suivi`. L'importance de cette distinction est liée au contrôle d'accès et à la limitation des informations que l'utilisateur peut voir.
 >
-> The "attributes" referred to in the `Enrollment` are `Tracked Entity Program Attributes`.
+> Les "attributs" mentionnés dans `Inscription` sont des `Attributs de programmes d'entités suivies`.
 
 
 ### Événements { #events } 
@@ -17751,51 +17751,51 @@ Tracker consists of a few different types of objects that are nested together to
 
 In the API, the significant difference is that all events are either connected to the same enrollment (`EVENT PROGRAM`) or different enrollments (`TRACKER PROGRAM`). The table below will point out any exceptional cases between these two.
 
-| Propriété | Description | Obligatoire | Immutable | Type | Exemple |
+| Propriété | Description | Obligatoire | Immuable | Type | Exemple |
 |---|---|---|---|---|---|
-| event | The identifier of the event. Generated if not supplied | Non | Oui | String:Uid | ABCDEF12345 |
-| programStage | The program stage the event represents. | Oui | Non | String:Uid | ABCDEF12345 |
-| enrollment | A reference to the enrollment which owns the event. ***Not applicable for `EVENT PROGRAM`*** | Oui | Oui | String:Uid | ABCDEF12345 |
-| de paludisme) ». | Only for reading data. The type of program the enrollment which owns the event has. | Non | Oui | String:Uid | ABCDEF12345 |
-| trackedEntity | Only for reading data. The tracked entity which owns the event. ***Not applicable for `EVENT PROGRAM`*** | Non | Non | String:Uid | ABCDEF12345 |
-| status | Status of the event. ACTIVE if not supplied. | Non | Non | Enum | ACTIVE, COMPLETED, VISITED, SCHEDULE, OVERDUE, SKIPPED |
-| enrollmentStatus | Only for reading data. The status of the enrollment which owns the event. ***Not applicable for `EVENT PROGRAM`*** | Non | Non | Enum | ACTIVE, COMPLETED, CANCELLED |
-| orgUnit (Unité d'organisation) | The organisation unit where the user registered the event. | Oui | Non | String:Uid | ABCDEF12345 |
-| orgUnitName | Only for reading data. The name of the organisation unit where the user registered the event. | Non | Non | String:Any | Sierra Leone |
-| createdAt | Timestamp when the user created the event. Set on the server. | Non | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| createdAtClient | Timestamp when the user created the event on client | Non | Non | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| updatedAt | Timestamp when the event was last updated. Set on the server. | Non | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| updatedAtClient | Timestamp when the event was last updated on client | Non | Non | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| scheduledAt | Timestamp when the event was scheduled for. | Non | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| occurredAt | Timestamp when something occurred. | Oui | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| completedAt | Timestamp when the user completed the event. Set on the server. | Non | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| completedBy | Reference to who completed the event | Non | Non | String:Any | John Doe |
-| Suivi | Indicates whether the event has been flagged for follow-up. False if not supplied | Non | Non | Booelan | Default: False, True |
-| deleted | Indicates whether the event has been deleted. It can only change when deleting. | Non | Oui | Boolean | False until deleted |
-| geometry | A  geographical representation of the event. Based on the "featureType" of the Program Stage | Non | Non | GeoJson | {<br>"type": "POINT",<br>"coordinates": [123.0, 123.0]<br>} |
-| storedBy | Client reference for who stored/created the event. | Non | Non | String:Any | John Doe |
-| createdBy | Only for reading data. User that created the object. Set on the server | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"username": "username",<br>"firstName": "John",<br>"surname": "Doe"<br>} |
-| updatedBy | Only for reading data. User that last updated the object. Set on the server | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"username": "username",<br>"firstName": "John",<br>"surname": "Doe"<br>} |
-| attributeOptionCombo (combinaison d'options d'attribut) | Attribute option combo for the event. Default if not supplied or configured. | Non | Non | String:Uid | ABCDEF12345
-| attributeCategoryOptions | Attribute category option for the event. Default if not supplied or configured. | Non | Non | String:Uid | ABCDEF12345
-| assignedUser | A reference to a user who has been assigned to the event. | Non | Non | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"username": "username",<br>"firstName": "John",<br>"surname": "Doe"<br>} |
-| dataValues | A list of data values connected to the event. | Non | Non | List of TrackedEntityAttributeValue | See Attribute |
-| relationships | A list of relationships connected to the event. | Non | Non | List of Relationship | See Relationship |
-| notes | Notes connected to the event. It can only be created. | Non | Oui | List of Note | See Note |
+| event | The identifier of the event. Generated if not supplied | Non | Oui | Chaîne : Uid | ABCDEF12345 |
+| programStage | The program stage the event represents. | Oui | Non | Chaîne : Uid | ABCDEF12345 |
+| inscription | A reference to the enrollment which owns the event. ***Not applicable for `EVENT PROGRAM`*** | Oui | Oui | Chaîne : Uid | ABCDEF12345 |
+| de paludisme) ». | Only for reading data. The type of program the enrollment which owns the event has. | Non | Oui | Chaîne : Uid | ABCDEF12345 |
+| Entité suivie | Only for reading data. The tracked entity which owns the event. ***Not applicable for `EVENT PROGRAM`*** | Non | Non | Chaîne : Uid | ABCDEF12345 |
+| statut | Status of the event. ACTIVE if not supplied. | Non | Non | Enum | ACTIVE, COMPLETED, VISITED, SCHEDULE, OVERDUE, SKIPPED |
+| enrollmentStatus | Only for reading data. The status of the enrollment which owns the event. ***Not applicable for `EVENT PROGRAM`*** | Non | Non | Enum | ACTIF, TERMINÉ, ANNULÉ |
+| orgUnit (Unité d'organisation) | The organisation unit where the user registered the event. | Oui | Non | Chaîne : Uid | ABCDEF12345 |
+| orgUnitName (nom de l'unité d'organisation) | Only for reading data. The name of the organisation unit where the user registered the event. | Non | Non | Chaîne : Toute | Sierra Leone |
+| créé à | Timestamp when the user created the event. Set on the server. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| crééAtClient (Création au niveau du client) | Timestamp when the user created the event on client | Non | Non | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| updatedAt (mis à jour à) | Timestamp when the event was last updated. Set on the server. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| updatedAtClient (mise à jour au niveau du client) | Timestamp when the event was last updated on client | Non | Non | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| scheduledAt | Timestamp when the event was scheduled for. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| occurredAt (s'est produit à) | Timestamp when something occurred. | Oui | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| completedAt (terminé à) | Timestamp when the user completed the event. Set on the server. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| completedBy (terminé par) | Reference to who completed the event | Non | Non | Chaîne : Toute | John Doe |
+| Suivi | Indicates whether the event has been flagged for follow-up. False if not supplied | Non | Non | Booléen | Par défaut : Faux, Vrai |
+| supprimé | Indicates whether the event has been deleted. It can only change when deleting. | Non | Oui | Booléen | Faux jusqu'à suppression |
+| géométrie | A  geographical representation of the event. Based on the "featureType" of the Program Stage | Non | Non | GeoJson | {<br>"type": "POINT",<br>"coordonnées": [123.0, 123.0]<br>} |
+| Stocké par | Client reference for who stored/created the event. | Non | Non | Chaîne : Toute | John Doe |
+| createdBy (créé par) | Uniquement pour lire des données. Il s'agit de l'utilisateur qui a créé l'objet. Défini sur le serveur | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"Nom d'utilisateur": "Nom d'utilisateur",<br>"Prénom": "John",<br>"Nom de famille": "Doe"<br>} |
+| updatedBy (mis à jour par) | Uniquement pour lire des données. Il s'agit de l'utilisateur qui a mis à jour l'objet. Défini sur le serveur | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"Nom d'utilisateur": "Nom d'utilisateur",<br>"Prénom": "John",<br>"Nom de famille": "Doe"<br>} |
+| attributeOptionCombo (combinaison d'options d'attribut) | Attribute option combo for the event. Default if not supplied or configured. | Non | Non | Chaîne : Uid | ABCDEF12345
+| attributeCategoryOptions | Attribute category option for the event. Default if not supplied or configured. | Non | Non | Chaîne : Uid | ABCDEF12345
+| assignedUser | A reference to a user who has been assigned to the event. | Non | Non | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"Nom d'utilisateur": "Nom d'utilisateur",<br>"Prénom": "John",<br>"Nom de famille": "Doe"<br>} |
+| dataValues | A list of data values connected to the event. | Non | Non | Liste des valeurs d'attributs d'entités suivies | Voir l'attribut |
+| relations | A list of relationships connected to the event. | Non | Non | Liste des relations | Voir les relations |
+| notes | Notes connected to the event. It can only be created. | Non | Oui | Liste des notes | Voir les notes |
 
 ### Relationship { #relationship } 
 
 `Relationships` are objects that link together two other tracker objects. The constraints each side of the relationship must conform to are based on the `Relationship Type` of the `Relationship`.
 
 
-| Propriété | Description | Obligatoire | Immutable | Type | Exemple |
+| Propriété | Description | Obligatoire | Immuable | Type | Exemple |
 |---|---|---|---|---|---|
-| relationship | The identifier of the relationship. Generated if not supplied. | Non | Oui | String:Uid | ABCDEF12345 |
-| relationshipType | The type of the relationship. Decides what objects can be linked in a relationship. | Oui | Oui | String:Uid | ABCDEF12345 |
-| relationshipName | Only for reading data. The name of the relationship type of this relationship | Non | Non | String:Any | Sibling |
-| createdAt | Timestamp when the user created the relationship. Set on the server. | Non | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| updatedAt | Timestamp when the relationship was last updated. Set on the server. | Non | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| bidirectional | Only for reading data. Indicated whether the relationship type is bidirectional or not. | Non | Non | Boolean | True or False |
+| relationship | The identifier of the relationship. Generated if not supplied. | Non | Oui | Chaîne : Uid | ABCDEF12345 |
+| relationshipType | The type of the relationship. Decides what objects can be linked in a relationship. | Oui | Oui | Chaîne : Uid | ABCDEF12345 |
+| relationshipName | Only for reading data. The name of the relationship type of this relationship | Non | Non | Chaîne : Toute | Sibling |
+| créé à | Timestamp when the user created the relationship. Set on the server. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| updatedAt (mis à jour à) | Timestamp when the relationship was last updated. Set on the server. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| bidirectional | Only for reading data. Indicated whether the relationship type is bidirectional or not. | Non | Non | Booléen | True or False |
 | from, to | A reference to each side of the relationship. Must conform to the constraints set in the relationship type | Oui | Oui | RelationshipItem | {"trackedEntity": {"trackedEntity": "ABCEF12345"}}, {"enrollment": {"enrollment": "ABCDEF12345"}} or {"event": {"event": "ABCDEF12345" }} |
 
 > **Note**
@@ -17815,16 +17815,16 @@ In the API, the significant difference is that all events are either connected t
 ### Attribut { #attribute } 
 `Attributes` are the actual values describing the `tracked entities`. They can either be connected through a `tracked entity type` or a `program`. Implicitly this means `attributes` can be part of both a `tracked entity` and an `enrollment`.
 
-| Propriété | Description | Obligatoire | Immutable | Type | Exemple |
+| Propriété | Description | Obligatoire | Immuable | Type | Exemple |
 |---|---|---|---|---|---|
-| attribute | A reference to the tracked entity attribute represented. | Oui | Oui | String:Uid | ABCDEF12345 |
-| code | Only for reading data. The code of the tracked entity attribute. | Non | Non | String:Any | ABC |
-| displayName | Only for reading data. The displayName of the tracked entity attribute. | Non | Non | String:Any | Nom |
-| createdAt | Timestamp when the value was added. Set on the server. | Non | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| updatedAt | Timestamp when the value was last updated. Set on the server. | Non | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| storedBy | Client reference for who stored/created the value. | Non | Non | String:Any | John Doe |
+| attribute | A reference to the tracked entity attribute represented. | Oui | Oui | Chaîne : Uid | ABCDEF12345 |
+| code | Only for reading data. The code of the tracked entity attribute. | Non | Non | Chaîne : Toute | ABC |
+| displayName | Only for reading data. The displayName of the tracked entity attribute. | Non | Non | Chaîne : Toute | Nom |
+| créé à | Timestamp when the value was added. Set on the server. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| updatedAt (mis à jour à) | Timestamp when the value was last updated. Set on the server. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| Stocké par | Client reference for who stored/created the value. | Non | Non | Chaîne : Toute | John Doe |
 | valueType | Only for reading data. The type of value the attribute represents. | Non | Non | Enum | TEXT, INTEGER, and more |
-| valeur | The value of the tracked entity attribute. | Non | Non | String:Any | John Doe |
+| valeur | The value of the tracked entity attribute. | Non | Non | Chaîne : Toute | John Doe |
 
 > **Note**
 >
@@ -17835,16 +17835,16 @@ In the API, the significant difference is that all events are either connected t
 ### Data Values { #data-values } 
 While `Attributes` describes a `tracked entity` or an `enrollment`, `data values` describes an `event`. The major difference is that `attributes` can only have a single value for a given `tracked entity`. In contrast, `data values` can have many different values across different `events` - even if the `events` all belong to the same `enrollment` or `tracked entity`.
 
-| Propriété | Description | Obligatoire | Immutable | Type | Exemple |
+| Propriété | Description | Obligatoire | Immuable | Type | Exemple |
 |---|---|---|---|---|---|
-| élément de données | The data element this value represents. | Oui | Oui | String:Uid | ABCDEF12345 |
-| valeur | The value of the data value. | Non | Non | String:Any | 123 |
-| providedElsewhere | Indicates whether the user provided the value elsewhere or not. False if not supplied. | Non | Non | Boolean | False or True |
-| createdAt | Timestamp when the user added the value. Set on the server. | Non | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| updatedAt | Timestamp when the value was last updated. Set on the server. | Non | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| storedBy | Client reference for who stored/created the value. | Non | Non | String:Any | John Doe |
-| createdBy | Only for reading data. User that created the object. Set on the server | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"username": "username",<br>"firstName": "John",<br>"surname": "Doe"<br>} |
-| updatedBy | Only for reading data. User that last updated the object. Set on the server | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"username": "username",<br>"firstName": "John",<br>"surname": "Doe"<br>} |
+| élément de données | The data element this value represents. | Oui | Oui | Chaîne : Uid | ABCDEF12345 |
+| valeur | The value of the data value. | Non | Non | Chaîne : Toute | 123 |
+| providedElsewhere | Indicates whether the user provided the value elsewhere or not. False if not supplied. | Non | Non | Booléen | False or True |
+| créé à | Timestamp when the user added the value. Set on the server. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| updatedAt (mis à jour à) | Timestamp when the value was last updated. Set on the server. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| Stocké par | Client reference for who stored/created the value. | Non | Non | Chaîne : Toute | John Doe |
+| createdBy (créé par) | Uniquement pour lire des données. Il s'agit de l'utilisateur qui a créé l'objet. Défini sur le serveur | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"Nom d'utilisateur": "Nom d'utilisateur",<br>"Prénom": "John",<br>"Nom de famille": "Doe"<br>} |
+| updatedBy (mis à jour par) | Uniquement pour lire des données. Il s'agit de l'utilisateur qui a mis à jour l'objet. Défini sur le serveur | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"Nom d'utilisateur": "Nom d'utilisateur",<br>"Prénom": "John",<br>"Nom de famille": "Doe"<br>} |
 
 
 > **Note**
@@ -17904,22 +17904,22 @@ Tracker notes do not have their dedicated endpoint; they are exchanged as part o
 ```
 
 
-| Propriété | Description | Obligatoire | Immutable | Type | Exemple |
+| Propriété | Description | Obligatoire | Immuable | Type | Exemple |
 |---|---|---|---|---|---|
-| note | The reference of the note. Generated if empty | Non | Oui | String:Uid | ABCDEF12345 |
-| valeur | The content of the note. | Oui | Oui | String:Any | This is a note |
-| storedAt | Timestamp when the user added the note. Set on the server. | Non | Oui | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
-| storedBy | Client reference for who stored/created the note. | Non | Non | String:Any | John Doe |
-| createdBy | Only for reading data. User that created the object. Set on the server | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"username": "username",<br>"firstName": "John",<br>"surname": "Doe"<br>} |
+| note | The reference of the note. Generated if empty | Non | Oui | Chaîne : Uid | ABCDEF12345 |
+| valeur | The content of the note. | Oui | Oui | Chaîne : Toute | This is a note |
+| storedAt | Timestamp when the user added the note. Set on the server. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| Stocké par | Client reference for who stored/created the note. | Non | Non | Chaîne : Toute | John Doe |
+| createdBy (créé par) | Uniquement pour lire des données. Il s'agit de l'utilisateur qui a créé l'objet. Défini sur le serveur | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"Nom d'utilisateur": "Nom d'utilisateur",<br>"Prénom": "John",<br>"Nom de famille": "Doe"<br>} |
 
 ### Utilisateur { #user } 
 
-| Propriété | Description | Obligatoire | Immutable | Type | Exemple |
+| Propriété | Description | Obligatoire | Immuable | Type | Exemple |
 |---|---|---|---|---|---|
-| uid | The identifier of the user. | Yes* | Oui | String:Uid | ABCDEF12345 |
-| Nom d'utilisateur | Username used by the user. | Yes* | Oui | String:Any | 123 |
-| firstName | Only for reading data. First name of the user. | Non | Oui | String:Any | John |
-| surname | Only for reading data. Last name of the user. | Non | Oui | String:Any | Doe |
+| uid | The identifier of the user. | Yes* | Oui | Chaîne : Uid | ABCDEF12345 |
+| Nom d'utilisateur | Username used by the user. | Yes* | Oui | Chaîne : Toute | 123 |
+| firstName | Only for reading data. First name of the user. | Non | Oui | Chaîne : Toute | John |
+| surname | Only for reading data. Last name of the user. | Non | Oui | Chaîne : Toute | Doe |
 
 > One between `uid` or `username` field must be provided. If both are provided, only username is considered.
 
@@ -17946,7 +17946,7 @@ Currently, the tracker import endpoint supports the following parameters:
 
 | Parameter name | Description | Type | Allowed values |
 |---|---|---|---|
-| async | Indicates whether the import should happen asynchronously or synchronously. | Boolean | `TRUE`, `FALSE` |
+| async | Indicates whether the import should happen asynchronously or synchronously. | Booléen | `TRUE`, `FALSE` |
 | reportMode | Only when performing synchronous import. See importSummary for more info. | Enum | `FULL`, `ERRORS`, `WARNINGS` |
 | importMode | Indicates the mode of import. Can either be validation only or commit (Default) | Enum | `VALIDATION`, `COMMIT` |
 | idScheme (schéma d'identifiants) | Indicates the overall idScheme to use for metadata references when importing. Default is UID. Can be overridden for specific metadata (Listed below) | Enum | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
@@ -17960,9 +17960,9 @@ Currently, the tracker import endpoint supports the following parameters:
 | atomicMode | Indicates how the import responds to validation errors. If `ALL`, all data imported must be valid for any data to be committed. For `OBJECT`, only the data committed needs to be valid, while other data can be invalid. | Enum | `ALL`, `OBJECT` |
 | flushMode | Indicates the frequency of flushing. This is related to how often data is pushed into the database during the import. Primarily used for debugging reasons, and should not be changed in a production setting | Enum | `AUTO`, `OBJECT` |
 | validationMode | Indicates the completeness of the validation step. It can be skipped, set to fail fast (Return on the first error), or full(Default), which will return any errors found | Enum | `FULL`, `FAIL_FAST`, `SKIP` |
-| skipPatternValidation | If true, it will skip validating the pattern of generated attributes. | Boolean | `TRUE`, `FALSE` |
-| skipSideEffects | If true, it will skip running any side effects for the import | Boolean | `TRUE`, `FALSE` |
-| skipRuleEngine | If true, it will skip running any program rules for the import | Boolean | `TRUE`, `FALSE` |
+| skipPatternValidation | If true, it will skip validating the pattern of generated attributes. | Booléen | `TRUE`, `FALSE` |
+| skipSideEffects | If true, it will skip running any side effects for the import | Booléen | `TRUE`, `FALSE` |
+| skipRuleEngine | If true, it will skip running any program rules for the import | Booléen | `TRUE`, `FALSE` |
 
 **NOTE**: idScheme and its metadata specific idScheme parameters like
 orgUnitIdScheme, programIdScheme, ... used to allow and use the default `AUTO`.
@@ -18215,7 +18215,7 @@ To import a CSV payload, the content type of the request must be set to ***appli
 
 #### ***CSV PAYLOAD*** example { #csv-payload-example } 
 
-|event|status|de paludisme) ».|programStage|enrollment|orgUnit (Unité d'organisation)|occurredAt|scheduledAt|élément de données|valeur|storedBy|providedElsewhere
+|event|statut|de paludisme) ».|programStage|inscription|orgUnit (Unité d'organisation)|occurredAt (s'est produit à)|scheduledAt|élément de données|valeur|Stocké par|providedElsewhere
 |---|---|---|---|---|---|---|---|---|---|---|---|
 |V1CerIi3sdL|COMPLETED|IpHINAT79UW|A03MvHHogjR|CCBLMntFuzb|DiszpKrYNg8|2020-02-26T23:00:00Z|2020-02-27T23:00:00Z|a3kGcGDCuk6|11|admin|faux
 |V1CerIi3sdL|COMPLETED|IpHINAT79UW|A03MvHHogjR|CCBLMntFuzb|DiszpKrYNg8|2020-02-26T23:00:00Z|2020-02-27T23:00:00Z|mB2QHw1tU96|[-11.566044,9.477801]|admin|faux
@@ -19824,7 +19824,7 @@ Table: Data store structure
 | Espace de noms | Namespace for organization of entries. | Chaîne |
 | Clé | Key for identification of values. | Chaîne |
 | Valeur | Value holding the information for the entry. | JSON |
-| Encrypted | Indicates whether the value of the given key should be encrypted | Boolean |
+| Encrypted | Indicates whether the value of the given key should be encrypted | Booléen |
 
 ### Get keys and namespaces { #webapi_data_store_get_keys_and_namespaces } 
 
@@ -20342,7 +20342,7 @@ Table: User data store structure
 | Espace de noms | The namespace the key belongs to | Chaîne |
 | Clé | The key a value is stored on | Chaîne |
 | Valeur | The value stored | JSON |
-| Encrypted | Indicates whether the value should be encrypted | Boolean |
+| Encrypted | Indicates whether the value should be encrypted | Booléen |
 
 ### Get namespaces { #webapi_user_data_store_get_namespaces } 
 
