@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/analytics.md"
-revision_date: '2024-03-13'
+revision_date: '2024-05-02'
 tags:
-- Develop
 - DHIS核心 主版
+- Develop
 ---
 
 # 分析工具 { #analytics } 
@@ -2023,155 +2023,291 @@ For the Program Indicator/Relationship Type link to work, the `/api/analytics/en
 
 API 支持使用与“主”程序（即在`/query/` 之后指定的程序 ID）无关的程序指示符。
 
-## 尺寸{ #webapi_dimensions }
+## Tracked entity analytics { #webapi_tei_analytics } 
 
-有五个资源可以轻松检索数据维度：
+The tracked entity (TE) analytics API allows querying *TEs with their enrollments and event data* captured in DHIS2. 
+This resource retrieves data from TE, enrollments, events, and data elements across multiple programs, for a given tracked entity type.
 
-- [事件查询数据维度](#webapi_event_query_analytics_dimension)`/analytics/events/query/dimensions`
-- [事件聚合数据维度](#webapi_event_aggregate_analytics_dimension) `/analytics/events/aggregate/dimensions`
-- [注册查询数据维度](#webapi_enrollment_query_analytics_dimension) `/analytics/enrollments/query/dimensions`
-- [注册聚合数据维度](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions`
-- [跟踪实体查询数据维度](#webapi_teis_query_analytics_dimensions)) `/analytics/teis/query/dimensions`
+### Dimensions and items { #webapi_tei_analytics_dimensions } 
 
-上述资源共享以下请求参数：
+Tracked entity instance dimensions include program attributes (TE attributes), data elements, 
+organization units, and different kinds of periods. The analytics query will simply return TEs matching a set of criteria.
+It does not perform any aggregation.
 
-| 查询参数 | 必需的                                         | 描述                                                                                       | 选项                                                                                                                                              |
+Table: TE dimensions
+
+| 尺寸                          | Dimension id                                                | 描述 |
+|------------------------------------|-------------------------------------------------------------|---|
+| Program attributes (TE attributes) | `<attribute id>`                                            | The identifier of the program attribute.
+| Data elements in program stages    | `<program id>.<program stage id>[offset].<data element id>` | Data element identifiers must include the program and program stage. ie: `dimension=IpHINAT79UW.ZzYYXq4fJie.GQY2lXrypjO` |
+| 句号                            | N.A.                                                        | There's no direct support for `period` dimension. Periods are supported through several different specific parameters. See the *Periods* section below. |
+| TEI Organisation units             | `ou`                                                        | Organisation unit identifiers, and also the keywords USER_ORGUNIT, USER_ORGUNIT_CHILDREN, USER_ORGUNIT_GRANDCHILDREN, LEVEL-<level\> and OU_GROUP-<group-id\>. |
+| Enrollment Organisation units      | `<program id>.ou`                                           | Organisation unit identifiers, and also the keywords USER_ORGUNIT, USER_ORGUNIT_CHILDREN, USER_ORGUNIT_GRANDCHILDREN, LEVEL-<level\> and OU_GROUP-<group-id\>. |
+| Event Organisation units           | `<program id><program stage id>.ou`                         | Organisation unit identifiers, and also the keywords USER_ORGUNIT, USER_ORGUNIT_CHILDREN, USER_ORGUNIT_GRANDCHILDREN, LEVEL-<level\> and OU_GROUP-<group-id\>. |
+
+#### Offset { #offset } 
+
+Dimensions referring to items in repeatable events can include an optional offset.
+The offset is used to specify which repetition of the event to use.
+The order of the repetitions is based on the occurred date, with the most recent event being the latest repetition.
+The offset is an integer value, where 0 refers to the last repetition, -1 to the second last, and so on.
+Positive values refer to the first (oldest) repetition, second repetition, and so on.
+The offset is enclosed in square brackets [ ].
+
+例：
+
+    IpHINAT79UW.ZzYYXq4fJie.GQY2lXrypjO -- refers to the last repetition
+    IpHINAT79UW.ZzYYXq4fJie[-1].GQY2lXrypjO -- refers to the second last repetition
+    IpHINAT79UW.ZzYYXq4fJie[2].GQY2lXrypjO -- refers to the second repetition 
+
+### Tracked entity (TE) query analytics { #webapi_te_query_analytics } 
+
+The *analytics/trackedEntities/query* endpoint provides queries for captured TEs, allowing querying and filtering for information related to TEs, along with their respective enrollments and events. It does not perform any aggregation.
+
+    /api/41/analytics/trackedEntities/query
+
+You can specify any number of dimensions and any number of filters in a query. Dimension item identifiers can refer to any of the data elements in program stages, program attributes, tracked entity attributes, fixed and relative periods, and organization units. Dimensions can optionally have a query operator and a filter. TEs queries should be in the format described below.
+
+    /api/41/analytics/trackedEntities/query/<tracked-entity-type-id>?dimension=ou:<ou-id>;<ou-id>&
+        dimension=<item-id>&dimension=<item-id>:<operator>:<filter>
+
+For example, to retrieve TEs of type `Person` from the "Child Program" and "Antenatal care" programs, where the "First name" is "James":
+
+    /api/41/analytics/trackedEntities/query/nEenWmSyUEp?program=IpHINAT79UW,WSGAb5XwJ3Y&dimension=IpHINAT79UW.w75KJ2mc4zz:eq:James
+
+Paging can be applied to the query by specifying the page number and the page size parameters. If the page number is specified but the page size is not, a page size of 50 will be used. If the page size is specified but the page number is not, a page number of 1 will be used. To get the second page of the response with a page size of 10 you can use a query like this:
+
+    /api/41/analytics/trackedEntities/query/nEenWmSyUEp?program=IpHINAT79UW,WSGAb5XwJ3Y&dimension=IpHINAT79UW.w75KJ2mc4zz:eq:James
+        &pageSize=10&page=2
+
+#### 筛选 { #filtering } 
+
+Filters can be applied to data elements, tracked entity attributes, and tracked entity identifiers. The filtering is done through a query parameter in the following format:
+
+    ＆dimension = <item-id>：<operator>：<filter-value>
+
+For example, you can filter the "MCH Infant Weight (g)" data element, of the program "Child Program" and program stage "Baby Postnatal" looking for values greater than 2000 and lower than 4000. The filter is defined like this:
+
+    &dimension=IpHINAT79UW.ZzYYXq4fJie.GQY2lXrypjO:GT:2000&dimension=IpHINAT79UW.ZzYYXq4fJie.GQY2lXrypjO:LT:4000
+
+#### Periods  { #periods } 
+
+Unlike enrollment and event query endpoints, the TE endpoint supports multiple ways to specify the period the data belongs to. They are based on different *date* params as shown below:
+
+| Parameter      | 描述                                                                      | 
+|----------------|----------------------------------------------------------------------------------|
+| eventDate      | TEs will be filtered based on the date the event occurred.                       |
+| enrollmentDate | TEs will be filtered based on the date of enrollment.                            |
+| scheduledDate  | TEs will be filtered based on the date the event was scheduled.                  |
+| incidentDate   | TEs will be filtered based on enrollment's incident date.                        |
+| lastUpdated    | TEs will be filtered based on the date the TE/enrollment/event was last updated. |
+| created        | TEs will be filtered based on the date the TE/enrollment/event was created.      |
+
+Some periods, mentioned above, can be applied to Tracked Entities, Enrollments, or Events, depending on the way they are expressed.
+
+例子：
+
+* filtering TEs that have been updated during the last year:
+
+`lastUpdated=LAST_YEAR`
+
+* filtering TEs whose latest enrollment in the program "Child Program" has been updated during the last year:
+
+`lastUpdated=IpHINAT79UW.LAST_YEAR`
+
+* filtering TEs whose latest event in the program stage "Baby Postnatal", in the latest enrollment in the program "Child Program" has been updated during the last year:
+
+`lastUpdated=IpHINAT79UW.ZzYYXq4fJie.LAST_YEAR`
+
+* filtering TEs whose latest enrollment in the "Child Program" occurred in the last year:
+
+`enrollmentDate=IpHINAT79UW.LAST_YEAR`
+
+### Request query parameters { #webapi_tei_analytics_query_parameters } 
+
+The analytics TE query API supports a range of query parameters.
+
+Table: Query parameters for the TE query endpoint
+
+| 查询参数         | 需要 | 描述                                                                                                                                                                                                                                                                                                                                                               | 选项（默认为默认）                                                                                                                                                                              |
+|-------------------------|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| trackedEntityType       | 是的      | Tracked entity type identifier.                                                                                                                                                                                                                                                                                                                                           | Any tracked entity type identifier.                                                                                                                                                                  |
+| program                 | 不       | Program identifiers.                                                                                                                                                                                                                                                                                                                                                      | Any program identifier. Accepts multiple comma-separated identifiers.                                                                                                                                |
+| 维度               | 不       | Dimension identifier including data elements, attributes, program indicators, periods, organization units and organization unit group sets. This parameter can be specified multiple times. Dimension filters can be applied to a dimension in the format <dimension-id\>:<operator\>:<filter-value\>. Filter values can be case-insensitive (depending on the operator). | Operators supported: EQ &#124; IEQ &#124; GT &#124; GE &#124; LT &#124; LE &#124; NE &#124; LIKE &#124; ILIKE &#124; IN                                                                              |
+| filter                  | 不       | Dimension identifier including data elements, attributes, periods, organization units and organization unit group sets. This parameter can be specified multiple times. Dimension filters can be applied to a dimension in the format <dimension-id\>:<operator\>:<filter-value\>. Filter values can be case-insensitive (depending on the operator).                     | Operators supported: EQ &#124; IEQ &#124; GT &#124; GE &#124; LT &#124; LE &#124; NE &#124; LIKE &#124; ILIKE &#124; IN                                                                              |
+| 标头                 | 不       | 作为响应的一部分返回的标头的名称。                                                                                                                                                                                                                                                                                                           | One or more header names (separated by a comma).                                                                                                                                                     |
+| relativePeriodDate      | 不       | Overrides the start date, so relative periods will use this date as the starting date.                                                                                                                                                                                                                                                                                    | Example: "2016-01-01"                                                                                                                                                                                |
+| ouMode                  | 不       | The mode for the selection of organization units. The default is DESCENDANTS, meaning all subunits in the hierarchy. CHILDREN refers to immediate children in the hierarchy; SELECTED refers to the selected organization units only.                                                                                                                                     | DESCENDANTS, CHILDREN, SELECTED                                                                                                                                                                      |
+| asc                     | 不       | Dimensions to be sorted ascending. Can reference to enrollment date, incident date, org unit name, and code.                                                                                                                                                                                                                                                              | `ouname` &#124; `programstatus` &#124; `createdbydisplayname` &#124; `lastupdatedbydisplayname` &#124; `enrollmentdate` &#124; `incidentdate` &#124; `lastupdated` &#124; `<dimension identifier>`   |
+| desc                    | 不       | Dimensions to be sorted descending, can reference to enrollment date, incident date, org unit name and code.                                                                                                                                                                                                                                                              | `ouname` &#124; `programstatus` &#124; `createdbydisplayname` &#124; `lastupdatedbydisplayname` &#124; `enrollmentdate` &#124; `incidentdate` &#124; `lastupdated` &#124; `<dimension identifier>`   |
+| page                    | 不       | The page number. The default value is 1.                                                                                                                                                                                                                                                                                                                                  | Numeric positive value.                                                                                                                                                                              |
+| pageSize                | 不       | The page size. The default value is 50 (which means 50 items per page).                                                                                                                                                                                                                                                                                                   | Numeric zero or positive value.                                                                                                                                                                      |
+| displayProperty         | 不       | Property to display for metadata.                                                                                                                                                                                                                                                                                                                                         | NAME &#124; SHORTNAME                                                                                                                                                                                |
+| includeMetadataDetails  | 不       | Include metadata details to raw data response.                                                                                                                                                                                                                                                                                                                            | false &#124; true                                                                                                                                                                                    |
+| outputIdScheme          | 不       | Identifier scheme used for metadata items in the query response. It accepts identifiers, codes, or attributes.                                                                                                                                                                                                                                                            | UID &#124; UUID &#124; CODE &#124; NAME &#124; ATTRIBUTE:<ID\>                                                                                                                                       |
+| dataIdScheme            | 不       | Id scheme to be used for data, more specifically data elements and attributes that have an option set or legend set, e.g. return the name of the option instead of the code, or the name of the legend instead of the legend ID, in the data response.                                                                                                                    | NAME &#124; CODE &#124; UID                                                                                                                                                                          |
+| programStatus           | 不       | Specify enrollment status of events to include. *DEPRECATED, prefer `enrollmentStatus`*                                                                                                                                                                                                                                                                                   | ACTIVE &#124; COMPLETED &#124; CANCELLED. Can be comma separated (*for query only*).                                                                                                                 |
+| enrollmentStatus        | 不       | Specify enrollment status of events to include.                                                                                                                                                                                                                                                                                                                           | ACTIVE &#124; COMPLETED &#124; CANCELLED. Can be comma separated (*for query only*).                                                                                                                 |
+| eventStatus             | 不       | Specify the status of events to include.                                                                                                                                                                                                                                                                                                                                  | ACTIVE &#124; COMPLETED &#124; SCHEDULE &#124; OVERDUE &#124; SKIPPED. Can be comma separated (*for query only*).                                                                                    |
+| coordinatesOnly         | 不       | Whether to only return events that have coordinates.                                                                                                                                                                                                                                                                                                                      | false &#124; true                                                                                                                                                                                    |
+| geometryOnly            | 不       | Whether to only return events that have geometries.                                                                                                                                                                                                                                                                                                                       | false &#124; true                                                                                                                                                                                    |
+| userOrgUnit             | 不       | User organization unit identifier.                                                                                                                                                                                                                                                                                                                                        | Any organization unit identifier.                                                                                                                                                                    | 
+| skipMeta                | 不       | Skip metadata in the response.                                                                                                                                                                                                                                                                                                                                            | false &#124; true                                                                                                                                                                                    |
+| skipData                | 不       | Skip data in the response.                                                                                                                                                                                                                                                                                                                                                | false &#124; true                                                                                                                                                                                    |
+| skipRounding            | 不       | Skip rounding of data values.                                                                                                                                                                                                                                                                                                                                             | false &#124; true                                                                                                                                                                                    |
+| skipHeaders             | 不       | Skip headers in the response.                                                                                                                                                                                                                                                                                                                                             | false &#124; true                                                                                                                                                                                    |
+| totalPages              | 不       | Include the total number of pages in the response.                                                                                                                                                                                                                                                                                                                        | false &#124; true                                                                                                                                                                                    |
+| displayProperty         | 不       | Property to display for metadata.                                                                                                                                                                                                                                                                                                                                         | NAME &#124; SHORTNAME                                                                                                                                                                                |
+
+## Dimensions { #webapi_dimensions }
+
+Five resources allow to easily retrieve data dimensions:
+
+- [Event Query data dimensions](#webapi_event_query_analytics_dimension)`/analytics/events/query/dimensions` 
+- [Event Aggregate data dimensions](#webapi_event_aggregate_analytics_dimension) `/analytics/events/aggregate/dimensions`
+- [Enrollment Query data dimensions](#webapi_enrollment_query_analytics_dimension) `/analytics/enrollments/query/dimensions`
+- [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions`
+- [Tracked Entities query data dimensions](#webapi_teis_query_analytics_dimensions)) `/analytics/teis/query/dimensions`
+
+Resources mentioned above share the following request parameter:
+
+| 查询参数 | required                                         | 描述                                                                                       | 选项                                                                                                                                              |
 |-----------------|--------------------------------------------------|---------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 筛选          | 不                                               | 允许按以下格式过滤字段值：<br/> `filter=field:OP:value&filter=field:OP:value&...` | 请参阅[维度过滤器部分]。(#webapi_analytics_dimension_filters)                                                                                |
-| 领域          | 不                                               | 允许字段过滤                                                  |
-| 页            | 不 | 页码                                                                                       | 默认为 1（第一页）                                                                                                                           |
-| 页面大小        | 不 | 页面大小                                                                                         | 默认为每页 50 个元素                                                                                                                     |
-| 寻呼          | 不 | Disables pagination when `false`                                                                  | `true` 或 `false`，默认为 `true`                                                                                                                |
-| 命令           | 不 | Allows sorting on the format: `order=field:direction`                                                                   | Sortable fields: `created` (default), `lastUpdated`, `code`, `uid`, `id`, `name`, `displayName`, `dimensionType`<br/><br/> Direction can be `ASC` (default) or `DESC` |
+| filter          | no                                               | Allows field value filtering on the format: <br/> `filter=field:OP:value&filter=field:OP:value&...` | See [dimension filters section].(#webapi_analytics_dimension_filters)                                                                                |
+| fields          | no                                               | Allows field filtering                                                  |
+| page            | no | Page number                                                                                       | Defaults to 1 (first page)                                                                                                                           |
+| pageSize        | no | Page size                                                                                         | Defaults to 50 elements per page                                                                                                                     |
+| paging          | no | Disables pagination when `false`                                                                  | `true` or `false`, defaults to `true`                                                                                                                |
+| order           | no | Allows sorting on the format: `order=field:direction`                                                                   | Sortable fields: `created` (default), `lastUpdated`, `code`, `uid`, `id`, `name`, `displayName`, `dimensionType`<br/><br/> Direction can be `ASC` (default) or `DESC` |
 
-#### 维度过滤器 { #webapi_analytics_dimension_filters }
+#### Dimension filters { #webapi_analytics_dimension_filters }
 
 Dimensions endpoints support filtering the output to narrow down the response to desired elements.
 Filters are in the format `filter=field:op:value&filter=field:op:value&...&filter=field:op:value`.
 
 Supported `field` values are:
 
-- **id**/**uid** - 维度 ID
-- **代码** - 尺寸代码
-- **valueType** - 维度值类型
-- **名称** - 维度的名称
-- **dimensionType** - 维度的类型
+- **id**/**uid** - dimension id
+- **code** - dimension code
+- **valueType** - dimension value type
+- **name** - the name of the dimension
+- **dimensionType** - the type of the dimension 
     - `DATA_ELEMENT`
     - `PROGRAM_INDICATOR`
     - `PROGRAM_ATTRIBUTE`
-    - `类别`
+    - `CATEGORY`
     - `CATEGORY_OPTION_GROUP_SET`
-- **显示名称** - 维度的显示名称
-- **displayShortName** - 维度的显示短名称
+- **displayName** - displayName of the dimension
+- **displayShortName** - displayShortName of the dimension
 
 Supported `op`values are:
 
-- `startsWith` - 字段开头为
-- `!startsWith` - 字段不以以下内容开头
-- `endsWith` - 字段以以下结尾
-- `!endsWith` - 字段不以 - 结尾
-- `eq` - 等于
-- `ieq` - 等于忽略大小写
-- `ne` - 不等于
-- `like` - 包含
-- `!like` - 不包含
-- `ilike` - 包含忽略大小写
-- `!ilike` - 不包含忽略大小写
+- `startsWith` - field starts with
+- `!startsWith` - field does not start with
+- `endsWith` - field ends with
+- `!endsWith` - field does not end with- 
+- `eq` - equals
+- `ieq` - equals ignoring case
+- `ne` - not equals
+- `like` - contains
+- `!like` - does not contain
+- `ilike` - contains ignoring case
+- `!ilike` - does not contain ignoring case
 
-### 事件分析维度{ #event-analytics-dimensions }
-#### 事件查询分析维度{ #webapi_event_query_analytics_dimension }
+### Event analytics dimensions { #event-analytics-dimensions } 
+#### Event query analytics dimensions { #webapi_event_query_analytics_dimension }
 
-`/analytics/events/query/dimensions?programId={programId}&programStageId={programStageId}` 资源接受：
+The `/analytics/events/query/dimensions?programId={programId}&programStageId={programStageId}` resource accepts:
 
 - a tracker `program`
 - a tracker `programStage`
-- `program` 和 `programStage`
+- both `program` and `programStage`
 
-program和programStage的组合有限制：
+There are constraints on the combination of program and programStage:
 
 - If only `program` is specified, the resource returns data dimensions for each program stage in the provided program
 - If only `programStage` is specified, the resource returns data dimensions for the provided `programStage`
 - If both `program` and `programStage` are specified, the resource returns data dimensions for the provided `programStage` if it belongs to the provided `program`. Returns an error otherwise.
 
-返回的数据维度为：
+the returned data dimensions are:
 
-- **与程序相关的程序指示器**（源自programStageId）
-- 程序阶段*支持类型*的**数据元素**
-- 与程序关联的*支持类型*的**跟踪实体属性**（源自programStageId）
-- 与节目关联的类别组合中的 **类别**（源自programStageId）
+- **Program indicators** associated with the program (derived from programStageId)
+- **Data elements** of *supported types* in the program stage
+- **Tracked entity attributes** of *supported types* associated with the program (derived from programStageId)
+- **Categories** in category combo associated with the program (derived from programStageId)
 - **Category option group sets** of type `ATTRIBUTE`
 
 All value types for data elements and tracked entity attributes are considered *supported types*, except `IMAGE`, `FILE_RESOURCE` and `TRACKER_ASSOCIATE`.
 
-#### 事件聚合维度{ #webapi_event_aggregate_analytics_dimension }
+#### Event aggregate dimensions { #webapi_event_aggregate_analytics_dimension }
 
-`/analytics/events/aggregate/dimensions?programStageId=...` 资源接受强制 `programStageId` 参数并返回以下数据维度：
+The `/analytics/events/aggregate/dimensions?programStageId=...` resource accepts a mandatory `programStageId` parameter and returns the following data dimensions:
 
-- 程序阶段*支持类型*的**数据元素**
-- 与程序关联的*支持类型*的**跟踪实体属性**（源自programStageId）
-- 与节目关联的类别组合中的 **类别**（源自programStageId）
+- **Data elements** of *supported types* in the program stage
+- **Tracked entity attributes** of *supported types* associated with the program (derived from programStageId)
+- **Categories** in category combo associated with the program (derived from programStageId)
 - **Category option group sets** of type `ATTRIBUTE` associated with program (derived from programStageId)
 
 Data elements and tracked entity attributes are considered *supported types* if their value type is one of the following:
 
-- `数字`
+- `NUMBER`
 - `UNIT_INTERVAL`
-- `百分比`
-- `整数`
+- `PERCENTAGE`
+- `INTEGER`
 - `INTEGER_POSITIVE`
 - `INTEGER_NEGATIVE`
 - `INTEGER_ZERO_OR_POSITIVE`
-- `布尔值`
-- `仅 TRUE_ONLY`
+- `BOOLEAN`
+- `TRUE_ONLY`
 
-### 注册分析维度 { #enrollment-analytics-dimensions }
+### Enrollment analytics dimensions { #enrollment-analytics-dimensions } 
 
-#### 注册查询分析维度 { #webapi_enrollment_query_analytics_dimension }
+#### Enrollment query analytics dimensions { #webapi_enrollment_query_analytics_dimension }
 
-`/analytics/enrollments/query/dimensions?programId=...` 资源接受跟踪器程序的强制 ID 并返回以下数据维度：
+The `/analytics/enrollments/query/dimensions?programId=...` resource accepts a mandatory id of a tracker program and returns the following data dimensions:
 
-- **程序指示器**连接到程序
-- 程序中*支持类型*的**数据元素**，以及每个数据元素的程序阶段
-- **与非机密程序关联的*支持类型*的跟踪实体属性**
+- **Program indicators** connected to the program
+- **Data elements** of *supported types* in the program, with program stage for each data element
+- **Tracked entity attributes** of *supported types* associated with the program that are not confidential
 
 All value types for data elements and tracked entity attributes are considered *supported types*, except `IMAGE`, `FILE_RESOURCE` and `TRACKER_ASSOCIATE`.
 
-#### 注册聚合维度{ #webapi_enrollment_aggregate_analytics_dimension }
+#### Enrollment aggregate dimensions { #webapi_enrollment_aggregate_analytics_dimension }
 
-`/analytics/enrollments/aggregate/dimensions?programId=...` 资源接受跟踪器程序的强制 ID，引用已注册的程序，并返回以下数据维度：
+The `/analytics/enrollments/aggregate/dimensions?programId=...` resource accepts a mandatory id of a tracker program, referring to a program with registration, and returns the following data dimensions:
 
-- 程序中*支持类型*的**数据元素**，以及每个数据元素的程序阶段
-- **与非机密程序关联的*支持类型*的跟踪实体属性**
+- **Data elements** of *supported types* in the program, with program stage for each data element
+- **Tracked entity attributes** of *supported types* associated with the program that are not confidential
 
 Data elements and tracked entity attributes are considered *supported types* if their value type is one of the following:
 
-- `数字`
+- `NUMBER`
 - `UNIT_INTERVAL`
-- `百分比`
-- `整数`
+- `PERCENTAGE`
+- `INTEGER`
 - `INTEGER_POSITIVE`
 - `INTEGER_NEGATIVE`
 - `INTEGER_ZERO_OR_POSITIVE`
-- `布尔值`
-- `仅 TRUE_ONLY`
+- `BOOLEAN`
+- `TRUE_ONLY`
 
-### 跟踪实体分析维度{ #tracked-entities-analytics-dimensions }
+### Tracked Entities analytics dimensions { #tracked-entities-analytics-dimensions } 
 
-#### 跟踪实体查询分析维度{ #webapi_teis_query_analytics_dimensions }
+#### Tracked Entities query analytics dimensions { #webapi_teis_query_analytics_dimensions }
 
 The `/analytics/teis/query/dimensions?trackedEntityType=TET` resource accepts a mandatory id of a tracked entity type `TET` and returns the following data dimensions:
 
 for each program `P` associated with a tracked entity instance of type `TET`:
 - **Program indicators** associated to `P`
 - **Data elements** of *supported types* in `P`, with program stage for each data element
-- **与非机密程序关联的*支持类型*的跟踪实体属性**
+- **Tracked entity attributes** of *supported types* associated with the program that are not confidential
 - **Program attributes** of `P`
 
 All value types for data elements and tracked entity attributes are considered *supported types*, except `IMAGE`, `FILE_RESOURCE` and `TRACKER_ASSOCIATE`.
 
-### 请求和响应示例 { #sample-request-and-response }
+### Sample request and response { #sample-request-and-response } 
 
-    GET /api/analytics/teis/query/dimensions?programStageId=A03MvHHogjR&order=code&filter=名称:ilike:权重
+    GET /api/analytics/teis/query/dimensions?programStageId=A03MvHHogjR&order=code&filter=name:ilike:weight
 
 ```json
 {
@@ -2249,13 +2385,13 @@ All value types for data elements and tracked entity attributes are considered *
 
 
 
-表：组织部门分析查询参数
+Table: Org unit analytics query parameters
 
-| 财产 | 描述 | 需要 |
+| Property | 描述 | 需要 |
 |---|---|---|
-| 欧 | 组织单位标识符，可能用分号分隔。 | 是的 |
-| 乌格斯 | 组织单位组设置标识符，可能用分号分隔。 | 是的 |
-| 列 | 组织单位组设置标识符，可能用分号分隔。定义哪些组集在表布局中呈现为列。 | 不 |
+| 欧 | Org unit identifiers, potentially separated by a semicolon. | 是的 |
+| ougs | Org unit group set identifiers, potentially separated by a semicolon. | 是的 |
+| 列 | Org unit group set identifiers, potentially separated by a semicolon. Defines which group sets are rendered as columns in a table layout. | 不 |
 
 响应将包含用于父组织单位的列，用于请求的每个组织单位组集部分的列以及用于计数的列。统计信息包括组织单位的数量，该组织单位是请求中指定的组织单位的子层次结构的一部分。该响应包含一个元数据部分，该元数据部分指定由其标识符引用的响应的每个组织单位和组织单位组部分的名称。
 
@@ -2308,23 +2444,23 @@ All value types for data elements and tracked entity attributes are considered *
 
 
 
-表：数据集报告查询参数
+Table: Data set report query parameters
 
-| 范围 | 描述 | 类型 | 需要 |
+| Parameter | 描述 | 类型 | 需要 |
 |---|---|---|---|
-| ds | 用于创建报告的数据集。 | 数据集UID | 是的 |
-| 聚乙烯 | 创建报告的时期。可能是逗号分隔的列表。 | ISO 字符串 | 是的 |
-| 欧 | 创建报告的组织单位。 | 组织单位UID | 是的 |
-| 筛选 | 用作报告过滤器的过滤器。可以重复任意次数。遵循分析 API 语法。 | 一个或多个UID | 不 |
-| 仅选定单位 | 是仅使用捕获的数据还是聚合的数据。 | Boolean | 不 |
+| ds | Data set to create the report from. | Data set UID | 是的 |
+| 聚乙烯 | Period(s) to create the report from. May be a comma-separated list. | ISO String | 是的 |
+| 欧 | Organisation unit to create the report from. | Organisation unit UID | 是的 |
+| filter | Filters to be used as filters for the report. Can be repeated any number of times. Follows the analytics API syntax. | One or more UIDs | 不 |
+| selectedUnitOnly | Whether to use captured data only or aggregated data. | Boolean | 不 |
 
 The data set report resource accepts `GET` requests only. The response content type is `application/json` and returns data in a grid. This endpoint works for all types of data sets, including default, section and custom forms.
 
-检索 2018 年 10 月月度数据集和组织单位的报告的示例请求如下所示：
+An example request to retrieve a report for a monthly data set and org unit for October 2018 looks like this:
 
     GET /api/dataSetReport?ds=BfMAe6Itzgt&pe=201810&ou=ImspTQPwCqd&selectedUnitOnly=false
 
-检索 2018 年 10 月、11 月和 12 月每月数据集和组织单位的报告的示例请求如下所示：
+An example request to retrieve a report for a monthly data set and org unit for October, November, and December 2018 looks like this:
 
     GET /api/dataSetReport?ds=BfMAe6Itzgt&pe=201810,201811,201812&ou=ImspTQPwCqd&selectedUnitOnly=false
 
@@ -2345,7 +2481,7 @@ The data set report resource accepts `GET` requests only. The response content t
 
 A dedicated endpoint is available for data sets with custom HTML forms. This endpoint returns the HTML form content with content type `text/html` with data inserted into it. Note that you can use the general data set report endpoint also for data sets with custom forms; however, that will return the report in JSON format as a grid. This endpoint only works for data sets with custom HTML forms.
 
-    获取 /api/dataSetReport/custom
+    GET /api/dataSetReport/custom
 
 否则，此端点的语法等于常规数据集报告端点。要检索自定义HTML数据集报告，您可以发出如下请求：
 
@@ -2378,16 +2514,16 @@ A dedicated endpoint is available for data sets with custom HTML forms. This end
 
 
 
-表：推送分析属性
+Table: Push analysis properties
 
-| 财产 | 描述 | 类型 | 需要 |
+| Property | 描述 | 类型 | 需要 |
 |---|---|---|---|
-| 仪表板 | 报告所基于的仪表板 | 仪表板 UID | 是的 |
-| 信息 | 显示在报告标题之后 | 串 | 不 |
-| 收件人用户组 | 应接收报告的一组用户组 | 一个或多个用户组 UID | 不会。没有任何收件人的预定作业将被跳过。 |
-| 已启用 | 指示是否应安排此推送分析。默认为假。 | Boolean | 是的。必须真实才能安排。 |
-| 调度频率 | 应安排报告的频率。 | “每日”、“每周”、“每月” | 否。没有频率的推送分析将不会被安排 |
-| 调度日频率 | 应安排作业的频率的日期。 | 整数。频率为“DAILY”时的任何值。当频率为“每周”时为 0-7。频率为“每月”时为 1-31 | 不会。如果没有频率集的有效频率日，则不会安排推送分析。 |
+| dashboard | Dashboard on which reports are based | Dashboard UID | 是的 |
+| message | Appears after title in reports | 串 | 不 |
+| recipientUserGroups | A set of user groups who should receive the reports | One or more user Group UID | No. Scheduled jobs without any recipient will be skipped. |
+| enabled | Indicated whether this push analysis should be scheduled or not. False by default. | Boolean | Yes. Must be true to be scheduled. |
+| schedulingFrequency | The frequency of which reports should be scheduled. | "DAILY", "WEEKLY", "MONTHLY" | No. Push analysis without a frequency will not be scheduled |
+| schedulingDayOfFrequency | The day in the frequency the job should be scheduled. | Integer. Any value when frequency is "DAILY". 0-7 when frequency is "WEEKLY". 1-31 when frequency is "MONTHLY" | No. Push analysis without a valid day of frequency for the frequency set will not be scheduled. |
 
 ## 数据使用情况分析 { #webapi_usage_analytics } 
 
@@ -2430,18 +2566,18 @@ dataStatisticsEventType 参数描述了项目的类型
 下面显示了支持的事件类型。
 
 
-表：支持的事件类型
+Table: Supported event types
 
 | 键 | 描述 |
 |---|---|
-| 可视化_VIEW | 可视化视图 |
-| MAP_VIEW | 地图视图 (GIS) |
-| EVENT_REPORT_VIEW | 事件报告视图 |
-| EVENT_CHART_VIEW | 事件图表视图 |
-| EVENT_VISUALIZATION_VIEW | 事件可视化视图 |
-| DASHBOARD_VIEW | 仪表板视图 |
-| PASSIVE_DASHBOARD_VIEW | 仪表板视图（未明确选择仪表板时） |
-| DATA_SET_REPORT_VIEW | 数据集报告视图 |
+| VISUALIZATION_VIEW | Visualization view |
+| MAP_VIEW | Map view (GIS) |
+| EVENT_REPORT_VIEW | Event report view |
+| EVENT_CHART_VIEW | Event chart view |
+| EVENT_VISUALIZATION_VIEW | Event visualization view |
+| DASHBOARD_VIEW | Dashboard view |
+| PASSIVE_DASHBOARD_VIEW | Dashboard view (when not explicitly selecting the dashboard) |
+| DATA_SET_REPORT_VIEW | Data set report view |
 
 ### 检索汇总的使用情况分析报告（GET） { #webapi_aggregated_usage_analytics } 
 
@@ -2450,13 +2586,13 @@ dataStatisticsEventType 参数描述了项目的类型
 
 
 
-表：聚合使用分析的查询参数（数据统计）
+Table: Query parameters for aggregated usage analytics (data statistics)
 
 | 查询参数 | 需要 | 描述 | 选项 |
 |---|---|---|---|
-| 开始日期 | 是的 | 期间的开始日期 | yyyy-MM-dd 格式的日期 |
-| 结束日期 | 是的 | 期间的结束日期 | yyyy-MM-dd 格式的日期 |
-| 间隔 | 是的 | 要聚合的区间类型 | 日、周、月、年 |
+| 开始日期 | 是的 | Start date for period | Date in yyyy-MM-dd format |
+| 结束日期 | 是的 | End date for period | Date in yyyy-MM-dd format |
+| interval | 是的 | Type of interval to be aggregated | DAY, WEEK, MONTH, YEAR |
 
 startDate 和 endDate 参数指定期间
 将在聚合中使用快照。您必须格式化日期
@@ -2475,14 +2611,14 @@ startDate 和 endDate 参数指定期间
 DHIS2，并由用户。
 
 
-表：最喜欢的查询参数
+Table: Query parameters for top favorites
 
 | 查询参数 | 需要 | 描述 | 选项 |
 |---|---|---|---|
-| 事件类型 | 是的 | 数据统计事件类型 | 见上表 |
-| 页面大小 | 不 | 返回列表的大小 | 例如 5、10、25。默认值为 25 |
-| 排序 | 不 | 下降或上升 | ASC 或 DESC。默认为 DESC。 |
-| 用户名 | 不 | 如果指定，响应将仅包含该用户的收藏夹。 | 例如“管理员” |
+| eventType | 是的 | The data statistics event type | See above table |
+| pageSize | 不 | Size of the list returned | For example 5, 10, 25. Default is 25 |
+| sortOrder | 不 | Descending or ascending | ASC or DESC. Default is DESC. |
+| 用户名 | 不 | If specified, the response will only contain favorites by this user. | For example 'admin' |
 
 API 查询可以不用用户名，然后会找到顶部
 系统的最爱。
@@ -2492,7 +2628,7 @@ API 查询可以不用用户名，然后会找到顶部
 如果指定了用户名，则响应将仅包含该用户的最爱。
 
     /api/dataStatistics/favorites?eventType=CHART_VIEW&pageSize=25
-      &sortOrder=ASC&用户名=admin
+      &sortOrder=ASC&username=admin
 
 ### 回应格式 { #webapi_usage_analytics_response_format } 
 
