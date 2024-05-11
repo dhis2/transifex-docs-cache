@@ -197,92 +197,92 @@ ou créer plusieurs utilisateurs et leurs groupes d'utilisateurs, envisagez un p
 un à la fois, ou *POSTER* tous les utilisateurs suivi d'une autre action pour mettre à jour 
 leurs groupes d'utilisateurs tout en spécifiant les identifiants du nouvel utilisateur.
 
-After the user is created, a *Location* header is sent back with the
-newly generated ID (you can also provide your own using the `/api/system/id`
-endpoint). The same payload can then be used to do updates, but remember
-to then use *PUT* instead of *POST* and the endpoint is now `/api/users/ID`.
+Après la création de l'utilisateur, une entête *Location* est renvoyée avec l'identifiant 
+nouvellement généré (vous pouvez également fournir le vôtre en utilisant le point d'extrémité 
+`/api/system/id`). La même charge utile peut alors être utilisée pour faire des mises à jour, mais n'oubliez pas 
+d'utiliser *PUT* au lieu de *POST* et le point d'extrémité est désormais `/api/users/ID`.
 
 ```bash
 curl -X PUT -d @u.json "http://server/api/33/users/ID" -u user:pass
   -H "Content-Type: application/json"
 ```
 
-For more info about the full payload available, please see `/api/schemas/user`.
+Pour plus d'informations sur l'ensemble des données disponibles, voir `/api/schemas/user`.
 
-For more info about uploading and retrieving user avatars, please see the
-`/fileResources` endpoint.
+Pour plus d'informations sur le téléchargement et la récupération des avatars des utilisateurs, veuillez consulter le 
+point d'extrémité `/fileResources`.
 
-### User account invitations { #webapi_user_invitations } 
+### Invitations pour les comptes d'utilisateurs { #webapi_user_invitations } 
 
-The Web API supports inviting people to create user accounts through the
-`invite` resource. To create an invitation you should POST a user in XML
-or JSON format to the invite resource. A specific username can be forced
-by defining the username in the posted entity. By omitting the username,
-the person will be able to specify it herself. The system will send out
-an invitation through email. This requires that email settings have been
-properly configured.
+L'API Web permet d'inviter des personnes à créer des comptes d'utilisateur par le biais de la ressource
+`invite`. Pour créer une invitation, vous devez POSTER un utilisateur au format XML
+ou JSON à la ressource "invite". Un nom d'utilisateur spécifique peut être imposé
+en définissant le nom d'utilisateur dans l'entité postée. En omettant le nom d'utilisateur,
+la personne pourra le spécifier elle-même. Le système enverra
+une invitation par courrier électronique. Il faut pour cela que les paramètres de messagerie soient
+correctement configurés.
 
-The invite resource is useful in order to securely
-allow people to create accounts without anyone else knowing the password
-or by transferring the password in plain text. The payload to use for
-the invite is the same as for creating users. An example payload in JSON
-looks like this:
+La ressource "invite" est utile pour permettre en toute sécurité
+à des personnes de créer des comptes sans que personne d'autre ne connaisse le mot de passe
+ou en transférant le mot de passe en texte clair. La charge utile à utiliser pour
+l'invitation est la même que pour la création d'utilisateurs. Un exemple de charge utile en JSON
+ressemble à ceci :
 
 ```json
 {
-  "firstName": "John",
-  "surname": "Doe",
+  "prénom": "John",
+  "nom": "Doe",
   "email": "johndoe@mail.com",
-  "userCredentials": {
-    "username": "johndoe",
-    "userRoles": [{
+  "informations d'identification de l'utilisateur": {
+    "nom d'utilisateur": "johndoe",
+    "roles d'utilisateur": [{
       "id": "Euq3XfEIEbx"
     }]
   },
-  "organisationUnits": [ {
+  "unités d'organisation": [ {
     "id": "ImspTQPwCqd"
   } ],
-  "userGroups": [ {
+  "groupes d'utilisateurs": [ {
     "id": "vAvEltyXGbD"
   }]
 }
 ```
 
-The user invite entity can be posted like this:
+L'entité d'invitation de l'utilisateur peut être affichée comme suit :
 
 ```bash
 curl -d @invite.json "localhost/api/33/users/invite" -u admin:district
   -H "Content-Type:application/json"
 ```
 
-To send out invites for multiple users at the same time you must use a
-slightly different format. For JSON:
+Pour envoyer des invitations à plusieurs utilisateurs en même temps, vous devez utiliser un 
+format légèrement différent. Pour JSON :
 
 ```json
 {
-  "users": [ {
-    "firstName": "John",
-    "surname": "Doe",
+  "utilisateurs": [ {
+    "prénom": "John",
+    "nom": "Doe",
     "email": "johndoe@mail.com",
-    "userCredentials": {
-      "username": "johndoe",
-      "userRoles": [ {
+    "informations d'identification de l'utilisateur": {
+      "nom d'utilisateur": "johndoe",
+      "rôles d'utilisateur": [ {
         "id": "Euq3XfEIEbx"
       } ]
     },
-    "organisationUnits": [ {
+    "unités d'organisation": [ {
       "id": "ImspTQPwCqd"
       } ]
     }, {
-    "firstName": "Tom",
-    "surname": "Johnson",
+    "prénom": "Tom",
+    "nom": "Johnson",
     "email": "tomj@mail.com",
-    "userCredentials": {
-      "userRoles": [ {
+    "informations d'identification de l'utilisateur": {
+      "rôles d'utilisateur": [ {
         "id": "Euq3XfEIEbx"
       } ]
     },
-    "organisationUnits": [ {
+    "unités d'organisation": [ {
       "id": "ImspTQPwCqd"
       } ]
     }
@@ -290,151 +290,151 @@ slightly different format. For JSON:
 }
 ```
 
-To create multiple invites you can post the payload to the
-api/users/invites resource like this:
+Pour créer plusieurs invitations, vous pouvez envoyer la charge utile à la ressource
+api/users/invites comme ceci :
 
 ```bash
 curl -d @invites.json "localhost/api/33/users/invites" -u admin:district
   -H "Content-Type:application/json"
 ```
 
-There are certain requirements for user account invitations to be sent
-out:
+Certaines conditions doivent être remplies pour que les invitations à ouvrir un compte d'utilisateur soient 
+envoyées :
 
-  - Email SMTP server must be configured properly on the server.
+  - Le serveur SMTP doit être configuré correctement sur le serveur.
 
-  - The user to be invited must have specified a valid email.
+  - L'utilisateur à inviter doit avoir indiqué un e-mail valide.
 
-  - If username is specified it must not be already taken by another
-    existing user.
+  - Si le nom d'utilisateur est spécifié, il ne doit pas être déjà pris par un autre
+    utilisateur existant.
 
-If any of these requirements are not met the invite resource will return
-with a *409 Conflict* status code together with a descriptive message.
+Si l'une de ces conditions n'est pas remplie, la ressource invitée renvoie 
+un code d'état *409 Conflict* accompagné d'un message descriptif.
 
-### User replication { #webapi_user_replication } 
+### Réplication de l'utilisateur { #webapi_user_replication } 
 
-To replicate a user you can use the *replica* resource. Replicating a
-user can be useful when debugging or reproducing issues reported by a
-particular user. You need to provide a new username and password for the
-replicated user which you will use to authenticate later. Note that you
-need the ALL authority to perform this action. To replicate a user you
-can post a JSON payload looking like below:
+Pour répliquer un utilisateur, vous pouvez utiliser la ressource *replica*. Répliquer un
+utilisateur peut être utile pour déboguer ou reproduire des problèmes signalés par un
+particulier. Vous devez fournir un nouveau nom d'utilisateur et un nouveau mot de passe à l'utilisateur 
+répliqué, que vous allez utiliser pour vous authentifier ultérieurement. Notez que vous
+avez besoin de l'autorisation ALL pour effectuer cette action. Pour répliquer un utilisateur, vous
+vous pouvez envoyer une charge utile JSON comme ci-dessous :
 
 ```json
 {
-  "username": "user_replica",
-  "password": "SecretPassword"
+  "nom d'utilisateur" : " utilisateur_replica",
+  "mot de passe" : " Motdepassesecret "
 }
 ```
 
-This payload can be posted to the replica resource, where you provide
-the identifier of the user to replicate in the URL:
+Cette charge utile peut être envoyée à la ressource réplique, où vous fournissez
+l'identifiant de l'utilisateur à répliquer dans l'URL :
 
     /api/33/users/<uid>/replica
 
-An example of replicating a user using curl looks like this:
+Voici un exemple de reproduction d'un utilisateur à l'aide de curl :
 
 ```bash
 curl -d @replica.json "localhost/api/33/users/N3PZBUlN8vq/replica"
   -H "Content-Type:application/json" -u admin:district
 ```
 
-### Reset user password { #webapi_user_reset }
+### Réinitialiser le mot de passe de l'utilisateur { #webapi_user_reset }
 
-User administrators (with appropriate rights) can reset another user's account
-by triggering password recovery. Once triggered an email is sent to the user
-containing a recovery link. Users following the link get to a form which allows
-to set a new password.
+Les administrateurs utilisateurs (disposant des droits appropriés) peuvent réinitialiser le compte 
+d'un autre utilisateur en déclenchant la récupération du mot de passe. Une fois l'opération déclenchée, un e-mail contenant un lien de récupération 
+est envoyé à l'utilisateur. Les utilisateurs qui suivent le lien accèdent à un formulaire qui leur 
+permet de définir un nouveau mot de passe.
 
-To trigger this workflow for user `tH7WIiIJ0O3` use:
+Pour déclencher ce flux de travail pour l'utilisateur `tH7WIiIJ0O3`, utilisez :
 
     POST /api/37/users/tH7WIiIJ0O3/reset
 
-### Disable and enable user accounts { #webapi_user_disable } 
+### Désactiver et activer des comptes d'utilisateurs { #webapi_user_disable } 
 
-User accounts can be marked disabled.
-A disabled user can no longer log in.
+Les comptes d'utilisateurs peuvent être marqués comme désactivés.
+Un utilisateur désactivé ne peut plus se connecter.
 
-To mark a user with UID `tH7WIiIJ0O3` as disabled use (requires user with appropriate rights):
+Pour marquer un utilisateur avec l'UID `tH7WIiIJ0O3` comme désactivé (nécessite un utilisateur avec les droits appropriés) :
 
     POST /api/36/users/tH7WIiIJ0O3/disabled
 
-To enable a disabled user again use accordingly (requires user with appropriate rights):
+Pour permettre à un utilisateur désactivé d'utiliser à nouveau l'outil en question (l'utilisateur doit disposer des droits appropriés) :
 
     POST /api/36/users/tH7WIiIJ0O3/enabled
 
-### User expiration { #webapi_user_expiration } 
+### Expiration de l'utilisateur { #webapi_user_expiration } 
 
-An expiration date can be set for an user account.
-It marks the point in time from which the user account has expired 
-and can no longer be used. Expired user can no longer log in.
+Une date d'expiration peut être définie pour un compte d'utilisateur.
+Elle marque le moment à partir duquel le compte d'utilisateur a expiré 
+et ne peut plus être utilisé. L'utilisateur dont le compte a expiré ne peut plus se connecter.
 
-To update the expiration date of user with UID `tH7WIiIJ0O3` 
-and set it to the date `2021-01-01` use (requires user with appropriate rights):
+Pour mettre à jour la date d'expiration de l'utilisateur avec l'UID `tH7WIiIJ0O3` 
+et la mettre à la date `2021-01-01` (nécessite un utilisateur avec les droits appropriés) :
 
     POST /api/36/users/tH7WIiIJ0O3/expired?date=2021-01-01
 
-To unset the expiration date so that the account never expires 
-use accordingly (requires user with appropriate rights):
+Pour désactiver la date d'expiration afin que le compte n'expire jamais 
+utiliser en conséquence (nécessite un utilisateur disposant des droits appropriés) :
 
     POST /api/36/users/tH7WIiIJ0O3/unexpired
 
-### User data approval workflows { #user-data-approval-workflows } 
+### Flux de travail pour l'approbation des données des utilisateurs { #user-data-approval-workflows } 
 
-To see which data approval workflows and levels a user may access,
-you can use the *dataApprovalWorkflows* resource as follows:
+Pour connaître les flux de travail et les niveaux d'approbation des données auxquels un utilisateur peut accéder, 
+vous pouvez utiliser la ressource *dataApprovalWorkflows* comme suit :
 
 ```
 GET /api/users/{id}/dataApprovalWorkflows
 ```
 
-## Current user information { #webapi_current_user_information } 
+## Informations sur l'utilisateur actuel { #webapi_current_user_information } 
 
-In order to get information about the currently authenticated user and
-its associations to other resources you can work with the *me* resource
-(you can also refer to it by its old name *currentUser*). The current
-user related resources gives your information which is useful when
-building clients for instance for data entry and user management. The
-following describes these resources and their purpose.
+Pour obtenir des informations sur l'utilisateur actuellement authentifié et ses associations 
+avec d'autres ressources, vous pouvez utiliser la ressource *me* 
+(vous pouvez également l'appeler par son ancien nom *currentUser*). Les 
+ressources liées à l'utilisateur actuel fournissent des informations utiles lors 
+de la création de clients, par exemple pour la saisie de données et la gestion des utilisateurs. Les 
+paragraphes suivants décrivent ces ressources et leur objectif.
 
-Provides basic information about the user that you are currently logged
-in as, including username, user credentials, assigned organisation
-units:
+Fournit des informations de base sur l'utilisateur sous lequel vous êtes actuellement connecté.
+en tant qu'utilisateur, y compris le nom d'utilisateur, les informations d'identification de l'utilisateur, les unités d'organisation 
+affectées:
 
     /api/me
 
-Gives information about currently unread messages and interpretations:
+Donne des informations sur les messages non lus et les interprétations :
 
     /api/me/tableau de bord
 
-In order to change password, this end point can be used to validate
-newly entered password. Password validation will be done based on
-PasswordValidationRules configured in the system. This end point support
-POST and password string should be sent in POST body.
+Pour modifier le mot de passe, ce point d'extrémité peut être utilisé pour valider le mot de passe nouvellement saisi.
+le nouveau mot de passe. La validation du mot de passe sera effectuée sur la base des
+PasswordValidationRules configurées dans le système. Ce point d'extrémité prend en charge
+POST et la chaîne du mot de passe doit être envoyée dans le corps de POST.
 
     /api/me/valider le mot de passe
 
-While changing password, this end point (support POST) can be used to
-verify old password. Password string should be sent in POST body.
+Lors d'un changement de mot de passe, ce point final (support POST) peut être utilisé pour
+vérifier l'ancien mot de passe. La chaîne du mot de passe doit être envoyée dans le corps du POST.
 
     /api/me/verifier le mot de passe
 
-Returns the set of authorities granted to the current user:
+Renvoie l'ensemble des autorisations accordées à l'utilisateur actuel :
 
     /api/me/authorisation
 
-Returns true or false, indicating whether the current user has been
-granted the given `<auth>` authorization:
+Renvoie vrai ou faux, indiquant si l'utilisateur actuel a 
+reçu l'autorisation `<auth>` donnée:
 
     /api/me/authorisation/<auth>
 
-Gives the data approval levels which are relevant to the current user:
+Indique les niveaux d'approbation des données correspondant à l'utilisateur actuel :
 
     /api/me/Niveaux d'approbation des données
 
-Gives the data approval workflows which are accessible to the current user.
-For each workflow, shows which data approval levels the user may see, and
-what permissions they have at each level:
+Indique les flux de travail d'approbation des données accessibles à l'utilisateur actuel.
+Pour chaque flux de travail, indique les niveaux d'approbation des données que l'utilisateur peut voir, et
+les autorisations dont il dispose à chaque niveau :
 
     /api/me/dataApprovalWorkflows
 
