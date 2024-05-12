@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-android-sdk/blob/master/docs/content/developer/workflow.md"
-revision_date: '2024-01-08'
+revision_date: '2024-05-09'
 tags:
 - Desenvolver
 ---
@@ -36,12 +36,15 @@ The number of maximum allowed accounts can be configured by the app (it defaults
 // Get the account list
 d2.userModule().accountManager().getAccounts();
 
-// Get/set the maximum number of accounts
-d2.userModule().accountManager().getMaxAccounts();
-d2.userModule().accountManager().setMaxAccounts();
+// Get the account for current user, or null if the user is not authenticated yet
+d2.userModule().accountManager().getCurrentAccount();
 
 // Delete account for current user
 d2.userModule().accountManager().deleteCurrentAccount();
+
+// Get/set the maximum number of accounts
+d2.userModule().accountManager().getMaxAccounts();
+d2.userModule().accountManager().setMaxAccounts();
 ```
 
 The accountManager exposes an observable that emits an event when the current account is deleted. It includes the reason why the account was deleted.
@@ -537,14 +540,6 @@ Dados cujo estado é `ERROR` ou` WARNING` não podem ser carregados. É necessá
 
 A partir da versão 2.37, um novo importador de rastreador foi introduzido (ponto de extremidade `/api/tracker`). O importador de rastreador padrão ainda é o legado (`/apl/trackedEntityInstances`), mas pode optar por usar este novo importador de rastreador usando o webapp de configurações do Android (consulte [Sincronização] (# android_sdk_synchronization_settings)). Isso é interno ao SDK; a API exposta ao aplicativo não muda.
 
-File resources must be uploaded in a different post call before tracker data upload. The query to post file resources is:
-
-```java
-d2.fileResourceModule (). fileResources (). upload ();
-```
-
-More information about file resources in the section [*Dealing with FileResources*](#android_sdk_file_resources).
-
 #### Conflitos de rastreador { #tracker-conflicts } 
 
 A resposta do servidor é analisada para garantir que os dados foram carregados corretamente para o servidor. Caso a resposta do servidor inclua conflitos de importação, esses conflitos são armazenados no banco de dados, para que o aplicativo possa verificá-los e tomar medidas para resolvê-los.
@@ -630,6 +625,16 @@ Se o trackedEntityInstance relacionado ainda não existir e houver valores de at
 ```java
 d2.trackedEntityModule (). trackedEntityInstanceService ()
     .inheritAttributes ("fromTeiUid", "toTeiUid", "programUid");
+```
+
+In order to access the `dataElements` and `attributes` associated to a `relationshipConstraint`, they can be accessed through the `trackerDataView` property as in the following examples:
+
+```java
+relationshipType.toConstraint().trackerDataView().attributes();
+```
+
+```java
+relationshipType.toConstraint().trackerDataView().dataElements();
 ```
 
 ## Dados agregados { #android_sdk_aggregated_data }
@@ -788,13 +793,14 @@ Este módulo contém métodos para baixar os recursos de arquivo associados aos 
 - **Download de recursos de arquivo**.
 The `fileResourceDownloader()` offers methods to filter the fileResources we want to download. It will search for values that match the filters and whose file resource has not been previously downloaded.
 
-  ```java
+  ```kt
   d2.fileResourceModule().fileResourceDownloader()
-      .byDomainType().eq(FileResourceDomainType.TRACKER)
-      .byElementType().eq(FileResourceElementType.DATA_ELEMENT)
-      .byValueType().in(FileResourceValueType.IMAGE, FileResourceValueType.FILE_RESOURCE)
-      .byMaxContentLength().eq(2000000)
-      .download();
+    .byDomainType().eq(FileResourceDomainType.DATA_VALUE)
+    .byDataDomainType().eq(FileResourceDataDomainType.TRACKER)
+    .byElementType().eq(FileResourceElementType.DATA_ELEMENT)
+    .byValueType().in(FileResourceValueType.IMAGE, FileResourceValueType.FILE_RESOURCE)
+    .byMaxContentLength().eq(2000000)
+    .download()
   ```
 
   The SDK has a default maxContentLength of 6000000.

@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-android-sdk/blob/master/docs/content/developer/object-style.md"
-revision_date: '2021-04-19'
+revision_date: '2024-05-06'
 tags:
 - Develop
 ---
@@ -17,14 +17,37 @@ tags:
 
 ## 图标 { #icon } 
 
-DHIS2中使用的图标集包含在SDK中。它们位于资源内的“可绘制”文件夹中。目前，它们是预定义的，无法自定义。
+DHIS2 includes a predefined set of icons. Those icons are included in the SDK and are located within the resources, in the "drawable" folder.
 
-```java
+Staring on version v41, it is possible to upload user-defined icons and assign them to metadata objects. The actual images of these icons are stored as a FileResource and must be explicitly downloaded in a separate query.
 
-// Illustrative code to get the resource id
-if (program.style().icon() != null) {
-    String iconName = program.style().icon();
-    int resourceId = getResources().getIdentifier(iconName, "drawable", getPackageName());
+```kt
+d2.fileResourceModule().fileResourceDownloader()
+    .byDomainType().eq(FileResourceDomainType.ICON)
+    .download()
+```
+
+You can get the information about a particular icon by using the IconCollectionRepository. It returns an Icon object, which is a sealed class with two possible values: Default or Custom.  
+
+The way to render the actual image will depend on the Icon type.
+
+```kt
+
+val icon = d2.iconModule().icons().key("icon_key").blockingGet()
+
+icon?.let {
+    when (icon) {
+        is Icon.Custom -> {
+            val path = icon.path
+            val fileResourceUid = icon.fileResourceUid
+            // Use this information to load the file
+        }
+
+        is Icon.Default -> {
+            val resourceName = icon.key
+            // Use this information to load the resource
+        }
+    }
 }
 ```
 
@@ -32,8 +55,7 @@ if (program.style().icon() != null) {
 
 它包含颜色的十六进制值。它可用于自定义背景，文本颜色，行标题等。
 
-```java
-program.style().color();    // For example #9C33FF
-
+```kt
+program.style().color()    // For example #9C33FF
 ```
 

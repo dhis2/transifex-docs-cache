@@ -1,0 +1,61 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-sdk/blob/master/docs/content/developer/object-style.md"
+revision_date: '2024-05-06'
+tags:
+- Desarrollar
+---
+
+# Object style { #android_sdk_object_style }
+
+Algunos elementos incluyen una propiedad llamada "estilo" que define un icono y un color. Esta información visual es muy útil para navegar rápidamente por la aplicación. Algunos casos de uso típicos:
+
+- Distinguir diferentes programas y trackedEntityTypes en una lista de programas.
+- En formularios de entrada de datos con un Set de opciones, muestra las opciones con iconos y colores en lugar de nombres.
+- Diferentes etapas de programa dentro de un programa.
+
+Esta propiedad es opcional y no está definida en la mayoría de los casos. Un estilo de objeto puede tener un icono, un color o ambos.
+
+## Icono { #icon } 
+
+DHIS2 includes a predefined set of icons. Those icons are included in the SDK and are located within the resources, in the "drawable" folder.
+
+Staring on version v41, it is possible to upload user-defined icons and assign them to metadata objects. The actual images of these icons are stored as a FileResource and must be explicitly downloaded in a separate query.
+
+```kt
+d2.fileResourceModule().fileResourceDownloader()
+    .byDomainType().eq(FileResourceDomainType.ICON)
+    .download()
+```
+
+You can get the information about a particular icon by using the IconCollectionRepository. It returns an Icon object, which is a sealed class with two possible values: Default or Custom.  
+
+The way to render the actual image will depend on the Icon type.
+
+```kt
+
+val icon = d2.iconModule().icons().key("icon_key").blockingGet()
+
+icon?.let {
+    when (icon) {
+        is Icon.Custom -> {
+            val path = icon.path
+            val fileResourceUid = icon.fileResourceUid
+            // Use this information to load the file
+        }
+
+        is Icon.Default -> {
+            val resourceName = icon.key
+            // Use this information to load the resource
+        }
+    }
+}
+```
+
+## Color { #color } 
+
+Contiene el valor hexadecimal del color. Se puede utilizar para personalizar el fondo, el color del texto, los encabezados de línea, etc.
+
+```kt
+program.style().color()    // For example #9C33FF
+```
+

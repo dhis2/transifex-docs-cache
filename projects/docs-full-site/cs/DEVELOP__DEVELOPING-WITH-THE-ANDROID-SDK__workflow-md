@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-android-sdk/blob/master/docs/content/developer/workflow.md"
-revision_date: '2024-01-08'
+revision_date: '2024-05-09'
 tags:
 - Vývoj
 ---
@@ -36,12 +36,15 @@ Počet maximálních povolených účtů může být konfigurován aplikací (ve
 // Get the account list
 d2.userModule().accountManager().getAccounts();
 
-// Get/set the maximum number of accounts
-d2.userModule().accountManager().getMaxAccounts();
-d2.userModule().accountManager().setMaxAccounts();
+// Get the account for current user, or null if the user is not authenticated yet
+d2.userModule().accountManager().getCurrentAccount();
 
 // Delete account for current user
 d2.userModule().accountManager().deleteCurrentAccount();
+
+// Get/set the maximum number of accounts
+d2.userModule().accountManager().getMaxAccounts();
+d2.userModule().accountManager().setMaxAccounts();
 ```
 
 AccountManager zpřístupní pozorovatelnou událost, která při odstranění aktuálního účtu vyvolá událost. Obsahuje důvod, proč byl účet smazán.
@@ -537,14 +540,6 @@ Nelze nahrát data, jejichž stav je `ERROR` nebo `WARNING` . Před pokusem o no
 
 Od verze 2.37 byl představen nový importér trasovačů (koncový bod `/api/tracker`). Výchozí importér trasovačů je stále starý (`/api/trackedEntityInstances`), ale můžete se přihlásit k používání tohoto nového importéru trasovače pomocí webové aplikace Nastavení Android (viz [Synchronizace](#android_sdk_synchronization_settings)). Toto je interní sada SDK; API vystavené aplikaci se nemění.
 
-Před nahráním dat trasovače je třeba nahrát prostředky souboru v jiném volání. Dotaz pro zveřejnění zdrojů souborů je:
-
-```java
-d2.fileResourceModule().fileResources().upload();
-```
-
-More information about file resources in the section [*Dealing with FileResources*](#android_sdk_file_resources).
-
 #### Konflikty trasovače { #tracker-conflicts } 
 
 Reakce serveru je analyzována, aby bylo zajištěno, že byla data na server správně nahrána. V případě, že odpověď serveru zahrnuje konflikty importu, jsou tyto konflikty uloženy v databázi, aby je aplikace mohla zkontrolovat a podniknout kroky k jejich vyřešení.
@@ -630,6 +625,16 @@ Pokud související trackedEntityInstance ještě neexistuje a existují hodnoty
 ```java
 d2.trackedEntityModule().trackedEntityInstanceService()
     .inheritAttributes("fromTeiUid", "toTeiUid", "programUid");
+```
+
+In order to access the `dataElements` and `attributes` associated to a `relationshipConstraint`, they can be accessed through the `trackerDataView` property as in the following examples:
+
+```java
+relationshipType.toConstraint().trackerDataView().attributes();
+```
+
+```java
+relationshipType.toConstraint().trackerDataView().dataElements();
 ```
 
 ## Agregovaná data { #android_sdk_aggregated_data }
@@ -788,13 +793,14 @@ Tento modul obsahuje metody stahování souborových prostředků přidruženýc
 - **File resources download**.
 The `fileResourceDownloader()` offers methods to filter the fileResources we want to download. It will search for values that match the filters and whose file resource has not been previously downloaded.
 
-  ```java
+  ```kt
   d2.fileResourceModule().fileResourceDownloader()
-      .byDomainType().eq(FileResourceDomainType.TRACKER)
-      .byElementType().eq(FileResourceElementType.DATA_ELEMENT)
-      .byValueType().in(FileResourceValueType.IMAGE, FileResourceValueType.FILE_RESOURCE)
-      .byMaxContentLength().eq(2000000)
-      .download();
+    .byDomainType().eq(FileResourceDomainType.DATA_VALUE)
+    .byDataDomainType().eq(FileResourceDataDomainType.TRACKER)
+    .byElementType().eq(FileResourceElementType.DATA_ELEMENT)
+    .byValueType().in(FileResourceValueType.IMAGE, FileResourceValueType.FILE_RESOURCE)
+    .byMaxContentLength().eq(2000000)
+    .download()
   ```
 
   The SDK has a default maxContentLength of 6000000.
