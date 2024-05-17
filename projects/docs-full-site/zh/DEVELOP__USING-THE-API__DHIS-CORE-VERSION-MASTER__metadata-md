@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/metadata.md"
-revision_date: '2024-03-13'
+revision_date: '2024-05-16'
 tags:
 - DHIS核心 主版
 - Develop
@@ -87,7 +87,7 @@ Excel、PDF、CSV 和 PNG。要从 Web 浏览器探索 API，请导航
 | 寻呼 | true &#124; false | 真正 | 指示是否返回页面中的元素列表。 |
 | 页 | 数字 | 1 | 定义要返回的页码。 |
 | 页面大小 | 数字 | 50 | 定义为每个页面返回的元素数量。 |
-| 命令 | 属性：asc/iasc/desc/idesc || 使用指定的顺序对输出进行排序，仅支持持久且简单的属性（无集合、idObject 等）。 iasc 和 idesc 不区分大小写排序。 |
+| 命令 | 属性：asc/iasc/desc/idesc || Order the output using a specified order, only properties that are both persisted and simple (no collections, idObjects etc) are supported. iasc and idesc are case insensitive sorting. If it is wanted to sort for more than one property, separate them using a comma.  |
 
 如何使用这些参数获取完整列表的示例
 XML 响应格式的数据元素组是：
@@ -112,6 +112,10 @@ XML 响应格式的数据元素组是：
 
     /api/indicators.json?order=shortName:desc
 
+To order the result based on created datetime property first (descending order) and then by name property (ascending order):
+
+    /api/indicators.json?order=created:desc,name:asc
+
 您可以通过以下方式在所有对象类型中根据对象的 ID 查找对象
 *identifiableObjects* 资源：
 
@@ -119,18 +123,18 @@ XML 响应格式的数据元素组是：
 
 ### 翻译 { #webapi_translation } 
 
-DHIS2 支持数据库内容的翻译，例如数据元素、
-指标和计划。 Web API 中的所有元数据对象都具有
-用于显示/UI 目的的属性，其中包括
-*显示名称*、*显示短名称*、*显示描述* 和
-*displayFormName*（用于数据元素和跟踪的实体属性）。
+DHIS2 supports translations of database content, such as data elements,
+indicators, and programs. All metadata objects in the Web API have
+properties meant to be used for display / UI purposes, which include
+*displayName*, *displayShortName*, *displayDescription* and
+*displayFormName* (for data elements and tracked entity attributes).
 
-表：翻译选项
+Table: Translate options
 
-| 范围 | 价值观 | 描述 |
+| Parameter | Values | 描述 |
 |---|---|---|
-| 翻译 | true &#124; false | 转换元数据输出中的 display\* 属性（数据元素和跟踪实体属性的 displayName、displayShortName、displayDescription 和 displayFormName）。默认值为 true。 |
-| 语言环境 | 使用的区域设置 | 使用指定的区域设置翻译元数据输出（需要translate=true）。 |
+| translate | true &#124; false | Translate display\* properties in metadata output (displayName, displayShortName, displayDescription, and displayFormName for data elements and tracked entity attributes). Default value is true. |
+| locale | Locale to use | Translate metadata output using a specified locale (requires translate=true). |
 
 ### 翻译API { #webapi_translation_api } 
 
@@ -276,87 +280,87 @@ API 版本。例如，对于 DHIS 2.25，在省略 API 部分时，
 
 ## 元数据对象过滤器 { #webapi_metadata_object_filter } 
 
-要过滤元数据，可以执行多种过滤操作
-应用于返回的元数据列表。过滤器的格式
-本身是直接的并且遵循模式
-*property:operator:value*，其中 *property* 是
-您要过滤的元数据，*operator* 是比较运算符
-您想要执行的操作，*value* 是要检查的值（并非所有
-运营商需要价值）。
+To filter the metadata there are several filter operations that can be
+applied to the returned list of metadata. The format of the filter
+itself is straight-forward and follows the pattern
+*property:operator:value*, where *property* is the property on the
+metadata you want to filter on, *operator* is the comparison operator
+you want to perform and *value* is the value to check against (not all
+operators require value). 
 
-请参阅*架构*部分以了解哪些属性可用。
-除了列出的属性之外，过滤器还可以应用于自定义属性
-通过使用属性的 ID 作为属性名称来获取值。
+Please see the *schema* section to discover which properties are available. 
+In addition to the listed properties filters can apply to custom attribute 
+values by using the attribute's ID as property name.
 
-递归过滤，即。对关联对象或集合进行过滤
-对象，也受支持。
+Recursive filtering, ie. filtering on associated objects or collection of 
+objects, is supported as well.
 
-表：可用的运算符
+Table: Available Operators
 
-| 操作员 | 类型 | 所需值 | 描述 |
+| Operator | Types | Value required | 描述 |
 |---|---|---|---|
-| 情商 | 字符串 &#124;布尔值 &#124;整数 &#124;浮动&#124;枚举&#124;集合（检查大小）&#124;日期 | 真正 | 平等 |
-| !eq | 字符串 &#124;布尔值 &#124;整数 &#124;浮动&#124;枚举&#124;集合（检查大小）&#124;日期 | 真正 | 不等式 |
-| 等当量 | 细绳  | 真正  | 字符串不区分大小写，精确匹配 |
-| 讷 | 字符串 &#124;布尔值 &#124;整数 &#124;浮动&#124;枚举&#124;集合（检查大小）&#124;日期 | 真正 | 不等式 |
-| 喜欢 | 细绳 | 真正 | 区分大小写的字符串，在任何地方匹配 |
-| ！喜欢 | 细绳 | 真正 | 区分大小写的字符串，不匹配任何地方 |
-| $喜欢 | 细绳 | 真正 | 区分大小写的字符串，匹配开始 |
-| ！$喜欢 | 细绳 | 真正 | 区分大小写的字符串，不匹配开头 |
-| 喜欢$ | 细绳 | 真正 | 区分大小写的字符串，匹配结束 |
-| ！喜欢$ | 细绳 | 真正 | 区分大小写的字符串，不匹配结尾 |
-| 我喜欢 | 细绳 | 真正 | 不区分大小写的字符串，在任何地方匹配 |
-| ！我喜欢 | 细绳 | 真正 | 不区分大小写的字符串，任何地方都不匹配 |
-| $喜欢 | 细绳 | 真正 | 不区分大小写的字符串，匹配开始 |
-| !$喜欢 | 细绳 | 真正 | 不区分大小写的字符串，不匹配开头 |
-| 我喜欢$ | 细绳 | 真正 | 字符串不区分大小写，匹配结束 |
-| ！喜欢$ | 细绳 | 真正 | 不区分大小写的字符串，不匹配结尾 |
-| GT | 字符串 &#124;布尔值 &#124;整数 &#124;浮动&#124;集合（检查大小）&#124;日期 | 真正 | 比...更棒 |
-| 葛 | 字符串 &#124;布尔值 &#124;整数 &#124;浮动&#124;集合（检查大小）&#124;日期 | 真正 | 大于或等于 |
-| 其 | 字符串 &#124;布尔值 &#124;整数 &#124;浮动&#124;集合（检查大小）&#124;日期 | 真正 | 少于 |
-| 乐 | 字符串 &#124;布尔值 &#124;整数 &#124;浮动&#124;集合（检查大小）&#124;日期 | 真正 | 小于或等于 |
-| 无效的 | 全部 | 假 | 属性为空 |
-| ！无效的 | 全部 | 假 | 属性不为空 |
-| 空的 | 收藏 | 假 | 收藏品为空 |
-| 代币 | 细绳 | 真正 | 匹配搜索属性中的多个标记 |
-| !令牌 | 细绳 | 真正 | 搜索属性中的多个标记不匹配 |
-| 在 | 字符串 &#124;布尔值 &#124;整数 &#124;浮动&#124;日期 | 真正 | 查找与 1 个或多个值匹配的对象 |
-| ！在 | 字符串 &#124;布尔值 &#124;整数 &#124;浮动&#124;日期 | 真正 | 查找与 1 个或多个值不匹配的对象 |
+| eq | string &#124; boolean &#124; integer &#124; float &#124; enum &#124; collection (checks for size) &#124; date | 真正 | Equality |
+| !eq | string &#124; boolean &#124; integer &#124; float &#124; enum &#124; collection (checks for size) &#124; date | 真正 | Inequality |
+| ieq | string  | 真正  | Case insensitive string, match exact |
+| ne | string &#124; boolean &#124; integer &#124; float &#124; enum &#124; collection (checks for size) &#124; date | 真正 | Inequality |
+| like | string | 真正 | Case sensitive string, match anywhere |
+| !like | string | 真正 | Case sensitive string, not match anywhere |
+| $like | string | 真正 | Case sensitive string, match start |
+| !$like | string | 真正 | Case sensitive string, not match start |
+| like$ | string | 真正 | Case sensitive string, match end |
+| !like$ | string | 真正 | Case sensitive string, not match end |
+| ilike | string | 真正 | Case insensitive string, match anywhere |
+| !ilike | string | 真正 | Case insensitive string, not match anywhere |
+| $ilike | string | 真正 | Case insensitive string, match start |
+| !$ilike | string | 真正 | Case insensitive string, not match start |
+| ilike$ | string | 真正 | Case insensitive string, match end |
+| !ilike$ | string | 真正 | Case insensitive string, not match end |
+| gt | string &#124; boolean &#124; integer &#124; float &#124; collection (checks for size) &#124; date | 真正 | Greater than |
+| ge | string &#124; boolean &#124; integer &#124; float &#124; collection (checks for size) &#124; date | 真正 | Greater than or equal |
+| lt | string &#124; boolean &#124; integer &#124; float &#124; collection (checks for size) &#124; date | 真正 | Less than |
+| le | string &#124; boolean &#124; integer &#124; float &#124; collection (checks for size) &#124; date | 真正 | Less than or equal |
+| null | all | 假 | Property is null |
+| !null | all | 假 | Property is not null |
+| empty | collection | 假 | Collection is empty |
+| token | string | 真正 | Match on multiple tokens in search property |
+| !token | string | 真正 | Not match on multiple tokens in search property |
+| 在 | string &#124; boolean &#124; integer &#124; float &#124; date | 真正 | Find objects matching 1 or more values |
+| !in | string &#124; boolean &#124; integer &#124; float &#124; date | 真正 | Find objects not matching 1 or more values |
 
-运算符将作为逻辑 *and* 查询应用。如果您需要*或*
-查询，您可以查看 *in* 过滤器和下面的部分。
-过滤机制允许递归。请参阅下面的一些示例。
+Operators will be applied as logical *and* query. If you need a *or*
+query, you can have a look at the *in* filter and the section below.
+The filtering mechanism allows for recursion. See below for some examples.
 
 获取ID属性为ID1或ID2的数据元素：
 
     / api / dataElements？filter = id：eq：ID1＆filter = id：eq：ID2
 
-获取数据元素，忽略大小写，名称属性为 MyDataElement：
+Get data elements, ignoring case, with name property MyDataElement:
 
-    /api/dataElements?filter=名称:ieq:mydataelement
+    /api/dataElements?filter=name:ieq:mydataelement
 
-获取具有 id ID1 的数据集的所有数据元素：
+Get all data elements which have a data set with id ID1:
 
     /api/dataElements?filter=dataSetElements.dataSet.id:eq:ID1
 
-使用聚合运算符 *sum* 和值类型获取所有数据元素
-*整数*：
+Get all data elements with aggregation operator *sum* and value type
+*int*:
 
     /api/dataElements.json?filter=aggregationOperator:eq:sum&filter=type:eq:int
 
-您可以在集合中进行过滤，例如获取数据元素
-是 *ANC* 数据元素组的成员，您可以使用以下内容
-使用关联数据元素组的 id 属性进行查询：
+You can do filtering within collections, e.g. to get data elements which
+are members of the *ANC* data element group you can use the following
+query using the id property of the associated data element groups:
 
     /api/dataElements.json?filter=dataElementGroups.id:eq:qfxEYY9xAl6
 
-获取具有元数据特定属性值的数据元素
-属性，属性 ID 和属性值的过滤器可以是
-使用相同的集合查询语法指定：
+To get data elements with a particular attribute value for a metadata 
+attribute, a filter for the attribute ID and the attribute value can be 
+specified using the same collection query syntax:
 
     /api/dataElements.json?filter=attributeValues.attribute.id:eq:n2xYlNbsfko&filter=attributeValues.value:eq:AFP
 
-获取具有任何选项集的数据元素：
+Get data elements which have any option set:
 
     /api/dataElements?filter=optionSet:!null
 
@@ -397,7 +401,7 @@ API 版本。例如，对于 DHIS 2.25，在省略 API 部分时，
 示例：过滤所有包含 *2nd* 的数据元素
 如下： id,name,code,shortName
 
-    /api/dataElements.json?filter=identific:token:2nd
+    /api/dataElements.json?filter=identifiable:token:2nd
 
 也可以指定多个过滤值。
 
@@ -412,30 +416,30 @@ API 版本。例如，对于 DHIS 2.25，在省略 API 部分时，
     /api/dataElements.json?filter=identifiable:token:ANC访问
       ＆filter = displayName：ilike：tt1＆rootJunction = OR
 
-### 用于跟踪实体属性的仅可索引过滤器 { #indexable-only-filter-for-tracked-entity-attributes }
+### Indexable only filter for tracked entity attributes { #indexable-only-filter-for-tracked-entity-attributes } 
 
-对于跟踪的实体属性，除了前面提到的过滤功能之外，还有一个特殊的过滤器。
-一些跟踪的实体属性是创建三元组索引的候选属性，以获得更好的查找性能。
-使用设置为 true 的 *indexableOnly* 参数，可以过滤结果以仅包含可索引的三元组属性。
+For tracked entity attributes, there is a special filter in addition to the previous mentioned filtering capabilities. 
+Some of the tracked entity attributes are candidates for creating a trigram index for better lookup performance. 
+Using the *indexableOnly* parameter set to true, the results can be filtered to include only the attributes that are trigram indexable.
 
-示例：获取所有可索引的跟踪实体属性。
+Example: Get all tracked entity attributes that are indexable.
 
     /api/trackedEntityAttributtes.json?indexableOnly=true
 
 Additional filters along with the `indexableOnly` parameter can be specified.
 
-示例：获取在任何 *name* 属性中找到 *ANC* 的所有跟踪实体属性。系统返回跟踪的实体属性，其中名称与提供的关键字匹配以及该属性是否可索引。
+Example: Get all tracked entity attributes where *ANC* is found in any of the *name* property. The system returns the tracked entity attributes where the name matches the provided keyword as well as if the attribute is indexable.
 
     /api/trackedEntityAttributtes.json?filter=name:like:ANC&indexableOnly=true
 
 ## 元数据字段过滤器 { #webapi_metadata_field_filter } 
 
-在许多情况下，元数据的默认视图可能太
-冗长。客户端可能只需要每个对象中的几个字段并且想要
-从响应中删除不必要的字段。发现哪些字段
-适用于每个对象，请参阅 *schema* 部分。
-除了列出的属性之外，还可以包括自定义属性
-对于顶级对象，使用属性的 ID 作为属性名称。
+In many situations, the default views of the metadata can be too
+verbose. A client might only need a few fields from each object and want
+to remove unnecessary fields from the response. To discover which fields
+are available for each object please see the *schema* section.
+In addition to the listed properties custom attributes can be included
+for top level objects by using the attribute's ID as property name.
 
 The format for include/exclude allows for infinite recursion. To filter
 at the "root" level you can just use the name of the field,
@@ -451,15 +455,15 @@ presets of field select. Both XML and JSON formats are supported.
 
     / api / indicators？fields = id，名称
 
-**示例**：从数据元素中获取`id`和`name`，以及`id`和`name`
-从相关数据集：
+**Example**: Get `id` and `name` from data elements, and `id` and `name`
+from the associated data sets:
 
     / api / dataElements？fields = id，name，dataSets [id，name]
 
 **Example**: Get `id`, `name` and the value of a user defined attribute 
 with ID `DnrLSdo4hMl` for organisation units:
 
-    /api/organizationUnits?fields=id,名称,DnrLSdo4hMl
+    /api/organisationUnits?fields=id,name,DnrLSdo4hMl
 
 The attribute is then included as property `DnrLSdo4hMl` of each
 matching object in the response. This can be renamed using the `rename` 
@@ -473,28 +477,28 @@ transformer as shown in the next section.
 一些预设（选定的字段组）可用并且可以应用
 使用`:` 运算符。
 
-表：属性运算符
+Table: Property operators
 
-| 操作员 | 描述 |
+| Operator | 描述 |
 |---|---|
-| <field-name\> | 包括具有名称的属性（如果存在）。 |
-| <object\>[<field-name\>, ...] | 包含集合中的字段（将应用于该集合中的每个对象）或仅应用于单个对象。 |
-| !<field-name\>, <object\>[!<field-name\> | 不要包含此字段名称，它也适用于对象/集合内部。当您使用预设来包含字段时很有用。 |
-| \*, <object\>[\*] | 包含某个对象上的所有字段，如果应用于集合，它将包含该集合上所有对象的所有字段。 |
-| :<preset\> | 用于选择多个字段的别名。目前提供三种预设，请参阅下表了解说明。 |
+| <field-name\> | Include property with name, if it exists. |
+| <object\>[<field-name\>, ...] | Includes a field within either a collection (will be applied to every object in that collection), or just on a single object. |
+| !<field-name\>, <object\>[!<field-name\> | Do not include this field name, it also works inside objects/collections. Useful when you use a preset to include fields. |
+| \*, <object\>[\*] | Include all fields on a certain object, if applied to a collection, it will include all fields on all objects on that collection. |
+| :<preset\> | Alias to select multiple fields. Three presets are currently available, see the table below for descriptions. |
 
-表：字段预设
+Table: Field presets
 
-| 预设 | 描述 |
+| Preset | 描述 |
 |---|---|
-| 全部 | 对象的所有字段 |
-| \* | 所有人的别名 |
-| 可识别的 | 包括 id、名称、代码、已创建和最后更新字段 |
-| 可命名的 | 包括 id、name、shortName、code、description、created 和 lastUpdated 字段 |
-| 坚持 | 返回对象上的所有持久属性，不考虑该对象是否是关系的所有者。 |
-| 所有者 | 返回对象上的所有持久属性，其中该对象是所有属性的所有者，此有效负载可用于通过 API 进行更新。 |
+| all | All fields of the object |
+| \* | Alias for all |
+| identifiable | Includes id, name, code, created and lastUpdated fields |
+| nameable | Includes id, name, shortName, code, description, created and lastUpdated fields |
+| persisted | Returns all persisted property on an object, does not take into consideration if the object is the owner of the relation. |
+| owner | Returns all persisted property on an object where the object is the owner of all properties, this payload can be used to update through the API. |
 
-**示例**：包括数据集中除组织单位之外的所有字段：
+**Example**: Include all fields from data sets except organisation units:
 
     / api / dataSets？fields =：all，！organizationUnits
 
@@ -508,69 +512,69 @@ transformer as shown in the next section.
 
 ### 现场变压器 { #webapi_field_transformers } 
 
-字段转换可用于转换属性。语法如下所述。
+Field transforms can be used to transform properties. The syntax is described below.
 
     /api/dataElements/ID?fields=id~rename(i),name~rename(n)
 
 这会将 *id* 属性重命名为 *i*，将 *name* 属性重命名为 *n*。
 
-通过重复变压器操作符，可以将多个变压器应用于单个属性：
+Multiple transformers can be applied to a single property by repeating the transformer operator:
 
     /api/dataElementGroups.json?fields=id,displayName,dataElements~isNotEmpty~rename(haveDataElements）
 
-下表描述了支持的变压器运算符。
+The supported transformer operators are described in the table below.
 
-表：可用的变压器
+Table: Available Transformers
 
-| 名称 | 论点 | 描述 |
+| 名称 | Arguments | 描述 |
 |---|---|---|
-| 尺寸 || 给出字符串的大小（长度）和集合 |
-| 是空的 || 字符串或集合是否为空 |
-| 不为空 || 字符串或集合不为空 |
-| 改名 | 参数1：名称 | 重命名属性名称 |
-| 寻呼 | Arg1：页面，Arg2：页面大小 | 分页集合，默认 pageSize 为 50。 |
-| 采摘 | 可选 Arg1：字段名称 | 将对象数组转换为该对象的选定字段的数组。默认情况下，使用集合返回的第一个字段（通常是 ID）。 |
-| 密钥依据 | 可选 Arg1：字段名称 | 将对象数组转换为使用 fieldName（默认 id）作为键的对象。例如，这对于 JavaScript 中的快速查找很有用 |
+| size || Gives sizes of strings (length) and collections |
+| isEmpty || Is string or collection empty |
+| isNotEmpty || Is string or collection not empty |
+| rename | Arg1: name | Renames the property name |
+| paging | Arg1: page,Arg2: pageSize | Pages a collection, default pageSize is 50. |
+| pluck | Optional Arg1: fieldName | Converts an array of objects to an array of a selected field of that object. By default, the first field that is returned by the collection is used (normally the ID). |
+| keyBy | Optional Arg1: fieldName | Converts an array of objects to an object where the fieldName (default id) is used as the key. This can be useful for quick lookups in JavaScript for example |
 
 #### 例子 { #webapi_field_transformers_examples } 
 
-变压器使用示例如下。
+Examples of transformer usage are found below.
 
-获取集合的大小：
+Get the size of a collection:
 
     /api/dataElements?fields=dataSets~size
 
-测试集合是否为空：
+Test if a collection is empty:
 
     /api/dataElements?fields=dataSets~isEmpty
 
-测试集合是否不为空：
+Test if a collection is not empty:
 
     /api/dataElements?fields=dataSets~isNotEmpty
 
-重命名属性：
+Rename properties:
 
     /api/dataElements/ID?fields=id~rename(i),name~rename(n)
 
-对集合应用分页：
+Apply paging to a collection:
 
     /api/dataElementGroups?fields=id,displayName,dataElements~paging(1;20)
 
-获取包含组织单位 ID 的数组：
+Get array with IDs of organisation units:
 
-    /api/categoryOptions.json?fields=id,organizationUnits~pluck
+    /api/categoryOptions.json?fields=id,organisationUnits~pluck
 
-获取包含组织单位名称的数组：
+Get array with names of organisation units:
 
-    /api/categoryOptions.json?fields=id,organizationUnits~pluck[名称]
+    /api/categoryOptions.json?fields=id,organisationUnits~pluck[name]
 
 通过`d`字段键入 dataElements 数组：
 
-    /api/dataElementGroups.json?fields=id,名称,dataElements~keyBy[id,名称,valueType]
+    /api/dataElementGroups.json?fields=id,name,dataElements~keyBy[id,name,valueType]
 
 通过`valueType`字段键入 dataElements 数组，因为多次点击这将生成（数据元素的）数组：
 
-    /api/dataElementGroups.json?fields=id,名称,dataElements~keyBy(valueType)[id,名称,valueType]
+    /api/dataElementGroups.json?fields=id,name,dataElements~keyBy(valueType)[id,name,valueType]
 
 ## 元数据创建，读取，更新，删除，验证 { #webapi_metadata_crud } 
 
