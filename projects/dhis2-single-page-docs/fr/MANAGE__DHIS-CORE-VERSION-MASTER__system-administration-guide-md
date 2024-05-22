@@ -1,8 +1,8 @@
 ---
-revision_date: '2024-04-28'
+revision_date: '2024-05-21'
 tags:
-- Version Master de DHIS2 Central
 - Gestion
+- Version Master de DHIS2 Central
 template: single.html
 ---
 
@@ -2319,9 +2319,9 @@ Un champ d'application d'audit est une zone logique de l'application qui peut ê
 
 | **Portée** | Clé       | Objets audités                                              |
 | --------- | --------- | ------------------------------------------------------------ |
-| Tracker   | tracker   | Instance d'entité suivie, Valeur d'attribut d'entité suivie, inscription, Événement. |
-| Métadonnées  | métadonnées  | Tous les objets de métadonnées (par exemple, les éléments de données, les unités d'organisation). |
-| Agrégées | agrégation | Valeur de données agrégée.                                        |
+| Tracker   | TRACKER   | Instance d'entité suivie, Valeur d'attribut d'entité suivie, inscription, Événement. |
+| Métadonnées  | METADATA  | Tous les objets de métadonnées (par exemple, les éléments de données, les unités d'organisation). |
+| Agrégées | AGGREGATE | Valeur de données agrégée.                                        |
 
 
 ## Type d'audit { #audit_type }
@@ -2412,11 +2412,14 @@ Le système d'audit est activé par défaut pour les portées et types suivants.
 
 Scopes (case sensitive):
 
+- `READ`
 - `CRÉER`
 - `METTRE À JOUR`
 - `SUPPRIMER`
+- `SEARCH`
+- `DISABLED`
 
-Les types:
+Types :
 
 - `MÉTADONNÉES`
 - `TRACKER`
@@ -2448,7 +2451,7 @@ Cependant, si vous disposez déjà d'un serveur Artemis, vous pouvez vous y conn
 
 L'application fournit un [fichier de configuration par défaut de log4j2] (https://github.com/dhis2/dhis2-core/blob/master/dhis-2/dhis-web/dhis-web-commons-resources/src/main/webapp/WEB-INF/classes/log4j2.xml), qui indique quelles informations doivent être enregistrées et où (console). DHIS2 se charge ensuite d'importer ce fichier et de journaliser les instructions, tel que décrit dans la [classe de configuration log4j](https://github.com/dhis2/dhis2-core/blob/2.38/dhis-2/dhis-support/dhis-support-system/src/main/java/org/hisp/dhis/system/log/Log4JLogConfigInitializer.java), c'est-à-dire qu'il redirige la sortie de la console vers les fichiers.
 
-De la version 2.36 à la version 2.38, le fichier de journalisation d'audit `dhis-audit.log` fait l'objet d'une rotation [tous les jours à minuit](https://github.com/dhis2/dhis2-core/blob/2.38/dhis-2/dhis-support/ dhis-support-system/src/main/java/org/hisp/dhis/system/log/Log4JLogConfigInitializer.java#L171).
+De la version 2.36 à la version 2.38, le fichier journal d'audit `dhis-audit.log` fait l'objet d'une rotation [tous les jours à minuit](https://github.com/dhis2/dhis2-core/blob/2.38/dhis-2/dhis-support/dhis-support-system/src/main/java/org/hisp/dhis/system/log/Log4JLogConfigInitializer.java#L171).
 
 Vous trouverez un exemple de configuration personnalisée de log4j2 [ici]() : l'exemple montre comment configurer DHIS2 pour qu'il enregistre tous les journaux dans un dispositif de stockage externe, effectue une rotation hebdomadaire et les conserve pendant 30 jours. Veuillez lire la [section sur la journalisation des applications](#install_application_logging) pour savoir comment utiliser cette fonction.
 
@@ -2491,14 +2494,14 @@ audit.database = on
 audit.logger = off
 ```
 
-Pour extraire les journaux du tableau `audit`, vous pouvez utiliser [`dhis2-audit-data-extractor`](https://github.com/dhis2/dhis2-utils/tree/master/tools/dhis2-audit-data -extracteur) à partir du système sur lequel DHIS2 est exécuté :
+Pour extraire les journaux du tableau `audit`, vous pouvez utiliser [`dhis2-audit-data-extractor`](https://github.com/dhis2/dhis2-utils/tree/master/tools/dhis2-audit-data -extracteur) à partir du système sur lequel DHIS2 fonctionne :
 ```
 $ python extract_audit.py extract
 ```
 
 Veuillez lire la documentation pour plus de détails.
 
-Pour analyser les entrées du fichier journal, vous pouvez utiliser le script python comme suit :
+Pour analyser les entrées du fichier journal, vous pouvez utiliser le script python suivant :
 ```
 $ grep "auditType" dhis-audit.log | python extract_audit.py parse
 ```
@@ -2553,13 +2556,13 @@ Cette option n'est actuellement ni prise en charge ni documentée.
 
 ## Passerelles SMS dédiées { #sms_report_dedicated_gateway }
 
-Cette section traite de l'utilisation de passerelles SMS plus permanentes et dédiées, ainsi que des options disponibles. Chacune des options ci-dessous suppose qu'un fournisseur (ou vous-même) dispose d'une connexion SMPP avec un opérateur téléphonique dans le pays et utilise cette connexion pour recevoir des SMS et les transmettre à votre serveur DHIS2 via Internet à l'aide du protocole HTTP.
+Cette section traite de l'utilisation de passerelles SMS plus permanentes et dédiées, ainsi que des options disponibles. Chacune des options ci-dessous implique qu'un fournisseur (ou vous-même) dispose d'une connexion SMPP avec un opérateur téléphonique dans le pays et utilise cette connexion pour recevoir des SMS et les transmettre à votre serveur DHIS2 via Internet à l'aide du protocole HTTP.
 
 Ces solutions peuvent utiliser un **numéro long** ou un **code court**. Un numéro long est un numéro de téléphone mobile standard du type que la plupart des particuliers utilisent, par exemple +61 400123123. Un code court est simplement un numéro court, tel que 311. La configuration et la gestion des codes courts sont généralement plus coûteuses.
 
-### S'assurer que les SMS entrants vers le serveur DHIS2 sont correctement formatés { #ensuring-incoming-sms-to-dhis2-server-are-formatted-correctly }
+### S'assurer que les SMS entrants vers le serveur DHIS2 sont au bon format { #ensuring-incoming-sms-to-dhis2-server-are-formatted-correctly }
 
-Lors de l'envoi de SMS vers un serveur DHIS2 via l'API, utilisez l'URL suivante : *https://<DHIS2_server_url>/api/sms/inbound*
+Pour envoyer des SMS vers un serveur DHIS2 via l'API, utilisez l'URL suivante : *https://<DHIS2_server_url>/api/sms/inbound*
 
 Dans la version 2.34 et les versions antérieures de DHIS2, ce point d'extrémité exige que le format des SMS entrants soient très spécifique, c'est-à-dire que le message lui-même doit être un paramètre appelé "texte" et le numéro de téléphone de l'expéditeur doit être un paramètre appelé "expéditeur".
 
@@ -2577,9 +2580,9 @@ Le service RapidPro implique une connexion SMPP avec un ou plusieurs opérateurs
 
 RapidPro est actuellement opérationnel dans près de la moitié des pays qui utilisent DHIS2 ou qui sont à une phase pilote. Avant d'envisager l'une des solutions ci-dessous, qui peuvent être coûteuses en termes de temps et d'argent, il convient de prendre contact avec l'Unicef pour voir si RapidPro est disponible et s'il peut être utilisé pour l'établissement de rapports sur la santé dans votre pays.
 
-### Utilisation de fournisseurs de passerelles SMS commerciales { #using-commercial-sms-gateway-providers }
+### Entreprises fournisseurs de passerelles SMS{ #using-commercial-sms-gateway-providers }
 
-Les fournisseurs de passerelles SMS commerciaux mentionnés dans la section « Envoi de SMS » ci-dessus sont généralement en mesure d'*envoyer* des SMS dans la plupart des pays, mais ne peuvent *recevoir* des SMS que dans un nombre limité de pays. La majorité des pays dans lesquels ils prennent en charge la réception de SMS n'utilisent pas le système DHIS2. Parmi les pays qui utilisent DHIS2, la plupart sont déjà couverts par un service RapidPro opérationnel dans le pays.
+Les entreprises fournisseurs de passerelles SMS mentionnés dans la section « Envoi de SMS » ci-dessus sont généralement en mesure d'*envoyer* des SMS dans la plupart des pays, mais ne peuvent en *recevoir* que dans un nombre limité de pays. La majorité des pays dans lesquels ils prennent en charge la réception de SMS n'utilisent pas le système DHIS2. Parmi les pays qui utilisent DHIS2, la plupart disposent déjà d'un service RapidPro opérationnel.
 
 Toutefois, il est utile de se renseigner sur les options commerciales disponibles pour votre pays. Dans certains pays, il existe de petites entreprises nationales qui fournissent des services SMS et qui disposent de connexions SMPP avec les opérateurs téléphoniques que vous pouvez contacter.
 
@@ -2595,13 +2598,13 @@ Il vous faudra faire fonctionner votre propre serveur avec un logiciel tel que [
 
 Lors de la synchronisation des données par SMS avec l'application DHIS2 Android, un format compressé est utilisé afin de réduire au maximum le volume du message (caractères du texte). Malgré cela, il arrive souvent qu'un message dépasse la limite de 160 caractères des SMS standard. Sur la plupart des appareils mobiles modernes, ces messages seront toujours envoyés sous la forme d'un SMS concaténé ou en plusieurs parties, et reçus comme un seul message.
 
-Lors de la sélection d'une passerelle SMS, il est important de confirmer que l'opérateur téléphonique utilisé prend en charge les SMS concaténés. La plupart d'entre eux le prendront en charge, mais il est important de confirmer que la fonctionnalité SMS ne fonctionnera pas si les SMS sont fractionnés. Cela repose sur quelque chose appelé UDH (User Data Header). Lorsque vous discutez avec les fournisseurs, assurez-vous de demander si cela est pris en charge.
+Lors de la sélection d'une passerelle SMS, il est important de confirmer que l'opérateur téléphonique utilisé prend en charge les SMS concaténés. La plupart d'entre eux le prendront en charge, mais il est important de confirmer que la fonctionnalité SMS ne fonctionnera pas si les SMS sont fractionnés. Cela repose sur une fonction appelée UDH (User Data Header). Lorsque vous discutez avec les fournisseurs, cherchez à savoir si cette fonction est prise en charge.
 
 
 
 # Using the User Impersonation Feature in DHIS2 { #user_impersonation }
 
-## Aperçu { #overview } 
+## Présentation { #overview } 
 
 User impersonation, also known as user switching, is a powerful feature provided in DHIS2 for administrative users to
 log in as another user. This feature is especially useful for troubleshooting or resolving user-related issues, as it

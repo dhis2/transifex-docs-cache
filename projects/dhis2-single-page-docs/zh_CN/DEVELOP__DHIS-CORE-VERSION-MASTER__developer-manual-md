@@ -1,5 +1,5 @@
 ---
-revision_date: '2024-05-16'
+revision_date: '2024-05-21'
 tags:
 - Develop
 - DHIS core version master
@@ -1945,8 +1945,8 @@ Both of them be accessed through the icons resource.
 
     GET /api/icons
 
-This endpoint returns a list of information about the available icons.
-In case of default icons, each entry contains the icon's metadata, and a reference to the actual file resource.
+This endpoint returns a list of information about the available default and custom icons.
+By default key, description, keywords and href will be included in response. But fields parameter can be used to change this behaviour.
 
 ```json
 {
@@ -1957,22 +1957,9 @@ In case of default icons, each entry contains the icon's metadata, and a referen
     "mosquito",
     "dengue"
   ],
+  "created": "2024-02-12T09:50:11.794",
+  "lastUpdated": "2024-02-12T09:50:11.794",
   href: "<dhis server>/api/icons/mosquito_outline/icon.svg"
-}
-```
-When it comes to custom icons, the response also includes the referenced file resource and the user who created the icon:
-
-```json
-{
-  key: "custom key",
-  description: "description",
-  keywords: [
-    "keyword 1",
-    "keyword 2"
-  ],
-  fileResourceUid: "ohUVXsOZ8qp",
-  userUid: "AIK2aQOJIbj",
-  href: "<dhis server>/api/fileResources/ohUVXsOZ8qp/data"
 }
 ```
 
@@ -1980,17 +1967,45 @@ It's also possible to get a particular icon directly by filtering by its key, in
 
     GET /api/icons/mosquito_outline
 
-Keywords can be used to filter which icons to return. Passing a list
-of keywords with the request will only return icons (both default and custom) that match all the keywords:
-
-    GET /api/icons?keywords=shape,small
-
-A list of all unique keywords can be found at the keywords resource:
-
-    GET /api/icons/keywords
-
 ### Custom icon operations { #webapi_icons_custom }
 
+A list of custom icons can be fetched retrieved certain request parameters
+
+    GET /api/icons?type=CUSTOM
+
+|Request parameter|Type|Allowed values|Description|
+|---|---|---|---|
+|`type`|`Text`| DEFAULT,CUSTOM,ALL |What type of icons should be retrieved. Default is ALL|
+|`keys`|`Text`| | List of keys custom icons should be retrieved for | 
+|`keywords`|`Text`| | List of keywords custom icons should be retrieved for| 
+|`search`|`Text`| | Search for a given text across icon keys and keywords, and retrieve all icons that contain this text in their key or keywords.| 
+|`createdStartDate`|`Date`| | Starting point of created date|
+|`createdEndDate`|`Date`| | End point of created date| 
+|`lastUpdatedStartDate`|`Date`| | Starting point of last updated date| 
+|`lastUpdatedEndDate`|`Date`| | End point of last updated date| 
+
+
+#### Request parameters for pagination { #request-parameters-for-pagination } 
+
+|Request parameter|Type|Allowed values|Description|
+|---|---|---|---|
+|`page`|`Integer`| Any positive integer |Page number to return. Defaults to 1 if missing|
+|`pageSize`|`Integer`| Any positive integer |Page size. Defaults to 50. |
+|`paging`|`Boolean`| `true`&#124;`false` |Indicates whether paging should be ignored and all rows should be returned. Defaults to `true`, meaning that by default all requests are paginated, unless `paging=false`|
+
+#### Request parameters for ordering { #request-parameters-for-ordering } 
+
+|Request parameter|Type|Allowed values|Description|
+|---|---|---|---|
+|`order`|`Text`| created:desc | Comma-separated list of property name and sort direction pairs in format propName:sortDirection. By default icons will be ordered based on key:asc|
+
+
+#### Request parameter to filter responses { #request-parameter-to-filter-responses } 
+
+The endpoints accept a `fields` parameter which controls which fields will be returned in the
+JSON response. `fields` parameter accepts a comma separated list of field names. If nothing is specified, default fields will be used and those are 
+
+`key,keywords,description,fileResourceUid,createdByUserUid,href`
 
 A custom icon resource can be downloaded by providing the icon key:
 
@@ -2012,7 +2027,7 @@ It expects a payload containing the icon key, description, list of keywords and 
 }
 ```
 
-Two of these properties are possible to update, they are the description and keywords, using the resource below.
+Only custom icons can be updated using below resource. 
 
     PUT /api/icons
 
@@ -2028,7 +2043,7 @@ With the following payload, the icon's description and keywords would be updated
 
 Please notice that's also possible to just update one of the two. That means in case we would like to update the description while keeping the keywords, we would just need to provide the icon key and the descripton json field. Same would work the other way around, to update the keywords and leave the original description untouched.
 
-To delete a custom icon we use the resource
+Only custom icon can be deleted using below resource.
 
     DELETE /api/icons/{icon_key}
 
@@ -4557,8 +4572,9 @@ Parameters in alphabetical order:
 | `pageSize`     | 1-1000                | 50                                 | number of items on a page |
 | `pageListName` | `<text>` | (object type plural) | overrides the property name of the result entry list | 
 | `rootJunction` | `AND` or `OR`         | `AND`                              | logical combination of `filter`s, `AND`= all must match, `OR`= at least one must match |
-| `total`        | `true` or `false`     | `false`                            | `true` add total number of matches to the pager, `false` skip counting total number of matches |
+| `total`/`totalPages`        | `true` or `false`     | `false`                            | `true` add total number of matches to the pager, `false` skip counting total number of matches |
 | `translate`    | `true` or `false`     | `true`                             | `true` translate all translatable properties, `false` skip translation of translatable properties (no effect on synthetic display names) |
+
 
 
 ### The `absoluteUrls` Parameter { #gist_parameters_absoluteUrls } 
@@ -5013,7 +5029,8 @@ response root object with the format:
 (details of the pager and matches are omitted here)
 
 
-### The `total` Parameter { #gist_parameters_total } 
+### The `total` or `totalPages` Parameter { #gist_parameters_total } 
+
 <!--DHIS2-SECTION-ID:gist_parameters_total-->
 
 By default, a gist query will **not** count the total number of matches should 
@@ -8415,7 +8432,7 @@ The response payload looks like this:
 
 Update a job with parameters using the following endpoint and JSON payload format:
 
-    PUT /api/jobConfiguration/{id}
+    PUT /api/jobConfigurations/{id}
 
 ```json
 {
@@ -8435,7 +8452,7 @@ Update a job with parameters using the following endpoint and JSON payload forma
 
 Delete a job using:
 
-    DELETE /api/jobConfiguration/{id}
+    DELETE /api/jobConfigurations/{id}
 
 Note that some jobs with custom configuration parameters may not be added if the
 required system settings are not configured. An example of this is data
@@ -8445,8 +8462,50 @@ synchronization, which requires remote server configuration.
 
 Jobs can be run manually using:
 
-    POST /api/jobConfiguration/{id}/execute
+    POST /api/jobConfigurations/{id}/execute
 
+
+### Searching for jobs with execution errors { #searching-for-jobs-with-execution-errors } 
+
+Since version 2.41 jobs can store errors of the job run to allow inspection
+at a later point in time. 
+
+> **Note** This feature is only accessible for administrator
+> with the `F_JOB_LOG_READ` authority and superusers.
+
+To view the errors associated with a specific job use:
+
+    GET /api/jobConfigurations/{id}/errors
+
+To search for jobs that match user specified search criteria use:
+
+    GET /api/jobConfigurations/errors
+
+with one or more of the following search parameters
+
+* `user`: include jobs ran by this user
+* `from`: include jobs that started after this point in time
+* `to`: include jobs that did not start later than this point in time
+* `code`: include jobs that have errors with one of the given error codes
+* `object`: include jobs that have errors linked to one of the given object IDs
+* `type`: include job with errors of the specified type(s)
+
+When multiple criteria are used all have to be met (AND logic).
+If multiple `code`, `object` or `type` parameters are given just one has to match (OR logic).
+
+For example, to find tracker import errors for the 1. of January 2024 with error code `E1002` 
+(tracked entity already exists) the following search is made:
+
+    GET /api/jobConfigurations/errors?type=TRACKER_IMPORT_JOB&code=E1002&from=2024-01-01&to=2024-01-02
+
+The results show the job run error details. By default, the `input` (the payload of the impport) 
+is excluded from the results. To include it add `includeInput=true`:
+
+    GET /api/jobConfigurations/errors?includeInput=true
+
+> **Note**
+> Not all job types do store their errors. Currently, this feature is mostly
+> supported by import jobs.
 
 
 ## Scheduler API { #scheduler-api } 
@@ -17343,6 +17402,8 @@ Table: System settings
 | analyticsFinancialYearStart | Set financial year start. Default: October | No |
 | keyIgnoreAnalyticsApprovalYearThreshold | "0" check approval for all data. "-1" disable approval checking. "1" or higher checks approval for all data that is newer than "1" year. | No |
 | keyAnalyticsMaxLimit | Maximum number of analytics records. Default: "50000" | No |
+| KeyTrackedEntityMaxLimit | Maximum number of tracked entities. Default: "50000" | No |
+| keyAnalyticsMaintenanceMode | Put analytics in maintenance mode. Default: "false" | No |
 | keyAnalyticsPeriodYearsOffset | Defines the years' offset to be used in the analytics export process. If the year of a respective date is out of the offset the system sends back a warning message during the process. At this point, the period generation step is skipped. ie.: suppose the system user sets the offset value to `5`, and we are in the year 2023. It means that analytics will accept exporting dates from 2018 (inclusive) to 2028 (inclusive). Which translates to: [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028]. NOTE: The offset will have a significant influence on resource usage. Higher values will trigger higher usage of memory RAM/HEAP and CPU. Setting negative numbers to this key will disable any kind of validation (which means no warnings) and the internal range of years will be used (1970 to current year plus 10) Default: 22 | No |
 | keyDatabaseServerCpus | Number of database server CPUs. Default: "0" (Automatic) | No |
 | keyLastSuccessfulAnalyticsTablesRuntime | Keeps timestamp of last successful analytics tables run | No |
@@ -17720,11 +17781,11 @@ DHIS2 web application. This can be particularly useful in certain situations:
   - Including CSS styles which are used in custom data entry forms and
     HTML-based reports.
 
-## Login App customisation { #login_app_customisation }
+## Login App customization { #login_app_customization }
 
-The Settings App allows users to define a variety of elements (text, logo, flag) that can be used to customise the login page of DHIS2. Additionally, it is possible to choose between two preconfigured layouts (the default and a sidebar layout).
+The Settings App allows users to define a variety of elements (text, logo, flag) that can be used to customize the login page of DHIS2. Additionally, it is possible to choose between two preconfigured layouts (the default and a sidebar layout).
 
-If needed, the login app's styling and layout can be further customised by uploading an HTML template (also definable in the settings app). This HTML template replaces certain elements (based on ID); the reserved IDs are listed in the table below. In this way, it is possible to combine custom styling (using css) and custom layout (using HTML) to change the look of the login app. The custom template does not support custom scripts, and script tags will be removed from any uploaded template.
+If needed, the login app's styling and layout can be further customized by uploading an HTML template (also definable in the settings app). This HTML template replaces certain elements (based on ID); the reserved IDs are listed in the table below. In this way, it is possible to combine custom styling (using css) and custom layout (using HTML) to change the look of the login app. The custom template does not support custom scripts, and script tags will be removed from any uploaded template.
 
 To create a custom template, it is recommended to start with one of the existing templates (these are available for download from within the login app at the extension dhis-web-login/#download).
 
@@ -17740,7 +17801,7 @@ ID | Replaced by |
 | **application-right-footer** | Text for the right-side footer. |
 | **language-select** | Selection to control the language of the login app. |
 
-The appearance of the login dialog can also be modified by defining css variables within the HTML template. The following css variables are available for customisation:
+The appearance of the login dialog can also be modified by defining css variables within the HTML template. The following css variables are available for customization:
 ```
 --form-container-margin-block-start
 --form-container-margin-block-end
@@ -17756,39 +17817,6 @@ The appearance of the login dialog can also be modified by defining css variable
 --form-title-font-weight
 --form-container-title-color
 ```
-
-### Javascript { #webapi_customization_javascript } 
-
-To insert Javascript from a file called *script.js* you can interact
-with the *files/script* resource with a POST request:
-
-```bash
-curl --data-binary @script.js "localhost/api/33/files/script"
-  -H "Content-Type:application/javascript" -u admin:district
-```
-
-Note that we use the `--data-binary` option to preserve formatting of the
-file content. You can fetch the JavaScript content with a GET request:
-
-    /api/33/files/script
-
-To remove the JavaScript content you can use a DELETE request.
-
-### CSS { #webapi_customization_css } 
-
-To insert CSS from a file called *style.css* you can interact with the
-*files/style* resource with a POST-request:
-
-```bash
-curl --data-binary @style.css "localhost/api/33/files/style"
-  -H "Content-Type:text/css" -u admin:district
-```
-
-You can fetch the CSS content with a GET-request:
-
-    /api/33/files/style
-
-To remove the CSS content you can use a DELETE request.
 
 
 
@@ -17871,7 +17899,6 @@ entity. We represent the enrollment with the `Enrollment` object, which we descr
 | enrollment | The identifier of the enrollment. Generated if not supplied | No | Yes | String:Uid | ABCDEF12345 |
 | program | The program the enrollment represents. | Yes | No | String:Uid | ABCDEF12345 |
 | trackedEntity | A reference to the tracked entity enrolled. | Yes | Yes | String:Uid | ABCDEF12345 |
-| trackedEntityType | Only for reading data. The type of tracked entity enrolled | No | Yes | String:Uid | ABCDEF12345 |
 | status | Status of the enrollment. ACTIVE if not supplied. | No | No | Enum | ACTIVE, COMPLETED, CANCELLED |
 | orgUnit | The organisation unit where the user enrolled the tracked entity. | Yes | No | String:Uid | ABCDEF12345 |
 | createdAt | Timestamp when the user created the object. Set on the server. | No | Yes | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
