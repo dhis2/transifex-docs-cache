@@ -1,5 +1,5 @@
 ---
-revision_date: '2024-05-21'
+revision_date: '2024-05-23'
 tags:
 - Développement
 - DHIS Version 2.40
@@ -5083,7 +5083,7 @@ Ce message nous indique que 3 données ont été importées, 1 donnée a été m
 
 ### Paramètres d'importation { #webapi_data_values_import_parameters }
 
-Le processus d'importation peut être personnalisé à l'aide d'un ensemble de paramètres d'importation :
+The import process can be customized using a set of import parameters.
 
 Tableau : Paramètres d'importation
 
@@ -5196,8 +5196,6 @@ Veuillez lire la section sur *l'état des tâches asynchrones* pour en savoir pl
 
 La section suivante décrit le format CSV utilisé dans DHIS2. La première ligne est supposée être une ligne d'en-tête et sera ignorée lors de l'importation.
 
-
-
 Tableau : format CSV de DHIS2
 
 ||||
@@ -5251,8 +5249,9 @@ Pour lire les valeurs de données, vous pouvez effectuer une requête GET à la 
 GET /api/dataValueSets
 ```
 
-Les valeurs de données peuvent être récupérées au format *XML*, *JSON*, *CSV* et *ADX*. Etant donné que nous voulons lire des données, nous utiliserons le verbe HTTP *GET*. Nous spécifierons également que notre intérêt pour la représentation des ressources XML en incluant un en-tête HTTP `Accepter` dans notre requête. Les paramètres de requête suivants sont acceptés :
-
+Data values can be retrieved in *XML*, *JSON*, *CSV*, and *ADX* format. Since we want to read data we will use the *GET* HTTP verb. We will also specify that we are
+interested in the XML resource representation by including an `Accept` HTTP header with our request. The following query parameters are
+available.
 
 Tableau : Paramètres de requête d'ensemble de valeurs de données
 
@@ -5280,11 +5279,13 @@ Tableau : Paramètres de requête d'ensemble de valeurs de données
 | categoryIdScheme (Schéma de l'identifiant de catégorie) | Propriété de l'objet catégorie à utiliser dans la réponse (ADX uniquement). |
 | categoryOptionIdScheme (Schéma de l'identifiant d'option de catégorie) | Propriété de l'objet d'options de catégorie à utiliser dans la réponse (ADX uniquement). |
 | idScheme | Propriété de l'un des objets ci-dessus, s'ils ne sont pas spécifiés, à utiliser dans la réponse. S’il n’est pas spécifié, l’idScheme par défaut pour le format ADX est "code" et pour tous les autres formats, c'est "uid". |
-| inputOrgUnitIdScheme | Propriété d'identification utilisée pour les valeurs du paramètre `orgUnit` fournies ; `id` ou `code` |
-| inputDataSetIdScheme | Propriété d'identification utilisée pour les valeurs du paramètre `dataSet` fournies ; `id` ou `code` |
-| inputDataElementGroupIdScheme | Propriété d'identification utilisée pour les valeurs du paramètre `dataElementGroup` fournies ; `id` ou `code` |
-| inputDataElementIdScheme | Propriété d'identification utilisée pour les valeurs du paramètre `dataElement` fournies ; `id` ou `code` |
-| inputIdScheme | Propriété d'identification utilisée pour l'une des valeurs des paramètres `dataSet`, `dataElementGroup`, `orgUnit`, `orgUnitGroup`, `attributeOptionCombo` fournies, à moins que l'un des trois schémas ci-dessus ne remplace explicitement cette entrée par défaut ; `id` ou `code` |
+| inputOrgUnitIdScheme | Identifier property used for the provided `orgUnit` parameter values; `id` or `code` |
+| inputDataSetIdScheme | Identifier property used for the provided `dataSet` parameter values; `id` or `code` |
+| inputDataElementGroupIdScheme | Identifier property used for the provided `dataElementGroup` parameter values; `id` or `code` |
+| inputDataElementIdScheme | Identifier property used for the provided `dataElement` parameter values; `id` or `code` |
+| inputIdScheme | General identifier property used for all object types, specific identifier schemes will override the general scheme; `id` or `code` |
+| compression | Whether to compress the response payload; `none`, `gzip` or `zip` |
+| attachment | File name to use for the response, a non-blank value indicates rendering the response as an attachment. |
 
 Les paramètres suivants provenant de la liste ci-dessus sont requis :
 - dataSet ou dataElementGroup (pour le format ADX, cela doit être dataSet)
@@ -5301,14 +5302,14 @@ Les formats de réponse suivants sont pris en charge :
 
   - adx (application/adx+xml)
 
-En supposant que nous avons publié les valeurs de données dans DHIS2 conformément à la section précédente intitulée *Envoi de valeurs de données*, nous pouvons maintenant constituer notre requête pour un ensemble de valeurs de données unique et l'exécuter en utilisant l'URL :
+En supposant que nous avons publié les valeurs de données dans DHIS2 conformément à la section précédente intitulée *Envoi de valeurs de données*, nous pouvons maintenant constituer notre requête pour un ensemble de valeurs de données unique et l'exécuter en utilisant cURL :
 
 ```bash
 curl "https://play.dhis2.org/demo/api/dataValueSets?dataSet=pBOMPrpg1QX&period=201401&orgUnit=DiszpKrYNg8"
   -H "Accept:application/xml" -u admin:district
 ```
 
-Nous pouvons également utiliser les paramètres de requête "date de début" et "date de fin" pour demander un plus grand nombre de valeurs de données. En d'autres termes, vous pouvez également demander des valeurs de données pour plusieurs ensembles de données, unités d'organisation et périodes afin d'exporter de plus grandes quantités de données. Notez que le paramètre de requête "période" est prioritaire sur les paramètres "date de début" et "date de fin". Voici un exemple :
+Nous pouvons également utiliser les paramètres de requête "date de début" et "date de fin" pour demander un plus grand nombre de valeurs de données. En d'autres termes, vous pouvez également solliciter des valeurs de données pour plusieurs ensembles de données, unités d'organisation et périodes afin d'exporter de plus grandes quantités de données. Notez que le paramètre de requête "période" est prioritaire sur les paramètres "date de début" et "date de fin". Voici un exemple :
 
 ```bash
 curl "https://play.dhis2.org/demo/api/dataValueSets?dataSet=pBOMPrpg1QX&dataSet=BfMAe6Itzgt
@@ -5380,8 +5381,7 @@ Notez que les valeurs de données sont mises en corbeille, c'est-à-dire qu'une 
 
 Vous pouvez également demander à ce que les données soient rendues au format CSV de la manière suivante :
 
-    /api/dataValueSets.csv?dataSet=pBOMPrpg1QX&period=201401
-      &orgUnit=DiszpKrYNg8
+    /api/dataValueSets.csv?dataSet=pBOMPrpg1QX&period=201401&orgUnit=DiszpKrYNg8
 
 La réponse ressemblera à ceci :
 
@@ -5393,12 +5393,20 @@ eY5ehpbEsB7,201401,DiszpKrYNg8,bRowv6yZOF2,bRowv6yZOF2,16,system,2015-04-05T19:5
 FTRrcoaog83,201401,DiszpKrYNg8,bRowv6yZOF2,bRowv6yZOF2,12,system,2014-03-02T21:45:05.519,comment4,false
 ```
 
+Request data values in CSV format compressed with `gzip`:
+
+```
+/api/dataValueSets.csv?dataSet=pBOMPrpg1QX&period=202401&orgUnit=DiszpKrYNg8&compression=gzip
+```
+
+The response will be in compressed CSV format. The content can be uncompressed with the `gunzip` tool.
+
 Les contraintes suivantes s'appliquent à la ressource Ensembles de valeurs de données :
 
   - Au moins un ensemble de données doit être spécifié.
 
   - Soit au moins une période, soit une date de début et une date de fin doivent être
-    spécifiés.
+    spécifié.
 
   - Au moins une unité d'organisation doit être spécifiée.
 
@@ -5417,18 +5425,18 @@ Les paramètres de requête suivants sont pris en charge pour cette ressource :
 
 Tableau : Paramètres de requête de valeurs de données
 
-| Paramètre de requête | Obligatoire | Description |
+| Paramètre de requête | Obligatoire | Description ; |
 |---|---|---|
 | de | Oui | Identifiant de l'élément de données |
 | pe | Oui | Identifiant de période |
 | ou | Oui | Identifiant de l'unité d'organisation |
 | co | Non | Identifiant de la combinaison d'options de catégorie, la valeur par défaut sera utilisée en cas d'omission |
 | cc | Non (doit être combiné avec cp) | Identifiant de la combinaison de catégories d'attribut |
-| cp | Non (doit être combiné avec CC) | Identifiants d'options de catégorie d'attribut, séparés par ; pour plusieurs valeurs |
-| ds | Non | Ensemble de données, pour vérifier si la fonction POST or DELETE (publier ou effacer) est autorisée pour la période et l'unité d'organisation. S'il est spécifié, l'élément de données doit être affecté à cet ensemble de données. Dans le cas contraire, un ensemble de données contenant l'élément de données sera sélectionné pour vérifier si l'opération est autorisée. |
+| cp | Non (doit être combiné avec cc) | Identifiants d'options de catégories d'attribut, séparés par ; pour plusieurs valeurs |
+| ds | Non | Ensemble de données permettant de vérifier si la fonction POST or DELETE (publier ou supprimer) est autorisée pour la période et l'unité d'organisation. S'il est spécifié, l'élément de données doit être affecté à cet ensemble de données. Dans le cas contraire, un ensemble de données contenant l'élément de données sera sélectionné pour vérifier si l'opération est autorisée. |
 | valeur | Non | Valeur de données. Pour les valeurs booléennes, les éléments suivants seront acceptés : vrai &#124; Vrai &#124; VRAI &#124; faux &#124; Faux &#124; FAUX &#124; 1 &#124; 0 &#124; t &#124; f &#124; |
 | commentaire | Non | Commentaire sur les données |
-| suivi | Non | Le suivi de la valeur de données permet de faire basculer la valeur booléenne actuelle |
+| Suivi | Non | Le suivi de la valeur de données permet de faire basculer la valeur booléenne actuelle |
 
 Si l'un des identifiants fournis n'est pas valide, si la valeur de données ou le commentaire n'est pas valide ou si les données sont verrouillées, la réponse contiendra le code d'état *409 Conflit* et un message texte descriptif. Si l'opération conduit à une valeur enregistrée ou mise à jour, *200 OK* sera renvoyé. Ci-après, un exemple de requête :
 
@@ -5446,7 +5454,7 @@ curl "https://play.dhis2.org/demo/api/dataValues?de=s46m5MS0hxu&ou=DiszpKrYNg8
   -X POST -u admin:district
 ```
 
-Vous pouvez récupérer une valeur de données avec une requête en utilisant la méthode *GET* (obtenir). Les paramètres de valeur, de commentaire et de suivi ne sont pas applicables ici :
+Vous pouvez récupérer une valeur de données avec une requête en utilisant la méthode *GET*. Les paramètres de valeur, de commentaire et de suivi ne sont pas applicables ici :
 
 ```bash
 curl "https://play.dhis2.org/demo/api/dataValues?de=s46m5MS0hxu
@@ -5456,7 +5464,7 @@ curl "https://play.dhis2.org/demo/api/dataValues?de=s46m5MS0hxu
 
 Vous pouvez supprimer une valeur de données avec une requête en utilisant la méthode *DELETE*.
 
-### Envoi de valeurs de données individuelles en tant que charge utile { #webapi_sending_individual_data_values_as_payload }
+### Envoi de valeurs de données individuelles sous forme de charge utile { #webapi_sending_individual_data_values_as_payload }
 
 Vous pouvez envoyer des valeurs de données individuelles sous forme de charge utile JSON en utilisant la ressource suivante avec `Content-Type : application/json`.
 
@@ -5477,7 +5485,7 @@ La ressource créera une nouvelle valeur de données ou mettra à jour une valeu
 }
 ```
 
-Le point de terminaison prend en charge la spécification de combinaisons d’options d’attribut dans une structure imbriquée.
+Le point d'extrémité prend en charge la spécification de combinaisons d’options d’attribut dans une structure imbriquée.
 
 ```json
 {
@@ -5505,13 +5513,13 @@ Lorsqu'il s'agit de valeurs de données dont l'élément de données est de type
 
 Il existe deux méthodes pour stocker les valeurs de données des ressources de fichiers.
 
-* Téléchargez le fichier sur le point de terminaison `/api/dataValues/file` tel que
+* Téléchargez le fichier sur le point d'extrémité `/api/dataValues/file` tel que
   décrit dans la section des ressources de fichiers. Cela fonctionne avec les versions 2.36 et supérieures.
 
 * Si vous écrivez un code qui doit être compatible
   avec les versions DHIS2 inférieures à la 2.36, alors le processus est le suivant :
 
-1.  Téléchargez le fichier sur le point de terminaison `/api/fileResources` tel que décrit
+1.  Téléchargez le fichier sur le point d'extrémité  `/api/fileResources` tel que décrit
     dans la section des ressources de fichiers.
 
 2.  Récupérez la propriété `id` de la ressource de fichier renvoyée.
@@ -5521,9 +5529,9 @@ Il existe deux méthodes pour stocker les valeurs de données des ressources de 
 
 Seules les relations un à un entre les valeurs de données et les ressources de fichiers sont autorisées. Cette règle est appliquée en interne, de sorte que l'enregistrement de l'identifiant d'une ressource de fichier dans plusieurs valeurs de données ne soit pas possible et entraîne une erreur. La suppression de la valeur de données entraîne la suppression de la ressource de fichier référencée. La suppression directe des ressources de fichiers n'est pas possible.
 
-La valeur de données peut maintenant être récupérée normalement, mais c'est l'UID de la ressource du fichier qui sera renvoyé. Afin de récupérer le vrai contenu (c'est-à-dire le fichier stocké dans la ressource associée à la valeur de données), vous devez effectuer une requête GET à `/api/dataValues/files` en reproduisant les paramètres de la requête comme pour la valeur de données elle-même. Le point de terminaison `/api/dataValues/files` ne prend en charge que les requêtes GET.
+La valeur de données peut maintenant être récupérée normalement, mais c'est l'UID de la ressource du fichier qui sera renvoyé. Afin de récupérer le vrai contenu (c'est-à-dire le fichier stocké dans la ressource associée à la valeur de données), vous devez effectuer une requête GET à `/api/dataValues/files` en reproduisant les paramètres de la valeur de données elle-même. Le point d'extrémité `/api/dataValues/files` ne prend en charge que les requêtes GET.
 
-Il convient de noter qu'en raison du fonctionnement asynchrone du mécanisme de stockage sous-jacent, le contenu du fichier peut ne pas être immédiatement téléchargeable à partir du point de terminaison `/api/dataValues/files`. Ceci est particulièrement valable pour les fichiers volumineux qui peuvent nécessiter des téléchargements en arrière-plan vers un entrepôt de fichiers externe (en fonction de la configuration du système). Récupérer les métadonnées de la ressource du fichier à partir du point de terminaison `/api/fileResources/<id>` permet de vérifier le `storageStatus` (état du stockage) du contenu avant d'essayer de le télécharger.
+Il convient de noter qu'en raison du fonctionnement asynchrone du mécanisme de stockage sous-jacent, le contenu du fichier peut ne pas être immédiatement téléchargeable à partir du point d'extrémité  `/api/dataValues/files`. Ceci est particulièrement valable pour les fichiers volumineux qui peuvent nécessiter des téléchargements en arrière-plan vers un entrepôt de fichiers externe (en fonction de la configuration du système). Récupérer les métadonnées de la ressource du fichier à partir du point d'extrémité `/api/fileResources/<id>` permet de vérifier le `storageStatus` (état du stockage) du contenu avant d'essayer de le télécharger.
 
 ## Format de données ADX { #webapi_adx_data_format }
 
@@ -5568,13 +5576,13 @@ La structure d'un message de données ADX est assez similaire à celle des donn�
 
 L'élément racine ADX n'a qu'un seul attribut obligatoire, qui est l'horodatage *exporté*. Comme d'autres éléments ADX, le schéma est extensible dans le sens où il ne restreint pas les attributs spécifiques d'applications supplémentaires.
 
-### L'élément du groupe ADX { #the-adx-group-element }
+### L'élément de groupe ADX { #the-adx-group-element }
 
-Contrairement à dxf2, ADX exige que les valeurs de données soient regroupées par unité d'organisation, période et ensemble de données. L'exemple ci-dessus montre un rapport de données pour l'ensemble de données "( TB/VIH) VCCT" de la base de données de démonstration en ligne. Cet exemple utilise des codes comme identifiants et non des uids dhis2. Le code est la forme d'identifiant préférée lors de l'utilisation d'ADX.
+Contrairement à dxf2, ADX exige que les valeurs de données soient regroupées par unité d'organisation, période et ensemble de données. L'exemple ci-dessus montre un rapport de données pour l'ensemble de données "( TB/VIH) VCCT" de la base de données de démonstration en ligne. Cet exemple utilise des codes comme identifiants et non des uids dhis2. Le code est la forme d'identifiant recommandée lors de l'utilisation d'ADX.
 
 Les attributs d'unité d'organisation, de période et d'ensemble de données sont obligatoires dans ADX. L'élément de groupe peut contenir des attributs supplémentaires. Dans notre implémentation de DHIS2, tout attribut supplémentaire est simplement transmis à l'importateur sous-jacent. Cela signifie que tous les attributs qui ont actuellement une signification dans dxf2 (comme completeDate dans l'exemple ci-dessus) peuvent continuer à être utilisés dans ADX et seront traités de la même manière.
 
-Une différence importante entre ADX et dxf2 réside dans la manière dont les périodes sont encodées. ADX utilise strictement la norme ISO8601 et encode la période de déclaration sous la forme (date|heure) / (durée). Dans l'exemple ci-dessus, la période est donc une période d'un mois (P1M) qui commence le 01/06/2015. Il s'agit donc des données de juin 2015. La notation est un peu plus longue, mais elle est très souple et nous permet de prendre en charge tous les types de période existants dans DHIS2.
+Une différence importante entre ADX et dxf2 réside dans la manière dont les périodes sont encodées. ADX utilise strictement la norme ISO8601 et encode la période de déclaration sous la forme (date|heure) / (durée). Dans l'exemple ci-dessus, la période est donc une période d'un mois (P1M) qui commence le 01-06-2015. Il s'agit donc des données de juin 2015. La notation est un peu plus longue, mais elle est très souple et nous permet de prendre en charge tous les types de période existants dans DHIS2.
 
 ### Définitions des périodes ADX { #adx-period-definitions }
 
@@ -5582,16 +5590,16 @@ Les périodes commencent par la date à laquelle la durée commence, suivie d'un
 
 Tableau : Périodes ADX
 
-| Type de période | Notation de durée | Exemples) | Durée(s) |
+| Type de période | Notation de durée | Exemple(s) | Durée(s) |
 |---|---|---|---|
-| Quotidien  | P1D | 2017-10-01/P1M | 01 octobre 2017 |
-| Hebdomadaire | P7D | 2017-10-02/P7D | 02 oct 2017-08 oct 2017 |
+| Quotidien  | P1D | 01-10-2017/P1M | 01 octobre 2017 |
+| Hebdomadaire | P7D | 02-10-2017/P7D | 02 octobre 2017-08 octobre 2017 |
 | Hebdomadaire Mercredi | P7D | 04-10-2017/P7D | 04 octobre 2017-10 octobre 2017 |
-| Hebdomadaire Jeudi | P7D | 05-10-2017/P7D | 05 octobre 2017-011 octobre 2017 |
+| Hebdomadaire Jeudi | P7D | 05-10-2017/P7D | 05 octobre 2017-11 octobre 2017 |
 | Hebdomadaire Samedi | P7D | 07-10-2017/P7D | 07 octobre 2017-13 octobre 2017 |
 | Hebdomadaire Dimanche | P7D | 01-10-2017/P7D | 01 octobre 2017-07 octobre 2017 |
 | Bihebdomadaire | P14D | 02-10-2017/P14D | 02 octobre 2017-15 octobre 2017 |
-| Mensuel | P1M | 2017-10-01/P1M | 01 octobre 2017-31 octobre 2017 |
+| Mensuel | P1M | 01-10-2017/P1M | 01 octobre 2017-31 octobre 2017 |
 | Bimensuel | P2M | 01-11-2017/P2M | 01 novembre 2017-31 décembre 2017 |
 | Trimestriel | P3M | 01-09-2017/P3M | 01 septembre 2017-31 décembre 2017 |
 | Semestriel | P6M | 01-01-2017/P6M<br>01-07-2017/P6M | 1er janvier 2017-30 juin 2017<br>1er juillet 2017-31 décembre 2017 |
@@ -5621,24 +5629,24 @@ Les principaux avantages de l’utilisation de dimensions explicites de données
     l'exemple ci-dessus, les codes de genre et de groupe d'âge utilisent des listes de codes
     de l'[Observatoire mondial de la santé de l'OMS](http://apps.who.int/gho/data/node.resources.api).
 
-Cette fonction peut être très utile, par exemple pour produire des données désagrégées à partir d'un système de DME, mais il peut arriver qu'un mapping de *combinaison d'options de catégorie* soit plus facile ou plus souhaitable. L'implémentation d'ADX dans DHIS2 permettra de vérifier l'existence d'un attribut de *combinaison d'options de catégorie* et, s'il existe, de l'utiliser au lieu des attributs de dimension éclatés. De même, un attribut de *combinaison d'options d'attributs* sur l'élément *groupe* sera traité de la même manière que les attributs existants. Sinon, la combinaison d'options d'attributs peut être utilisée comme catégories éclatées, comme pour la *valeur de données*.
+Cette fonction peut être très utile, par exemple pour produire des données désagrégées à partir d'un système de DME, mais il peut arriver qu'un mapping de *combinaison d'options de catégorie* soit plus facile ou plus souhaitable. L'implémentation d'ADX dans DHIS2 permettra de vérifier l'existence d'un attribut de *combinaison d'options de catégorie* et, s'il existe, de l'utiliser au lieu des attributs de dimension ventilés. De même, un attribut de *combinaison d'options d'attributs* sur l'élément *groupe* sera traité de la même manière que les attributs existants. Sinon, la combinaison d'options d'attributs peut être utilisée comme catégories ventilées, comme pour la *valeur de données*.
 
 Dans l'exemple simple ci-dessus, tous les éléments de données de l'ensemble de données ont la même dimensionnalité (combinaison de catégories), ce qui rend les données parfaitement rectangulaires. Les ensembles de données peuvent contenir des éléments de données ayant des combinaisons de catégories différentes, ce qui donne un message de données ADX *décalé vers la droite* (c'est-à-dire que les valeurs des différents éléments de données peuvent avoir des nombres de catégories différents).
 
 ### Importation de données ADX { #importing-adx-data }
 
-DHIS2 expose un point de terminaison pour les données POST ADX dans `/api/dataValueSets` en utilisant *application/xml+adx* comme type de contenu. Ainsi, par exemple, la commande curl suivante peut être utilisée pour POST (publier) les exemples de données ci-dessus dans le serveur de démonstration DHIS2 :
+DHIS2 expose un point d'extrémité pour les données POST ADX à `/api/dataValueSets` en utilisant *application/xml+adx* comme type de contenu. Ainsi, par exemple, la commande curl suivante peut être utilisée pour POST (envoyer) les données de l'exemple ci-dessus au serveur de démonstration DHIS2 :
 
 ```bash
 curl -u admin:district -X POST -H "Content-Type: application/adx+xml"
   -d @data.xml "https://play.dhis2.org/demo/api/dataValueSets?dataElementIdScheme=code&orgUnitIdScheme=code"
 ```
 
-Notez que les paramètres de requête sont les mêmes que ceux utilisés avec les données DXF. Le point de terminaison ADX doit interpréter tous les paramètres DXF existants avec la même sémantique que DXF.
+Notez que les paramètres de requête sont les mêmes que ceux utilisés avec les données DXF. Le point d'extrémité  ADX doit interpréter tous les paramètres DXF existants avec la même sémantique que DXF.
 
 ### Exportation de données ADX { #exporting-adx-data }
 
-DHIS2 expose un point de terminaison pour les ensembles de données GET ADX dans `/api/dataValueSets` en utilisant *application/xml+adx* comme type de contenu. Ainsi, par exemple, la commande curl suivante peut être utilisée pour récupérer les données ADX :
+DHIS2 expose un point d'extrémité pour les ensembles de données GET ADX dans `/api/dataValueSets` en utilisant *application/xml+adx* comme type de contenu. Ainsi, par exemple, la commande curl suivante peut être utilisée pour récupérer les données ADX :
 
 ```bash
 curl -u admin:district -H "Accept: application/adx+xml"
@@ -5649,11 +5657,11 @@ Notez que les paramètres de requête sont les mêmes que ceux utilisés avec le
 
 ## Suivi { #webapi_follow_up }
 
-Cette section couvre les données de marquage pour le suivi.
+Cette section traite du marquage des données pour le suivi.
 
 ### Suivi de la valeur de données { #data-value-follow-up }
 
-Le point de terminaison de suivi des valeurs de données permet de marquer les valeurs de données pour le suivi.
+Le point d'extrémité du suivi des valeurs de données permet de marquer les valeurs de données pour le suivi.
 
 ```
 PUT /api/36/dataValues/followup
@@ -5708,10 +5716,9 @@ avec la charge utile `JSON` :
 }
 ```
 
-Chaque élément de cette mise à jour comporte les mêmes champs et exigences que le point de terminaison de la mise à jour unique.
+Chaque élément de cette mise à jour comporte les mêmes champs et exigences que le point d'extrémité de la mise à jour unique.
 
 La mise à jour groupée renvoie également `200 OK` en cas de succès ou `409 Conflit` en cas d'erreurs dans la requête.
-
 
 
 # Validation des données { #data-validation }
@@ -5736,14 +5743,14 @@ Les règles de validation ont un côté gauche et un côté droit, dont la valid
 
 Tableau : Opérateurs
 
-| Valeur | Description |
+| Valeur | Description ; |
 |---|---|
-| égal_à | Egale à |
+| égale_à | Egal à |
 | pas_égale_à | Pas égal à |
-| supérieure_à | Supérieure à |
-| supérieure_ou_égale_à_ | Supérieure ou égal à |
+| supérieure_à | Supérieur à |
+| supérieure_ou_égale_à_ | Supérieur ou égal à |
 | inférieure_à | Inférieur à |
-| inférieure_ou_égale_à_ | inférieur ou égal à |
+| inférieur_ou_égal_à_ | inférieur ou égal à |
 | paire_obligatoire | Si l’un des côtés est présent, l’autre doit également l’être. |
 | paire_exclusive | Si l’un des côtés est présent, l’autre ne doit pas être |
 
@@ -5757,7 +5764,7 @@ Les expressions du côté gauche et du côté droit ont une *stratégie de valeu
 
 Tableau : Stratégies de valeur manquante
 
-| Valeur | Description |
+| Valeur | Description ; |
 |---|---|
 | IGNORER_SI_UNE_VALEUR_MANQUE | Ignore la règle de validation si une valeur de données est manquante |
 | IGNORER_SI_TOUTES-LES_VALEURS_MANQUENT | Ignore la règle de validation si toutes les valeurs de données sont manquantes |
@@ -5792,7 +5799,7 @@ Vous pouvez également inspecter un résultat individuel à l'aide de l'identifi
 
 Les résultats de validation peuvent également être filtrés par les propriétés suivantes :
 
-* Unité organisationnelle : `ou=<UID>`
+* Unité d'organisation : `ou=<UID>`
 * Règle de validation : `vr=<UID>`
 * Période : `pe=<ISO-expression>`
 
@@ -5800,7 +5807,7 @@ Chacune des propriétés de filtre ci-dessus peut apparaître plusieurs fois, pa
 
     GET /api/36/validationResults?ou=jNb63DIHuwU&ou=RzgSFJ9E46G
 
-Plusieurs valeurs pour le même filtre sont combinées avec OR, les résultats doivent correspondre à l'une des valeurs données.
+Si plusieurs valeurs pour le même filtre sont combinées avec OR, les résultats devront correspondre à l'une des valeurs données.
 
 Si plusieurs propriétés de filtre sont utilisées et qu'elles sont combinées avec AND, les résultats devront correspondre à l'une des valeurs de chacune des propriétés.
 
@@ -5814,7 +5821,7 @@ Ce filtre peut être combiné avec n’importe quel autre filtre.
 
 ### Déclencher des notifications de résultats de validation { #trigger-validation-result-notifications }
 
-Les résultats de la validation sont envoyés aux utilisateurs concernés une fois par jour. Ils peuvent également être déclenchés manuellement pour être exécutés sur demande, à l'aide du point d'extrémité de l'API suivant :
+Les résultats de la validation sont envoyés aux utilisateurs concernés une fois par jour. Ils peuvent également être déclenchés manuellement pour être exécutés sur demande, via le point d'extrémité de l'API suivant :
 
     POST /api/33/validation/sendNotifications
 
@@ -5838,11 +5845,11 @@ Les paramètres de filtre pris en charge sont :
 * `created=<ISO-expression>` pour faire correspondre tous les résultats de validation créés au cours de la période fournie
 * `notificationSent=<boolean>` pour faire correspondre uniquement les résultats de validation pour lesquels une notification a été ou n'a pas été envoyée
 
-Si les filtres sont combinés, toutes les conditions doivent être vraies (AND logic (ET logique)).
+Si les filtres sont combinés, toutes les conditions doivent être vraies (AND logiques (et logiques)).
 
 Quelques exemples:
 
-Pour supprimer tous les résultats de validation liés à l'unité d'organisation dont l'UID est `NqwvaQC1ni4` pour le premier trimestre (Q1) 2020, utilisez :
+Pour supprimer tous les résultats de validation liés à l'unité d'organisation avec l'UID `NqwvaQC1ni4` pour le premier trimestre (Q1) 2020, utilisez :
 
 ```
 DELETE /api/36/validationResults?ou=NqwvaQC1ni4&pe=2020Q1
@@ -5859,7 +5866,7 @@ Toute opération de suppression nécessitera l'autorité _Effectuer des tâches 
 
 ## Détection des valeurs atypiques { #outlier-detection }
 
-Le point d'extrémité de détection des valeurs atypiques permet de détecter les valeurs atypiques dans les valeurs de données agrégées.
+Le point d'extrémité de détection des valeurs atypiques permet de détecter les valeurs atypiques parmi les valeurs de données agrégées.
 
 ```
 GET /api/36/outlierDetection
@@ -5877,25 +5884,25 @@ Les valeurs atypiques seront *classées selon leur importance*, par défaut selo
 
 Les paramètres de requête suivants sont pris en charge.
 
-| Paramètre de requête | Description                                                  | Obligatoire | Options (par défaut en premier)                   |
+| Paramètre de requête | Description ;                                                  | Obligatoire | Options (par défaut en premier)                   |
 | --------------- | ------------------------------------------------------------ | --------- | ----------------------------------------- |
 | ds              | Ensemble de données, peut être spécifié plusieurs fois.                   | No [*]    | Identifiant de l'ensemble de données.                      |
 | de              | Élément de données, peut être spécifié plusieurs fois.               | No [*]    | Identifiant de l'élément de données.                  |
 | date de début       | Date en début de l'intervalle pour contrôler les valeurs atypiques.               | Oui       | Date (aaaa-MM-jj).                        |
-| date de fin         | Date en fin de l'intervalle pour vérifier les valeurs aberrantes.                 | Oui       | Date (aaaa-MM-jj).                        |
+| date de fin         | Date en fin de l'intervalle pour vérifier les valeurs atypiques.                 | Oui       | Date (aaaa-MM-jj).                        |
 | ou              | Unité d'organisation, peut être spécifiée plusieurs fois.          | Oui       | Identifiant de l’unité d’organisation.             |
 | algorithme       | Algorithme à utiliser pour la détection des valeurs atypiques.                      | Non        | `Z_SCORE`, `MIN_MAX`, `MOD_Z_SCORE`       |
-| seuil       | Seuil pour les valeurs atypiques. Algorithmes `Z_SCORE` et `MOD_Z_SCORE` uniquement. | Non        | Numérique, supérieur à zéro. Par défaut : 3.0. |
+| seuil       | Seuil pour les valeurs atypiques. Algorithmes `Z_SCORE` et `MOD_Z_SCORE` uniquement. | Non        | Numérique, supérieur à zéro. Par défaut : 3,0. |
 | Date de début des données   | Date en début de l'intervalle pour le calcul de la moyenne et de l'écart type. Algorithmes `Z_SCORE` et `MOD_Z_SCORE` uniquement. | Non        | Date (aaaa-MM-jj). |
 | Date de fin des données     | Date en fin de l'intervalle pour le calcul de la moyenne et de l'écart type. Algorithmes `Z_SCORE` et `MOD_Z_SCORE` uniquement. | Non        | Date (aaaa-MM-jj).   |
 | orderBy         | Field to order by. `Z_SCORE` and `MOD_Z_SCORE`algorithm only.| Non        | `MEAN_ABS_DEV`, `Z_SCORE`                 |
 | Résultats maximum      | Limite maximale pour la sortie.                                    | Non        | Entier, supérieur à zéro. Par défaut : 500. |
 
-[*] Vous devez spécifier soit des ensembles de données avec le paramètre `ds`, qui inclura tous les éléments de données dans les ensembles de données, _ou_ spécifier des éléments de données avec le paramètre `de`.
+[*] Vous devez spécifier soit des ensembles de données avec le paramètre `ds`, qui intégrera tous les éléments de données dans les ensembles de données, _ou_ spécifier des éléments de données avec le paramètre `de`.
 
 Au moins un ensemble de données ou élément de données, une date de début et une date de fin, et au moins une unité d'organisation doivent être définis.
 
-Les paramètres `Date de début` et `Date de fin` sont obligatoires et font référence à l'intervalle de temps dans lequel vous voulez détecter les valeurs atypiques. Les paramètres `Date de début des données` et `Date de fin des données` sont facultatifs et font référence à l'intervalle de temps à utiliser pour les données lors du calcul de la moyenne et de l'écart type. Ils sont utilisés pour calculer éventuellement le z-score.
+Les paramètres `Date de début` et `Date de fin` sont obligatoires et font référence à l'intervalle de temps dans lequel vous voulez détecter les valeurs atypiques. Les paramètres `Date de début des données` et `Date de fin des données` sont facultatifs et font référence à l'intervalle de temps défini pour les données à utiliser lors du calcul de la moyenne et de l'écart type. Ils sont utilisés pour calculer éventuellement le z-score.
 
 ### Utilisation et exemples { #usage-and-examples }
 
@@ -5957,10 +5964,10 @@ Les formats de réponse suivants sont pris en charge.
 
 La réponse contient les champs suivants :
 
-| Champ      | Description                                                  |
+| Champ      | Description ;                                                  |
 | ---------- | ------------------------------------------------------------ |
 | de         | Identifiant de l'élément de données.                                     |
-| Nom de l'élément de données     | Nom de l'élément de données.                                           |
+| deName     | Nom de l'élément de données.                                           |
 | pe         | Identifiant ISO de la période.                                       |
 | ou         | Identifiant de l’unité d’organisation.                                |
 | ouName     | Nom de l'unité d'organisation.                                      |
@@ -5970,12 +5977,12 @@ La réponse contient les champs suivants :
 | aocName    | Nom de la combinaison d’options d’attribut.                           |
 | valeur      | Valeur de données.                                                  |
 | moyenne       | Moyenne des valeurs de données dans la dimension de temps.                   |
-| stdDev     | Écart-type.                                          |
-| absDev     | Pour le z-score, il s'agit de l'écart absolu par rapport à la moyenne. Pour min-max, il s'agit de l'écart absolu par rapport à la limite min ou max. |
+| stdDev     | Écart type.                                          |
+| absDev     | Pour le z-score, il s'agit de l'écart absolu par rapport à la moyenne. Pour min-max, il s'agit de l'écart absolu par rapport à la limite min ou max (minimale ou maximale). |
 | zScore     | Le z-score. Algorithme du z-score uniquement.                         |
 | lowerBound | La limite inférieure.                                          |
 | upperBound | La limite supérieure.                                          |
-| suivi   | Si la valeur de données est marquée pour le suivi.                  |
+| Suivi   | Si la valeur de données est marquée pour le suivi.                  |
 
 Les champs de `moyenne`, `écart type` et `z-score` ne sont présents que lorsque l'`algorithme` est `Z_SCORE`.
 
@@ -6045,7 +6052,7 @@ Les contraintes suivantes s'appliquent lors de la validation de la requête. Cha
 | E2203      | Au moins une unité d'organisation doit être spécifiée             |
 | E2204      | Le seuil doit être un nombre positif                          |
 | E2205      | Les résultats maximum doivent être exprimés en nombres positifs                        |
-| E2206      | Le nombre maximum de résultats dépasse la limite autorisée : {d}               |
+| E2206      | Le nombre de résultats maximum dépasse la limite autorisée : {d}               |
 | E2207      | La date de début des données doit être antérieure à la date de fin des données                 |
 | E2208      | Valeurs de données non numériques rencontrées lors de la détection des valeurs atypiques |
 
@@ -6067,7 +6074,7 @@ Les paramètres de requête suivants sont pris en charge :
 
 Tableau : Paramètres de requête d'analyse des règles de validation
 
-| Paramètre de requête | Description | Option |
+| Paramètre de requête | Description ; | Option |
 |---|---|---|
 | vrg | Groupe de règles de validation | Identifiant |
 | ou | Unité d’organisation | Identifiant |
@@ -6123,7 +6130,7 @@ Les paramètres de requête suivants sont pris en charge :
 
 Tableau : Paramètres de requête d'analyse des valeurs atypiques de l'écart type
 
-| Paramètre de requête | Description | Option |
+| Paramètre de requête | Description ; | Option |
 |---|---|---|
 | ou | Unité d’organisation | Identifiant |
 | date de début | Date de début de la période | Date |
@@ -6131,7 +6138,7 @@ Tableau : Paramètres de requête d'analyse des valeurs atypiques de l'écart t
 | ds | Ensembles de données, le paramètre peut être répété | Identifiant |
 | écart type | Nombre d'écarts types par rapport à la moyenne | Valeur numérique |
 
-### Analyse des valeurs aberrantes basée sur les valeurs min/max { #webapi_data_analysis_min_max_outlier }
+### Analyse des valeurs atypiques sur la base des valeurs min/max { #webapi_data_analysis_min_max_outlier }
 
 Pour identifier les valeurs atypiques sur la base des valeurs min/max :
 
@@ -6149,15 +6156,15 @@ Au moins un ensemble de données ou élément de données, une date ou période 
 
 Les paramètres de requête suivants sont pris en charge.
 
-| Paramètre  | Description                                                  | Obligatoire | Options (par défaut en premier)                   |
+| Paramètre  | Description ;                                                  | Obligatoire | Options (par défaut en premier)                   |
 | ---------- | ------------------------------------------------------------ | --------- | ----------------------------------------- |
 | ou         | Unité d'organisation, peut être spécifiée plusieurs fois.          | Oui       | Identifiant de l’unité d’organisation.             |
 | ds         | Ensemble de données, peut être spécifié plusieurs fois.                   | No [*]    | Identifiant de l'ensemble de données.                      |
 | de         | Élément de données, peut être spécifié plusieurs fois.               | No [*]    | Identifiant de l'élément de données.                  |
 | date de début  | Date en début de l'intervalle pour contrôler les valeurs atypiques.               | No [*]    | Date (aaaa-MM-jj).                        |
-| date de fin    | Date en fin de l'intervalle pour vérifier les valeurs aberrantes.                 | No [*]    | Date (aaaa-MM-jj).                        |
-| pe         | ID de période ISO.                                               | No [*]    | ID ISO de la période.                        |
-| peType     | Période ISO.                                                  | No [*]    | Chaîne ISO de la période.                        |
+| date de fin    | Date en fin de l'intervalle pour vérifier les valeurs atypiques.                 | No [*]    | Date (aaaa-MM-jj).                        |
+| pe         | ID de la période ISO.                                               | No [*]    | Identifiant ISO de la période.                        |
+| Type de période     | Période ISO.                                                  | No [*]    | Chaîne ISO de la période.                        |
 | coc        | Les combinaisons d’options de catégorie peuvent être spécifiées plusieurs fois.     | Non        | Identifiant de la combinaison d’options de catégorie.         |
 | Résultats maximum | Limite maximale pour la sortie.                                    | Non        | Entier, supérieur à zéro. Par défaut : 50.  |
 
@@ -6172,9 +6179,9 @@ Si aucune combinaison d'options `coc` n'est fournie, tous les éléments de donn
 
 ## Intégrité des données { #webapi_data_integrity } 
 
-Les fonctionnalités d'intégrité des données du module d'administration des données sont disponibles via l'API web. Cette section décrit comment exécuter le processus d'intégrité des données et récupérer les résultats. Les informations spécifiques concernant chaque vérification sont décrites dans le manuel de l'utilisateur.
+Les fonctionnalités d'intégrité des données du module d'administration des données sont disponibles via l'API web. Cette section décrit comment exécuter le processus d'intégrité des données et récupérer les résultats. Les informations spécifiques concernant chaque contrôle sont décrites dans le manuel de l'utilisateur.
 
-### Liste des vérifications d'intégrité des données disponibles { #webapi_data_integrity_list }
+### Liste des contrôles d'intégrité des données disponibles { #webapi_data_integrity_list }
 Une description des contrôles disponibles est renvoyée après qu'une requête soit envoyé à :
 
     GET /api/dataIntegrity
@@ -6193,7 +6200,7 @@ Une description des contrôles disponibles est renvoyée après qu'une requête 
 ]
 ```
 
-L'élément `nom` parmi les éléments de contrôle renvoyés est l'identifiant utilisé pour le paramètre des `contrôles` pour déclarer l’ensemble des contrôles à exécuter.
+L'élément `name` (nom) parmi les éléments de contrôle renvoyés est l'identifiant utilisé par le paramètre `contrôles` pour déclarer les contrôles à exécuter.
 
 > **Remarque**
 >
@@ -6205,7 +6212,7 @@ L'élément `nom` parmi les éléments de contrôle renvoyés est l'identifiant 
 
 Les contrôles sont regroupés sémantiquement par l'élément `section` et classés dans l'un des quatre niveaux de `sévérité` :
 
-| Gravité | Description                                                                                                                   |
+| Sévérité | Description ;                                                                                                                   |
 | -------- |-------------------------------------------------------------------------------------------------------------------------------|
 | INFO     | Indique qu'il s'agit uniquement d'une information.                                                                                  |
 | AVERTISSEMENT  | Un avertissement indique qu'il peut s'agir d'un problème, mais pas nécessairement d'une erreur. Il est cependant recommandé de trier ces problèmes. |
@@ -6224,17 +6231,17 @@ Des résultats supplémentaires peuvent être filtrés à l'aide d'un paramètre
 
 Le filtre `section` renverra toutes les correspondances exactes qui ont la section spécifiée.
 
-### Exécution de résumés sur l'intégrité des données { #webapi_data_integrity_run_summary }
+### Production de résumés sur l'intégrité des données { #webapi_data_integrity_run_summary }
 
 Depuis la version 2.38, les contrôles d'intégrité des données ont deux niveaux de spécificité :
 - un niveau `résumé` qui donne un aperçu du nombre de problèmes
 - un niveau `détails` qui fournit une liste de problèmes indiquant des violations individuelles de l'intégrité des données.
 
-Pour déclencher une analyse récapitulative pour un ensemble de contrôles exécutés :
+Pour lancer une analyse qui résume les contrôles exécutés :
 
     POST /api/dataIntegrity/summary?checks=<name1>,<name2>
 
-Cela déclenche une tâche qui exécute le ou les contrôles de manière asynchrone. Les résultats des contrôles individuels seront renvoyés dans le cache de l'application dès que le contrôle sera terminé.
+Cela déclenche l'exécution du ou des contrôle(s) de manière asynchrone. Les résultats des contrôles individuels seront renvoyés dans le cache de l'application dès que le contrôle sera terminé.
 
 Alternativement, la liste des contrôles peut également être fournie comme le CORPS de la requête POST.
 Cela peut être utile si la liste devient trop longue pour être utilisée dans l'URL.
@@ -6252,7 +6259,7 @@ Pour attendre que le résumé soit disponible dans le cache, un `timeout` (déla
 
     GET /api/dataIntegrity/summary?checks=<name1>,<name2>&timeout=500
 
-Une réponse récapitulative pourrait ressembler à  ceci :
+Une réponse de résumé pourrait ressembler à  ceci :
 ```json
 {
   "<name1>": {
@@ -6280,7 +6287,7 @@ Une réponse récapitulative pourrait ressembler à  ceci :
 }
 ```
 
-Chaque réponse de résumé contient le `nom`, la `section`, la `sévérité`, la `description` et éventuellement une `introduction` et une `recommandation`. Chaque résumé contient le nombre de problèmes trouvés dans le champ `nombre`. Si possible, un champ optionnel `pourcentage` fournit le pourcentage d'objets présentant des problèmes d'intégrité des données par rapport à l'ensemble des objets du même type. Le champ `Temps de début` indique le moment où le contrôle a été initié. Le champ `Temps de fin` permet de calculer la durée nécessaire à l'exécution du contrôle.
+Chaque réponse de résumé contient le `nom`, la `section`, la `sévérité`, la `description` et éventuellement une `introduction` et une `recommandation`. Chaque résumé contient le nombre de problèmes trouvés dans le champ `nombre`. Si possible, un champ optionnel `pourcentage` fournit le pourcentage d'objets présentant des problèmes d'intégrité des données par rapport à l'ensemble des objets du même type. Le champ `Heure de début` indique le moment où le contrôle a été initié. Le champ `Heure de fin` permet de calculer la durée nécessaire à l'exécution du contrôle.
 
 Si une analyse de contrôle échoue en raison d'une erreur de programmation ou d'une incohérence imprévue des données, le résumé et les détails comporteront un champ `erreur` qui décrit l'erreur qui s'est produite. Le `nombre` de contrôles qui ont échoué sera fixé à -1. Aucun `pourcentage` ne sera renvoyé dans ce cas.
 
@@ -6383,7 +6390,7 @@ Cette section traite de l'enregistrement d'ensembles de données complétés en 
 
 ### Compléter les ensembles de données { #webapi_completing_data_sets }
 
-Cette section explique comment enregistrer des ensembles de données comme étant complets. Cela s'obtient en interagissant avec la ressource *completeDataSetRegistrations*:
+Cette section explique comment enregistrer des ensembles de données comme étant complets. Cela s'obtient en interagissant avec la ressource *completeDataSetRegistrations* (Enregistrements d'ensembles de données complets):
 
     GET /api/33/completeDataSetRegistrations
 
@@ -6408,16 +6415,16 @@ Le processus d'importation prend en charge les paramètres de requête suivants�
 
 Tableau : Paramètres de requête d'enregistrement d'ensembles de données complets
 
-| Paramètre | Valeurs | Description |
+| Paramètre | Valeurs | Description ; |
 |---|---|---|
-| dataSetIdScheme (Schéma de l'identifiant de l'ensemble de données) | identifiant &#124; nom &#124; code &#124; attribut:ID | Propriété de l'ensemble de données permettant de mettre en correspondance les enregistrements complets. |
-| orgUnitIdScheme (Schéma de l'identifiant de l'unité d'organisation) | identifiant &#124; nom &#124; code &#124; attribut:ID | Propriété de l'unité d'organisation permettant de mettre en correspondance les enregistrements complets. |
-| attributOptionComboIdScheme (Schéma de l'identifiant de la combinaison d'options de catégorie) | identifiant &#124; nom &#124; code &#124; attribut:ID | Propriété de la combinaison d'options d'attribut permettant de mettre en correspondance les enregistrements complets. |
-| idScheme | identifiant &#124; nom &#124; code &#124; attribut:ID | Propriété de tous les objets, y compris les ensembles de données, les unités d'organisation et les combinaisons d'options d'attribut, qui permettent de mettre en correspondance enregistrements complets. |
+| dataSetIdScheme (Schéma de l'identifiant de l'ensemble de données) | identifiant &#124; nom &#124; code &#124; attribut:ID | Propriété de l'ensemble de données à utiliser pour mettre en correspondance les enregistrements complets. |
+| orgUnitIdScheme (Schéma de l'identifiant de l'unité d'organisation) | identifiant &#124; nom &#124; code &#124; attribut:ID | Propriété de l'unité d'organisation à utiliser pour mettre en correspondance les enregistrements complets. |
+| attributOptionComboIdScheme (Schéma de l'identifiant de la combinaison d'options d'attribut) | identifiant &#124; nom &#124; code &#124; attribut:ID | Propriété de la combinaison d'options d'attribut à utiliser pour mettre en correspondance les enregistrements complets. |
+| idScheme (schéma d'identifiants) | identifiant &#124; nom &#124; code &#124; attribut:ID | Propriété de tous les objets, y compris les ensembles de données, les unités d'organisation et les combinaisons d'options d'attribut, à utiliser pour mettre en correspondance enregistrements complets. |
 | preheatCache | faux &#124; vrai | Pour sauvegarder les modifications sur le serveur ou pour renvoyer le résumé de l'importation. |
-| dryRun | faux &#124; vrai | Si l'enregistrement s'applique aux sous-unités |
+| dryRun (essai) | faux &#124; vrai | Si l'enregistrement s'applique aux sous-unités |
 | importStrategy (stratégie d'importation) | CRÉER &#124; METTRE À JOUR &#124; CRÉER _ET_METTRE À JOUR &#124; SUPPRIMER | Sauvegarde des objets de tous les statuts d'importation, nouveaux ou mis à jour, sur le serveur. |
-| skipExistingCheck (ignorer les contrôles existants) | faux &#124; vrai | Ne contrôle pas les enregistrements complets existants. Améliore les performances. À utiliser uniquement pour les bases de données vides ou lorsque les enregistrements à importer n'existent pas encore. |
+| skipExistingCheck (ignorer les contrôles) | faux &#124; vrai | Ne contrôle pas les enregistrements complets existants. Améliore les performances. À utiliser uniquement pour les bases de données vides ou lorsque les enregistrements à importer n'existent pas encore. |
 | async | faux &#124; vrai | Indique si l'importation doit être effectuée de manière asynchrone ou synchrone. La première option (asynchrone) est adapté aux importations très volumineuses car il garantit que la requête n’expire pas, bien qu’il entraîne une surcharge de performances. La deuxième (synchrone) est plus rapide mais nécessite que la connexion soit maintenue jusqu'à la fin du processus. |
 
 Les éléments `idScheme` (schéma de l'identifiant), `dataSetIdScheme`  (schéma de l'identifiant de l'ensemble de données), `orgUnitIdScheme` (schéma de l'identifiant de l'unité d'organisation), `attributeOptionComboIdScheme` (schéma de l'identifiant de la combinaison d'options d'attribut),
@@ -6444,22 +6451,22 @@ Cette section explique comment récupérer les enregistrements d'ensembles de do
 
 Tableau : Paramètres de requête d'ensemble de valeurs de données
 
-| Paramètre | Description |
+| Paramètre | Description ; |
 |---|---|
 | dataSet (ensemble de données) | Identifiant de l'ensemble de données, plusieurs ensembles de données sont autorisés |
-| période | Identifiant de la période au format ISO. Plusieurs périodes sont autorisées. |
+| période | Identifiant de période au format ISO. Plusieurs périodes sont autorisées. |
 | date de début | Date de début de la période des valeurs à exporter |
 | date de fin | Date de fin de la période des valeurs à exporter |
-| créé | Inclut uniquement les enregistrements créées depuis l'horodatage donné |
-| Durée de la création | Inclut uniquement les enregistrements créées pendant la durée indiquée. Le format est <value\><unité-de-temps\>, où les unités de temps prises en charge sont "d", "h", "m", "s " *(jours, heures, minutes, secondes).* L'unité de temps est liée à l'heure actuelle. |
+| créés | Inclut uniquement les enregistrements créés depuis l'horodatage donné |
+| Durée de la création | Inclut uniquement les enregistrements créés pendant la durée indiquée. Le format est <value\><unité-de-temps\>, où les unités de temps prises en charge sont "d", "h", "m", "s " *(jours, heures, minutes, secondes).* L'unité de temps est liée à l'heure actuelle. |
 | orgUnit (Unité d'organisation) | Identifiant de l'unité d'organisation ; peut être spécifié plusieurs fois. Non applicable si un groupe d'unités d'organisation est fourni. |
 | orgUnitGroup (groupe d'unités d'organisation) | Identifiant du groupe d’unités d’organisation ; peut être spécifié plusieurs fois. Non applicable si une unité d'organisation est fournie. |
 | subordonnées | Permet de spécifier s'il faut inclure les unités d’organisation subordonnées dans la hiérarchie des unités d'organisation |
 | limite | Le nombre maximum d'enregistrements à inclure dans la réponse. |
-| idScheme | Propriété d'identifiant utilisée pour les objets de métadonnées dans la réponse. |
+| idScheme (schéma d'identifiants) | Propriété d'identifiant utilisée pour les objets de métadonnées dans la réponse. |
 | dataSetIdScheme (Schéma de l'identifiant de l'ensemble de données) | Propriété d'identifiant utilisée pour les ensembles de données dans la réponse. Elle remplace le schéma de l'identifiant. |
 | orgUnitIdScheme (Schéma de l'identifiant de l'unité d'organisation) | Propriété d'identifiant utilisée pour les unités d'organisation dans la réponse. Elle remplace le schéma de l'identifiant. |
-| attributOptionComboIdScheme (Schéma de l'identifiant de la combinaison d'options de catégorie) | Propriété d'identifiant utilisée pour les combinaisons d'options d'attribut dans la réponse. Elle remplace le schéma de l'identifiant. |
+| attributOptionComboIdScheme (Schéma de l'identifiant de la combinaison d'options d'attribut) | Propriété d'identifiant utilisée pour les combinaisons d'options d'attribut dans la réponse. Elle remplace le schéma de l'identifiant. |
 Les paramètres `ensemble de données` et `unité d'organisation` peuvent être répétés afin d'inclure plusieurs ensembles de données et unités d'organisation.
 
 Les paramètres `période`, `date de début`, `date de fin`, `créé` et `durée de création` fournissent plusieurs façons de définir la dimension temporelle de la requête, donc un seul peut être utilisé. Par exemple, cela n'a pas de sens de définir à la fois la date de début/fin et les périodes.
@@ -6486,12 +6493,12 @@ Cette ressource prend en charge la fonction *DELETE* pour annuler l'inscription.
 
 Tableau : Paramètres de requête d'enregistrement d'ensembles de données complets
 
-| Paramètre de requête | Obligatoire | Description |
+| Paramètre de requête | Obligatoire | Description ; |
 |---|---|---|
 | ds | Oui | Identifiant de l'ensemble de données |
 | pe | Oui | Identifiant de période |
 | ou | Oui | Identifiant de l'unité d'organisation |
-| cc | Non (doit combiner avec cp) | Identifiant de la combinaison d'attributs (pour la vérification du verrouillage) |
+| cc | Non (doit combiner avec cp) | Identifiant de la combinaison d'attributs (pour le contrôle du verrouillage) |
 | cp | Non (doit combiner avec cp) | Identifiants d'options d'attribut, séparés par ; pour plusieurs valeurs (pour le contrôle du verrouillage) |
 | multiOu (unités d'organisation multiples) | Non (faux par défaut) | Si l'enregistrement s'applique aux sous-unités |
 
@@ -6524,7 +6531,7 @@ Pour obtenir des informations sur l'approbation d'un ensemble de données, vous 
 
 Tableau : Paramètres de requête pour l'approbation des données
 
-| Paramètre de requête | Obligatoire | Description |
+| Paramètre de requête | Obligatoire | Description ; |
 |---|---|---|
 | wf | Oui | Identifiant du workflow d'approbation des données |
 | pe | Oui | Identifiant de période |
@@ -6555,7 +6562,7 @@ Les paramètres obtenus sont les suivants :
 
 Tableau : Paramètres obtenus pour l'approbation des données
 
-| Paramètre de retour | Description |
+| Paramètre de retour | Description ; |
 |---|---|
 | peutApprouver        | Si l'utilisateur actuel peut approuver cette sélection de données. |
 | peutDésapprouver      | Si l'utilisateur actuel peut désapprouver cette sélection de données. |
@@ -6570,11 +6577,11 @@ Tableau : Paramètres obtenus pour l'approbation des données
 
 Tableau : États d'approbation des données
 
-| État | Description |
+| État | Description ; |
 |---|---|
 | NON APPROUVÉ | L'approbation des données ne s'applique pas à cette sélection. (Les données ne sont ni approuvées ni non approuvées). |
 | NON APPROUVÉ_EN ATTENTE | Les données pourraient être approuvées pour cette sélection, mais elles attendent une approbation de niveau inférieur avant d'être prêtes à être approuvées. |
-| NON APPROUVÉ_AUTRE PART | Les données ne sont pas approuvées et attendent d'être approuvées autre part (elles ne peuvent pas être approuvées ici). |
+| NON APPROUVÉ_AUTRE PART | Les données ne sont pas approuvées et attendent d'être approuvées à un autre endroit (elles ne peuvent pas être approuvées ici). |
 | NON APPROUVÉ_ PRÊT | Les données ne sont pas approuvées et sont prêtes à être approuvées pour cette sélection. |
 | APPROUVÉ_ICI | Les données sont approuvées et ont été approuvées ici (elles pourraient donc être non approuvées ici). |
 | APPROUVÉ_AUTRE PART | Les données sont approuvées, mais n'ont pas été approuvées ici (et ne peuvent donc pas être non approuvées ici) : <br>* Les données sont approuvées à un niveau supérieur.<br>* Les données sont approuvées pour un plus grand nombre d'options de catégories. <br>* Les données sont approuvées pour toutes les sous-périodes de la période sélectionnée. <br>Dans les deux premiers cas, il existe un seul objet d'approbation des données qui couvre la sélection. Dans le troisième cas, il n'y en a pas. |
@@ -6656,7 +6663,7 @@ Vous obtiendrez une réponse contenant une liste de paramètres d'approbation et
 
 Les champs obtenus sont décrits dans le tableau ci-dessous.
 
-| Champ       | Description |
+| Champ       | Description ; |
 | ----------- | ----------- |
 | aoc         | Identifiant de combinaison d'options d'attributs |
 | pe          | Identifiant de période |
@@ -6667,14 +6674,14 @@ Les champs obtenus sont décrits dans le tableau ci-dessous.
 
 ### Approuver les données { #webapi_data_approval_approve_data } 
 
-Pour approuver des données, vous pouvez envoyer une demande *POST* à la ressource 
-*dataApprovals*. Pour annuler l'approbation des données, vous pouvez envoyer une 
-demande *SUPPRIMER* à la ressource dataApprovals.
+Pour approuver des données, vous pouvez envoyer une demande *POSTER* à la ressource 
+*Approbationdesdonnées*. Pour annuler l'approbation des données, vous pouvez envoyer une 
+demande *SUPPRIMER* à la ressource Approbationdesdonnées.
 
     POST DELETE /api/33/dataApprovals
 
 Pour accepter des données déjà approuvées, vous pouvez envoyer une demande 
-*POSTER* à la ressource *Acceptationdesdonnées*. Pour annuler l'acceptation de données, 
+*POSTER* à la ressource *Acceptationdesdonnées*. Pour annuler l'acceptation de données,
 vous pouvez envoyer une demande *SUPPRIMER* à la ressource *Acceptationdesdonnées*.
 
     POST DELETE /api/33/dataAcceptances
@@ -6685,7 +6692,7 @@ Ces demandes contiennent les paramètres suivants :
 
 Tableau : Paramètres d'action pour l'approbation des données
 
-| Paramètres d'action | Obligatoire | Description |
+| Paramètres d'action | Obligatoire | Description ; |
 |---|---|---|
 | wf | Oui | Identifiant du workflow d'approbation des données |
 | pe | Oui | Identifiant de période |
@@ -6714,7 +6721,7 @@ la ressource `/api/dataApprovals/approvals`.
 
     POST /api/33/dataApprovals/unapprovals
 
-Vous pouvez accepter un grand nombre d'enregistrements en envoyant un message à la ressource
+Vous pouvez accepter un bloc d'enregistrements en envoyant un message à la ressource
 `/api/dataAcceptances/acceptances`.
 
     POST /api/33/dataAcceptances/acceptances
@@ -6752,14 +6759,14 @@ La charge utile d'approbation est prise en charge en tant que JSON et ressemble 
 Pour récupérer les flux de travail d'approbation des données et leurs niveaux d'approbation, 
 vous pouvez effectuer une requête GET similaire à celle-ci :
 
-/api/dataApprovalWorkflows ?
-champs=identifiant, nom, type de période, niveau d'approbation des données [identifiant, nom, niveau, niveau de l'unité d'organisation]
+    /api/dataApprovalWorkflows ?
+      champs=identifiant, nom, type de période, niveau d'approbation des données [identifiant, nom, niveau, niveau de l'unité d'organisation]
 
 
 ### Responsables de l'approbation des données { #authorities-for-data-approval } 
 
 - `F_FLUX DE TRAVAIL_ DE L' APPROBATION_DES DONNÉES` : permet à l'utilisateur d'ajouter/mettre à jour le flux de travail relatif à l'approbation des données.
--  `F_NIVEAU_D'APPROBATION DES_DONNÉES` : permet à l'utilisateur d'ajouter/mettre à jour le niveau d'approbation des données.
+- `F_NIVEAU_D'APPROBATION DES_DONNÉES` : permet à l'utilisateur d'ajouter/mettre à jour le niveau d'approbation des données.
 
 
 # Partage { #sharing } 
@@ -6958,7 +6965,7 @@ Vous pouvez supprimer un utilisateur de `partage` comme suit
 
 ## Partage en cascade du tableau de bord { #cascade-sharing-for-dashboard } 
 
-### Aperçu { #overview } 
+### Présentation { #overview } 
 
 - La fonction  `partage en cascade` est disponible pour les tableaux de bord. Cette fonction copie les  `Accès utilisateur` et  `Accès groupe d'utilisateurs` d'un tableau de bord vers tous les objets de ses  `Éléments de tableau de bord`, y compris une  `Carte`, un  `Rapport d'événement`, un  `Graphique d'événement`, une  `Visualisation`. 
 - Cette fonction ne copie pas l'accès `MODIFIER_LES METADONNEES`. Les `accès d'utilisateur` et `accès de groupe d'utilisateur` copiés recevront **uniquement** la permission `LECTURE_DES METADONNEES`. 
@@ -6984,9 +6991,9 @@ api/dashboards/cascadeSharing/{dashboardUID}
 
 ### Paramètres de l'API { #api-parameters } 
 
-| Nom | Par défaut | Description |
+| Nom ; | Par défaut | Description ; |
 | --- | --- | -- |
-| dryRun | faux | Si ce paramètre est fixé à `vrai`, la fonction de partage en cascade sera exécutée sans mettre à jour aucun objet. </br>La réponse comprendra les erreurs éventuelles et tous les objets qui seront mis à jour. </br>Cela permet à l'utilisateur de connaître le résultat avant d'exécuter la fonction de partage en cascade.
+| dryRun (essai) | faux | Si ce paramètre est fixé à `vrai`, la fonction de partage en cascade sera exécutée sans mettre à jour aucun objet. </br>La réponse comprendra les erreurs éventuelles et tous les objets qui seront mis à jour. </br>Cela permet à l'utilisateur de connaître le résultat avant d'exécuter la fonction de partage en cascade.
 | atomic | faux | Si ce paramètre est fixé à `vrai`, alors la fonction de partage en cascade s'arrêtera et ne mettra à jour aucun objet s'il y a une erreur. </br>Sinon, si cette valeur est ` fausse `, la fonction essaiera de procéder avec le mode du best effort (meilleur effort).
 
 Exemple de réponse : 
@@ -7053,7 +7060,7 @@ curl -X PATCH -d @payload.json -H "Content-Type: application/json-patch+json" "h
 ## Paramètres { #parameters } 
 - Les deux points de terminaison de l'api du patch ont le même paramètre :
 
-| Nom  |  Par défaut  |  Description  |
+| Nom ;  |  Par défaut  |  Description ;  |
 | ---- | ---- | -------------------- |
 | atomic | faux | Si ce paramètre est fixé sur vrai, la fonction de traitement par lots s'arrête et ne met à jour aucun objet en cas d'erreur. <br>Sinon, si ce paramètre est fixé sur faux, la fonction essaye de procéder en mode " best effort " (meilleur effort). |
 
@@ -7154,13 +7161,13 @@ curl -X PATCH -d @payload.json -H "Content-Type: application/json-patch+json" "h
 
 # Programmation { #webapi_scheduling }
 
-## Obtenir les types d'emplois disponibles { #types }
+## Obtenir les types de tâches disponibles { #types }
 
-Pour obtenir une liste de tous les types de travaux disponibles, vous pouvez utiliser le point d'extrémité suivant :
+Pour obtenir une liste de tous les types de tâches disponibles, vous pouvez utiliser le point d'extrémité suivant :
 
     GET /api/jobConfigurations/jobTypes
 
-La réponse contient des informations sur chaque type de travail, notamment le nom, le type de travail, la clé, le type de programmation et les paramètres disponibles. Le type de programmation peut être soit `CRON`, ce qui signifie que les travaux peuvent être programmés en utilisant une expression cron avec le champ `cronExpression`, soit `FIXED_DELAY`, ce qui signifie que les travaux peuvent être programmés pour s'exécuter avec un délai fixe entre les deux avec le champ `delay`. Le champ delay est donné en secondes.
+La réponse contient des informations sur chaque type de tâches , notamment le nom, le type de tâches , la clé, le type de programmation et les paramètres disponibles. Le type de programmation peut être soit `CRON`, ce qui signifie que les tâches  peuvent être programmés en utilisant une expression cron avec le champ `cronExpression`, soit `FIXED_DELAY`, ce qui signifie que les tâches  peuvent être programmés pour s'exécuter avec un délai fixe entre les deux avec le champ `delay`. Le champ delay est donné en secondes.
 
 Une réponse ressemblera à ceci :
 
@@ -7192,7 +7199,7 @@ DHIS2 permet de programmer des tâches de différents types. Chaque type de tâc
 
 Tableau : Principales propriétés
 
-| Propriété | Description | Type |
+| Propriété | Description ; | Type |
 |---|---|---|
 | nom | Nom de la tâche. | Chaîne |
 | expression cron | L'expression cron qui définit l'intervalle d'exécution de la tâche. | Chaîne (expression Cron) |
@@ -7206,37 +7213,37 @@ Tableau : Principales propriétés
 
 Tableau : Paramètres des tâches de `DATA_INTEGRITY`.
 
-| Nom          | Type          | Par défaut | Description                                      |
+| Nom ;          | Type          | Par défaut | Description ;                                      |
 |---------------|---------------|---------|--------------------------------------------------|
-| `vérifications` | tableau de chaînes | `[]` = tous | noms des contrôles à effectuer dans l'ordre d'exécution |
+| `contrôles ` | tableau de chaînes | `[]` = tous | noms des contrôles à effectuer dans l'ordre d'exécution |
 | `type`   | enum            | `RAPPORT`   | RAPPORT, RÉSUMÉ ou DÉTAILS                       |
 
 Tableau : Paramètres des tâches de `ANALYTICS_TABLE`.
 
-| Nom          | Type          | Par défaut | Description                                      |
+| Nom ;          | Type          | Par défaut | Description ;                                      |
 |---------------|---------------|---------|--------------------------------------------------|
 | `années précédentes` | int  | 0       | Nombre d'années écoulées à inclure |
-| `Sauter les types de tableau` | tableau de enum  | `[]`    | Omettre la génération de tableaux ; Valeurs possibles : `VALEUR_DONNÉE`, `COMPLÉTUDE`, `COMPLÉTUDE_CIBLE`, `UNITÉ_D'ORGANISATION_CIBLE`, `ÉVÉNEMENT`, `INSCRIPTION`, `RÉSULTAT DE_VALIDATION` |
+| `Ignorer les types de tableau` | tableau de enum  | `[]`    | Omettre la génération de tableaux ; Valeurs possibles : `VALEUR_DONNÉE`, `COMPLÉTUDE`, `COMPLÉTUDE_CIBLE`, `UNITÉ_D'ORGANISATION_CIBLE`, `ÉVÉNEMENT`, `INSCRIPTION`, `RÉSULTAT DE_VALIDATION` |
 | `Sauter les tableaux ressources` | booléen | `faux`   | Ignorer la génération des tableaux de ressources |
 | `Ignorer les Programmes` | tableau de chaînes | `[]`    | Liste facultative de programmes (d'identifiants) à ignorer |
 
 Tableau : Paramètres des tâches de `CONTINUOUS_ANALYTICS_TABLE`.
 
-| Nom          | Type          | Par défaut | Description                                      |
+| Nom ;          | Type          | Par défaut | Description ;                                      |
 |---------------|---------------|---------|--------------------------------------------------|
 | `années précédentes` | int           | `0`     | Nombre d'années écoulées à inclure |
-| `Sauter les types de tableau` | tableau de enum | `[]`    | Omettre la génération de tableaux ; Valeurs possibles : `VALEUR_DONNÉE`, `COMPLÉTUDE`, `COMPLÉTUDE_CIBLE`, `UNITÉ_D'ORGANISATION_CIBLE`, `ÉVÉNEMENT`, `INSCRIPTION`, `RÉSULTAT DE_VALIDATION` |
+| `Ignorer les types de tableau` | tableau de enum | `[]`    | Omettre la génération de tableaux ; Valeurs possibles : `VALEUR_DONNÉE`, `COMPLÉTUDE`, `COMPLÉTUDE_CIBLE`, `UNITÉ_D'ORGANISATION_CIBLE`, `ÉVÉNEMENT`, `INSCRIPTION`, `RÉSULTAT DE_VALIDATION` |
 | `Mise à jour complète de l'heure de la journée` | int           | `0`     | Heure de la journée pour la mise à jour complète des tableaux d'analyse (0-23) |
 
 Tableau : Paramètres des tâches de `DATA_SYNC`.
 
-| Nom          | Type          | Par défaut | Description                                      |
+| Nom ;          | Type          | Par défaut | Description ;                                      |
 |---------------|---------------|---------|--------------------------------------------------|
 | `taille de la page` | int | `10000` | nombre de valeurs de données traitées en tant qu'unité |
 
 Tableau : Paramètres des tâches de `META_DATA_SYNC`.
 
-| Nom          | Type          | Par défaut | Description                                      |
+| Nom ;          | Type          | Par défaut | Description ;                                      |
 |---------------|---------------|---------|--------------------------------------------------|
 | `Taille de la page du programme tracker` | int | `20` | nombre d'entités suivies traitées en tant qu'unité |
 | `Taille de la page du programme d'événements` | int | `60` | nombre d'événements traités en tant qu'unité           |
@@ -7244,23 +7251,23 @@ Tableau : Paramètres des tâches de `META_DATA_SYNC`.
 
 Tableau : Paramètres des tâches `MONITORING` (Analyse des règles de validation)
 
-| Nom          | Type          | Par défaut | Description                                      |
+| Nom ;          | Type          | Par défaut | Description ;                                      |
 |---------------|---------------|---------|--------------------------------------------------|
 | `début relatif` | int | `0` | Un nombre lié à la date d'exécution qui correspond au début de la période à suivre. |
 | `fin relative` | int | `0` | Un nombre lié à la date d'exécution qui correspond à la fin de la période à suivre. |
 | `groupes de règles de validation` | tableau de chaînes | `[]` | Groupes de règles de validation (UID) à inclure dans la tâche  |
-| `envoyer une notification` | booléen | `faux` | Définir sur `vrai` si la tâche doit envoyer des notifications basées sur les groupes de règles de validation |
+| `envoyer une notification` | booléen | `faux` | Définir sur `true` si la tâche doit envoyer des notifications basées sur les groupes de règles de validation |
 | `persiste les résultats` | booléen | `faux` | Définir sur `true` si la tâche doit persister les résultats de la validation. |
 
 Tableau : Paramètres des tâches de `PUSH_ANALYSIS`.
 
-| Nom          | Type          | Par défaut | Description                                      |
+| Nom ;          | Type          | Par défaut | Description ;                                      |
 |---------------|---------------|---------|--------------------------------------------------|
 | `analyse push` | tableau de chaînes | `[]` |  Les UID des analyses push que vous souhaitez exécuter |
 
 Tableau : Paramètres des tâches de `PREDICTOR`.
 
-| Nom          | Type          | Par défaut | Description                                      |
+| Nom ;          | Type          | Par défaut | Description ;                                      |
 |---------------|---------------|---------|--------------------------------------------------|
 | `début relatif` | int | `0` | Un nombre lié à la date d'exécution qui correspond au début de la période à suivre. |
 | `fin relative` | int | `0` | Un nombre lié à la date d'exécution qui correspond au début de la période à suivre. |
@@ -7269,7 +7276,7 @@ Tableau : Paramètres des tâches de `PREDICTOR`.
 
 Tableau : Paramètres des tâches de `MATERIALIZED_SQL_VIEW_UPDATE`.
 
-| Nom          | Type          | Par défaut | Description                                      |
+| Nom ;          | Type          | Par défaut | Description ;                                      |
 |---------------|---------------|---------|--------------------------------------------------|
 | `vues sql`    | tableau de chaînes | `[]` | Les UID des vues SQL mises à jour par la tâche. |
 
@@ -7713,7 +7720,7 @@ The endpoint for aggregate data value audits is located at:
 
 Table: Aggregate data value query parameters
 
-| Paramètre | Option | Description |
+| Paramètre | Option | Description ; |
 |---|---|---|
 | ds | Data set ID | One or more data set identifiers to get data elements from |
 | de | Data element ID | One or more data element identifiers |
@@ -7743,7 +7750,7 @@ The endpoint for tracked entity data value audits is located at:
 
 Table: Tracked entity data value query parameters
 
-| Paramètre | Option | Description |
+| Paramètre | Option | Description ; |
 |---|---|---|
 | de | Data element ID | One or more data element identifiers |
 | ou | Identifiant de l'unité d'organisation | One or more organisation unit identifiers of the audited event |
@@ -7751,7 +7758,7 @@ Table: Tracked entity data value query parameters
 | ps | Program stage ID | One or more program sages of the audit event program |
 | date de début | Start date | Return only audit records created after date |
 | date de fin | End date | Return only audit records created before date |
-| ou Mode | Organisation unit selection mode | SELECTED \| DESCENDANTS |
+| ouMode (Mode d'unité d'organisation) | Organisation unit selection mode | SELECTED \| DESCENDANTS |
 | auditType | UPDATE &#124; DELETE | Filter by one or more audit types |
 | skipPaging | faux &#124; vrai | Turn paging on / off |
 | paging | false \| vrai | Whether to enable or disable paging |
@@ -7776,7 +7783,7 @@ The endpoint for tracked entity attribute value audits is located at:
 
 Table: Tracked entity attribute value query parameters
 
-| Paramètre | Option | Description |
+| Paramètre | Option | Description ; |
 |---|---|---|
 | tea | Tracked entity attribute ID | One or more tracked entity attribute identifiers |
 | tei | Tracked entity instance ID | One or more tracked entity instance identifiers |
@@ -7804,7 +7811,7 @@ Once auditing is enabled for tracked entity instances (by setting `allowAuditLog
 
 Table: Tracked entity instance audit query parameters
 
-| Paramètre | Option | Description |
+| Paramètre | Option | Description ; |
 |---|---|---|
 | tei | Instance d'entité suivie | One or more tracked entity instance identifiers |
 | user | Utilisateur | One or more user identifiers |
@@ -7834,7 +7841,7 @@ The endpoint for data approval audits is located at:
 
 Tableau : Paramètres de requête pour l'approbation des données
 
-| Paramètre | Option | Description |
+| Paramètre | Option | Description ; |
 |---|---|---|
 | dal | Data approval level ID | One or more data approval level identifiers |
 | wf | Data approval workflow ID | One or more data approval workflow identifiers |
@@ -8434,7 +8441,7 @@ Will search for the following:
 
 Table: dashboards/q and dashboards/search query parameters
 
-| Paramètre de requête | Description | Type | Par défaut |
+| Paramètre de requête | Description ; | Type | Par défaut |
 |---|---|---|---|
 | compter | The number of items of each type to return | Positive integer | 6 |
 | maxCount | The number of items of max types to return | Positive integer | 25 |
@@ -8525,7 +8532,7 @@ parameters are described in detail in the following table.
 
 Table: Items content parameters
 
-| Paramètre de requête | Description | Options |
+| Paramètre de requête | Description ; | Options |
 |---|---|---|
 | type | Type of the resource to be represented by the dashboard item | visualization &#124; map &#124; eventVisualization &#124; users &#124; reports &#124; resources &#124; app |
 | identifiant | Identifier of the resource to be represented by the dashboard item | Resource identifier |
@@ -8595,7 +8602,7 @@ The layout definition will be applied for all dashboard items related to the giv
 
 Table: Layout attributes
 
-| Attribut | Description | Type |
+| Attribut | Description ; | Type |
 |---|---|---|
 | layout | This is the root object | Objet |
 | spacing | Defines the spacing for specific layout components. Currently, it supports columns and rows. | Objet |
@@ -8615,7 +8622,7 @@ The root endpoint of the API is `/api/visualizations`, and the list of current a
 
 Table: Visualization attributes
 
-| Champ | Description |
+| Champ | Description ; |
 |---|---|
 | identifiant | The unique identifier. |
 | code | A custom code to identify the Visualization. |
@@ -8624,7 +8631,7 @@ Table: Visualization attributes
 | title | A custom title. |
 | subtitle | A custom subtitle. |
 | Description | Defines a custom description for the Visualization. |
-| créé | The date/time of the Visualization creation. |
+| créés | The date/time of the Visualization creation. |
 | date de début | The beginning date used during the filtering. |
 | date de fin | The ending date used during the filtering. |
 | sortOrder (ordre de tri) | The sorting order of this Visualization. Integer value. |
@@ -9167,7 +9174,7 @@ The root endpoint of the API is `/api/eventVisualizations`, and the list of curr
 
 Table: EventVisualization attributes
 
-| Champ | Description |
+| Champ | Description ; |
 |---|---|
 | identifiant | The unique identifier. |
 | code | A custom code to identify the EventVisualiation. |
@@ -9176,7 +9183,7 @@ Table: EventVisualization attributes
 | title | A custom title. |
 | subtitle | A custom subtitle. |
 | Description | Defines a custom description for the EventVisualiation. |
-| créé | The date/time of the EventVisualiation creation. |
+| créés | The date/time of the EventVisualiation creation. |
 | date de début | The beginning date used during the filtering. |
 | date de fin | The ending date used during the filtering. |
 | sortOrder (ordre de tri) | The sorting order of this EventVisualiation. Integer value. |
@@ -9224,7 +9231,7 @@ Table: EventVisualization attributes
 | favorites | List of user ids who have marked this object as a favorite. |
 | subscribers | List of user ids who have subscribed to this EventVisualization. |
 | translations | Set of available object translation, normally filtered by locale. |
-| de paludisme) ». | The program associated. |
+| programme | The program associated. |
 | Étape du programme | The program stage associated. |
 | programStatus (statut de programme) | The program status. It can be ACTIVE, COMPLETED, CANCELLED. |
 | eventStatus (statut d'événement) | The event status. It can be ACTIVE, COMPLETED, VISITED, SCHEDULE, OVERDUE, SKIPPED. |
@@ -9724,10 +9731,10 @@ fields omitted for brevity):
 
 Table: Interpretation fields
 
-| Champ | Description |
+| Champ | Description ; |
 |---|---|
 | identifiant | The interpretation identifier. |
-| créé | The time of when the interpretation was created. |
+| créés | The time of when the interpretation was created. |
 | type | The type of analytical object being interpreted. Valid options: VISUALIZATION, MAP, EVENT_REPORT, EVENT_CHART, EVENT_VISUALIZATION, DATASET_REPORT. |
 | user | Association to the user who created the interpretation. |
 | visualization | Association to the visualization if type is VISUALIZATION |
@@ -10158,7 +10165,7 @@ Now that we have a good idea of the main features and usage of this endpoint let
 
 Table: Data items attributes
 
-| Champ | Description |
+| Champ | Description ; |
 |---|---|
 | identifiant | The unique identifier. |
 | code | A custom code to identify the dimensional item. |
@@ -10178,7 +10185,7 @@ DHIS2 has several resources for data analysis. These resources include
 
 Table: Analytical resources
 
-| Resource | Description | Data URL | Resource representations |
+| Resource | Description ; | Data URL | Resource representations |
 |---|---|---|---|
 | eventCharts | Graphiques d'évènements | /api/eventCharts/<identifier\>/data | png |
 | maps | Cartes | /api/maps/<identifier\>/data | png |
@@ -10204,13 +10211,13 @@ resource is set up for relative periods for the period dimension.
 
 Table: Data query parameters
 
-| Paramètre de requête | Valeur | Description |
+| Paramètre de requête | Valeur | Description ; |
 |---|---|---|
 | date | Les dates doivent être au format aaaa-MM-jj | Basis for relative periods in report (requires relative periods) |
 
 Table: Query parameters for png / image types (visualizations, maps)
 
-| Paramètre de requête | Description |
+| Paramètre de requête | Description ; |
 |---|---|
 | width | Width of image in pixels |
 | height | Height of image in pixels |
@@ -10239,7 +10246,7 @@ representations are listed below.
 
 # Analyse  { #analytics } 
 
-## Analyses { #webapi_analytics }
+## Analyse { #webapi_analytics }
 
 Pour accéder aux données analytiques et agrégées dans DHIS2, vous pouvez utiliser la ressource *analyse*. L'importance de la ressource "analyse" réside dans le fait qu'elle vous permet d'interroger et d'extraire des données agrégées pour toutes les dimensions de données disponibles. Par exemple, vous pouvez demander à la ressource "analyse" de vous fournir des valeurs agrégées pour un ensemble d'éléments de données, de périodes et d'unités d'organisation. Vous pouvez également récupérer les données agrégées d'une combinaison de dimensions en vous basant sur des éléments de données et des groupes d'unités d'organisation.
 
@@ -10253,7 +10260,7 @@ La ressource "analyse" vous permet de définir un ensemble de paramètres de req
 
 Tableau : Paramètres de requête
 
-| Paramètre de requête | Obligatoire | Description | Options (par défaut en premier) |
+| Paramètre de requête | Obligatoire | Description ; | Options (par défaut en premier) |
 |---|---|---|---|
 | dimension | Oui | Dimensions et éléments de dimension à extraire. Ils sont répétés pour chaque paramètre. | N'importe quelle dimension |
 | filtre | Non | Filtres et éléments de filtre à appliquer à la requête. Ils sont répétés pour chaque paramètre. | N'importe quelle dimension |
@@ -10278,13 +10285,13 @@ Tableau : Paramètres de requête
 | outputOrgUnitIdScheme (schéma d'identification de l'unité d'organisation de sortie)  | Non | Schéma d'identification utilisé pour les éléments de métadonnées dans la réponse à la requête. Ce paramètre remplace le "outputIdScheme" spécialement pour les unités d'organisation. Il accepte des identifiants, des codes ou des attributs. | UUID &#124; CODE &#124; NAME &#124; ATTRIBUTE:<ID\> |
 | outputDataElementIdScheme (schéma d'identification de l'élément de données de sortie) | Non | Schéma d'identification utilisé pour les éléments de métadonnées dans la réponse à la requête. Ce paramètre remplace le "outputIdScheme" spécialement pour les éléments de données. Il accepte des identifiants, des codes ou des attributs. | UUID &#124; CODE &#124; NAME &#124; ATTRIBUTE:<ID\> |
 | inputIdScheme | Non | Schéma d'identification à utiliser pour les éléments de métadonnées dans la requête. Il peut être un identifiant, un code ou constitué d'attributs. | UID &#124; CODE &#124; ATTRIBUTE:<ID\> |
-| approvalLevel (niveau d'a | Non | Inclut les données qui ont été approuvées au moins jusqu'au niveau d'approbation spécifié. Il fait référence à l'identifiant du niveau d'approbation. | Identifiant du niveau d'approbation |
+| approvalLevel (niveau d'approbation) | Non | Inclut les données qui ont été approuvées au moins jusqu'au niveau d'approbation spécifié. Il fait référence à l'identifiant du niveau d'approbation. | Identifiant du niveau d'approbation |
 | relativePeriodDate (Date de la période relative) | Non | Date utilisée comme base pour les périodes relatives. | Date. |
 | userOrgUnit (unité d'organisation d'utilisateur) | Non | Définit explicitement les unités d'organisation d'utilisateur à utiliser. Elle remplace les unités d'organisation associées à l'utilisateur actuel. Plusieurs identifiants peuvent être séparés par un point-virgule. | Identifiants d’unité d’organisation. |
-| colonnes | Non | Dimensions à utiliser comme colonnes pour la présentation du tableau. | N'importe quelle dimension (doit être une dimension de requête) |
-| lignes | Non | Dimensions à utiliser comme lignes pour la présentation du tableau. | N'importe quelle dimension (doit être une dimension de requête) |
+| colonnes | Non | Dimensions à utiliser comme colonnes dans la présentation du tableau. | N'importe quelle dimension (doit être une dimension de requête) |
+| lignes | Non | Dimensions à utiliser comme lignes dans la présentation du tableau. | N'importe quelle dimension (doit être une dimension de requête) |
 | Ordre | Non | Spécifie l'ordre des lignes en fonction de la valeur. | ASC &#124; DESC |
-| timeField (champ du temps) | Non | Le champ de temps sur lequel baser l'agrégation des événements. Ceci s'applique uniquement aux éléments de données d'événements. Il peut s'agir d'une option prédéfinie ou de l'ID d'un attribut ou d'un élément de données ayant une valeur temporelle. | EVENT_DATE &#124; ENROLLMENT_DATE &#124; INCIDENT_DATE &#124; DUE_DATE &#124; COMPLETED_DATE &#124; CREATED &#124; LAST_UPDATED &#124; <Attribute ID\> &#124; <Data element ID\> |
+| timeField (champ de temps) | Non | Le champ de temps sur lequel baser l'agrégation des événements. Ceci s'applique uniquement aux éléments de données d'événements. Il peut s'agir d'une option prédéfinie ou de l'ID d'un attribut ou d'un élément de données ayant une valeur temporelle. | EVENT_DATE &#124; ENROLLMENT_DATE &#124; INCIDENT_DATE &#124; DUE_DATE &#124; COMPLETED_DATE &#124; CREATED &#124; LAST_UPDATED &#124; <Attribute ID\> &#124; <Data element ID\> |
 | orgUnitField (champ d'unité d'organisation) | Non | Le champ d’unité d’organisation sur lequel baser l’agrégation des événements. ceci s'applique uniquement aux éléments de données d'événements. Il peut s'agir de l’ID d’un attribut ou d’un élément de données avec le type de valeur "Unité d’organisation". L'option par défaut consiste à omettre le paramètre de requête. | <Attribute ID\> &#124; <Data element ID\> &#124; REGISTRATION &#124; ENROLLMENT &#124; OWNER_AT_START &#124; OWNER_AT_END |
 | enhancedConditions (conditions améliorées)           | Non       | Active des conditions améliorées pour les dimensions/filtres | faux &#124; vrai |
 
@@ -10337,16 +10344,16 @@ DHIS2 dispose d'un modèle de données multidimensionnel avec plusieurs dimensio
 
 Tableau : Dimensions et éléments de dimension
 
-| Dimension | Identifiant de la dimension | Éléments de dimension |
+| Dimension | Identifiant de la dimension | Éléments de la dimension |
 |---|---|---|
 | Éléments de données, indicateurs, mesures du taux de déclaration des ensembles de données, opérandes d'éléments de données, indicateurs de programme, éléments de données de programme, attributs de programme, règles de validation | dx | Élément de données, indicateur, mesures du taux de déclaration de l'ensemble de données, opérande d'élément de données, indicateur de programme, identifiants d'attribut de programme, mot clé DE_GROUP-<group-id\>, IN_GROUP-<group-id\> , utilisez <dataelement-id\>.<optioncombo-id\> pour les opérandes d'éléments de données, <program-id\>.<dataelement-id\> pour les éléments de données du programme, <program-id\>.<attribute-id\> pour les attributs du programme, <validationrule-id\> pour les résultats de validation. |
 | Périodes (temps) | pe | Périodes ISO et périodes relatives, voir "format de date et de période" |
-| Hiérarchie d'unités d'organisation | ou | Identifiants d'unité d'organisation et mots-clés USER_ORGUNIT, USER_ORGUNIT_CHILDREN, USER_ORGUNIT_GRANDCHILDREN, LEVEL-<level\> et OU_GROUP-<group-id\> |
+| la hiérarchie d'unités d'organisation ; | ou | Identifiants d'unité d'organisation et mots-clés USER_ORGUNIT, USER_ORGUNIT_CHILDREN, USER_ORGUNIT_GRANDCHILDREN, LEVEL-<level\> et OU_GROUP-<group-id\> |
 | Combinaisons d'options de catégories | co | Identifiants des combinaisons d'options de catégorie (omettre pour obtenir tous les éléments) |
 | Combinaisons d'options d'attribut | ao | Identifiants des combinaisons d'options de catégorie (omettre pour obtenir tous les éléments) |
 | Catégories | <category id\> | Identifiants des options de catégorie (omettre pour obtenir tous les éléments) |
 | Des ensembles de groupes d'éléments de données | <group set id\> | Identifiants des groupes d'éléments de données (omettre pour obtenir tous les éléments) |
-| Ensembles de groupes d'unités d'organisation | <group set id\> | Identifiants des groupes d'unités d'organisation (omettre pour obtenir tous les éléments) |
+| les ensembles de groupes d'unités d'organisation. | <group set id\> | Identifiants des groupes d'unités d'organisation (omettre pour obtenir tous les éléments) |
 | Ensembles de groupes d'options de catégorie | <group set id\> | Category option group identifiers (omit to get all items) |
 
 It is not necessary to be aware of which objects are used for the
@@ -10439,21 +10446,21 @@ Lors de la sélection des unités d'organisation, vous pouvez également sélect
     /api/analytics?dimension=dx:fbfJHSPpUQD&dimension=pe:2016
       &dimension=ou:OU_GROUP-w0gFTTmsUcF;OU_GROUP-EYbopBOJWsW;O6uvpzGd5pu;lc3eMKXaEf
 
-Vous pouvez utiliser des schémas d'identification pour la partie métadonnées de la réponse analytique avec la propriété outputIdScheme. Vous pouvez utiliser l'identifiant, le code ou les attributs comme schéma d'identification. Voici un exemple :
+Vous pouvez utiliser des schémas d'identification pour la partie métadonnées de la réponse analytique avec la propriété outputIdScheme (schéma d'identification de la sortie). Vous pouvez utiliser l'identifiant, le code ou les attributs comme schéma d'identification. Voici un exemple :
 
     /api/analytics?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU
       &dimension=pe:2017Q1;2017Q2&dimension=ou:O6uvpzGd5pu&outputIdScheme=CODE
 
 Quelques éléments à prendre en compte lors de l'utilisation de la ressource analytique sont répertoriés ci-dessous.
 
-  - Éléments de données, indicateur, taux de déclaration des ensembles de données, données de programme
+  - Les éléments de données, les indicateurs, les taux de déclaration des ensembles de données, les éléments de données de programme
     et les indicateurs de programme font partie d’une dimension de données commune,
     identifié comme "dx". Cela signifie que vous pouvez utiliser n'importe quelle élément de données, 
     indicateur et identifiant d'ensemble de données avec l'identifiant 
     de dimension "dx" dans la requête.
 
   - Pour les dimensions "catégorie", "ensemble de groupes d'éléments de données" et "ensemble de groupes d'unités d'organisation", 
-    tous les éléments de dimension seront utilisés dans la requête si
+    tous les éléments de dimension seront utilisés dans la requête si des 
     éléments de dimension ne sont pas spécifiés.
 
   - Pour la dimension de période, les éléments de dimension sont des identifiants de période ISO
@@ -10461,16 +10468,16 @@ Quelques éléments à prendre en compte lors de l'utilisation de la ressource a
     "Format de date et de période" plus haut, pour mieux comprendre le format des périodes et
     les périodes relatives disponibles.
 
-  - Pour la dimension d'unité d'organisation, vous pouvez spécifier des éléments qui seront 
+  - Pour la dimension d'unité d'organisation, vous pouvez spécifier des éléments qui constitueront 
     l'unité d'organisation ou les sous-unités de l'unité d'organisation
     associée à l'utilisateur actuellement authentifié pour la requête.
     Vous pouvez le faire en utilisant respectivement les clés `USER_ORGUNIT` ou `USER_ORGUNIT_CHILDREN` comme éléments.
-    Vous pouvez également spécifier des identifiants d'unité d'organisation
+    Vous pouvez également spécifier directement des identifiants d'unité d'organisation, 
     ou une combinaison des deux possibilités.
 
   - Pour la dimension d'unité d'organisation, vous pouvez spécifier le niveau hiérarchique 
     et l'unité d'organisation limite à utiliser pour la requête en utilisant le 
-    format `LEVEL-<level>-<boundary-id>` ; par exemple
+    format `LEVEL-<level>-<boundary-id>`. Par exemple, 
     `LEVEL-3-ImspTQPwCqd` prend en compte toutes les unités d'organisation inférieures à 
     l'unité d'organisation limite au niveau 3 de la hiérarchie.
 
@@ -10491,16 +10498,16 @@ La dimension `dx` est une dimension spéciale qui peut contenir tous les types d
 
 Tableau : Types de dimensions de données dx
 
-| Type | Syntaxe | Description | Source des données |
+| Type | Syntaxe | Description ; | Source des données |
 |---|---|---|---|
-| Indicateur | <indicator-id\> | Identifiant de l'indicateur. | Données agrégées |
+| Indicateur | <indicator-id\> | Identifiant d'indicateur. | Données agrégées |
 | Groupe indicateur | IN_GROUP-<indicatorgroup-id\> | Mot clé suivi d'un identifiant de groupe d'indicateurs. Inclura tous les indicateurs du groupe dans la réponse. | Données agrégées |
 | Élément de données | <dataelement-id\> | Identifiant de l'élément de données. | Données agrégées |
 | Groupe d'éléments de données | DE_GROUP-<dataelementgroup-id\> | Mot clé suivi d'un identifiant de groupe d'éléments de données. Inclura tous les éléments de données du groupe dans la réponse. | Données agrégées |
-| Opérande de l'élément de données | <dataelement-id\>.<categoryoptcombo-id\>.<attributeoptcombo-id\> | Identifiant de l'élément de données suivi d'une combinaison d'options de catégorie et d'un identifiant de combinaison d'options d'attributs, ou des deux. Le symbole joker « \* » peut être utilisé pour indiquer n'importe quelle valeur de combinaison d'options. L'identifiant de la combinaison d'options d'attributs peut être ignoré complètement. | Données agrégées |
+| Opérande de l'élément de données | <dataelement-id\>.<categoryoptcombo-id\>.<attributeoptcombo-id\> | Identifiant de l'élément de données suivi d'une combinaison d'options de catégorie et d'un identifiant de combinaison d'options d'attributs, ou des deux. Le caractère générique « \* » peut être utilisé pour indiquer n'importe quelle valeur de combinaison d'options. L'identifiant de la combinaison d'options d'attributs peut être ignoré complètement. | Données agrégées |
 | Ensemble de données | <dataset-id\>.<reporting-rate-metric\> | Identifiant de l’ensemble de données suivi de la mesure du taux de déclaration. Peut être REPORTING_RATE &#124; REPORTING_RATE_ON_TIME &#124; ACTUAL_REPORTS &#124; ACTUAL_REPORTS_ON_TIME &#124; EXPECTED_REPORTS. | Enregistrements de la complétude des ensembles de données |
 | Élément de données de programme | <program-id\>.<dataelement-id\> | Identifiant du programme suivi de l'identifiant de l'élément de données. Lit les événements du programme spécifié. | Événements du programme en question |
-| Indicateur de programme | <programindicator-id\> | Identifiant de l’indicateur du programme. Lit les événements du programme associés à l'identifiant du programme. | Événements du programme de l'indicateur de programme |
+| Indicateur de programme | <programindicator-id\> | Identifiant de l’indicateur du programme. Lit les événements du programme associés à l'identifiant du programme. | Événements du programme de l'indicateur |
 | Résultat de validation | <validationrule-id\> | Identifiant de la règle de validation. Inclura les violations à la règle de validation et requiert que les résultats de la validation soient générés et conservés. | Résultats de validation |
 
 Les éléments de tous les différents types `dx` peuvent être combinés dans une requête d'analyse. Voici un exemple :
@@ -10658,7 +10665,7 @@ Les champs `httpStatus` et `httpStatusCode` indiquent le statut HTTP et le code 
 | E7114      | Les catégories attribuées ne peuvent être spécifiées qu'avec des éléments de données, et non avec des indicateurs ou des taux de déclaration. |
 | E7115      | Les éléments de données doivent être d'un type de valeur et d'agrégation qui permette l'agrégation |
 | E7116      | Les expressions d'indicateur ne peuvent pas contenir de références cycliques |
-| E7117      | Une dimension de données 'dx' doit être spécifiée lorsque le format de sortie est DATA_VALUE_SET (ensemble de v. |
+| E7117      | Une dimension de données 'dx' doit être spécifiée lorsque le format de sortie est DATA_VALUE_SET (ensemble de valeurs de données). |
 | E7118      | Une dimension de période 'pe' doit être spécifiée lorsque le format de sortie est DATA_VALUE_SET. |
 | E7119      | Une dimension d'unité d'organisation 'ou' doit être spécifiée lorsque le format de sortie est DATA_VALUE_SET. |
 | E7120      | L'utilisateur n'est pas autorisé à visualiser l'unité d'organisation |
@@ -10667,14 +10674,14 @@ Les champs `httpStatus` et `httpStatusCode` indiquent le statut HTTP et le code 
 | E7123      | L'utilisateur actuel est limité par une dimension mais n'a accès à aucun élément de dimension |
 | E7124      | La dimension est présente dans la requête sans aucune option de dimension valide |
 | E7125      | L'identifiant de dimension ne fait référence à aucune dimension |
-| E7126      | La colonne doit être présente en tant que dimension dans la requête |
+| E7126      | La colonne doit être présente dans la requête en tant que dimension |
 | E7127      | La ligne doit être présente dans la requête en tant que dimension |
 | E7128      | Les résultats de la requête ont dépassé la limite maximale |
 | E7129      | Le programme est spécifié mais n'existe pas |
 | E7130      | L'étape de programme est spécifiée mais n'existe pas |
 | E7131      | La requête a échoué, probablement parce que la requête a expiré |
 
-### Format de l'ensemble de valeurs de données { #webapi_analytics_data_value_set_format }
+### Format d'ensemble de valeurs de données { #webapi_analytics_data_value_set_format }
 
 La ressource analytique *dataValueSet* permet de renvoyer des données agrégées dans le format "ensemble de valeurs de données". Ce format représente des valeurs de données brutes, par opposition aux données qui ont été agrégées en fonction des différentes dimensions. L'exportation de données agrégées sous la forme de valeurs de données régulières permet d'échanger des données entre systèmes lorsque le système cible contient des données d'une granularité plus fine que celles stockées par le système de destination.
 
@@ -10749,7 +10756,7 @@ Tableau : Paramètres de requête
 | inputIdScheme | Non |
 | userOrgUnit (unité d'organisation d'utilisateur) | Non |
 
-Le paramètre de requête *dimension* définit les dimensions (colonnes du tableau) à inclure dans la réponse. Il peut éventuellement être limité par des éléments. Le paramètre de requête *filter* (filtre) définit les éléments et les dimensions (colonnes du tableau) qui doivent être utilisés comme filtre pour la réponse.
+Le paramètre de requête *dimension* définit les dimensions (colonnes du tableau) à inclure dans la réponse. Il peut éventuellement être limité par des éléments. Le paramètre de requête *filter* (filtre) définit les éléments et les dimensions (colonnes du tableau) qui doivent être utilisés pour filtrer la réponse.
 
 Pour la dimension "unité d'organisation", la réponse contiendra les données associées à l'unité d'organisation et à toutes les unités d'organisation qui lui sont inférieures dans la hiérarchie (c'est-à-dire ses subordonnées). Ceci est différent de la ressource analytique ordinaire, où seules les unités d'organisation explicitement sélectionnées sont incluses dans la réponse.
 
@@ -10803,15 +10810,15 @@ Les dimensions d'événements comprennent les éléments de données, les attrib
 
 
 
-Tableau : Dimensions de l'événement
+Tableau : Dimensions d'événement
 
-| Dimension | Identifiant de la dimension | Description |
+| Dimension | Identifiant de la dimension | Description ; |
 |---|---|---|
-| Des éléments de données | <id\> | Identifiants de l'élément de données. |
+| des éléments de données ; | <id\> | Identifiants d'élément de données |
 | Attributs | <id\> | Identifiants d'attribut |
 | Périodes | pe | Périodes ISO et périodes relatives, voir "format de date et de période" |
 | Unités d’organisation | ou | Identifiants d'unité d'organisation et mots-clés USER_ORGUNIT, USER_ORGUNIT_CHILDREN, USER_ORGUNIT_GRANDCHILDREN, LEVEL-<level\> et OU_GROUP-<group-id\> |
-| Ensembles de groupes d'unités d'organisation | <org unit group set id\> | Identifiants d'ensemble de groupes d'unités d'organisation |
+| les ensembles de groupes d'unités d'organisation. | <org unit group set id\> | Identifiants d'ensemble de groupes d'unités d'organisation |
 | Catégories | <category id\> | Identifiants de catégorie (catégories d'attributs de programme uniquement) |
 
 ### Paramètres de requête{ #webapi_event_analytics_request_query_parameters }
@@ -10820,11 +10827,11 @@ L'API d'événement analytique vous permet de définir un ensemble de paramètre
 
 
 
-Tableau : Paramètres de requête pour la requête d'événement et l'analyse agrégée
+Tableau : Paramètres de requête pour la requête d'événement et l'analyse d'agrégation
 
-| Paramètre de requête | Obligatoire | Description | Options (par défaut en premier) |
+| Paramètre de requête | Obligatoire | Description ; | Options (par défaut en premier) |
 |---|---|---|---|
-| de paludisme) ». | Oui | Identifiant du programme. | Tout identifiant de programme |
+| programme | Oui | Identifiant du programme. | Tout identifiant de programme |
 | étape | Non | Identifiant de l'étape de programme. | Tout identifiant d'étape de programme |
 | date de début | Oui | Date de début des événements. | Les dates doivent être au format aaaa-MM-jj |
 | date de fin | Oui | Date de fin des événements. | Les dates doivent être au format aaaa-MM-jj |
@@ -10834,24 +10841,24 @@ Tableau : Paramètres de requête pour la requête d'événement et l'analyse a
 | eventStatus (statut d'événement) | Non | Spécifie le statut des événements à inclure. | ACTIVE &#124; COMPLETED &#124; SCHEDULE &#124; OVERDUE &#124; SKIPPED. La séparation peut se faire par des virgules (*pour la requête uniquement*). |
 | programStatus (statut de programme) | Non | Spécifie le statut d’inscription des événements à inclure. | ACTIVE &#124; COMPLETED &#124; CANCELLED. La séparation peut se faire par des virgules (*pour la requête uniquement*). |
 | relativePeriodDate (Date de la période relative) | chaîne | Non | Identifiant de date, par exemple : "2016-01-01". Il remplace la date de début de la période relative |
-| colonnes | Non | Dimensions à utiliser comme colonnes pour la présentation du tableau. | N'importe quelle dimension (doit être une dimension de requête) |
-| lignes | Non | Dimensions à utiliser comme lignes pour la présentation du tableau. | N'importe quelle dimension (doit être une dimension de requête) |
-| timeField (champ du temps) | Non | Il s'agit du champ de temps utilisé dans le cadre des agrégations/requêtes sur les événements. Il s'applique uniquement aux éléments de données d'événements. Il peut s'agir d'une option prédéfinie ou de l'identifiant d'un attribut ou d'un élément de données dont le type de valeur est temporel. Pour les points d'extrémité "/analytics/events/", le champ de temps par défaut est EVENT_DATE. | EVENT_DATE &#124; SCHEDULED_DATE &#124; <Attribute ID\> &#124; <Data element ID\> |
+| colonnes | Non | Dimensions à utiliser comme colonnes dans la présentation du tableau. | N'importe quelle dimension (doit être une dimension de requête) |
+| lignes | Non | Dimensions à utiliser comme lignes dans la présentation du tableau. | N'importe quelle dimension (doit être une dimension de requête) |
+| timeField (champ de temps) | Non | Il s'agit du champ de temps utilisé dans le cadre des agrégations/requêtes sur les événements. Il s'applique uniquement aux éléments de données d'événements. Il peut s'agir d'une option prédéfinie ou de l'identifiant d'un attribut ou d'un élément de données dont le type de valeur est temporel. Pour les points d'extrémité "/analytics/events/", le champ de temps par défaut est EVENT_DATE. | EVENT_DATE &#124; SCHEDULED_DATE &#124; <Attribute ID\> &#124; <Data element ID\> |
 
 
 
 Tableau : Paramètres de requête pour l'analyse des requêtes d'événement uniquement
 
-| Paramètre de requête | Obligatoire | Description | Options |
+| Paramètre de requête | Obligatoire | Description ; | Options |
 |---|---|---|---|
-| ou Mode | Non | Il s'git du mode de sélection des unités d'organisation. La valeur par défaut est DESCENDANTS (descendants), c'est-à-dire toutes les sous-unités dans la hiérarchie. CHILDREN (subordonnées) fait référence aux unités qui se trouvent directement en dessous de l'unité de référence dans la hiérarchie ; SELECTED (sélectionnées) fait référence aux unités d'organisation sélectionnées uniquement. Vous trouverez plus de détails [ici].(https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker.html#webapi_nti_ou_scope) | DESCENDANTS, CHILDREN, SELECTED |
-| asc | Non | Permet de trier les dimensions par ordre croissant; peut concerner la date de l'événement, le nom et le code de l'unité d'organisation et tout identifiant d'élément. | `ouname` &#124; `programstatus` &#124; `eventstatus` &#124; `createdbydisplayname` &#124; `lastupdatedbydisplayname` &#124; `eventdate` &#124; `enrollmentdate` &#124; `incidentdate` &#124; `lastupdated` &#124; item identifier |
+| ouMode (Mode d'unité d'organisation) | Non | Il s'git du mode de sélection des unités d'organisation. La valeur par défaut est DESCENDANTS (descendants), c'est-à-dire toutes les sous-unités dans la hiérarchie. CHILDREN (subordonnées) fait référence aux unités qui se trouvent directement en dessous de l'unité de référence dans la hiérarchie ; SELECTED (sélectionnées) fait référence aux unités d'organisation sélectionnées uniquement. Vous trouverez plus de détails [ici].(https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker.html#webapi_nti_ou_scope) | DESCENDANTS, CHILDREN, SELECTED |
+| asc | Non | Permet de trier les dimensions par ordre croissant ; peut concerner la date de l'événement, le nom et le code de l'unité d'organisation et tout identifiant d'élément. | `ouname` &#124; `programstatus` &#124; `eventstatus` &#124; `createdbydisplayname` &#124; `lastupdatedbydisplayname` &#124; `eventdate` &#124; `enrollmentdate` &#124; `incidentdate` &#124; `lastupdated` &#124; item identifier |
 | desc | Non | Permet de trier les dimensions par ordre décroissant ; peut concerner la date de l'événement, le nom et le code de l'unité d'organisation et tout identifiant d'élément. | `ouname` &#124; `programstatus` &#124; `eventstatus` &#124; `createdbydisplayname` &#124; `lastupdatedbydisplayname` &#124; `eventdate` &#124; `enrollmentdate` &#124; `incidentdate` &#124; `lastupdated` &#124; item identifier |
 | coordinatesOnly (coordonnées uniquement) | Non | Indique s'il faut uniquement renvoyer les événements qui ont des coordonnées. | faux &#124; vrai |
 | coordinateOuFallback | Non | La géométrie de l'instance de programme est appliquée chaque fois que la géométrie de l'unité d'organisation est manquante. | faux &#124; vrai |
-| dataIdScheme (schéma d'identification des données) | Non | Schéma d'identification à utiliser pour les données, plus spécifiquement pour les éléments de données et les attributs qui disposent d'un ensemble d'options ou de légendes. Ceci permet par exemple de renvoyer le nom de l'option au lieu du code, ou le nom de la légende au lieu de son ID, dans la réponse de données. | NAME &#124; CODE &#124; UID |
+| dataIdScheme (schéma d'identification des données) | Non | Schéma d'identification à utiliser pour les données, plus spécifiquement pour les éléments de données et les attributs qui disposent d'un ensemble d'options ou de légendes. Ceci permet par exemple de renvoyer le nom de l'option au lieu du code, ou le nom de la légende au lieu de son ID, dans la réponse. | NAME &#124; CODE &#124; UID |
 | en-têtes | Non | Le nom des en-têtes à renvoyer dans la réponse. | Un ou plusieurs noms d'en-têtes séparés par une virgule |
-| page | Non | Le numéro de page. La page par défaut est 1. | Valeur numérique positive |
+| page | Non | Il s'agit du numéro de page. La page par défaut est 1. | Valeur numérique positive |
 | taille de la page | Non | La taille de la page. La taille par défaut est de 50 éléments par page. | Zéro ou valeur positive |
 | eventDate (date de l'événement) | no | (ressource `événements` uniquement) Période personnalisée sur `eventDate` (voir la section "Périodes de date personnalisées") | voir la section "format de date et de période" |
 | enrollmentDate (date d'inscription) | no | Période personnalisée sur `enrollmentDate` (voir la section "Périodes de date personnalisées") | voir la section "format de date et de période" |
@@ -10863,9 +10870,9 @@ Tableau : Paramètres de requête pour l'analyse des requêtes d'événement un
 
 Tableau : Paramètres de requête pour l'analyse agrégée des événements uniquement
 
-| Paramètre de requête | Obligatoire | Description | Options |
+| Paramètre de requête | Obligatoire | Description ; | Options |
 |---|---|---|---|
-| valeur | Non | Il s'agit de l'identifiant de la dimension de la valeur ; peut être un élément de données ou un attribut qui doit être de type numérique. | Identifiant d’élément de données ou d’attribut |
+| valeur | Non | Il s'agit de l'identifiant de la dimension de valeur ; peut être un élément de données ou un attribut qui doit être de type numérique. | Identifiant d’élément de données ou d’attribut |
 | Type d'agrégation | Non | Type d'agrégation pour la dimension de valeur. Par défaut, il est définit sur AVERAGE (moyenne). | SUM &#124; AVERAGE &#124; AVERAGE_SUM_ORG_UNIT &#124; LAST &#124; LAST_AVERAGE_ORG_UNIT &#124; COUNT &#124; STDDEV &#124; VARIANCE &#124; MIN &#124; MAX |
 | showHierarchy (afficher la hiérarchie) | Non | Affiche le parcours hiérarchique complet de l'unité d'organisation ainsi que le nom de l'unité d'organisation. | faux &#124; vrai |
 | displayProperty (afficher la propriété) | Non | Affiche la propriété des métadonnées. | NAME &#124; SHORTNAME |
@@ -10884,7 +10891,7 @@ Tableau : Paramètres de requête pour l'analyse agrégée des événements uni
 
 Tableau : Paramètres de requête pour les analyses d'événements en grappes uniquement
 
-| Paramètre de requête | Obligatoire | Description | Options |
+| Paramètre de requête | Obligatoire | Description ; | Options |
 |---|---|---|---|
 | clusterSize (taille des grappes) | Oui | Taille des grappes en mètres. | Valeur numérique positive |
 | coordinateField (champs de coordonnées) | Non | Field to base geospatial event analytics on. Default is event. Can be set to identifiers of attributes and data elements of value type coordinate. | EVENT &#124; <attribute-id\> &#124; <dataelement-id\> |
@@ -10893,7 +10900,7 @@ Tableau : Paramètres de requête pour les analyses d'événements en grappes u
 
 ### Analyse des requêtes d'événements { #webapi_event_query_analytics } 
 
-La ressource *analytics/events/query* vous permet d'effectuer des requêtes sur des événements capturés. Cette ressource ne fait pas d'agrégation, elle vous permet plutôt de lancer des requêtes et de filtrer des informations sur les événements.
+La ressource *analytics/events/query* vous permet d'effectuer des requêtes sur des événements capturés. Cette ressource n'effectue pas d'agrégation ; elle vous permet plutôt de lancer des requêtes et de filtrer les informations sur les événements.
 
     /api/analytics/events/query
 
@@ -10946,14 +10953,14 @@ Les opérateurs disponibles sont répertoriés ci-dessous.
 
 Tableau : Opérateurs de filtre
 
-| Opérateur | Description |
+| Opérateur | Description ; |
 |---|---|
-| EQ | Egale à |
+| EQ | Egal à |
 | !EQ | Pas égal à |
 | IEQ | Égal à, en ignorant la casse |
 | !IEQ | Différent de, ignorant la casse |
-| GT | Supérieure à |
-| GE | Supérieure ou égal à |
+| GT | Supérieur à |
+| GE | Supérieur ou égal à |
 | LT | Inférieur à |
 | LE | inférieur ou égal à |
 | NE | Pas égal à |
@@ -10972,17 +10979,17 @@ Par défaut, les points d'extrémité `query` (requête) filtrent les périodes 
 
 #### Conditions améliorées { #enhanced-conditions } 
 
-Par défaut, `enhancedConditions` (conditions améliorées) est défini sur `false`. Cela signifie que toutes les conditions exprimées dans `dimension` et `filter` sont considérées comme des conditions `AND`.
+Par défaut, `enhancedConditions` (conditions améliorées) est défini sur `false`. Cela signifie que toutes les conditions exprimées dans `dimension` et `filtre` sont considérées comme des conditions `AND` (et).
 Par exemple :
 
     dimension=a:GT:20:LT:40&dimension=b:GT:1:LT:5
 
 se traduit par la condition logique suivante :
 
-    a>20 et a<40 and b>1 et b<5 
+    a>20 and a<40 and b>1 and b<5 
 
 Cependant, dans certains cas, il peut être nécessaire d'avoir plus de contrôle sur les conditions. Vous pouvez activer ce contrôle en définissant le paramètre de requête `enhancedConditions` sur `true`.
-En procédant ainsi, un client peut utiliser un séparateur spécial `_OR_` pour joindre des conditions en utilisant l'opérateur logique `OR`.
+En procédant ainsi, un client peut utiliser un séparateur spécial `_OR_` pour joindre des conditions en utilisant l'opérateur logique `OR` (ou).
 
 Exemple:
 
@@ -10990,11 +10997,11 @@ Exemple:
 
 se traduit par la condition logique suivante :
 
-    ((a>20 et a<40) or (b>1 et b<5)) et c = "test"
+    ((a>20 and a<40) or (b>1 and b<5)) and c = "test"
 
 #### Formats de réponse { #response-formats } 
 
-Le format de représentation de la réponse par défaut est JSON. Les requêtes doivent utiliser la méthode HTTP *GET*. Les formats de réponse suivants sont pris en charge.
+Le format de représentation de réponse par défaut est JSON. Les requêtes doivent utiliser la méthode HTTP *GET*. Les formats de réponse suivants sont pris en charge.
 
   - json (application/json)
 
@@ -11002,7 +11009,7 @@ Le format de représentation de la réponse par défaut est JSON. Les requêtes 
 
   - xls (application/vnd.ms-excel)
 
-À titre d'exemple, pour obtenir une réponse au format Excel vous pouvez utiliser une extension de fichier dans l'URL de la requête comme ceci :
+À titre d'exemple, pour obtenir une réponse au format Excel, vous pouvez utiliser une extension de fichier dans l'URL de la requête comme ceci :
 
     /api/analytics/events/query/eBAyeGv0exc.xls?startDate=2016-01-01&endDate=2016-10-31
       &dimension=ou:O6uvpzGd5pu&dimension=oZg33kd9taw&dimension=qrur9Dvnyt5
@@ -11191,14 +11198,14 @@ La section *metaData*, objet *ou* (unité d'organisation), contient les identifi
 
 La section *lignes* contient les événements produits par la requête. Chaque ligne représente exactement un événement.
 
-Pour que la ressource analytique des événements génère les données dans un tableau tout fait, vous pouvez renseigner les paramètres *lignes* et *colonnes* avec les identifiants des dimensions requises. Ces identifiants doivent être séparés par des points-virgules ; elles serviront de valeurs pour indiquer quelles dimensions doivent être utilisées comme colonnes ou lignes du tableau. Au lieu de générer une source de données simples et normalisées, la ressource analytique d'événements va maintenant générer les données dans un tableau. Dans la requête, les dimensions des colonnes et des lignes doivent figurer en tant que dimensions de données (et non en tant que filtre). Une telle requête peut ressembler à ceci :
+Pour que la ressource analytique des événements génère les données dans un tableau tout fait, vous pouvez renseigner les paramètres *lignes* et *colonnes* avec les identifiants des dimensions requises. Ces identifiants doivent être séparés par des points-virgules ; elles serviront de valeurs pour indiquer quelles dimensions doivent être utilisées comme colonnes ou lignes du tableau. Au lieu de générer une source de données simples et normalisées, la ressource analytique d'événements va maintenant générer les données dans un tableau. Dans la requête, les dimensions de colonnes et de lignes doivent figurer en tant que dimensions de données (et non en tant que filtre). Une telle requête peut ressembler à ceci :
 
     /api/analytics.html+css?dimension=dx:cYeuwXTCPkU;fbfJHSPpUQD&dimension=pe:WEEKS_THIS_YEAR
       &filter=ou:ImspTQPwCqd&displayProperty=SHORTNAME&columns=dx&rows=pe
 
 ### Analyse agrégée des événements { #webapi_event_aggregate_analytics } 
 
-La ressource `/analytics/events/aggregate` vous permet d'extraire des *nombres agrégés* d'événements capturés dans DHIS2. Cette ressource vous permet d'extraire des données agrégées liés à un programme spécifique ou éventuellement à une étape de programme. Elle vous permet également d'effectuer des filtrages en fonction d'une dimension d'événement quelconque.
+La ressource `/analytics/events/aggregate` vous permet d'extraire des *nombres agrégés* d'événements capturés dans DHIS2. Cette ressource vous permet d'extraire des données agrégées liés à un programme spécifique ou éventuellement à une étape de programme. Elle vous permet également d'effectuer des filtrages en fonction  de toute dimension d'événement.
 
     /api/analytics/events/aggregate
 
@@ -11212,77 +11219,58 @@ Par exemple, pour extraire des nombres agrégés des événements du programme "
     /api/analytics/events/aggregate/eBAyeGv0exc?startDate=2016-01-01&endDate=2016-10-31
       &dimension=ou:O6uvpzGd5pu&dimension=oZg33kd9taw:EQ:Female&dimension=qrur9Dvnyt5:GT:50
 
-To retrieve data for fixed and relative periods instead of start and end
-date, in this case, May 2016 and last 12 months, and the organisation
-unit associated with the current user, you can use the following query:
+Pour extraire des données relatives à des périodes fixes et relatives au lieu des dates de début et de fin, dans ce cas, mai 2016 et les 12 derniers mois, et l'unité d'organisation associée à l'utilisateur actuel, vous pouvez utiliser la requête suivante :
 
     /api/analytics/events/aggregate/eBAyeGv0exc?dimension=pe:201605;LAST_12_MONTHS
       &dimension=ou:USER_ORGUNIT;fdc6uOvgo7ji&dimension=oZg33kd9taw
 
-In order to specify "Female" as a filter for "Gender" for the data
-response, meaning "Gender" will not be part of the response but will
-filter the aggregate numbers in it, you can use the following syntax:
+Afin de spécifier "Femme" comme filtre pour le "Sexe" dans la réponse, ce qui signifie que "Sexe" ne fera pas partie de la réponse mais filtrera les nombres agrégés qu'il contient, vous pouvez utiliser la syntaxe suivante :
 
     /api/analytics/events/aggregate/eBAyeGv0exc?dimension=pe:2016;
       &dimension=ou:O6uvpzGd5pu&filter=oZg33kd9taw:EQ:Female
 
-To specify the "Bo" organisation unit and the period "2016" as filters,
-and the "Mode of discharge" and Gender" as dimensions, where "Gender" is
-filtered on the "Male" item, you can use a query like this:
+Pour spécifier l'unité d'organisation "Bo" et la période "2016" comme filtres, et le "Mode de sortie" et le "Sexe" comme dimensions, où le "Sexe" est filtré en fonction de l'élément "Masculin", vous pouvez utiliser une requête comme celle-ci :
 
     /api/analytics/events/aggregate/eBAyeGv0exc?filter=pe:2016&filter=ou:O6uvpzGd5pu
       &dimension=fWIAEtYVEGk&dimension=oZg33kd9taw:EQ:Male
 
-To create a "Top 3 report" for _Mode of discharge_ you can use the limit
-and sortOrder query parameters similar to this:
+Pour créer un "rapport de Top 3" pour le _Mode de sortie_, vous pouvez utiliser les paramètres de requête "limit" (limite) et sortOrder (ordre de tri) de la manière suivante :
 
     /api/analytics/events/aggregate/eBAyeGv0exc?filter=pe:2016&filter=ou:O6uvpzGd5pu
       &dimension=fWIAEtYVEGk&limit=3&sortOrder=DESC
 
-To specify a value dimension with a corresponding aggregation type you
-can use the value and aggregationType query parameters. Specifying a
-value dimension will make the analytics engine return aggregate values
-for the values of that dimension in the response as opposed to counts of
-events.
+Pour spécifier une dimension de valeur avec un type d'agrégation correspondant, vous pouvez utiliser les paramètres de requête "value" (valeur) et "aggregationType" (type d'aggrégation). En spécifiant une dimension de valeur, le moteur d'analyse renverra des valeurs agrégées pour les valeurs de cette dimension dans la réponse, plutôt que des nombres d'événements.
 
     /api/analytics/events/aggregate/eBAyeGv0exc.json?stage=Zj7UnCAulEk
       &dimension=ou:ImspTQPwCqd&dimension=pe:LAST_12_MONTHS&dimension=fWIAEtYVEGk
       &value=qrur9Dvnyt5&aggregationType=AVERAGE
 
-To base event analytics aggregation on a specific data element or attribute
-of value type date or date time you can use the `timeField` parameter:
+Pour que l'agrégation des analyses d'événements se fasse en fonction d'un élément de données ou d'un attribut spécifique de type 'date' ou 'date et heure', vous pouvez utiliser le paramètre `timeField` (champ de temps) :
 
     /api/analytics/events/aggregate/IpHINAT79UW.json?dimension=ou:ImspTQPwCqd
       &dimension=pe:LAST_12_MONTHS&dimension=cejWyOfXge6&stage=A03MvHHogjR
       &timeField=ENROLLMENT_DATE
 
-To base event analytics aggregation on a specific data element or attribute
-of value type organisation unit you can use the `orgUnitField` parameter:
+Pour que l'agrégation des analyses d'événements se fasse en fonction d'un élément de données ou d'un attribut spécifique de type 'unité d'organisation', vous pouvez utiliser le paramètre `orgUnitField` (champ d'unité d'organisation) :
 
     /api/analytics/events/aggregate/eBAyeGv0exc.json?dimension=ou:ImspTQPwCqd
       &dimension=pe:THIS_YEAR&dimension=oZg33kd9taw&stage=Zj7UnCAulEk
       &orgUnitField=S33cRBsnXPo
 
-The `orgUnitField` parameter value may be one of the following:
+Voici quelques valeurs possibles pour le paramètre `orgUnitField` :
 
-| orgUnitField (champ d'unité d'organisation) | Description |
+| orgUnitField (champ d'unité d'organisation) | Description ; |
 | --- | --- |
-| <Attribute ID\> | ID of an attribute with the organisation unit value type |
-| <Data element ID\> | ID of a data element with the organisation unit value type |
-| REGISTRATION | The organization unit at which the tracked entity instance was registered (created) |
-| INSCRIPTION | The organization unit at which the tracked entity instance was enrolled in the program |
-| OWNER_AT_START | The tracked entity instance's owning organisation unit at the start of the reporting period |
-| OWNER_AT_END | The tracked entity instance's owning organisation unit at the end of the reporting period |
+| <Attribute ID\> | ID d'un attribut de type de valeur 'unité d'organisation' |
+| <Data element ID\> | ID d'un élément de données de type de valeur 'unité d'organisation' |
+| ENREGISTREMENT | L'unité d'organisation dans laquelle l'instance d'entité suivie a été enregistrée (créée) |
+| INSCRIPTION | L'unité d'organisation dans laquelle l'instance d'entité suivie a été inscrite au programme |
+| OWNER_AT_START | L'unité d'organisation propriétaire de l'instance d'entité suivie au début de la période de déclaration. |
+| OWNER_AT_END | L'unité d'organisation propriétaire de l'instance d'entité suivie à la fin de la période de déclaration. |
 
-#### Ranges / legend sets { #ranges-legend-sets } 
+#### Plages / jeux de légendes { #ranges-legend-sets } 
 
-For aggregate queries, you can specify a range / legend set for numeric
-data element and attribute dimensions. The purpose is to group the
-numeric values into ranges. As an example, instead of generating data
-for an "Age" data element for distinct years, you can group the
-information into age groups. To achieve this, the data element or
-attribute must be associated with the legend set. The format is
-described below:
+Pour les requêtes d'agrégation, vous pouvez spécifier une plage ou un ensemble de légendes pour les éléments de données numériques et les dimensions d'attributs. L'objectif est de regrouper les valeurs numériques dans des plages. Par exemple, au lieu de générer des données pour un élément de données "Âge" pour des années différentes, vous pouvez regrouper les informations par tranche d'âge. Pour ce faire, l'élément de données ou l'attribut doit être associé à l'ensemble de légendes. Le format est décrit ci-dessous :
 
     ?dimension=<item-id>-<legend-set-id>
 
@@ -11293,8 +11281,7 @@ Voici donc un exemple :
 
 #### Formats de réponse { #response-formats } 
 
-The default response representation format is JSON. The requests must be
-using the HTTP *GET* method. The response will look similar to this:
+Le format de représentation de réponse par défaut est JSON. Les requêtes doivent utiliser la méthode HTTP *GET*. La réponse va ressembler à ceci :
 
 ```json
 {
@@ -11384,23 +11371,18 @@ using the HTTP *GET* method. The response will look similar to this:
 }
 ```
 
-Note that the max limit for rows to return in a single response is 10 000.
-If the query produces more than the max limit, a *409 Conflict* status code
-will be returned.
+La limite maximale de lignes que peut comporter une réponse est de 10 000.
+Si la requête produit plus que la limite maximale, un code de statut *409 Conflict* sera renvoyé.
 
-### Event clustering analytics { #webapi_event_clustering_analytics } 
+### Analyse des événements en grappes{ #webapi_event_clustering_analytics } 
 
-The *analytics/events/cluster* resource provides clustered geospatial
-event data. A request looks like this:
+La ressource *analytics/events/cluster* fournit des données géospatiales en grappe. Une requête se présente comme suit :
 
     /api/analytics/events/cluster/eBAyeGv0exc?startDate=2016-01-01&endDate=2016-10-31
       &dimension=ou:LEVEL-2&clusterSize=100000
       &bbox=-13.2682125,7.3721619,-10.4261178,9.904012&includeClusterPoints=false
 
-The cluster response provides the count of underlying points, the center
-point and extent of each cluster. If the `includeClusterPoints` query
-parameter is set to true, a comma-separated string with the identifiers
-of the underlying events is included. A sample response looks like this:
+La réponse fournit le nombre de points sous-jacents, le point central et l'étendue de chaque grappe. Si le paramètre de requête `includeClusterPoints` (inclure des points en grappe) est défini sur 'true' (vrai), une chaîne contenant les identifiants des événements sous-jacents, séparés par des virgules, sera incluse dans la réponse. Voici un exemple de réponse :
 
 ```json
 {
@@ -11544,7 +11526,7 @@ Enrollment dimensions include data elements, attributes, organisation units and 
 
 Table: Enrollment dimensions
 
-| Dimension | Identifiant de la dimension | Description |
+| Dimension | Identifiant de la dimension | Description ; |
 |---|---|---|
 | Data elements in program stages | <program stage id\>.<data element id\> | Data element identifiers must include the program stage when querying data for enrollments.      dimension=edqlbukwRfQ.vANAXwtLwcT |
 | Attributs | <id\> | Identifiants d'attribut |
@@ -11656,11 +11638,11 @@ Les opérateurs disponibles sont répertoriés ci-dessous.
 
 Tableau : Opérateurs de filtre
 
-| Opérateur | Description |
+| Opérateur | Description ; |
 |---|---|
-| EQ | Egale à |
-| GT | Supérieure à |
-| GE | Supérieure ou égal à |
+| EQ | Egal à |
+| GT | Supérieur à |
+| GE | Supérieur ou égal à |
 | LT | Inférieur à |
 | LE | inférieur ou égal à |
 | NE | Pas égal à |
@@ -11675,23 +11657,23 @@ L'API de requête d'inscription analytique vous permet de spécifier un ensemble
 
 Tableau : Paramètres de requête pour le point d'extrémité de la requête d'inscription
 
-| Paramètre de requête | Obligatoire | Description | Options (par défaut en premier) |
+| Paramètre de requête | Obligatoire | Description ; | Options (par défaut en premier) |
 |---|---|---|---|
-| de paludisme) ». | Oui | Identifiant du programme. | Tout identifiant de programme |
+| programme | Oui | Identifiant du programme. | Tout identifiant de programme |
 | date de début | Non | Date de début des inscriptions. | Les dates doivent être au format aaaa-MM-jj |
 | date de fin | Non | Date de fin des inscriptions. | Les dates doivent être au format aaaa-MM-jj |
 | dimension | Oui | L'identifiant de dimension comprend les éléments de données, les attributs, les indicateurs de programme, les périodes, les unités d'organisation et les ensembles de groupes d'unités d'organisation. Le paramètre peut être répété autant de fois que nécessaire. Des filtres d'éléments peuvent être appliqués à une dimension selon le format <item-id\>:<operator\>:<filter\>. Les valeurs des filtres ne sont pas sensibles à la casse. | Les opérateurs peuvent être EQ &#124; GT&#124; GE&#124; LT&#124; LE&#124; NE &#124; COMME &#124; DANS |
 | filtre | Non | L'identifiant de dimension comprend les éléments de données, les attributs, les périodes, les unités d'organisation et les ensembles de groupes d'unités d'organisation. Le paramètre peut être répété autant de fois que nécessaire. Des filtres d'éléments peuvent être appliqués à une dimension selon le format <item-id\>:<operator\>:<filter\>. Les valeurs des filtres ne sont pas sensibles à la casse. ||
 | programStatus (statut de programme) | Non | Specify enrollment status of enrollments to include. | ACTIF &#124; TERMINÉ &#124; ANNULÉ |
 | relativePeriodDate (Date de la période relative) | chaîne | Non | Identifiant de date, par exemple : "2016-01-01". Il remplace la date de début de la période relative |
-| ou Mode | Non | Il s'git du mode de sélection des unités d'organisation. La valeur par défaut est DESCENDANTS (descendants), c'est-à-dire toutes les sous-unités dans la hiérarchie. CHILDREN (subordonnées) fait référence aux unités qui se trouvent directement en dessous de l'unité de référence dans la hiérarchie ; SELECTED (sélectionnées) fait référence aux unités d'organisation sélectionnées uniquement. Vous trouverez plus de détails [ici].(https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker.html#webapi_nti_ou_scope) | DESCENDANTS, CHILDREN, SELECTED |
+| ouMode (Mode d'unité d'organisation) | Non | Il s'git du mode de sélection des unités d'organisation. La valeur par défaut est DESCENDANTS (descendants), c'est-à-dire toutes les sous-unités dans la hiérarchie. CHILDREN (subordonnées) fait référence aux unités qui se trouvent directement en dessous de l'unité de référence dans la hiérarchie ; SELECTED (sélectionnées) fait référence aux unités d'organisation sélectionnées uniquement. Vous trouverez plus de détails [ici].(https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker.html#webapi_nti_ou_scope) | DESCENDANTS, CHILDREN, SELECTED |
 | asc | Non | Permet de trier les dimensions par ordre croissant ; peut concerner la date d'inscription, la date d'incident, le nom et le code de l'unité d'organisation. | `ouname` &#124; `programstatus` &#124; `createdbydisplayname` &#124; `lastupdatedbydisplayname` &#124; `enrollmentdate` &#124; `incidentdate` &#124; `lastupdated` &#124; item identifier |
 | desc | Non | Dimensions to be sorted descending, can reference enrollment date, incident date, org unit name and code. | `ouname` &#124; `programstatus` &#124; `createdbydisplayname` &#124; `lastupdatedbydisplayname` &#124; `enrollmentdate` &#124; `incidentdate` &#124; `lastupdated` &#124; item identifier |
 | coordinatesOnly (coordonnées uniquement) | Non | Whether to only return enrollments which have coordinates. | faux &#124; vrai |
 | en-têtes | Non | Le nom des en-têtes à renvoyer dans la réponse. | Un ou plusieurs noms d'en-têtes séparés par une virgule |
-| page | Non | Le numéro de page. La page par défaut est 1. | Valeur numérique positive |
+| page | Non | Il s'agit du numéro de page. La page par défaut est 1. | Valeur numérique positive |
 | taille de la page | Non | La taille de la page. La taille par défaut est de 50 éléments par page. | Zéro ou valeur positive |
-| timeField (champ du temps) | Non | Time field used in aggregations/queries on enrollments. Applies to enrollment data items only. Can be a predefined option or the ID of an attribute or data element with a time-based value type. For "/analytics/enrollments/" endpoints, the default "timeField" is ENROLLMENT_DATE. | ENROLLMENT_DATE &#124; LAST_UPDATED &#124; <Attribute ID\> &#124; <Data element ID\> |
+| timeField (champ de temps) | Non | Time field used in aggregations/queries on enrollments. Applies to enrollment data items only. Can be a predefined option or the ID of an attribute or data element with a time-based value type. For "/analytics/enrollments/" endpoints, the default "timeField" is ENROLLMENT_DATE. | ENROLLMENT_DATE &#124; LAST_UPDATED &#124; <Attribute ID\> &#124; <Data element ID\> |
 
 #### Formats de réponse { #response-formats } 
 
@@ -12008,7 +11990,7 @@ Five resources allow to easily retrieve data dimensions:
 
 Resources mentioned above share the following request parameter:
 
-| Paramètre de requête | required                                         | Description                                                                                       | Options                                                                                                                                              |
+| Paramètre de requête | required                                         | Description ;                                                                                       | Options                                                                                                                                              |
 |-----------------|--------------------------------------------------|---------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
 | filtre          | no                                               | Allows field value filtering on the format: <br/> `filter=field:OP:value&filter=field:OP:value&...` | See [dimension filters section].(#webapi_analytics_dimension_filters)                                                                                |
 | fields          | no                                               | Allows field filtering                                                  |
@@ -12024,8 +12006,8 @@ Filters are in the format `filter=field:op:value&filter=field:op:value&...&filte
 
 Supported `field` values are:
 
-- **id**/**uid** - identifiant de dimension
-- **code** - code de dimension
+- **id**/**uid** - identifiant de la dimension
+- **code** - code de la dimension
 - **valueType** - type de valeur de la dimension
 - **name** - le nom de la dimension
 - **dimensionType** - le type de dimension 
@@ -12033,7 +12015,7 @@ Supported `field` values are:
     - `PROGRAM_INDICATOR`
     - `PROGRAM_ATTRIBUTE`
     - `CATEGORY`
-    - `CATEGORY_OPTION_GROUP_SET`
+    - `CATEGORY_OPTION_GROUP_SET` (ensemble de groupes d'options de catégorie)
 - **displayName** - nom d'affichage de la dimension
 - **displayShortName** - nom d'affichage court pour la dimension
 
@@ -12212,7 +12194,7 @@ The org unit analytics resource lets you specify a range of query parameters:
 
 Table: Org unit analytics query parameters
 
-| Propriété | Description | Obligatoire |
+| Propriété | Description ; | Obligatoire |
 |---|---|---|
 | ou | Org unit identifiers, potentially separated by a semicolon. | Oui |
 | ougs | Org unit group set identifiers, potentially separated by a semicolon. | Oui |
@@ -12271,7 +12253,7 @@ The request supports the following parameters:
 
 Tableau : Paramètres de requête du rapport sur l'ensemble de données
 
-| Paramètre | Description | Type | Obligatoire |
+| Paramètre | Description ; | Type | Obligatoire |
 |---|---|---|---|
 | ds | Data set to create the report from. | Data set UID | Oui |
 | pe | Period(s) to create the report from. May be a comma-separated list. | Chaîne ISO | Oui |
@@ -12341,7 +12323,7 @@ required to automatically run push analysis jobs:
 
 Table: Push analysis properties
 
-| Propriété | Description | Type | Obligatoire |
+| Propriété | Description ; | Type | Obligatoire |
 |---|---|---|---|
 | tableau de bord | Dashboard on which reports are based | Dashboard UID | Oui |
 | message | Appears after title in reports | Chaîne | Non |
@@ -12393,7 +12375,7 @@ below shows the supported types of events.
 
 Table: Supported event types
 
-| Clé | Description |
+| Clé | Description ; |
 |---|---|
 | VISUALIZATION_VIEW | Visualization view |
 | MAP_VIEW | Map view (GIS) |
@@ -12413,7 +12395,7 @@ parameters when asking for an aggregated report.
 
 Table: Query parameters for aggregated usage analytics (data statistics)
 
-| Paramètre de requête | Obligatoire | Description | Options |
+| Paramètre de requête | Obligatoire | Description ; | Options |
 |---|---|---|---|
 | date de début | Oui | Start date for period | Les dates doivent être au format aaaa-MM-jj |
 | date de fin | Oui | End date for period | Les dates doivent être au format aaaa-MM-jj |
@@ -12439,7 +12421,7 @@ DHIS2, and by user.
 
 Table: Query parameters for top favorites
 
-| Paramètre de requête | Obligatoire | Description | Options |
+| Paramètre de requête | Obligatoire | Description ; | Options |
 |---|---|---|---|
 | eventType | Oui | The data statistics event type | See above table |
 | taille de la page | Non | Size of the list returned | For example 5, 10, 25. Default is 25 |
@@ -12595,7 +12577,7 @@ table.
 
 Table: Geo features response
 
-| Propriété | Description |
+| Propriété | Description ; |
 |---|---|
 | identifiant | Organisation unit / geo feature identifier |
 | na | Organisation unit / geo feature name |
@@ -12647,7 +12629,7 @@ Analytics table hooks have the following fields:
 
 Table: Analytics table hook fields
 
-| Champ | Options | Description |
+| Champ | Options | Description ; |
 |---|---|---|
 | nom | Texte | Name of the hook. |
 | phase | RESOURCE_TABLE_POPULATED, ANALYTICS_TABLE_POPULATED | The phase for when the SQL script should be invoked. |
@@ -12769,7 +12751,7 @@ content-type `application/x-www-form-urlencoded`.
 
 Tableau : Paramètres de requête
 
-| Paramètre de requête | Obligatoire | Description |
+| Paramètre de requête | Obligatoire | Description ; |
 |---|---|---|
 | svg | Oui | The SVG content |
 | filename | Non | The file name for the returned attachment without file extension |
@@ -13101,7 +13083,7 @@ be generated with a POST or PUT request to:
 
 Table: Analytics tables optional query parameters
 
-| Paramètre de requête | Options | Description |
+| Paramètre de requête | Options | Description ; |
 |---|---|---|
 | skipResourceTables | faux &#124; vrai | Ignorer la génération des tableaux de ressources |
 | skipAggregate | faux &#124; vrai | Skip generation of aggregate data and completeness data |
@@ -13316,7 +13298,7 @@ general.
 
 Table: HTTP Status codes
 
-| HTTP Status code | Description | Résultat |
+| HTTP Status code | Description ; | Résultat |
 |---|---|---|
 | 200 | OK | Authentication was successful |
 | 302 | Found | No credentials were supplied with the request - no authentication took place |
@@ -13337,7 +13319,7 @@ supported:
 
 Table: Task categories
 
-| Identificateur | Description |
+| Identificateur | Description ; |
 |---|---|
 | ANALYTICS_TABLE | Generation of the analytics tables. |
 | RESOURCE_TABLE | Generation of the resource tables. |
@@ -13577,13 +13559,13 @@ organisation unit, data element and category option combo.
 
 Table: Min-max data element data structure
 
-| Élément | Description | Type de données |
+| Élément | Description ; | Type de données |
 |---|---|---|
 | source | Identifiant de l'unité d'organisation | Chaîne |
 | élément de données | Identifiant de l'élément de données | Chaîne |
 | optionCombo | Data element category option combo identifier | Chaîne |
 | min | Valeur minimale | Entier |
-| max | Valeur maximum | Entier |
+| max | Valeur maximale | Entier |
 | generated | Indicates whether this object is generated by the system (and not set manually). | Booléen |
 
 You can retrieve a list of all min-max data elements from the following
@@ -13680,7 +13662,7 @@ DELETE request:
 
 ## Échange de données agrégées { #aggregate-data-exchange } 
 
-Cette section décrit le système d'échange de données agrégées et l'API.
+Cette section décrit le service d'échange de données agrégées et l'API.
 
 ### Introduction { #introduction } 
 
@@ -13693,7 +13675,7 @@ Le service d'échange de données agrégées est adapté à des cas d'utilisatio
 * Le calcul préalable des données de suivi avec les indicateurs de programme sauvegardés en tant que valeurs de données agrégées.
 * La déclaration des données d'un HMIS national à un bailleur de fonds mondial.
 
-### Aperçu { #overview } 
+### Présentation { #overview } 
 
 Le service d'échange de données agrégées permet l'échange de données entre une instance *source* du DHIS 2 et une instance *cible* du DHIS 2. Un échange de données peut être *externe*, c'est-à-dire que l'instance cible est différente/externe à l'instance source. Un échange de données peut également être *interne*, l'instance cible étant la même que l'instance source. La source d'échange de données agrégées peut contenir plusieurs requêtes de source, une requête de source correspondant à peu près à une requête d'API analytique.
 
@@ -14013,7 +13995,7 @@ Accept: application/json
 
 ##### Paramètres de la requête { #query-parameters } 
 
-| Paramètre de requête | Obligatoire | Description                                                  | Options                       |
+| Paramètre de requête | Obligatoire | Description ;                                                  | Options                       |
 | --------------- | -------- | ------------------------------------------------------------ | ----------------------------- |
 | outputIdScheme (schéma d'identification de la sortie)  | Non       | Remplacer le schéma d'identification de la sortie pour la réponse aux données. | UID \| CODE \| ATTRIBUT:{ID} |
 
@@ -14039,7 +14021,7 @@ Accept: application/json
 
 ##### Paramètres de la requête { #query-parameters } 
 
-| Paramètre de requête | Obligatoire | Description                                                  | Options                       |
+| Paramètre de requête | Obligatoire | Description ;                                                  | Options                       |
 | --------------- | -------- | ------------------------------------------------------------ | ----------------------------- |
 | outputIdScheme (schéma d'identification de la sortie)  | Non       | Remplacer le schéma d'identification de la sortie pour la réponse aux données. | UID \| CODE \| ATTRIBUT:{ID} |
 
@@ -14049,7 +14031,7 @@ Le format de la charge utile de la réponse est identique à celui du point d'ex
 
 Le modèle de données d'échange de données agrégées / charge utile est décrit dans la section qui suit.
 
-| Champ                                             | Type de données      | Obligatoire   | Description                                                  |
+| Champ                                             | Type de données      | Obligatoire   | Description ;                                                  |
 | ------------------------------------------------- | -------------- | ----------- | ------------------------------------------------------------ |
 | nom                                              | Chaîne         | Oui         | Nom de l'échange de données agrégées. Unique.                     |
 | source                                            | Objet         | Oui         | Source d'échange de données agrégées.                          |
@@ -14064,7 +14046,7 @@ Le modèle de données d'échange de données agrégées / charge utile est déc
 | source.requests.filters (filtres de requêtes source)                           | Tableau (Objet) | Non          | Filtres pour la requête source.                              |
 | source.requests.filters.dimension (dimensions des filtres de requêtes source)                 | Chaîne         | Non          | Identifiant de dimension pour le filtre.                         |
 | source.requests.filters.items (éléments des filtres de requêtes source)                     | Tableau/Chaîne   | Non          | Identifiants des éléments du filtre.                             |
-| source.requests.inputIdScheme ( Schéma d'identification d'entrée de la requête source )                     | Chaîne         | Non          | Le schéma d'ID d'entrée peut être `UID`, `CODE`, `ATTRIBUTE:{ID}`.     |
+| source.requests.inputIdScheme ( Schéma d'identification d'entrée des requêtes source )                     | Chaîne         | Non          | Le schéma de l'Identifiant d'entrée peut être `UID`, `CODE`, `ATTRIBUTE:{ID}`.     |
 | source.requests.outputDataElementIdScheme ( Schéma d'identification de l'élément de données de sortie des requêtes source)         | Chaîne         | Non          | Le schéma de l'identifiant de l'élément de données de sortie peut être `UID`, `CODE`, `ATTRIBUTE:{ID}`. |
 | source.requests.outputOrgUnitIdScheme ( Schéma d'identification de l'unité d'organisation de sortie des requêtes source)             | Chaîne         | Non          | Le schéma d'identification de l'unité d'organisation de sortie, peut être `UID`, `CODE`, `ATTRIBUTE:{ID}`. |
 | source.requests.outputIdScheme (Schéma d'identification de sortie des requêtes source)                    | Chaîne         | Non          | Le schéma d'identification général de sortie peut être `UID`, `CODE`, `ATTRIBUTE:{ID}`. |
@@ -14342,7 +14324,7 @@ The common properties which support translations are listed in the table below.
 
 Table: Property names
 
-| Property name | Description |
+| Property name | Description ; |
 |---|---|
 | nom | Object name |
 | nomAbrégé | Object short name |
@@ -14352,11 +14334,11 @@ The classes which support translations are listed in the table below.
 
 Table: Class names
 
-| Class name | Description | Other translatable Properties |
+| Class name | Description ; | Other translatable Properties |
 |---|---|---|
 | DataElementCategoryOption | Option de catégorie | |
 | DataElementCategory | Catégorie | |
-| DataElementCategoryCombo | La combinaison de catégories | |
+| DataElementCategoryCombo | la combinaison de catégories. | |
 | Élément de données | Élément de données | |
 | DataElementGroup | Groupe d'éléments de données | |
 | DataElementGroupSet | Ensemble de groupes d'éléments de donnée | |
@@ -14493,7 +14475,7 @@ Tableau : Codes de réponse de la passerelle
 | CODE DU_RÉSULTAT_27 | vous avez dépassé votre quota journalier | vous avez dépassé votre quota journalier |
 | CODE DU_RÉSULTAT_40 | temporairement indisponible | Le service est temporairement interrompu |
 | CODE DU_RÉSULTAT_201 | taille maximale du lot dépassée | Taille maximale du lot dépassée |
-| CODE DU_RÉSULTAT_200 | succès | La demande a été traitée avec succès |
+| CODE DU_RÉSULTAT_200 | succès | La requête a été traitée avec succès |
 | CODE DU_RÉSULTAT_202 | accepté | Le(s) message(s) sera(ont) traité(s) |
 | CODE DU_RÉSULTAT_207 | multi-statut | Plus d'un message a été soumis à l'API ; cependant, tous les messages n'ont pas le même statut. |
 | CODE DU_RÉSULTAT_400 | mauvaise requête | Échec de validation (paramètres ou en-têtes manquants/invalides) |
@@ -14547,7 +14529,7 @@ Pour importer tous les messages non traités
 
 Tableau : Paramètres de requête de l'utilisateur
 
-| Paramètre | Type | Description |
+| Paramètre | Type | Description ; |
 |---|---|---|
 | message | Chaîne | Il s'agit d'un paramètre obligatoire qui contient le message textuel proprement dit. |
 | auteur | Chaîne | Il s'agit d'un paramètre obligatoire qui indique de qui provient le message. |
@@ -14683,7 +14665,7 @@ Dans une passerelle générique http, il est possible d'ajouter un nombre illimi
 
 Tableau : Paramètres génériques de la passerelle SMS
 
-| Paramètre | Type | Description |
+| Paramètre | Type | Description ; |
 |---|---|---|
 | nom | Chaîne | nom de la passerelle |
 | modèle de configuration | Chaîne | Le modèle de configuration qui est rempli avec les valeurs des paramètres. Par exemple, le modèle de configuration donné ci-dessus sera rempli comme suit : { "to" : "+27001234567", "body" : "Hello World !"} |
@@ -14697,7 +14679,7 @@ Tableau : Paramètres génériques de la passerelle SMS
 | confidentiel | Booléen | Si le paramètre est confidentiel. Ce paramètre ne sera pas exposé à travers l'API |
 | Paramètres d'envoi d'Url | Booléen | Si cette option est cochée, le modèle d'url peut être ajouté aux paramètres de la requête. Ceci est utile si l'API de la passerelle ne prend en charge que le HTTP GET. Un exemple de modèle d'url ressemble à ceci `"urlTemplate" : "https://samplegateway.com/messages?apiKey={apiKey}&to={recipients},content={text},deliveryreport={dp}"`. |
 
-HTTP.OK sera renvoyé si les configurations sont sauvegardées avec succès, sinon *Erreur*
+HTTP.OK sera renvoyé si les configurations sont sauvegardées avec succès, sinon *Erreur* s'affiche
 
 ## Les commandes SMS { #webapi_sms_commands } 
 
@@ -14745,7 +14727,7 @@ Ces types de commandes peuvent être utilisés par l'application Android pour l'
 |INSCRIPTION | Pour l'enregistrement de l'entité du tracker.|
 |ÉVÉNEMENT_TRACKER | Inscription à un événement pour les programmes tracker.|
 |ÉVÉNEMENT_SIMPLE | Inscription aux programmes d'événements.|
-|RELATION | Pour créer des relations.|
+|RELATION | Créer des relations.|
 |SUPPRIMER | Supprimer un événement.|
 
 
@@ -14766,12 +14748,12 @@ dans la ressource vous pouvez utiliser les paramètres suivants.
 
 Tableau : Paramètres de requête de l'utilisateur
 
-| Paramètre | Type | Description |
+| Paramètre | Type | Description ; |
 |---|---|---|
 | requête | Texte | Valeur de la requête pour le prénom, le nom de famille, le nom d'utilisateur et l'adresse électronique, sensible à la casse. |
 | Numéro de Téléphone | Texte | Requête pour un numéro de téléphone. |
 | peutGérer | faux &#124; vrai | Filtre permettant de déterminer si l'utilisateur actuel peut gérer les utilisateurs renvoyés à travers les relations de groupe d'utilisateurs gérés. |
-| authSubset | faux &#124; vrai | Filtre permettant de déterminer si les utilisateurs renvoyés ont un sous-ensemble des autorisations de l'utilisateur actuel. |
+| autorisation de sous-ensemble | faux &#124; vrai | Filtre permettant de déterminer si les utilisateurs renvoyés ont un sous-ensemble des autorisations de l'utilisateur actuel. |
 | dernière connexion | Date | Filtre les utilisateurs qui se sont connectés après la date indiquée. |
 | mois inactifs | Nombre | Filtre les utilisateurs qui ne se sont pas connectés pendant le nombre de mois indiqué. |
 | inactif Depuis | Date | Filtre les utilisateurs qui ne se sont pas connectés après la date indiquée. |
@@ -14779,7 +14761,7 @@ Tableau : Paramètres de requête de l'utilisateur
 | statut de l'invitation | aucun &#124; all &#124; expiré | Filtre les invitations des utilisateurs, notamment toutes les invitations ou les invitations expirées. |
 | ou | Identificateur | Filtre les utilisateurs associés à l'unité d'organisation dont l'identifiant est indiqué. |
 | unités d'organisation des utilisateurs | faux &#124; vrai | Filtre les utilisateurs qui sont associés aux unités d'organisation liées à l'utilisateur actuellement connecté. |
-| Inclut les enfants | faux &#124; vrai | Inclut les utilisateurs de toutes les unités d'organisation subordonnées du paramètre de l'uo. |
+| Inclut les subordonnées | faux &#124; vrai | Inclut les utilisateurs de toutes les unités d'organisation subordonnées du paramètre de l'uo. |
 | page | Nombre | Le nombre de la page. |
 | taille de la page | Nombre | La taille de la page |
 | limite de l'unité d'organisation | saisie de_données &#124 ; sortie de_données &#124 ; recherche_d'ies | Restreint la recherche aux utilisateurs ayant une unité d'organisation commune avec l'utilisateur actuel pour la limite indiquée        |
@@ -15096,11 +15078,11 @@ un code d'état *409 Conflict* accompagné d'un message descriptif.
 
 ### Réplication de l'utilisateur { #webapi_user_replication } 
 
-Pour répliquer un utilisateur, vous pouvez utiliser la ressource *replica*. Répliquer un
+Pour reproduire un utilisateur, vous pouvez utiliser la ressource *replica*. Reproduire un
 utilisateur peut être utile pour déboguer ou reproduire des problèmes signalés par un
 particulier. Vous devez fournir un nouveau nom d'utilisateur et un nouveau mot de passe à l'utilisateur 
-répliqué, que vous allez utiliser pour vous authentifier ultérieurement. Notez que vous
-avez besoin de l'autorisation ALL pour effectuer cette action. Pour répliquer un utilisateur, vous
+reproduit, que vous allez utiliser pour vous authentifier ultérieurement. Notez que vous
+avez besoin de l'autorisation ALL pour effectuer cette action. Pour reproduire un utilisateur, vous
 vous pouvez envoyer une charge utile JSON comme ci-dessous :
 
 ```json
@@ -15110,7 +15092,7 @@ vous pouvez envoyer une charge utile JSON comme ci-dessous :
 }
 ```
 
-Cette charge utile peut être envoyée à la ressource réplique, où vous fournissez
+Cette charge utile peut être envoyée à la ressource réplica, où vous fournissez
 l'identifiant de l'utilisateur à répliquer dans l'URL :
 
     /api/33/users/<uid>/replica
@@ -15294,7 +15276,7 @@ présente, la valeur par défaut est renvoyée.
 
 La priorité pour les clés traduisibles est la suivante :
 
- locale spécifiée > UI local par défaut de l'utilisateur > valeur par défaut
+    locale spécifiée > UI local par défaut de l'utilisateur > valeur par défaut
 
 Pour supprimer un paramètre du système, vous pouvez envoyer une requête *DELETE* à l'URL
 similaire à celle utilisée ci-dessus pour la récupération. Si une clé traduisible est
@@ -15310,7 +15292,7 @@ Les paramètres système disponibles sont énumérés ci-dessous.
 
 Tableau : Paramètres du système
 
-| Clé | Description | Traduisible |
+| Clé | Description ; | Traduisible |
 |---|---|---|
 | cléUiLocale | Paramètre local pour l'interface utilisateur | Non |
 | cléDbLocale | Paramètre local de la base de données | Non |
@@ -15390,18 +15372,18 @@ Tableau : Paramètres du système
 | keyDataImportStrictPeriods | Exige que les périodes correspondent au type de période de l'ensemble de données. Par défaut : « faux » | Non |
 | keyDataImportStrictDataElements | Exiger que les éléments de données fassent partie de l'ensemble de données. Par défaut : « faux » | Non |
 | keyDataImportStrictCategoryOptionCombos | Nécessite que les combinaisons d'options de catégorie correspondent à la combinaison de catégories de l'élément de données. Par défaut : « faux » | Non |
-| keyDataImportStrictOrganisationUnits | Nécessite que les unités d'organisation correspondent à l'affectation de l'ensemble de données. Valeur par défaut : « faux » | Non |
-| keyDataImportStrictAttributeOptionsCombos | Nécessite que l'option d'attribut combis corresponde à la catégorie combo de l'ensemble de données. Valeur par défaut : « faux » | Non |
+| keyDataImportStrictOrganisationUnits | Nécessite que les unités d'organisation correspondent à l'affectation de l'ensemble de données. Par défaut : « faux » | Non |
+| keyDataImportStrictAttributeOptionsCombos | Nécessite que l'option d'attribut combis corresponde à la catégorie combo de l'ensemble de données. Par défaut : « faux » | Non |
 | keyDataImportStrictDataSetApproval | vrai : si un ensemble de données déjà approuvé existe pour une saisie  de valeur de données quelconque, il n'est pas autorisé ; faux : Si un ensemble de données non encore approuvé existe pour une saisie de valeur de données quelconque, l'autorisation est accordée. Par défaut : « vrai » | Non |
 | keyDataImportStrictDataSetLocking | vrai : s'il existe un ensemble de données pour lequel la saisie a expiré sans exception de verrouillage pour une valeur de données quelconque, la saisie n'est pas autorisée ; faux : S'il existe un ensemble de données pour lequel la saisie n'a pas expiré ou pour lequel une exception de verrouillage s'applique pour une valeur de données quelconque, la saisie est autorisée. Par défaut : « vrai » | Non |
 | keyDataImportStrictDataSetInputPeriods | true : S'il existe un ensemble de données pour lequel la période de saisie est clôturée pour une saisie de valeur de données quelconque, cela n'est pas autorisé ; faux : S'il existe un ensemble de données pour lequel la période de saisie est ouverte pour une saisie de valeur de données quelconque, cela n'est pas autorisé : Par défaut : « vrai »  | Non |
-| keyDataImportRequireCategoryOptionCombo | Exige que la combinaison d'options de catégorie soit spécifiée. Valeur par défaut : « faux » | Non |
+| keyDataImportRequireCategoryOptionCombo | Exige que la combinaison d'options de catégorie soit spécifiée. Par défaut : « faux » | Non |
 | keyDataImportRequireAttributeOptionCombo | Exige que la combinaison d'options d'attributs soit spécifiée. Par défaut : « faux » | Non |
 | keyCustomJs | JavaScript personnalisé à utiliser sur le site web | Non |
 | keyCustomCss | CSS personnalisé à utiliser sur le site web | Non |
 | clé calendrier | Le type de calendrier. Par défaut : « iso8601 ». | Non |
-| keyDateFormat | Format dans lequel les dates doivent être affichées. Valeur par défaut : « aaaa-MM-jj ». | Non |
-| cléStyle | Style utilisé sur les pages web de DHIS2. Valeur par défaut : « light_blue/light_blue.css ». | Non |
+| keyDateFormat | Format dans lequel les dates doivent être affichées. Par défaut : « aaaa-MM-jj ». | Non |
+| cléStyle | Style utilisé sur les pages web de DHIS2. Par défaut : « light_blue/light_blue.css ». | Non |
 | keyRemoteInstanceUrl | Url utilisée pour se connecter à l'instance distante | Non |
 | keyRemoteInstanceUsername | Nom d'utilisateur utilisé pour se connecter à l'instance DHIS2 distante | Non |
 | keyRemoteInstancePassword | Mot de passe utilisé pour se connecter à l'instance DHIS2 distante | Non |
@@ -15417,7 +15399,7 @@ Tableau : Paramètres du système
 | keySystemMetadataVersion | Détails sur la version des métadonnées du système | Non |
 | keyStopMetadataSync | Drapeau pour arrêter la synchronisation des métadonnées | Non |
 | keyFileResourceRetentionStrategy | Détermine la durée de conservation des ressources du fichier associées aux valeurs supprimées ou mises à jour. AUCUNE, TROIS_MOIS, UNE_ANNÉE ou INDÉFINIMENT. | Non |
-| syncMaxRemoteServerAvailabilityCheckAttempts | Specifies how many times the availability of remote server will be checked before synchronization jobs fail. | Non |
+| syncMaxRemoteServerAvailabilityCheckAttempts | Indique combien de fois la disponibilité du serveur distant sera vérifiée avant que les tâches de synchronisation n'échouent. | Non |
 | syncMaxAttempts | Spécifie le nombre maximum de tentatives pour les tâches de synchronisation | Non |
 | syncDelayBetweenRemoteServerAvailabilityCheckAttempts | Délai entre les contrôles de disponibilité du serveur distant | Non |
 | lastSuccessfulDataStatistics | Conserve l'horodatage de la dernière analyse de données réussie | Non |
@@ -15436,7 +15418,11 @@ Tableau : Paramètres du système
 
 ## Paramètres de l'utilisateur { #webapi_user_settings } 
 
-Vous pouvez manipuler les paramètres de l'utilisateur en interagissant avec la ressource *userSettings*. Un paramètre utilisateur est une simple paire clé-valeur, où la clé et la valeur sont des chaînes de texte en clair. Le paramètre utilisateur sera lié à l'utilisateur authentifié pour la requête de l'API Web. Pour obtenir une liste de tous les paramètres utilisateur, vous pouvez envoyer une requête *GET* à l'URL suivante :
+Vous pouvez manipuler les paramètres de l'utilisateur en interagissant avec la ressource 
+*userSettings*. Un paramètre utilisateur est une simple paire clé-valeur, où la clé 
+et la valeur sont des chaînes de texte en clair. Le paramètre utilisateur sera lié à 
+l'utilisateur authentifié pour la requête de l'API Web. Pour obtenir une liste 
+de tous les paramètres utilisateur, vous pouvez envoyer une requête *GET* à l'URL suivante :
 
     /api/33/userSettings
 
@@ -15488,11 +15474,11 @@ Les paramètres système disponibles sont énumérés ci-dessous.
 
 Tableau : Paramètres de l'utilisateur
 
-| Clé | Options | Description |
+| Clé | Options | Description ; |
 |---|---|---|
 | cléStyle | light_blue/light_blue.css &#124; green/green.css &#124; vietnam/vietnam.css | Feuille de style de l'interface utilisateur. |
 | Clé Message de notification par Email | faux &#124; vrai | Envoi ou non de notifications par email. |
-|  clé Notification par message Sms | faux &#124; vrai | Envoi ou non de notifications SMS |
+| clé Notification par message Sms | faux &#124; vrai | Envoi ou non de notifications SMS |
 | cléUiLocale | Valeur locale | Locale de l'interface utilisateur. |
 | cléDbLocale | Valeur locale | Locale du contenu de la base de données. |
 | Propriété d'affichage de l'analyse clé | nom &#124; Nom court | Propriété à afficher pour les métadonnées dans les applications d'analyse. |
@@ -15595,7 +15581,7 @@ Plus d'un type peut être fourni :
 
 Tableau : Paramètres du type de valeurs
 
-| Valeur | Description |
+| Valeur | Description ; |
 |---|---|
 | PARAMÈTRES DE_L'UTILISATEUR | Pour obtenir les paramètres d'utilisateur |
 | PARAMÈTRES DU_SYSTÈME | Pour obtenir les paramètres du système |
@@ -15625,9 +15611,9 @@ réponse contiendra les propriétés suivantes au format JSON.
 
 Tableau : Réponse du jeton
 
-| Propriété | Description |
+| Propriété | Description ; |
 |---|---|
-| jeton_d'accès | The OAuth 2.0 access token to be used when authentication against Google services. |
+| jeton_d'accès | Jeton d'accès OAuth 2.0 à utiliser lors de l'authentification auprès des services Google. |
 | expire_dans | Nombre de secondes avant l'expiration du jeton d'accès, généralement 3600 secondes (1 heure). |
 | identifiant_du client | L'identifiant du client du compte du service Google. |
 
@@ -15647,10 +15633,10 @@ sont pris en charge et ne peuvent être téléchargés que vers les clés `logo_
 
 Tableau : Clés de contenu statique
 
-| Clé | Description |
+| Clé | Description ; |
 |---|---|
 | logo_bannière | Logo dans le menu supérieur de l'application sur le côté gauche. |
-| façade_du logo | Logo sur la page de connexion au-dessus du formulaire de connexion. |
+| logo_façade | Logo sur la page de connexion au-dessus du formulaire de connexion. |
 
 Pour télécharger un fichier, envoyez-le avec une requête *POST* à :
 
@@ -15673,7 +15659,7 @@ To retrieve a logo, you can *GET* the following:
 
 Exemple de requêtes pour récupérer le fichier stocké pour `logo_front` :
 
-* Ajout de « Accept : text/html » à l'en-tête HTTP.*__ Dans ce cas, le point d'extrémité renverra une image par défaut si rien n'est défini. Il renvoie un flux d'images lorsqu'une image personnalisée ou par défaut est trouvée.
+* Ajout de « Accepter : text/html » à l'en-tête HTTP.*__ Dans ce cas, le point d'extrémité renverra une image par défaut si rien n'est défini. Il renvoie un flux d'images lorsqu'une image personnalisée ou par défaut est trouvée.
 
 ```bash
 curl "https://play.dhis2.org/demo/api/33/staticContent/logo_front"
@@ -15710,9 +15696,9 @@ Pour utiliser des logos personnalisés, vous devez activer les paramètres syst�
 correspondants en leur attribuant la valeur *vrai*. Si le paramètre correspondant est faux, 
 le logo par défaut sera utilisé.
 
-## Personnalisation de l'IU { #webapi_ui_customization } 
+## Paramétrage de l'IU { #webapi_ui_customization } 
 
-Pour personnaliser l'interface utilisateur de l'application DHIS2, vous pouvez insérer des styles JavaScript et CSS personnalisés via la ressource *files*.
+Pour parametrer l'interface utilisateur de l'application DHIS2, vous pouvez insérer des styles JavaScript et CSS personnalisés via la ressource *files*.
 
 ```
 POST GET DELETE /api/33/files/script
@@ -15722,7 +15708,7 @@ POST GET DELETE /api/33/files/style
 Le contenu JavaScript et CSS inséré par le biais de cette ressource sera chargé par 
 l'application web DHIS2. Cela peut être particulièrement utile dans certaines situations :
 
-  - Remplacer les styles CSS de l'application DHIS2, tels que la balise
+  - Remplacer les styles CSS de l'application DHIS2, tels que la 
     page de connexion ou la page principale.
 
   - Définir des fonctions JavaScript communes à plusieurs formulaires de saisie de données 
@@ -15768,53 +15754,58 @@ Pour supprimer le contenu JavaScript, vous pouvez utiliser une requête de type 
 
 # Tracker { #tracker } 
 
-> **Remarque**
->Tracker a été réimplémenté dans DHIS2 2.36. Ce document décrit les nouveaux points d'extrémité du Tracker
+> **Note**
+>Tracker has been re-implemented in DHIS2 2.36. This document describes the new tracker endpoints
 >
 > * `POST /api/tracker`
-> * `GET /api/tracker/enrollments`
-> * `GET /api/tracker/events`
-> * `GET /api/tracker/trackedEntities`
-> * `GET /api/tracker/relationships`
+> * `GET  /api/tracker/enrollments`
+> * `GET  /api/tracker/events`
+> * `GET  /api/tracker/trackedEntities`
+> * `GET  /api/tracker/relationships`
 >
 >[Tracker
->(obsolète)](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker-deprecated.html)
->décrit les points d'extrémité obsolètes
+>(deprecated)](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker-deprecated.html)
+>describes the deprecated endpoints
 >
-> * `GET/POST/PUT/DELETE /api/trackedEntityInstance`
+> * `GET/POST/PUT/DELETE /api/trackedEntityInstances`
 > * `GET/POST/PUT/DELETE /api/enrollments`
 > * `GET/POST/PUT/DELETE /api/events`
 > * `GET/POST/PUT/DELETE /api/relationships`
 >
->* Si vous utilisez toujours les points d'extrémité obsolètes du Tracker dans le cadre de la production, prévoyez une migration vers les nouveaux points d'extrémité. [Migrer vers de nouveaux points d'extrémité Tracker](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker-deprecated.html#webapi_tracker_migration) serait un bon début. Contactez la [communauté de pratique](https://community.dhis2.org) si vous avez besoin d'une assistance supplémentaire. REMARQUE : La fonctionnalité de synchronisation des données (importMode=SYNC) n'est pas implémentée dans les nouveaux points d'extrémité du Tracker, et si vous utilisez cette fonctionnalité, il vous faudra reporter la migration jusqu'à ce qu'une nouvelle fonctionnalité SYNC soit disponible. 
->>>>>>
+>* If your are still using the deprecated tracker endpoints in production, please plan to migrate
+>  over to the new endpoints. [Migrating to new tracker
+>  endpoints](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker-deprecated.html#webapi_tracker_migration)
+>  should help you get started. Reach out on the [community of
+>  practice](https://community.dhis2.org) if you need further assistance. NOTE: The feature for data
+>  sync(importMode=SYNC) is not implemented in the new tracker endpoints, and if you are using this
+>  feature you will have to postpone the migration until a new SYNC feature is in place.
 
-## Objets Tracker { #webapi_nti_tracker_objects }
+## Objets du Tracker { #webapi_nti_tracker_objects }
 
-Tracker est constitué de différents types d'objets interconnectés destinés à représenter les données. Dans cette section, nous montrerons et décrirons chacun des objets utilisés dans l'API du Tracker.
+Le Tracker est constitué de différents types d'objets interconnectés destinés à représenter les données. Dans cette section, nous montrerons et décrirons chacun des objets utilisés dans l'API du Tracker.
 
 ### Entité suivie { #tracked-entity }
 
 Les `entités suivies` constituent la base du modèle Tracker.
 
-| Propriété | Description | Obligatoire | Immuable | Type | Exemple |
+| Propriété | Description ; | Obligatoire | Immuable | Type | Exemple |
 |---|---|---|---|---|---|
 | Entité suivie | L’identifiant de l’entité suivie. Il est généré au cas où il n'est pas fourni | Non | Oui | Chaîne : Uid | ABCDEF12345 |
 | TrackedEntityType (Type d'entité suivie) | Le type d’entité suivie. | Oui | Oui | Chaîne : Uid | ABCDEF12345 |
-| créé à | Date à laquelle l'utilisateur a créé l'entité suivie. Elle est définie sur le serveur. | Non | Non | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
-| crééAtClient (Création au niveau du client) | Date à laquelle l'utilisateur a créé l'entité suivie au niveau du client. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
-| updatedAt (mis à jour à) | Date de la dernière mise à jour de l'objet. Elle est définie sur le serveur. | Non | Non | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
-| updatedAtClient (mise à jour au niveau du client) | Date de la dernière mise à jour de l'objet au niveau du client. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| créé à | Date et heure à laquelle l'utilisateur a créé l'entité suivie. Elle est définie sur le serveur. | Non | Non | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| crééAtClient (Création au niveau du client) | Date et heure à laquelle l'utilisateur a créé l'entité suivie au niveau du client. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| updatedAt (mis à jour à) | Date et heure de la dernière mise à jour de l'objet. Elle est définie sur le serveur. | Non | Non | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
+| updatedAtClient (mise à jour au niveau du client) | Date et heure de la dernière mise à jour de l'objet au niveau du client. | Non | Oui | Date : ISO 8601 | AAAA-MM-JJThh:mm:ss |
 | orgUnit (Unité d'organisation) | L'unité d'organisation dans laquelle l'utilisateur a créé l'entité suivie. | Oui | Oui | Chaîne : Uid | ABCDEF12345 |
 | inactif | Indique si l'entité suivie est inactive ou non. | Non | Oui | Booléen | Par défaut : Faux, Vrai |
 | supprimé | Indique si l'entité suivie a été supprimée. Ne peut être modifié qu'au moment de la suppression. | Non | Non | Booléen | Faux jusqu'à suppression |
-| géométrie | Il s'agit d'une représentation géographique de l'entité suivie. Elle est basée sur le « type de fonctionnalité » du type d'entité suivie. | Non | Oui | GeoJson | {<br>"type": "POINT",<br>"coordonnées": [123.0, 123.0]<br>} |
-| Stocké par | Référence client indiquant celui a stocké/créé l’entité suivie. | Non | Oui | Chaîne : Toute | John Doe |
+| géométrie | Il s'agit d'une représentation géographique de l'entité suivie. Elle se base sur le « type de fonctionnalité » du type d'entité suivie. | Non | Oui | GeoJson | {<br>"type": "POINT",<br>"coordonnées": [123.0, 123.0]<br>} |
+| storedBy (Stockée par) | Référence client indiquant celui qui a stocké/créé l’entité suivie. | Non | Oui | Chaîne : Toute | John Doe |
 | createdBy (créé par) | Uniquement pour lire des données. Il s'agit de l'utilisateur qui a créé l'objet. Défini sur le serveur | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"Nom d'utilisateur": "Nom d'utilisateur",<br>"Prénom": "John",<br>"Nom de famille": "Doe"<br>} |
 | updatedBy (mis à jour par) | Uniquement pour lire des données. Il s'agit de l'utilisateur qui a mis à jour l'objet. Défini sur le serveur | Non | Oui | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"Nom d'utilisateur": "Nom d'utilisateur",<br>"Prénom": "John",<br>"Nom de famille": "Doe"<br>} |
-| les attributs | Une liste de valeurs d'attributs d'entité suivie appartenant à l'entité suivie. | Non | Oui | Liste des valeurs d'attributs d'entités suivies | Voir l'attribut |
-| inscriptions | Une liste des inscriptions appartenant à l’entité suivie. | Non | Oui | Liste des inscriptions | Voir les inscriptions |
-| relations | Une liste de relations connectées à l'entité suivie. | Non | Oui | Liste des relations | Voir les relations |
+| attributs | Liste des valeurs d'attributs d'entité suivie appartenant à l'entité suivie. | Non | Oui | Liste des valeurs d'attributs d'entité suivie | Voir les attributs |
+| inscriptions | Liste des inscriptions appartenant à l’entité suivie. | Non | Oui | Liste des inscriptions | Voir les inscriptions |
+| relations | Liste de relations connectées à l'entité suivie. | Non | Oui | Liste des relations | Voir les relations |
 | Propriétaires du programme | Liste des unités d'organisation qui ont accès via des programmes spécifiques à cette entité suivie. Voir « Propriété du programme » pour en savoir plus. | Non | Oui | Liste des propriétaires du programme | Voir la section « Propriété du programme » |
 
 > **Remarque**
@@ -15828,10 +15819,10 @@ Les `entités suivies` constituent la base du modèle Tracker.
 Les `Entités suivies` peuvent s'inscrire aux `Programmes` pour lesquels elles sont éligibles. Les entités suivies sont éligibles tant que le programme est configuré avec le même `Type d'entité suivie` que l'entité suivie. Nous représentons l'inscription avec l'objet `Inscription`, que nous décrivons dans cette section.
 
 
-| Propriété | Description | Obligatoire | Immuable | Type | Exemple |
+| Propriété | Description ; | Obligatoire | Immuable | Type | Exemple |
 |---|---|---|---|---|---|
 | inscription | L’identifiant de l'inscription. Il est généré au cas où il n'est pas fourni | Non | Oui | Chaîne : Uid | ABCDEF12345 |
-| de paludisme) ». | Le programme que représente l’inscription. | Oui | Non | Chaîne : Uid | ABCDEF12345 |
+| programme | Le programme que représente l’inscription. | Oui | Non | Chaîne : Uid | ABCDEF12345 |
 | Entité suivie | Une référence à l’entité suivie inscrite. | Oui | Oui | Chaîne : Uid | ABCDEF12345 |
 | statut | Statut de l'inscription. Il est ACTIF au cas où n'est pas fourni. | Non | Non | Énumération | ACTIF, EFFECTUÉ, ANNULÉ |
 | orgUnit (Unité d'organisation) | L'unité d'organisation dans laquelle l'utilisateur a inscrit l'entité suivie. | Oui | Non | Chaîne : Uid | ABCDEF12345 |
@@ -15895,7 +15886,7 @@ Dans l'API, la différence majeure est que tous les événements sont soit ratta
 | attributeOptionCombo (combinaison d'options d'attribut) | Il s'agit de la combinaison d'options d'attribut pour l'événement. Utiliser l'option par défaut si rien n’est fourni ou configuré. | Non | Non | Chaîne : Uid | ABCDEF12345
 | attributeCategoryOptions (options de catégorie d'attribut) | Il s'agit de l'option de catégorie d'attribut pour l'événement. Utiliser l'option par défaut si rien n’est fourni ou configuré. | Non | Non | Chaîne : Uid | ABCDEF12345
 | assignedUser (Utilisateur assigné) | Fait référence à un utilisateur qui a été assigné à l'événement. | Non | Non | Utilisateur | {<br>"uid": "ABCDEF12345",<br>"Nom d'utilisateur": "Nom d'utilisateur",<br>"Prénom": "John",<br>"Nom de famille": "Doe"<br>} |
-| dataValues (Valeurs de données) | Liste des valeurs de données liées à l'événement. | Non | Non | Liste des valeurs d'attributs d'entité suivie | Voir les attributs |
+| dataValues (Valeurs de données) | Liste des valeurs de données liées à l'événement. | Non | Non | List of DataElementValue | See Data Values |
 | relations | Liste des relations liées à l'évènement. | Non | Non | Liste des relations | Voir les relations |
 | notes | Notes liées à l'évènement. Elles ne peuvent qu'être créées. | Non | Oui | Liste des notes | Voir les notes |
 
@@ -17135,7 +17126,7 @@ Vous pouvez utiliser une gamme d'opérateurs pour effectuer le filtrage :
 
 |Opérateur|  Description ;|
 |---|---|
-|`EQ`|  Égal à|
+|`EQ`|  Egal à|
 |`GT`|  Supérieur à|
 |`GE`|  Supérieur ou égal à|
 |`LT`|  Inférieur à|
@@ -17888,6 +17879,7 @@ Ces niveaux d'accès ne sont déclenchés que lorsque les utilisateurs tentent d
 4.  Fermé : Il s'agit du niveau d'accès le plus restreint. Les données enregistrées pour le compte de programmes configurés avec le niveau d'accès FERMÉ ne seront pas accessibles si l'unité d'organisation propriétaire n'est pas dans le champ de saisie de l'utilisateur. Il est également impossible de briser la vitre ou d'obtenir une propriété temporaire dans cette configuration. Notez qu'il est toujours possible de transférer la propriété à une autre unité d'organisation. Seul un utilisateur ayant accès à ces données peut transférer la propriété d'une combinaison Entité Suivie - Programme à une autre unité d'organisation. Si la propriété est transférée, l'unité d'organisation propriétaire est mise à jour.
 
 
+
 # Tracker (deprecated APIs) { #tracker-deprecated-apis } 
 
 > **Note**
@@ -18489,7 +18481,7 @@ Table: Tracked entity instances query parameters
 | programStartDate | Start date of enrollment in the given program for the tracked entity instance. |
 | programEndDate | End date of enrollment in the given program for the tracked entity instance. |
 | Entité suivie | Tracked entity identifier. Restricts instances to the given tracked instance type. |
-| page | Le numéro de page. La page par défaut est 1. |
+| page | Il s'agit du numéro de page. La page par défaut est 1. |
 | taille de la page | The page size. Default size is 50 rows per page. |
 | totalPages | Indicates whether to include the total number of pages in the paging response (implies higher response time). |
 | skipPaging | Indicates whether paging should be ignored and all rows should be returned. |
@@ -18601,7 +18593,7 @@ Tableau : Opérateurs de filtre
 
 | Opérateur | Description ; |
 |---|---|
-| EQ | Égal à |
+| EQ | Egal à |
 | GT | Supérieur à |
 | GE | Supérieur ou égal à |
 | LT | Inférieur à |
@@ -18783,7 +18775,7 @@ Table: Tracked entity instances query parameters
 | eventEndDate | End date of event associated with the given program and event status. |
 | Étape du programme | The programStage for which the event related filters should be applied to. If not provided all stages will be considered. |
 | skipMeta (ignorer les métadonnées) | Indicates whether meta data for the response should be included. |
-| page | Le numéro de page. La page par défaut est 1. |
+| page | Il s'agit du numéro de page. La page par défaut est 1. |
 | taille de la page | The page size. Default size is 50 rows per page. |
 | totalPages | Indicates whether to include the total number of pages in the paging response (implies higher response time). |
 | skipPaging | Indicates whether paging should be ignored and all rows should be returned. |
@@ -18937,7 +18929,7 @@ Tableau : Opérateurs de filtre
 
 | Opérateur | Description ; |
 |---|---|
-| EQ | Égal à |
+| EQ | Egal à |
 | GT | Supérieur à |
 | GE | Supérieur ou égal à |
 | LT | Inférieur à |
@@ -19191,7 +19183,7 @@ Table: Enrollment query parameters
 | lastUpdatedDuration (durée de la dernière mise à jour) | Include only items which are updated within the given duration. The format is , where the supported time units are “d” (days), “h” (hours), “m” (minutes) and “s” (seconds). |
 | Entité suivie | Tracked entity identifier. Restricts instances to the given tracked instance type. |
 | trackedEntityInstance | Tracked entity instance identifier. Should not be used together with trackedEntity. |
-| page | Le numéro de page. La page par défaut est 1. |
+| page | Il s'agit du numéro de page. La page par défaut est 1. |
 | taille de la page | The page size. Default size is 50 rows per page. |
 | totalPages | Indicates whether to include the total number of pages in the paging response (implies higher response time). |
 | skipPaging | Indicates whether paging should be ignored and all rows should be returned. |
@@ -21114,7 +21106,7 @@ Exemple de réponse :
 }
 ```
 
-### Touches de suppression { #webapi_data_store_delete_keys } 
+### Clés de suppression { #webapi_data_store_delete_keys } 
 
 Pour supprimer une clé existante d'un espace de noms :
 
