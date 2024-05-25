@@ -1,0 +1,241 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.41/src/developer/web-api/organisation-unit-profile.md"
+revision_date: '2021-11-19'
+tags:
+- DHIS core version 2.41
+- Développement
+---
+
+# Profil d'unité d'organisation { #org_unit_profile }
+
+La ressource profil d'unité d'organisation permet de définir et d'extraire un profil d'information pour les unités d'organisation dans DHIS 2.
+
+```
+/api/organisationUnitProfile
+```
+
+Un seul profil d'unité d'organisation peut être créé et s'applique à toutes les unités d'organisation.
+
+La partie information du profil de l'unité d'organisation comprend :
+
+- Nom, nom abrégé, description, unité d'organisation mère, niveau, date d'ouverture, date de fermeture, URL.
+- Personne de contact, adresse, e-mail, numéro de téléphone (s'il existe).
+- Localisation (longitude/latitude).
+- Attributs de métadonnées (configurables).
+- Ensembles de groupes d'unités d'organisation et groupes (configurables).
+- Données agrégées pour les éléments de données, les indicateurs, les taux de déclaration, les indicateurs de programme (configurables).
+
+## Créer un profil d'unité d'organisation { #create-organisation-unit-profile } 
+
+Pour définir le profil de l'unité d'organisation, vous pouvez utiliser une requête `POST` :
+
+```
+POST /api/organisationUnitProfile
+```
+
+La charge au format JSON ressemble à ceci, où `attributes` fait référence aux attributs de métadonnées, `groupSets` fait référence aux ensembles de groupes d'unités d'organisation et `dataItems` fait référence aux éléments de données, aux indicateurs, aux ensembles de données et aux indicateurs de programme :
+
+```json
+{
+  "attributes": [
+    "xqWyz9jNCA5",
+    "n2xYlNbsfko"
+  ],
+  "groupSets": [
+    "Bpx0589u8y0",
+    "J5jldMd8OHv"
+  ],
+  "dataItems": [
+    "WUg3MYWQ7pt",
+    "vg6pdjObxsm",
+    "DTVRnCGamkV",
+    "Uvn6LCg7dVU",
+    "eTDtyyaSA7f"
+  ]
+}
+```
+
+L'autorité `F_ORG_UNIT_PROFILE_ADD` est nécessaire pour définir le profil.
+
+## Obtenir le profil d'une unité d'organisation { #get-organisation-unit-profile } 
+
+Pour extraire la définition du profil de l'unité d'organisation, vous pouvez utiliser une requête `GET` :
+
+```
+GET /api/organisationUnitProfile
+```
+
+La réponse sera au format JSON.
+
+## Obtenir les données du profil d'une unité d'organisation { #get-organisation-unit-profile-data } 
+
+Pour extraire les données du profil d'une unité d'organisation, vous pouvez utiliser une requête `GET` :
+
+```
+GET /api/organisationUnitProfile/{org-unit-id}/data?period={iso-period}
+```
+
+Le endpoint des données du profil de l'unité d'organisation combinera la définition du profil avec les valeurs d'informations/données qui lui sont associées. 
+
+* La variable de chemin `org-unit-id` est obligatoire et fait référence à l'identifiant de l'unité d'organisation pour laquelle des données agrégées doivent être fournies.
+* Le paramètre de requête `iso-period` est facultatif et se réfère à l'identifiant ISO de la période pour fournir des données agrégées pour les éléments de données. Si aucun n'est spécifié, la période relative _cette année_ sera utilisée comme solution de repli.
+
+La réponse comprendra les sections suivantes :
+
+* `info` (informations): Informations fixes sur l'unité d'organisation.
+* `attributes` (attributs) : Attributs de métadonnées avec les valeurs d'attributs correspondantes.
+* `groupSets` (ensembles de groupes): Ensembles de groupes d'unités d'organisation avec le groupe d'unités d'organisation correspondant dont l'unité d'organisation est membre.
+* `dataItems` (éléments de données) : Éléments de données avec la valeur de données agrégées correspondante.
+
+Notez que des contrôles d'accès sont effectués et que les éléments de métadonnées qui ne sont pas accessibles à l'utilisateur actuel seront omis.
+
+Voici donc un exemple de requête :
+
+```
+GET /api/organisationUnitProfile/DiszpKrYNg8/data?period=2021
+```
+
+La réponse aux données de profil au format JSON se présente comme suit : les champs `id` (identifiant) et `label` (étiquette) renvoient à l'élément de métadonnées, et le champ `value` (valeur) renvoie à la valeur associée :
+
+```json
+{
+  "info": {
+    "id": "DiszpKrYNg8",
+    "code": "OU_559",
+    "name": "Ngelehun CHC",
+    "shortName": "Ngelehun CHC",
+    "parentName": "Badjia",
+    "level": 4,
+    "levelName": "Facility",
+    "openingDate": "1970-01-01T00:00:00.000",
+    "longitude": -11.4197,
+    "latitude": 8.1039
+  },
+  "attributes": [
+    {
+      "id": "n2xYlNbsfko",
+      "label": "NGO ID",
+      "value": "GHE51"
+    },
+    {
+      "id": "xqWyz9jNCA5",
+      "label": "TZ code",
+      "value": "NGE54"
+    }
+  ],
+  "groupSets": [
+    {
+      "id": "Bpx0589u8y0",
+      "label": "Facility Ownership",
+      "value": "Public facilities"
+    },
+    {
+      "id": "J5jldMd8OHv",
+      "label": "Facility Type",
+      "value": "CHC"
+    }
+  ],
+  "dataItems": [
+    {
+      "id": "WUg3MYWQ7pt",
+      "label": "Total Population",
+      "value": 3503
+    },
+    {
+      "id": "DTVRnCGamkV",
+      "label": "Total population < 1 year",
+      "value": 140
+    },
+    {
+      "id": "vg6pdjObxsm",
+      "label": "Population of women of child bearing age (WRA)",
+      "value": 716
+    },
+    {
+      "id": "Uvn6LCg7dVU",
+      "label": "ANC 1 Coverage",
+      "value": 368.2
+    },
+    {
+      "id": "eTDtyyaSA7f",
+      "label": "FIC <1y",
+      "value": 291.4
+    }
+  ]
+}
+```
+
+## Télécharger l'image d'une unité d'organisation { #upload-image-for-organisation-unit } 
+
+Pour télécharger une image pour une unité d'organisation, vous pouvez utiliser le endpoint `fileResources`.
+
+```
+/api/fileResources
+```
+
+Le endpoint `fileResource` accepte un fichier brut comme corps de la requête. Les formats `JPG`, `JPEG` et `PNG` sont supportés pour les images d'unités d'organisation. Le domaine pour les images d'unités d'organisation est `ORG_UNIT`.
+
+Veuillez consulter *Ressources de fichiers* dans la section *Métadonnées* pour plus de détails sur le endpoint `fileResources`. 
+
+Pour télécharger une image, vous pouvez envoyer une requête `POST` avec `ORG_UNIT` comme paramètre de requête de domaine ainsi que l'image comme charge de la requête. L'en-tête `Content-Type` (type de contenu) doit correspondre au type de fichier téléchargé.
+
+```
+POST /api/fileResources?domain=ORG_UNIT
+```
+
+La propriété `id ` (identifiant) de l'objet `response` (réponse) > `fileResource` (ressource de fichier) dans la réponse JSON contiendra une référence à l'identifiant de la ressource de fichier.
+
+L'entité unité d'organisation a une propriété `image` qui fait référence à l'image de la ressource fichier. Pour définir la référence de la ressource fichier sur une unité d'organisation, vous pouvez envoyer une requête `PATCH` à l'unité d'organisation avec une charge JSON :
+
+```
+PATCH /api/organisationUnits/{id}
+```
+
+```json
+{ 
+  "image": "{file-resource-id}" 
+}
+```
+
+Vous pouvez également utiliser une requête `PUT` avec l'unité d'organisation complète (les champs sont omis pour des raisons de concision) :
+
+```
+PUT /api/organisationUnits/{id}
+```
+
+```json
+{
+  "id": "Rp268JB6Ne4",
+  "name": "Adonkia CHP",
+  "image": {
+    "id":  "{file-resource-iid}"
+  }
+}
+```
+
+## Obtenir l'image d'une unité d'organisation { #get-image-for-organisation-unit } 
+
+L'entité unité d'organisation possède un objet `image` qui fait référence à une ressource fichier par identifiant. Vous pouvez obtenir les informations sur l'unité d'organisation à partir du endpoint `organisationUnits`. S'il est défini, le format JSON ressemble à ceci :
+
+```
+GET /api/organisationUnits/{id}
+```
+
+```json
+{
+  "id": "Rp268JB6Ne4",
+  "name": "Adonkia CHP",
+  "image": {
+    "id":  "{file-resource-id}"
+  }
+}
+```
+
+L'identifiant de la ressource du fichier image peut être utilisé pour faire une demande au endpoint `fileResources` afin de récupérer le contenu du fichier :
+
+```
+GET /api/fileResources/{id}/data
+```
+
+L'en-tête `Content-Type` (type de contenu) reflète le type de fichier récupéré.
+

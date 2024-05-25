@@ -1,0 +1,1964 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.41/src/developer/web-api/visualizations.md"
+revision_date: '2024-03-05'
+tags:
+- DHIS core version 2.41
+- Develop
+---
+
+# 可视化 { #visualizations } 
+## 仪表板 { #webapi_dashboard } 
+
+仪表板旨在为您提供多个分析的概览
+地图、图表、数据透视表和报告等项目，它们一起可以
+提供您数据的全面概览。仪表板可用
+通过 *dashboards* 资源在 Web API 中。仪表板包含一个
+仪表板*项目*列表。一个项目可以代表一个单一的资源，比如
+图表、地图或报告表，或表示指向分析的链接列表
+资源，如报告、资源、表格报告和用户。一种
+仪表板项目最多可以包含八个链接。通常，仪表板
+客户可以选择直接在一个
+用户界面，同时将多对象项目渲染为可点击
+链接。
+
+    / api /仪表板
+
+### 浏览仪表板 { #webapi_browsing_dashboards } 
+
+获取包含基本信息的仪表板列表，包括
+JSON 格式的标识符、名称和链接，您可以向其发出 *GET* 请求
+以下网址：
+
+    /api/dashboards.json
+
+仪表板资源将提供仪表板列表。请记住
+仪表板对象是共享的，因此列表将受
+当前已验证的用户。您可以检索有关一个的更多信息
+特定的仪表板，请点击其链接，类似于：
+
+    /api/dashboards/vQFhmLJU5sK.json
+
+仪表板包含名称和创建日期等信息以及
+仪表板项目数组。 JSON 格式的响应看起来类似
+对此回复（某些信息已被删除，以便
+简洁）。
+
+```json
+{
+  "lastUpdated" : "2013-10-15T18:17:34.084+0000",
+  "id": "vQFhmLJU5sK",
+  "created": "2013-09-08T20:55:58.060+0000",
+  "name": "Mother and Child Health",
+  "href": "https://play.dhis2.org/demo/api/dashboards/vQFhmLJU5sK",
+  "publicAccess": "--------",
+  "restrictFilters": false,
+  "externalAccess": false,
+  "itemCount": 17,
+  "displayName": "Mother and Child Health",
+  "access": {
+    "update": true,
+    "externalize": true,
+    "delete": true,
+    "write": true,
+    "read": true,
+    "manage": true
+  },
+  "user": {
+    "id": "xE7jOejl9FI",
+    "name": "John Traore",
+    "created": "2013-04-18T15:15:08.407+0000",
+    "lastUpdated": "2014-12-05T03:50:04.148+0000",
+    "href": "https://play.dhis2.org/demo/api/users/xE7jOejl9FI"
+  },
+  "dashboardItems": [{
+    "id": "bu1IAnPFa9H",
+    "created": "2013-09-09T12:12:58.095+0000",
+    "lastUpdated": "2013-09-09T12:12:58.095+0000"
+    }, {
+    "id": "ppFEJmWWDa1",
+    "created": "2013-09-10T13:57:02.480+0000",
+    "lastUpdated": "2013-09-10T13:57:02.480+0000"
+  }],
+  "layout": {
+    "spacing": {
+      "column": 5,
+      "row": 5
+    },
+    "columns": [{
+      "index": 0,
+      "span": 2
+    }, {
+      "index": 1,
+      "span": 1
+    }]
+  },
+  "userGroupAccesses": []
+}
+```
+
+通过指定特定字段可以获得更定制的响应
+在请求中。下面提供了一个示例，它将返回更多
+有关用户仪表板上每个对象的详细信息。
+
+    / api / dashboards / vQFhmLJU5sK /？fields =：all，dashboardItems [：all]
+
+### 搜索仪表板 { #webapi_searching_dasboards } 
+
+When a user is building a dashboard it is convenient
+to be able to search for various analytical resources using the
+*/dashboards/q* or */dashboards/search* resources. 
+These resources let you search for matches on
+the name property of the following objects: visualizations, eventVisualizations maps,
+users, reports and resources. You can do a search by making a *GET*
+request on the following resource URL pattern, where my-query should be
+replaced by the preferred search query:
+
+    /api/dashboards/q/my-query.json
+    /api/dashboards/search?q=my-query
+
+例如，此查询：
+
+    /api/dashboards/q/ma?count=6&maxCount=20&max=REPORT&max=MAP
+    /api/dashboards/search?q=ma?count=6&maxCount=20&max=REPORT&max=MAP
+
+将搜索以下内容：
+
+* 分析对象名称包含字符串“ ma”
+* 每种类型最多返回6
+* For REPORT and MAP types, return up to 20 items
+
+
+
+Table: dashboards/q and dashboards/search query parameters
+
+| 查询参数 | 描述 | 类型 | 默认 |
+|---|---|---|---|
+| 计数 | The number of items of each type to return | Positive integer | 6 |
+| maxCount | The number of items of max types to return | Positive integer | 25 |
+| max | The type to return the maxCount for | String [MAP&#124;USER&#124;REPORT&#124;RESOURCE&#124;VISUALIZATION#124;EVENT_VISUALIZATION,EVENT_CHART,EVENT_REPORT] | 不适用 |
+
+支持 JSON 和 XML 响应格式。 JSON 格式的响应
+将包含对匹配资源的引用和数量
+总共找到匹配项，并为每种类型的资源找到匹配项。它会看起来
+类似于：
+
+```json
+{
+  "visualizations": [{
+    "name": "ANC: ANC 3 Visits Cumulative Numbers",
+    "id": "arf9OiyV7df",
+    "type": "LINE"
+  }, {
+    "name": "ANC: 1st and 2rd trends Monthly",
+    "id": "jkf6OiyV7el",
+    "type": "PIVOT_TABLE"
+  }],
+  "eventVisualizations": [{
+    "name": "Inpatient: Cases 5 to 15 years this year (case)",
+    "id": "TIuOzZ0ID0V",
+    "type": "LINE_LIST"
+  }, {
+    "name": "Inpatient: Cases last quarter (case)",
+    "id": "R4wAb2yMLik",
+    "type": "LINE_LIST"
+  }],
+  "maps": [{
+    "name": "ANC: 1st visit at facility (fixed) 2013",
+    "id": "YOEGBvxjAY0"
+  }, {
+    "name": "ANC: 3rd visit coverage 2014 by district",
+    "id": "ytkZY3ChM6J"
+  }],
+  "reports": [{
+    "name": "ANC: 1st Visit Cumulative Chart",
+    "id": "Kvg1AhYHM8Q"
+  }, {
+    "name": "ANC: Coverages This Year",
+    "id": "qYVNH1wkZR0"
+  }],
+  "searchCount": 8,
+  "visualizationCount": 2,
+  "eventVisualizationCount": 2,
+  "mapCount": 2,
+  "reportCount": 2,
+  "userCount": 0,
+  "eventReports": 0,
+  "eventCharts" :0,
+  "resourceCount": 0
+}
+```
+
+### 创建，更新和删除仪表板 { #webapi_creating_updating_removing_dashboards } 
+
+创建、更新和删除仪表板遵循标准 REST
+语义。为了创建一个新的仪表板，您可以创建一个 *POST*
+请求`/api/dashboards` 资源。从消费者的角度
+首先创建仪表板然后添加项目可能会很方便
+到它。请求有效负载支持 JSON 和 XML 格式。至
+创建一个名为“我的仪表板”的仪表板，您可以在其中使用有效负载
+像这样的 JSON：
+
+    {
+      “名称”：“我的仪表板”
+    }
+
+更新，例如重命名，仪表板，您可以使用 *PUT* 请求
+类似的请求负载相同的 api/dashboards 资源。
+
+要删除仪表板，您可以向特定的人发出 *DELETE* 请求
+与此类似的仪表板资源：
+
+    / api /仪表板/ vQFhmLJU5sK
+
+### 添加，移动和删除仪表板项目和内容 { #webapi_adding_moving_removing_dashboard_items } 
+
+In order to add dashboard items a consumer can use the
+`/api/dashboards/<dashboard-id>/items/content` resource, where
+<dashboard-id\> should be replaced by the relevant dashboard
+identifier. The request must use the *POST* method. The URL syntax and
+parameters are described in detail in the following table.
+
+
+
+Table: Items content parameters
+
+| 查询参数 | 描述 | 选项 |
+|---|---|---|
+| type | Type of the resource to be represented by the dashboard item | visualization &#124; map &#124; eventVisualization &#124; users &#124; reports &#124; resources &#124; app |
+| id | Identifier of the resource to be represented by the dashboard item | Resource identifier |
+
+A *POST* request URL for adding a visualization to a specific dashboard could look like this, where the last id query parameter value is the chart resource identifier:
+
+    /api/dashboards/vQFhmLJU5sK/items/content?type=visualization&id=LW0O27b7TdD
+
+When adding resource of type map, visualization and app, the API
+will create and add a new item to the dashboard. When adding a resource
+of type users, reports and resources, the API will try to
+add the resource to an existing dashboard item of the same type. If no
+item of same type or no item of same type with less than eight resources
+associated with it exists, the API will create a new dashboard item and
+add the resource to it.
+
+In order to move a dashboard item to a new position within the list of
+items in a dashboard, a consumer can make a *POST* request to the
+following resource URL, where `<dashboard-id>` should be replaced by the
+identifier of the dashboard, `<item-id>` should be replaced by the
+identifier of the dashboard item and `<index>` should be replaced by the
+new position of the item in the dashboard, where the index is
+zero-based:
+
+    / api /仪表板/ <dashboard-id> / items / <item-id> / position / <index>
+
+要从特定仪表板中完全删除仪表板项目
+消费者可以向以下资源 URL 发出 *DELETE* 请求，其中
+` <dashboard-id> ` 应替换为仪表板的标识符
+和 `<item-id>` 应替换为仪表板的标识符
+物品。可以通过 GET 检索仪表板项目标识符
+对仪表板资源 URL 的请求。
+
+    / api /仪表板/ <dashboard-id> / items / <item-id>
+
+要删除仪表板项目中的特定内容资源，消费者
+可以向以下资源 URL 发出 *DELETE* 请求，其中
+` <content-resource-id> ` 应替换为
+与仪表板项目关联的资源；例如a 的标识符
+报告或用户。例如，这可用于删除单个
+报告类型的仪表板项目中的报告，而不是删除
+仪表板项目完全：
+
+    / api /仪表板/ <dashboard-id> / items / <item-id> / content / <content-resource-id>
+
+### Defining a dashboard layout { #webapi_dasboard_layout } 
+
+You can define and save a layout for each dashboard. The following object is responsible to hold this setting.
+
+    {
+      "layout": {
+        "spacing": {
+          "column": 5,
+          "row": 5
+        },
+        "columns": [{
+          "index": 0,
+          "span": 2
+        }, {
+          "index": 1,
+          "span": 1
+        }]
+      }
+    }
+
+The layout definition will be applied for all dashboard items related to the given dashboard, respecting layout attributes like spacing, columns, span and so on. See, below, a brief description of each attribute.
+
+Table: Layout attributes
+
+| 属性 | 描述 | 类型 |
+|---|---|---|
+| layout | This is the root object | 目的 |
+| spacing | Defines the spacing for specific layout components. Currently, it supports columns and rows. | 目的 |
+| 列 | Stores specific parameters related to columns (at the moment, index and span) | Array of objects |
+
+## 可视化 { #webapi_visualization } 
+
+Visualization API旨在帮助客户与图表和数据透视表/报表交互。数据可视化应用程序使用此API的端点，该应用程序允许基于客户端的定义创建，配置和管理图表和数据透视表。主要思想是使客户和用户拥有一个独特的集中式API，该API提供所有类型的图表和数据透视表以及每种可视化类型的特定参数和配置。
+
+This API was introduced to unify both `charts` and `reportTables` APIs and entirely replace them by the `visualizations` API.
+
+一个可视化对象由很多属性组成（有些与图表相关，有些与数据透视表相关），但负责反映对象核心信息的最重要的属性是：*"id"、"name"、"type" ”、“dataDimensionItems”、“列”、“行”和“过滤器”。*
+
+API的根端点是`/ api / visualizations`，下表中描述了当前属性和元素的列表。
+
+
+
+Table: Visualization attributes
+
+| 领域 | 描述 |
+|---|---|
+| id | The unique identifier. |
+| 码 | A custom code to identify the Visualization. |
+| 名称 | The name of the Visualization |
+| type | The type of the Visualization. The valid types are: COLUMN, STACKED_COLUMN, BAR, STACKED_BAR, LINE, AREA, PIE, RADAR, GAUGE, YEAR_OVER_YEAR_LINE YEAR_OVER_YEAR_COLUMN, SINGLE_VALUE, PIVOT_TABLE. |
+| title | A custom title. |
+| subtitle | A custom subtitle. |
+| 描述 | Defines a custom description for the Visualization. |
+| created | The date/time of the Visualization creation. |
+| 开始日期 | The beginning date used during the filtering. |
+| 结束日期 | The ending date used during the filtering. |
+| sortOrder | The sorting order of this Visualization. Integer value. |
+| user | An object representing the creator of the Visualization. |
+| publicAccess | Sets the permissions for public access. |
+| displayDensity | The display density of the text. |
+| fontSize | The font size of the text. |
+| fontStyle | Custom font styles for: visualizationTitle, visualizationSubtitle, horizontalAxisTitle, verticalAxisTitle, targetLineLabel, baseLineLabel, seriesAxisLabel, categoryAxisLabel, legend. |
+| relativePeriods | An object representing the relative periods used in the analytics query. |
+| legendSet | An object representing the definitions for the legend. |
+| legendDisplayStyle | The legend's display style. It can be: FILL or TEXT. |
+| legendDisplayStrategy | The legend's display style. It can be: FIXED or BY_DATA_ITEM. |
+| aggregationType | Determines how the values in the pivot table are aggregated. Valid options: SUM, AVERAGE, AVERAGE_SUM_ORG_UNIT, LAST, LAST_AVERAGE_ORG_UNIT, FIRST, FIRST_AVERAGE_ORG_UNIT, COUNT, STDDEV, VARIANCE, MIN, MAX, NONE, CUSTOM or DEFAULT. |
+| regressionType | A valid regression type: NONE, LINEAR, POLYNOMIAL or LOESS. |
+| targetLineValue | The chart target line. Accepts a Double type. |
+| targetLineLabel | The chart target line label. |
+| rangeAxisLabel | The chart vertical axis (y) label/title. |
+| domainAxisLabel | The chart horizontal axis (x) label/title. |
+| rangeAxisMaxValue | The chart axis maximum value. Values outside of the range will not be displayed. |
+| rangeAxisMinValue | The chart axis minimum value. Values outside of the range will not be displayed. |
+| rangeAxisSteps | The number of axis steps between the minimum and maximum values. |
+| rangeAxisDecimals | The number of decimals for the axes values. |
+| baseLineValue | A chart baseline value. |
+| baseLineLabel | A chart baseline label. |
+| digitGroupSeparator | The digit group separator. Valid values: COMMA, SPACE or NONE. |
+| topLimit | The top limit set for the Pivot table. |
+| measureCriteria | Describes the criteria applied to this measure. |
+| percentStackedValues | Uses stacked values or not. More likely to be applied for graphics/charts. Boolean value. |
+| noSpaceBetweenColumns | Show/hide space between columns. Boolean value. |
+| regression | Indicates whether the Visualization contains regression columns. More likely to be applicable to Pivot/Report. Boolean value. |
+| externalAccess | Indicates whether the Visualization is available as external read-only. Only applies when no user is logged in. Boolean value. |
+| userOrganisationUnit | Indicates if the user has an organisation unit. Boolean value. |
+| userOrganisationUnitChildren | Indicates if the user has a children organisation unit. Boolean value. |
+| userOrganisationUnitGrandChildren | Indicates if the user has a grand children organisation unit . Boolean value. |
+| reportingParams | Object used to define boolean attributes related to reporting. |
+| rowTotals | Displays (or not) the row totals. Boolean value. |
+| colTotals | Displays (or not) the columns totals. Boolean value. |
+| rowSubTotals | Displays (or not) the row sub-totals. Boolean value. |
+| colSubTotals | Displays (or not) the columns sub-totals. Boolean value. |
+| cumulativeValues | Indicates whether the visualization is using cumulative values. Boolean value. |
+| hideEmptyColumns | Indicates whether to hide columns with no data values. Boolean value. |
+| hideEmptyRows | Indicates whether to hide rows with no data values. Boolean value. |
+| fixColumnHeaders | Keeps the columns' headers fixed (or not) in a Pivot Table. Boolean value. |
+| fixRowHeaders | Keeps the rows' headers fixed (or not) in a Pivot Table. Boolean value. |
+| completedOnly | Flag used in analytics requests. If true, only completed events/enrollments will be taken into consideration. Boolean value. |
+| skipRounding | Apply or not rounding. Boolean value. |
+| showDimensionLabels | Shows the dimension labels or not. Boolean value. |
+| hideTitle | Hides the title or not. Boolean value. |
+| hideSubtitle | Hides the subtitle or not. Boolean value. |
+| hideLegend | Show/hide the legend. Very likely to be used by charts. Boolean value. |
+| showHierarchy | Displays (or not) the organisation unit hierarchy names. Boolean value. |
+| showData | Used by charts to hide or not data/values within the rendered model. Boolean value. |
+| lastUpdatedBy | Object that represents the user that applied the last changes to the Visualization. |
+| lastUpdated | The date/time of the last time the Visualization was changed. |
+| favorites | List of user ids who have marked this object as a favorite. |
+| subscribers | List of user ids who have subscribed to this Visualization. |
+| translations | Set of available object translation, normally filtered by locale. |
+| outlierAnalysis | Object responsible to keep settings related to outlier analysis. The internal attribute 'outlierMethod' supports: IQR, STANDARD_Z_SCORE, MODIFIED_Z_SCORE. The 'normalizationMethod' accepts only Y_RESIDUALS_LINEAR for now. |
+| seriesKey | Styling options for and whether or not to display the series key. |
+| 传说 | Options for and whether or not to apply legend colors to the chart series. |
+
+### 检索可视化 { #webapi_visualization_retrieving_visualizations } 
+
+To retrieve a list of all existing visualizations, in JSON format, with some basic information (including identifier, name and pagination) you can make a `GET` request to the URL below. You should see a list of all public/shared visualizations plus your private ones.
+
+    GET /api/visualizations.json
+
+如果要检索特定可视化的JSON定义，可以将其各自的标识符添加到URL：
+
+    GET /api/visualizations/hQxZGXqnLS9.json
+
+以下表示是JSON格式的响应示例（为简便起见，某些信息已被删除）。对于完整的模式，请使用`GET / api / schemas / visualization`。
+
+```json
+{
+  "lastUpdated": "2020-02-06T11:57:09.678",
+  "href": "http://my-domain/dhis/api/visualizations/hQxZGXqnLS9",
+  "id": "hQxZGXqnLS9",
+  "created": "2017-05-19T17:22:00.785",
+  "name": "ANC: ANC 1st visits last 12 months cumulative values",
+  "publicAccess": "rw------",
+  "userOrganisationUnitChildren": false,
+  "type": "LINE",
+  "access": {},
+  "reportingParams": {
+    "parentOrganisationUnit": false,
+    "reportingPeriod": false,
+    "organisationUnit": false,
+    "grandParentOrganisationUnit": false
+  },
+  "dataElementGroupSetDimensions": [],
+  "attributeDimensions": [],
+  "yearlySeries": [],
+  "axes": [
+    {
+      "index": 0,
+      "type": "RANGE",
+      "title": {
+        "textMode": "CUSTOM",
+        "text": "Any Title"
+      }
+    }
+  ],
+  "filterDimensions": [
+    "dx"
+  ],
+  "columns": [
+    {
+      "id": "ou"
+    }
+  ],
+  "dataElementDimensions": [],
+  "categoryDimensions": [],
+  "rowDimensions": [
+    "pe"
+  ],
+  "columnDimensions": [
+    "ou"
+  ],
+  "dataDimensionItems": [
+    {
+      "dataDimensionItemType": "DATA_ELEMENT",
+      "dataElement": {
+        "id": "fbfJHSPpUQD"
+      }
+    }
+  ],
+  "filters": [
+    {
+      "id": "dx"
+    }
+  ],
+  "rows": [
+    {
+      "id": "pe"
+    }
+  ]
+}
+```
+通过在URL中指定要提取的字段，可以获得更定制的响应。即：
+
+    GET /api/visualizations/hQxZGXqnLS9.json?fields=interpretations
+
+将返回
+
+```json
+{
+  "interpretations": [
+    {
+      "id": "Lfr8I2RPU0C"
+    },
+    {
+      "id": "JuwgdJlJPGb"
+    },
+    {
+      "id": "WAoU2rSpyZp"
+    }
+  ]
+}
+```
+
+As seen, the `GET` above will return only the interpretations related to the given identifier (in this case `hQxZGXqnLS9`).
+
+### 创建，更新和删除可视化 { #webapi_visualization_add_update_remove_visualizations } 
+
+These operations follow the standard *REST* semantics. A new Visualization can be created through a `POST` request to the `/api/visualizations` resource with a valid JSON payload. An example of payload could be:
+
+```json
+{
+  "columns": [
+    {
+      "dimension": "J5jldMd8OHv",
+      "items": [
+        {
+          "name": "CHP",
+          "id": "uYxK4wmcPqA",
+          "displayName": "CHP",
+          "displayShortName": "CHP",
+          "dimensionItemType": "ORGANISATION_UNIT_GROUP"
+        },
+        {
+          "name": "Hospital",
+          "id": "tDZVQ1WtwpA",
+          "displayName": "Hospital",
+          "displayShortName": "Hospital",
+          "dimensionItemType": "ORGANISATION_UNIT_GROUP"
+        }
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "dimension": "SooXFOUnciJ",
+      "items": [
+        {
+          "name": "DOD",
+          "id": "B0bjKC0szQX",
+          "displayName": "DOD",
+          "displayShortName": "DOD",
+          "dimensionItemType": "CATEGORY_OPTION_GROUP"
+        },
+        {
+          "name": "CDC",
+          "id": "OK2Nr4wdfrZ",
+          "displayName": "CDC",
+          "displayShortName": "CDC",
+          "dimensionItemType": "CATEGORY_OPTION_GROUP"
+        }
+      ]
+    }
+  ],
+  "filters": [
+    {
+      "dimension": "ou",
+      "items": [
+        {
+          "name": "Sierra Leone",
+          "id": "ImspTQPwCqd",
+          "displayName": "Sierra Leone",
+          "displayShortName": "Sierra Leone",
+          "dimensionItemType": "ORGANISATION_UNIT"
+        },
+        {
+          "name": "LEVEL-1",
+          "id": "LEVEL-H1KlN4QIauv",
+          "displayName": "LEVEL-1"
+        }
+      ]
+    }
+  ],
+  "name": "HIV Cases Monthly",
+  "description": "Cases of HIV across the months",
+  "category": "XY1vwCQskjX",
+  "showDimensionLabels": true,
+  "hideEmptyRows": true,
+  "hideEmptyColumns": true,
+  "skipRounding": true,
+  "aggregationType": "SUM",
+  "regressionType": "LINEAR",
+  "type": "PIVOT_TABLE",
+  "numberType": "VALUE",
+  "measureCriteria": "Some criteria",
+  "showHierarchy": true,
+  "completedOnly": true,
+  "displayDensity": "NORMAL",
+  "fontSize": "NORMAL",
+  "digitGroupSeparator": "SPACE",
+  "legendDisplayStyle": "FILL",
+  "legendDisplayStrategy": "FIXED",
+  "hideEmptyRowItems": "BEFORE_FIRST_AFTER_LAST",
+  "fixColumnHeaders": true,
+  "fixRowHeaders": false,
+  "regression": false,
+  "cumulative": true,
+  "sortOrder": 1,
+  "topLimit": 2,
+  "rowTotals": true,
+  "colTotals": true,
+  "hideTitle": true,
+  "hideSubtitle": true,
+  "hideLegend": true,
+  "showData": true,
+  "percentStackedValues": true,
+  "noSpaceBetweenColumns": true,
+  "rowSubTotals": true,
+  "colSubTotals": true,
+  "userOrgUnitType": "TEI_SEARCH",
+  "externalAccess": false,
+  "publicAccess": "--------",
+  "reportingParams": {
+    "reportingPeriod": true,
+    "organisationUnit": true,
+    "parentOrganisationUnit": true,
+    "grandParentOrganisationUnit": true
+  },
+  "parentGraphMap": {
+    "ImspTQPwCqd": ""
+  },
+  "access": {
+    "read": true,
+    "update": true,
+    "externalize": true,
+    "delete": false,
+    "write": true,
+    "manage": false
+  },
+  "optionalAxes": [
+    {
+      "dimensionalItem": "fbfJHSPpUQD",
+      "axis": 1
+    },
+    {
+      "dimensionalItem": "cYeuwXTCPkU",
+      "axis": 2
+    }
+  ],
+  "relativePeriods": {
+    "thisYear": false,
+    "quartersLastYear": true,
+    "last52Weeks": false,
+    "thisWeek": false,
+    "lastMonth": false,
+    "last14Days": false,
+    "biMonthsThisYear": false,
+    "monthsThisYear": false,
+    "last2SixMonths": false,
+    "yesterday": false,
+    "thisQuarter": false,
+    "last12Months": false,
+    "last5FinancialYears": false,
+    "thisSixMonth": false,
+    "lastQuarter": false,
+    "thisFinancialYear": false,
+    "last4Weeks": false,
+    "last3Months": false,
+    "thisDay": false,
+    "thisMonth": false,
+    "last5Years": false,
+    "last6BiMonths": false,
+    "last4BiWeeks": false,
+    "lastFinancialYear": false,
+    "lastBiWeek": false,
+    "weeksThisYear": false,
+    "last6Months": false,
+    "last3Days": false,
+    "quartersThisYear": false,
+    "monthsLastYear": false,
+    "lastWeek": false,
+    "last7Days": false,
+    "thisBimonth": false,
+    "lastBimonth": false,
+    "lastSixMonth": false,
+    "thisBiWeek": false,
+    "lastYear": false,
+    "last12Weeks": false,
+    "last4Quarters": false
+  },
+  "user": {},
+  "yearlySeries": [
+    "THIS_YEAR"
+  ],
+  "userGroupAccesses": [
+    {
+      "access": "rwx-----",
+      "userGroupUid": "ZoHNWQajIoe",
+      "displayName": "Bo District M&E officers",
+      "id": "ZoHNWQajIoe"
+    }
+  ],
+  "userAccesses": [
+    {
+      "access": "--------",
+      "displayName": "John Barnes",
+      "id": "DXyJmlo9rge",
+      "userUid": "DXyJmlo9rge"
+    }
+  ],
+  "legendSet": {
+    "name": "Death rate up",
+    "id": "ham2eIDJ9k6",
+    "legends": [
+      {
+        "startValue": 1,
+        "endValue": 2,
+        "color": "red",
+        "image": "some-image"
+      },
+      {
+        "startValue": 2,
+        "endValue": 3,
+        "color": "blue",
+        "image": "other-image"
+      }
+    ]
+  },
+  "outlierAnalysis": {
+    "enabled": true,
+    "outlierMethod": "IQR",
+    "thresholdFactor": 1.5,
+    "normalizationMethod": "Y_RESIDUALS_LINEAR",
+    "extremeLines": {
+      "enabled": true,
+      "value": 3.5
+    }
+  },
+  "legend": {
+    "strategy": "FIXED",
+    "style": "FILL",
+    "set": {
+      "id": "fqs276KXCXi",
+      "displayName": "ANC Coverage"
+    },
+    "showKey": false
+  },
+  "seriesKey": {
+    "hidden": true,
+    "label": {
+      "fontStyle": {
+        "textColor": "#cccddd"
+      }
+    }
+  },
+  "axes": [
+    {
+      "index": 0,
+      "type": "RANGE",
+      "label": {
+        "fontStyle": {
+          "textColor": "#cccddd"
+        }
+      },
+      "title": {
+        "text": "Range axis title",
+        "textMode": "CUSTOM",
+        "fontStyle": {
+          "textColor": "#000000"
+        }
+      },
+      "decimals": 1,
+      "maxValue": 100,
+      "minValue": 20,
+      "steps": 5,
+      "baseLine": {
+        "value": 50,
+        "title": {
+          "text": "My baseline",
+          "fontStyle": {
+            "textColor": "#000000"
+          }
+        }
+      },
+      "targetLine": {
+        "value": 80,
+        "title": {
+          "text": "My targetline",
+          "fontStyle": {
+            "textColor": "#cccddd"
+          }
+        }
+      }
+    },
+    {
+      "index": 1,
+      "type": "DOMAIN",
+      "label": {
+        "fontStyle": {
+          "textColor": "#000000"
+        }
+      },
+      "title": {
+        "text": "Domain axis title",
+        "textMode": "CUSTOM",
+        "fontStyle": {
+          "textColor": "#cccddd"
+        }
+      }
+    }
+  ],
+  "axes": [
+    {
+      "index": 0,
+      "type": "RANGE",
+      "label": {
+        "fontStyle": {
+          "textColor": "#cccddd"
+        }
+      },
+      "title": {
+        "text": "Range axis title",
+        "fontStyle": {
+          "textColor": "#000000"
+        }
+      },
+      "decimals": 1,
+      "maxValue": 100,
+      "minValue": 20,
+      "steps": 5,
+      "baseLine": {
+        "value": 50,
+        "title": {
+          "text": "My baseline",
+          "fontStyle": {
+            "textColor": "#000000"
+          }
+        }
+      },
+      "targetLine": {
+        "value": 80,
+        "title": {
+          "text": "My targetline",
+          "fontStyle": {
+            "textColor": "#cccddd"
+          }
+        }
+      }
+    },
+    {
+      "index": 1,
+      "type": "DOMAIN",
+      "label": {
+        "fontStyle": {
+          "textColor": "#000000"
+        }
+      },
+      "title": {
+        "text": "Domain axis title",
+        "fontStyle": {
+          "textColor": "#cccddd"
+        }
+      }
+    }
+  ]
+}
+```
+
+要更新特定的可视化，您可以向相同的 `/api/visualizations` 资源发送一个 `PUT` 请求，该资源具有类似的负载 `PLUS` 以及相应的可视化的标识符，即：
+
+    PUT /api/visualizations/hQxZGXqnLS9
+
+最后，要删除现有的可视化，您可以发出一个 `DELETE` 请求，指定要删除的可视化的标识符，如下所示：
+
+    删除/ api / visualizations / hQxZGXqnLS9
+
+## Event visualization { #webapi_event_visualization } 
+<!--DHIS2-SECTION-ID:webapi_event_visualization-->
+The EventVisualization API is designed to help clients to interact with event charts and reports. The endpoints of this API are used by the Event Visualization application which allows the creation, configuration and management of charts and reports based on the client's definitions. The main idea is to enable clients and users to have a unique and centralized API providing all types of event charts and reports as well as specific parameters and configuration for each type of event visualization.
+This API was introduced with the expectation to unify both `eventCharts` and `eventReports` APIs and entirely replace them in favour of the `eventVisualizations` API (which means that the usage of `eventCharts` and `eventReports` APIs should be avoided). In summary, the following resources/APIs:
+    /api/eventCharts, /api/eventReports
+*are being replaced by*
+    /api/eventVisualizations
+
+> **Note**
+>
+> New applications and clients should avoid using the `eventCharts` and `eventReports` APIs because they are deprecated. Use the `eventVisualizations` API instead.
+
+An EventVisualization object is composed of many attributes (some of them related to charting and others related to reporting), but the most important ones responsible to reflect the core information of the object are: *"id", "name", "type", "dataDimensionItems", "columns", "rows" and "filters".*
+The root endpoint of the API is `/api/eventVisualizations`, and the list of current attributes and elements are described in the table below.
+
+
+
+Table: EventVisualization attributes
+
+| 领域 | 描述 |
+|---|---|
+| id | The unique identifier. |
+| 码 | A custom code to identify the EventVisualiation. |
+| 名称 | The name of the EventVisualiation |
+| type | The type of the EventVisualiation. The valid types are: COLUMN, STACKED_COLUMN, BAR, STACKED_BAR, LINE, LINE_LIST, AREA, STACKED_AREA, PIE, RADAR, GAUGE, YEAR_OVER_YEAR_LINE, YEAR_OVER_YEAR_COLUMN, SINGLE_VALUE, PIVOT_TABLE, SCATTER, BUBBLE. |
+| title | A custom title. |
+| subtitle | A custom subtitle. |
+| 描述 | Defines a custom description for the EventVisualiation. |
+| created | The date/time of the EventVisualiation creation. |
+| 开始日期 | The beginning date used during the filtering. |
+| 结束日期 | The ending date used during the filtering. |
+| sortOrder | The sorting order of this EventVisualiation. Integer value. |
+| user | An object representing the creator of the Visualization. |
+| publicAccess | Sets the permissions for public access. |
+| displayDensity | The display density of the text. |
+| fontSize | The font size of the text. |
+| relativePeriods | An object representing the relative periods used in the analytics query. |
+| 传说 | An object representing the definitions for the legend and legend set, display style (FILL or TEXT) and display strategy (FIXED or BY_DATA_ITEM). |
+| aggregationType | Determines how the values are aggregated (if applicable). Valid options: SUM, AVERAGE, AVERAGE_SUM_ORG_UNIT, LAST, LAST_AVERAGE_ORG_UNIT, FIRST, FIRST_AVERAGE_ORG_UNIT, COUNT, STDDEV, VARIANCE, MIN, MAX, NONE, CUSTOM or DEFAULT. |
+| regressionType | A valid regression type: NONE, LINEAR, POLYNOMIAL or LOESS. |
+| targetLineValue | The chart target line. Accepts a Double type. |
+| targetLineLabel | The chart target line label. |
+| rangeAxisLabel | The chart vertical axis (y) label/title. |
+| domainAxisLabel | The chart horizontal axis (x) label/title. |
+| rangeAxisMaxValue | The chart axis maximum value. Values outside of the range will not be displayed. |
+| rangeAxisMinValue | The chart axis minimum value. Values outside of the range will not be displayed. |
+| rangeAxisSteps | The number of axis steps between the minimum and maximum values. |
+| rangeAxisDecimals | The number of decimals for the axes values. |
+| baseLineValue | A chart baseline value. |
+| baseLineLabel | A chart baseline label. |
+| digitGroupSeparator | The digit group separator. Valid values: COMMA, SPACE or NONE. |
+| topLimit | The top limit set for the Pivot table. |
+| measureCriteria | Describes the criteria applied to this measure. |
+| percentStackedValues | Uses stacked values or not. More likely to be applied for graphics/charts. Boolean value. |
+| noSpaceBetweenColumns | Show/hide space between columns. Boolean value. |
+| externalAccess | Indicates whether the EventVisualization is available as external read-only. Boolean value. |
+| userOrganisationUnit | Indicates if the user has an organisation unit. Boolean value. |
+| userOrganisationUnitChildren | Indicates if the user has a children organisation unit. Boolean value. |
+| userOrganisationUnitGrandChildren | Indicates if the user has a grand children organisation unit. Boolean value. |
+| rowTotals | Displays (or not) the row totals. Boolean value. |
+| colTotals | Displays (or not) the columns totals. Boolean value. |
+| rowSubTotals | Displays (or not) the row sub-totals. Boolean value. |
+| colSubTotals | Displays (or not) the columns sub-totals. Boolean value. |
+| cumulativeValues | Indicates whether the EventVisualization is using cumulative values. Boolean value. |
+| hideEmptyRows | Indicates whether to hide rows with no data values. Boolean value. |
+| completedOnly | Flag used in analytics requests. If true, only completed events/enrollments will be taken into consideration. Boolean value. |
+| showDimensionLabels | Shows the dimension labels or not. Boolean value. |
+| hideTitle | Hides the title or not. Boolean value. |
+| hideSubtitle | Hides the subtitle or not. Boolean value. |
+| showHierarchy | Displays (or not) the organisation unit hierarchy names. Boolean value. |
+| showData | Used by charts to hide or not data/values within the rendered model. Boolean value. |
+| lastUpdatedBy | Object that represents the user that applied the last changes to the EventVisualization. |
+| lastUpdated | The date/time of the last time the EventVisualization was changed. |
+| favorites | List of user ids who have marked this object as a favorite. |
+| subscribers | List of user ids who have subscribed to this EventVisualization. |
+| translations | Set of available object translation, normally filtered by locale. |
+| program | The program associated. |
+| programStage | The program stage associated. |
+| programStatus | The program status. It can be ACTIVE, COMPLETED, CANCELLED. |
+| eventStatus | The event status. It can be ACTIVE, COMPLETED, VISITED, SCHEDULE, OVERDUE, SKIPPED. |
+| dataType | The event data type. It can be AGGREGATED_VALUES or EVENTS. |
+| columnDimensions | The dimensions defined for the columns. |
+| rowDimensions | The dimensions defined for the rows. |
+| filterDimensions | The dimensions defined for the filters. |
+| outputType | Indicates output type of the EventVisualization. It can be EVENT, ENROLLMENT or TRACKED_ENTITY_INSTANCE. |
+| collapseDataDimensions | Indicates whether to collapse all data dimensions into a single dimension. Boolean value. |
+| hideNaData | Indicates whether to hide N/A data. Boolean value. |
+
+### Retrieving event visualizations { #webapi_event_visualization_retrieving_event_visualizations } 
+<!--DHIS2-SECTION-ID:webapi_event_visualization_retrieving_event_visualizations-->
+To retrieve a list of all existing event visualizations, in JSON format, with some basic information (including identifier, name and pagination) you can make a `GET` request to the URL below. You should see a list of all public/shared event visualizations plus your private ones.
+    GET /api/eventVisualizations.json
+If you want to retrieve the JSON definition of a specific EventVisualization you can add its respective identifier to the URL:
+    GET /api/eventVisualizations/hQxZGXqnLS9.json
+The following representation is an example of a response in JSON format (for brevity, certain information has been removed). For the complete schema, please use `GET /api/schemas/eventVisualization`.
+
+```json
+{
+    "lastUpdated": "2021-11-25T17:18:03.834",
+    "href": "http://localhost:8080/dhis/api/eventVisualizations/EZ5jbRTxRGh",
+    "id": "EZ5jbRTxRGh",
+    "created": "2021-11-25T17:18:03.834",
+    "name": "Inpatient: Mode of discharge by facility type this year",
+    "publicAccess": "rw------",
+    "userOrganisationUnitChildren": false,
+    "type": "STACKED_COLUMN",
+    "subscribed": false,
+    "userOrganisationUnit": false,
+    "rowSubTotals": false,
+    "cumulativeValues": false,
+    "showDimensionLabels": false,
+    "sortOrder": 0,
+    "favorite": false,
+    "topLimit": 0,
+    "collapseDataDimensions": false,
+    "userOrganisationUnitGrandChildren": false,
+    "displayName": "Inpatient: Mode of discharge by facility type this year",
+    "percentStackedValues": false,
+    "noSpaceBetweenColumns": false,
+    "showHierarchy": false,
+    "hideTitle": false,
+    "showData": true,
+    "hideEmptyRows": false,
+    "hideNaData": false,
+    "regressionType": "NONE",
+    "completedOnly": false,
+    "colTotals": false,
+    "sharing": {
+      "owner": "GOLswS44mh8",
+      "external": false,
+      "users": {},
+      "userGroups": {},
+      "public": "rw------"
+    },
+    "programStatus": "CANCELLED",
+    "hideEmptyRowItems": "NONE",
+    "hideSubtitle": false,
+    "outputType": "EVENT",
+    "hideLegend": false,
+    "externalAccess": false,
+    "colSubTotals": false,
+    "rowTotals": false,
+    "digitGroupSeparator": "SPACE",
+    "program": {
+      "id": "IpHINAT79UW"
+    },
+    "access": {
+      "read": true,
+      "update": true,
+      "externalize": true,
+      "delete": true,
+      "write": true,
+      "manage": true
+    },
+    "lastUpdatedBy": {
+      "displayName": "John Traore",
+      "name": "John Traore",
+      "id": "xE7jOejl9FI",
+      "username": "admin"
+    },
+    "relativePeriods": {
+      "thisYear": false,
+      ...
+    },
+    "programStage": {
+      "id": "A03MvHHogjR"
+    },
+    "createdBy": {
+      "displayName": "Tom Wakiki",
+      "name": "Tom Wakiki",
+      "id": "GOLswS44mh8",
+      "username": "system"
+    },
+    "user": {
+      "displayName": "Tom Wakiki",
+      "name": "Tom Wakiki",
+      "id": "GOLswS44mh8",
+      "username": "system"
+    },
+    "attributeDimensions": [],
+    "translations": [],
+    "legend": {
+      "set": {
+        "id": "gFJUXah1uRH"
+      },
+      "showKey": false,
+      "style": "FILL",
+      "strategy": "FIXED"
+    },
+    "filterDimensions": [
+      "ou",
+      "H6uSAMO5WLD"
+    ],
+    "interpretations": [],
+    "userGroupAccesses": [],
+    "subscribers": [],
+    "columns": [
+      {
+        "id": "X8zyunlgUfM"
+      }
+    ]
+    "periods": [],
+    "categoryDimensions": [],
+    "rowDimensions": [
+      "pe"
+    ],
+    "itemOrganisationUnitGroups": [],
+    "programIndicatorDimensions": [],
+    "attributeValues": [],
+    "columnDimensions": [
+      "X8zyunlgUfM"
+    ],
+    "userAccesses": [],
+    "favorites": [],
+    "dataDimensionItems": [],
+    "categoryOptionGroupSetDimensions": [],
+    "organisationUnitGroupSetDimensions": [],
+    "organisationUnitLevels": [],
+    "organisationUnits": [
+      {
+        "id": "ImspTQPwCqd"
+      }
+    ],
+    "filters": [
+      {
+        "id": "ou"
+      },
+      {
+        "id": "H6uSAMO5WLD"
+      }
+    ],
+    "rows": [
+      {
+        "id": "pe"
+      }
+    ]
+}
+```
+
+A more tailored response can be obtained by specifying, in the URL, the fields you want to extract. Ie.:
+    GET /api/eventVisualizations/hQxZGXqnLS9.json?fields=interpretations
+will return
+
+```json
+{
+  "interpretations": [
+    {
+      "id": "Lfr8I2RPU0C"
+    },
+    {
+      "id": "JuwgdJlJPGb"
+    },
+    {
+      "id": "WAoU2rSpyZp"
+    }
+  ]
+}
+```
+
+As seen, the `GET` above will return only the interpretations related to the given identifier (in this case `hQxZGXqnLS9`).
+
+### Creating, updating and removing event visualizations { #webapi_event_visualization_add_update_remove_event_visualizations } 
+<!--DHIS2-SECTION-ID:webapi_event_visualization_add_update_remove_event_visualizations-->
+These operations follow the standard *REST* semantics. A new EventVisualization can be created through a `POST` request to the `/api/eventVisualizations` resource with a valid JSON payload. An example of payload could be:
+
+```json
+{
+    "name": "Inpatient: Cases under 10 years last 4 quarters",
+    "publicAccess": "rw------",
+    "userOrganisationUnitChildren": false,
+    "type": "STACKED_COLUMN",
+    "subscribed": false,
+    "userOrganisationUnit": false,
+    "rowSubTotals": false,
+    "cumulativeValues": false,
+    "showDimensionLabels": false,
+    "sortOrder": 0,
+    "favorite": false,
+    "topLimit": 0,
+    "collapseDataDimensions": false,
+    "userOrganisationUnitGrandChildren": false,
+    "displayName": "Inpatient: Cases under 10 years last 4 quarters",
+    "percentStackedValues": false,
+    "noSpaceBetweenColumns": false,
+    "showHierarchy": false,
+    "hideTitle": false,
+    "showData": true,
+    "hideEmptyRows": false,
+    "userAccesses": [],
+    "userGroupAccesses": [],
+    "hideNaData": false,
+    "regressionType": "NONE",
+    "completedOnly": false,
+    "colTotals": false,
+    "programStatus": "CANCELLED",
+    "sharing": {
+      "owner": "GOLswS44mh8",
+      "external": false,
+      "users": {},
+      "userGroups": {},
+      "public": "rw------"
+    },
+    "displayFormName": "Inpatient: Cases under 10 years last 4 quarters",
+    "hideEmptyRowItems": "NONE",
+    "hideSubtitle": false,
+    "outputType": "EVENT",
+    "hideLegend": false,
+    "externalAccess": false,
+    "colSubTotals": false,
+    "rowTotals": false,
+    "digitGroupSeparator": "SPACE",
+    "access": {
+      "read": true,
+      "update": true,
+      "externalize": false,
+      "delete": true,
+      "write": true,
+      "manage": true
+    },
+    "lastUpdatedBy": {
+      "displayName": "Tom Wakiki",
+      "name": "Tom Wakiki",
+      "id": "GOLswS44mh8",
+      "username": "system"
+    },
+    "legend": {
+      "set": {
+        "id": "gFJUXah1uRH"
+      },
+      "showKey": false,
+      "style": "FILL",
+      "strategy": "FIXED"
+    },
+    "relativePeriods": {
+      "thisYear": false,
+    ...
+    },
+    "program": {
+      "id": "IpHINAT79UW",
+      "enrollmentDateLabel": "Date of enrollment",
+      "incidentDateLabel": "Date of birth",
+      "name": "Child Programme"
+    },
+    "programStage": {
+      "id": "A03MvHHogjR",
+      "executionDateLabel": "Report date",
+      "name": "Birth"
+    },
+    "createdBy": {
+      "displayName": "Tom Wakiki",
+      "name": "Tom Wakiki",
+      "id": "GOLswS44mh8",
+      "username": "system"
+    },
+    "user": {
+      "displayName": "Tom Wakiki",
+      "name": "Tom Wakiki",
+      "id": "GOLswS44mh8",
+      "username": "system"
+    },
+    "translations": [],
+    "filterDimensions": [
+      "ou"
+    ],
+    "interpretations": [],
+    "dataElementDimensions": [
+      {
+        "filter": "LE:10",
+        "dataElement": {
+          "id": "qrur9Dvnyt5"
+        }
+      }
+    ],
+    "periods": [],
+    "categoryDimensions": [],
+    "rowDimensions": [
+      "pe"
+    ],
+    "columnDimensions": [
+      "qrur9Dvnyt5"
+    ],
+    "organisationUnits": [
+      {
+        "id": "ImspTQPwCqd"
+      }
+    ],
+    "filters": [
+      {
+        "dimension": "ou",
+        "items": [
+          {
+            "id": "ImspTQPwCqd"
+          }
+        ]
+      },
+      {
+        "dimension": "H6uSAMO5WLD",
+        "items": []
+      }
+    ],
+    "columns": [
+      {
+        "dimension": "X8zyunlgUfM",
+        "items": [],
+        "repetition": {
+          "indexes": [1, 2, 3, -2, -1, 0]
+        }
+      },
+      {
+        "dimension": "eventDate",
+        "items": [
+          {
+            "id": "2021-07-21_2021-08-01"
+          },
+          {
+            "id": "2021-01-21_2021-02-01"
+          }
+        ]
+      },
+      {
+        "dimension": "incidentDate",
+        "items": [
+          {
+            "id": "2021-10-01_2021-10-30"
+          }
+        ]
+      },
+      {
+        "dimension": "eventStatus",
+        "items": [
+          {
+            "id": "ACTIVE"
+          },
+          {
+            "id": "COMPLETED"
+          }
+        ]
+      },
+      {
+        "dimension": "createdBy",
+        "items": [
+          {
+            "id": "userA"
+          }
+        ]
+      },
+      {
+        "dimension": "lastUpdatedBy",
+        "items": [
+          {
+            "id": "userB"
+          }
+        ]
+      }
+    ],
+    "rows": [
+      {
+        "dimension": "pe",
+        "items": [
+          {
+            "id": "LAST_12_MONTHS"
+          }
+        ]
+      }
+    ]
+}
+```
+
+For multi-program support, the root `program` should not be specified. This will turn the `eventVisualization` into a multi-program. Consequently, we have to specify the `program` and `programStage` (when applicable) for each `dimension` in `rows`, `columns`, and `filters`.
+
+例：
+
+```json
+"program": null,
+"columns": [
+  {
+    "dimension": "ou",
+    "items": [
+        {
+            "id": "O6uvpzGd5pu"
+        }
+    ],
+    "program": {
+        "id": "IpHINAT79UW"
+    }
+  },
+  {
+    "dimensionType": "CATEGORY_OPTION_GROUP_SET",
+    "items": [
+      {
+          "id": "JLGV7lRQRAg"
+      },
+      {
+          "id": "p916ZCVGNyq"
+      }
+    ],
+    "dimension": "C31vHZqu0qU",
+    "program": {
+        "id": "kla3mAPgvCH"
+    },
+    "programStage": {
+        "id": "aNLq9ZYoy9W"
+    }
+  }
+]
+```
+
+> **Note**
+>
+> The `repetition` attribute (in `rows`, `columns` or `filters`) indicates the events indexes to be retrieved. Taking the example above (in the previous `json` payload), it can be read as follows:
+> 
+    1 = First event
+    2 = Second event
+    3 = Third event
+    ...
+    -2 = Third latest event
+    -1 = Second latest event
+    0 = Latest event (default)
+
+To update a specific EventVisualization, you can send a `PUT` request to the same `/api/eventVisualizations` resource with a similar payload `PLUS` the respective EventVisualization's identifier, ie.:
+    PUT /api/eventVisualizations/hQxZGXqnLS9
+Finally, to delete an existing EventVisualization, you can make a `DELETE` request specifying the identifier of the EventVisualization to be removed, as shown:
+    DELETE /api/eventVisualizations/hQxZGXqnLS9
+
+## 释义 { #webapi_interpretations } 
+
+For resources related to data analysis in DHIS2, such as visualizations, maps, event reports, event charts and even visualizations you can write and share data interpretations. An interpretation can be a comment, question, observation or interpretation about a data report or visualization.
+
+    / api /解释
+
+### 阅读口译 { #webapi_reading_interpretations } 
+
+为了阅读解释，我们将与
+`/api/interpretations` 资源。使用字段的典型 GET 请求
+过滤可以是这样的：
+
+    GET /api/interpretations?fields=*,comments[id,text,user,mentions]
+
+JSON 响应格式的输出可能如下所示（附加
+为简洁起见省略了字段）：
+
+```json
+{
+  "interpretations": [
+    {
+      "id": "XSHiFlHAhhh",
+      "created": "2013-05-30T10:24:06.181+0000",
+      "text": "Data looks suspicious, could be a data entry mistake.",
+      "type": "MAP",
+      "likes": 2,
+      "user": {
+        "id": "uk7diLujYif"
+      },
+      "reportTable": {
+        "id": "LcSxnfeBxyi"
+      },
+      "visualization": {
+        "id": "LcSxnfeBxyi"
+      }
+    }, {
+      "id": "kr4AnZmYL43",
+      "created": "2013-05-29T14:47:13.081+0000",
+      "text": "Delivery rates in Bo looks high.",
+      "type": "VISUALIZATION",
+      "likes": 3,
+      "user": {
+        "id": "uk7diLujYif"
+      },
+      "visualization": {
+        "id": "HDEDqV3yv3H"
+      },
+      "mentions": [
+        {
+          "created": "2018-06-25T10:25:54.498",
+          "username": "boateng"
+        }
+      ],
+      "comments": [
+        {
+          "id": "iB4Etq8yTE6",
+          "text": "This report indicates a surge.",
+          "user": {
+            "id": "B4XIfwOcGyI"
+          }
+        },
+        {
+          "id": "iB4Etq8yTE6",
+          "text": "Likely caused by heavy rainfall.",
+          "user": {
+            "id": "B4XIfwOcGyI"
+          }
+        },
+        {
+          "id": "SIjkdENan8p",
+          "text": "Have a look at this @boateng.",
+          "user": {
+            "id": "xE7jOejl9FI"
+          },
+          "mentions": [
+            {
+              "created": "2018-06-25T10:03:52.316",
+              "username": "boateng"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+
+
+Table: Interpretation fields
+
+| 领域 | 描述 |
+|---|---|
+| id | The interpretation identifier. |
+| created | The time of when the interpretation was created. |
+| type | The type of analytical object being interpreted. Valid options: VISUALIZATION, MAP, EVENT_REPORT, EVENT_CHART, EVENT_VISUALIZATION, DATASET_REPORT. |
+| user | Association to the user who created the interpretation. |
+| visualization | Association to the visualization if type is VISUALIZATION |
+| eventVisualization | Association to the event visualization if type is EVENT_VISUALIZATION |
+| map | Association to the map if type is MAP. |
+| eventReport | Association to the event report is type is EVENT_REPORT. |
+| eventChart | Association to the event chart if type is EVENT_CHART. |
+| dataSet | Association to the data set if type is DATASET_REPORT. |
+| comments | Array of comments for the interpretation. The text field holds the actual comment. |
+| mentions | Array of mentions for the interpretation. A list of users identifiers. |
+
+对于所有分析对象，您可以将 */data* 附加到 URL 以检索
+与资源关联的数据（相对于元数据）。作为
+一个例子，通过跟随地图链接并附加 /data 可以
+通过检索主题地图的 PNG（图像）表示
+以下网址：
+
+    https://play.dhis2.org/demo/api/maps/bhmHJ4ZCdCd/data
+
+对于所有分析对象，您可以通过*提及*进行过滤。检索所有
+您提到的用户的解释/评论
+三个选项。您可以通过解释提及（提及
+在解释中
+    描述）：
+
+    GET /api/interpretations?fields=*,comments[*]&filter=mentions.username:in:[boateng]
+
+您可以通过解释评论提及（在任何
+评论）：
+
+    GET / api / interpretations？fields = *，评论[*]
+      ＆filter = comments.mentions.username：in：[boateng]
+
+您可以按包含提及的解释进行过滤
+在解释或任何评论中（或结点）：
+
+    GET /api/interpretations?fields=*,comments[*]&filter=mentions:in:[boateng]
+
+### 写作解释 { #webapi_writing_interpretations } 
+
+在编写解释时，您将提供解释文本作为
+使用内容类型为“text/plain”的 POST 请求的请求正文。
+URL 模式如下所示，其中 {object-type} 指的是
+被解释的对象的类型，{object-id} 指的是
+被解释对象的标识符。
+
+    / api / interpretations / {object-type} / {object-id}
+
+Valid options for object type are *visualization*, *map*,
+*eventReport*, *eventChart*, *eventVisualization* and *dataSetReport*.
+
+下面列出了一些有效的解释示例。
+
+> **Note**
+>
+> The `eventCharts` and `eventReports` APIs are deprecated. We recommend using the `eventVisualizations` API instead.
+
+    /api/interpretations/visualization/hQxZGXqnLS9
+    /api/interpretations/map/FwLHSMCejFu
+    /api/interpretations/eventReport/xJmPLGP3Cde
+    /api/interpretations/eventChart/nEzXB2M9YBz
+    /api/interpretations/eventVisualization/nEzXB2M9YBz
+    /api/interpretations/dataSetReport/tL7eCjmDIgM
+
+As an example, we will start by writing an interpretation for the visualization with identifier *EbRN2VIbPdV*. To write visualization interpretations we will interact with the `/api/interpretations/visualization/{visualizationId}` resource.
+The interpretation will be the request body. Based on this we can put
+together the following request using cURL:
+
+```bash
+curl -d "This visualization shows a significant ANC 1-3 dropout" -X POST
+  "https://play.dhis2.org/demo/api/interpretations/visualization/EbRN2VIbPdV" -H "Content-Type:text/plain" -u admin:district
+```
+
+请注意，响应提供了一个带有值的 Location 标头
+指示创建的解释的位置。这很有用
+从客户的角度来看，当您想向
+解释。
+
+### 更新和删除解释 { #webapi_updating_removing_interpretations } 
+
+要更新现有解释，您可以使用 PUT 请求，其中
+解释文本是使用以下 URL 模式的请求正文，
+其中 {id} 指的是解释标识符：
+
+    / api / interpretations / {id}
+
+基于此，我们可以使用curl来更新解释：
+
+```bash
+curl -d "This visualization shows a high dropout" -X PUT
+  "https://play.dhis2.org/demo/api/interpretations/visualization/EV08iI1cJRA" -H "Content-Type:text/plain" -u admin:district
+```
+
+您可以使用与上面相同的 URL 模式使用 DELETE 请求来
+删除解释。
+
+### 创建解释注释 { #webapi_creating_interpretation_comments } 
+
+在为解释撰写评论时，您将提供评论
+text 作为使用内容类型的 POST 请求的请求正文
+“文本/纯文本”。 URL 模式如下所示，其中
+{interpretation-id} 指的是解释标识符。
+
+    / api / interpretations / {interpretation-id} /评论
+
+其次，我们将对我们在
+上面的例子。通过查看解释响应，您将看到
+返回一个 *Location* 标头。这个标题告诉我们的 URL
+新创建的解释，从中我们可以阅读它的
+标识符。此标识符是随机生成的，因此您必须
+用您自己的命令替换下面命令中的那个。写评论
+我们可以与`/api/interpretations/{id}/comments`进行交互
+像这样的资源：
+
+```bash
+curl -d "An intervention is needed" -X POST
+  "https://play.dhis2.org/demo/api/interpretations/j8sjHLkK8uY/comments"
+  -H "Content-Type:text/plain" -u admin:district
+```
+
+### 更新和删除解释注释 { #webapi_updating_removing_interpretation_comments } 
+
+要更新解释注释，您可以使用 PUT 请求，其中
+评论文本是使用以下 URL 模式的请求正文：
+
+    / api / interpretations / {interpretation-id} / comments / {comment-id}
+
+基于此，我们可以使用curl来更新注释：
+
+```bash
+curl "https://play.dhis2.org/demo/api/interpretations/j8sjHLkK8uY/comments/idAzzhVWvh2"
+  -d "I agree with that." -X PUT -H "Content-Type:text/plain" -u admin:district
+```
+
+您可以使用与上面相同的 URL 模式，使用 DELETE 请求到
+删除解释注释。
+
+### 喜欢的解释 { #webapi_liking_interpretations } 
+
+要喜欢一个解释，你可以使用一个空的 POST 请求到
+*喜欢*资源：
+
+    POST / api / interpretations / {id} / like
+
+将为当前经过身份验证的用户添加一个赞。一个用户可以
+只喜欢解释一次。
+
+要删除解释的赞，您可以使用 DELETE 请求
+与类似操作相同的资源。
+
+可以通过查看解释的类似状态来查看
+常规 Web API 表示：
+
+    GET /api/interpretations/{id}
+
+在 *likes* 字段中可以找到喜欢的信息，它代表
+喜欢的数量，以及 *likedBy* 数组，它枚举了喜欢的用户
+喜欢这个解释。
+
+```json
+{
+  "id": "XSHiFlHAhhh",
+  "text": "Data looks suspicious, could be a data entry mistake.",
+  "type": "VISUALIZATION",
+  "likes": 2,
+  "likedBy": [
+    {
+      "id": "k7Hg12fJ2f1"
+    },
+    {
+      "id": "gYhf26fFkjFS"
+    }
+  ]
+}
+```
+## SQL视图 { #webapi_sql_views } 
+
+SQL 视图资源允许您创建和检索结果集
+SQL 视图。 SQL 视图可以直接针对
+数据库并通过 Web API 资源呈现结果集。
+
+    / api / sqlViews
+
+SQL 视图对于创建可能更容易的数据视图很有用
+用SQL构造比较结合Web的多个对象
+应用程序接口。举个例子，假设我们被要求提供一个视图
+所有组织单位及其名称、父名称、组织单位
+级别和名称，以及数据库中列出的坐标。风景
+可能看起来像这样：
+
+```sql
+select ou.name as orgunit, par.name as parent, ou.coordinates, ous.level, oul.name 
+from organisationunit ou
+inner join _orgunitstructure ous on ou.organisationunitid = ous.organisationunitid
+inner join organisationunit par on ou.parentid = par.organisationunitid
+inner join orgunitlevel oul on ous.level = oul.level
+where ou.coordinates is not null
+order by oul.level, par.name, ou.name;
+```
+
+我们将使用 *curl* 首先在 DHIS2 服务器上执行视图。这
+本质上是一个物化过程，并确保我们拥有
+检索时可通过 SQL 视图获得的最新数据
+从服务器。您可以先从 SQL 视图中查找
+api/sqlViews 资源，然后使用以下命令进行 POST：
+
+```bash
+curl "https://play.dhis2.org/demo/api/sqlViews/dI68mLkP1wN/execute" -X POST -u admin:district
+```
+
+The next step in the process is the retrieval of the data. The endpoint is available at:
+
+    /api/sqlViews/{id}/data(.csv)
+
+The `id` path represents the SQL view identifier. The path extensions refers to the format of the data download. Append either `data` for JSON data or `data.csv` for comma separated  values. Support response formats are json, xml, csv, xls, html and html+css. 
+
+As an example, the following command would retrieve CSV data for the SQL view defined above.
+
+```bash
+curl "https://play.dhis2.org/demo/api/sqlViews/dI68mLkP1wN/data.csv" -u admin:district
+```
+
+SQL视图有三种类型：
+
+  - *SQL 视图：* 标准 SQL 视图。
+
+  - *物化的SQL视图：*物化的SQL视图，意思是
+    写入磁盘。需要更新以反映变化
+    底层表。支持过滤结果集的标准。
+
+  - *SQL 查询：* 普通 SQL 查询。支持内联变量
+    自定义查询。
+
+### 标准 { #webapi_sql_view_criteria } 
+
+您可以通过以下方式对结果集中的列进行简单过滤
+使用列名将 *criteria* 查询参数附加到 URL
+并过滤由列分隔的值作为参数值，在
+以下格式：
+
+    / api / sqlViews / {id} / data？criteria = col1：value1＆criteria = col2：value2
+
+As an example, to filter the SQL view result set above to only return
+organisation units at level 4 you can use the following URL:
+
+    https://play.dhis2.org/demo/api/sqlViews/dI68mLkP1wN/data.csv?criteria=level:4
+
+### 变数 { #webapi_sql_view_variables } 
+
+SQL 视图支持变量替换。变量替换只是
+可用于 *query* 类型的 SQL 视图，这意味着 SQL 视图不是
+在数据库中创建，但只是作为常规 SQL 查询执行。
+变量可以直接插入到 SQL 查询中，并且必须在
+这种格式：
+
+    $ {variable-key}
+
+例如，检索给定的所有数据元素的 SQL 查询
+通过变量定义值类型的值类型可以看
+像这样：
+
+    从dataelement中选择*，其中valuetype ='$ {valueType}';
+
+然后可以在请求时将这些变量作为 URL 的一部分提供
+通过 *sqlViews* Web API 资源。可以提供变量
+以下格式：
+
+    / api / sqlViews / {id} / data？var = key1：value1＆var = key2：value2
+
+与上面的示例相对应的示例查询如下所示：
+
+    /api/sqlViews/dI68mLkP1wN/data.json?var=valueType:int
+
+*valueType* 变量将替换为 *int* 值，并且
+查询将返回具有 int 值类型的数据元素。
+
+变量参数必须仅包含字母数字字符。这
+变量必须包含字母数字、破折号、下划线和空格
+仅字符。
+
+*query* 类型的 SQL 视图还支持两个系统定义的变量，这些变量允许查询访问有关执行视图的用户的信息：
+
+| 变量 | 手段 |
+| -------- | ----- |
+| ${_current_user_id} | 用户的数据库ID |
+| ${_current_username} | 用户的用户名 |
+
+这些变量的值不能作为URL的一部分提供。它们始终充满有关用户的信息。
+
+例如，以下 *query* 类型的 SQL 视图显示分配给用户的所有组织单位：
+
+```sql
+select ou.path, ou.name
+from organisationunit ou_user
+join organisationunit ou on ou.path like ou_user.path || '%'
+join usermembership um on um.organisationunitid = ou_user.organisationunitid
+where um.userinfoid = ${_current_user_id}
+order by ou.path;
+```
+
+### 筛选 { #webapi_sql_view_filtering } 
+
+The SQL view API supports data filtering, equal to the [metadata object_filter](#webapi_metadata_object_filter). For a complete list of filter operators you can look at the documentation for [metadata object_filter](#webapi_metadata_object_filter).
+
+To use filters, simply add them as parameters at the end of the request URL for your SQL view like this. This request will return a result including org units with "bo" in the name at level 2 of the org unit hierarchy:
+
+    /api/sqlViews/w3UxFykyHFy/data.json?filter=orgunit_level:eq:2&filter=orgunit_name:ilike:bo
+
+以下示例将返回所有带有 `orgunit_level` 2 或
+4：
+
+    /api/sqlViews/w3UxFykyHFy/data.json?filter=orgunit_level:in:[2,4]
+
+And last, an example to return all org units that does not start with "Bo":
+
+    /api/sqlViews/w3UxFykyHFy/data.json?filter=orgunit_name:!like:Bo
+
+
+## 数据项 { #webapi_data_items } 
+
+This endpoint allows the user to query data related to a few different dimensional items. These items are: `INDICATOR`, `DATA_ELEMENT`, `DATA_SET`, `PROGRAM_INDICATOR`, `PROGRAM_DATA_ELEMENT`, `PROGRAM_ATTRIBUTE`. The endpoint supports only `GET` requests and, as other endpoints, can return responses in JSON or XML format.
+
+该URL是`/ api / dataItems`，并且可以想象，它能够在同一`GET`请求中通过同一端点检索不同的对象。因此，某些可用的可查询属性将根据要查询的维项目而有所不同。
+
+为了理解上面的陈述，让我们看一下以下请求示例：
+
+1)`GET /api/dataItems?filter=dimensionItemType:eq:DATA_ELEMENT&filter=valueType:eq:TEXT`
+在这个例子中，项目类型`DATA_ELEMENT` 有一个`valueType` 属性，可以在查询中使用。
+
+2) `GET /api/dataItems?pageSize=50&order=displayName:asc&filter=dimensionItemType:eq:PROGRAM_INDICATOR&filter=displayName:ilike:someName&filter=programId:eq:WSGAb5XwJ3Y`
+
+Here, the `PROGRAM_INDICATOR` allows filtering by `programId`.
+
+So, based on the examples `1)` and `2)` if you try filtering a `DATA_ELEMENT` by `programId` or filter a `PROGRAM_INDICATOR` by `valueType`, you should get no results.
+In other words, the filter will be applied only when the attribute actually exists for the respective data item.
+
+Another important aspect to be highlighted is that this endpoint does NOT follow the same querying standards as other existing endpoints, like [Metadata object filter](#webapi_metadata_object_filter) for example. As a consequence, it supports a smaller set of features and querying.
+The main reason for that is the need for querying multiple different items that have different relationships, which is not possible using the existing filtering components (used by the others endpoints).
+
+### Endpoint responses { #webapi_data_items_possible_responses } 
+
+Base on the `GET` request/query, the following status codes and responses are can be returned.
+
+#### Results found (status code 200) { #results-found-status-code-200 } 
+
+```json
+{
+  "pager": {
+    "page": 1,
+    "pageCount": 27,
+    "total": 1339,
+    "pageSize": 50
+  },
+  "dataItems": [
+    {
+      "simplifiedValueType": "TEXT",
+      "displayName": "TB program Gender",
+      "displayShortName": "TB prog. Gen.",
+      "valueType": "TEXT",
+      "name": "TB program Gender",
+      "shortName": "TB prog Gen",
+      "id": "ur1Edk5Oe2n.cejWyOfXge6",
+      "programId": "ur1Edk5Oe2n",
+      "dimensionItemType": "PROGRAM_ATTRIBUTE"
+    }
+  ]
+}
+```
+
+#### Results not found (status code 200) { #results-not-found-status-code-200 } 
+
+```json
+{
+  "pager": {
+    "page": 1,
+    "pageCount": 1,
+    "total": 0,
+    "pageSize": 50
+  },
+  "dataItems": [
+  ]
+}
+```
+
+#### Invalid query (status code 409) { #invalid-query-status-code-409 } 
+
+```json
+{
+  "httpStatus": "Conflict",
+  "httpStatusCode": 409,
+  "status": "ERROR",
+  "message": "Unable to parse element `INVALID_TYPE` on filter dimensionItemType`. The values available are: [INDICATOR, DATA_ELEMENT, DATA_ELEMENT_OPERAND, DATA_SET, PROGRAM_INDICATOR, PROGRAM_DATA_ELEMENT, PROGRAM_ATTRIBUTE]",
+  "errorCode": "E2016"
+}
+```
+
+### 分页 { #webapi_data_items_pagination } 
+
+This endpoint also supports pagination as a default option. If needed, you can disable pagination by adding `paging=false` to the `GET` request, i.e.: `/api/dataItems?filter=dimensionItemType:in:[INDICATOR]&paging=false`.
+
+这是启用分页时的有效负载示例。请记住，分页是默认选项，不需要显式设置。
+
+```json
+{
+  "pager": {
+    "page": 1,
+    "pageCount": 20,
+    "total": 969,
+    "pageSize": 50
+  },
+  "dataItems": [...]
+}
+```
+
+> **Note**
+>
+> For elements where there is an associated Program, the program name should also be returned as part of the element name (as a prefix). The only exception is `Program Indicators`. We will not prefix the element name in this case, in order to keep the same behavior as existing endpoints.
+>
+> The /dataItems endpoint will bring only data items that are defined as aggregatable type. The current list of valid aggregatable types is:
+`TEXT, LONG_TEXT`, `LETTER`, `BOOLEAN`, `TRUE_ONLY`, `NUMBER`, `UNIT_INTERVAL`, `PERCENTAGE`, `INTEGER`, `INTEGER_POSITIVE`, `INTEGER_NEGATIVE`, `INTEGER_ZERO_OR_POSITIVE`, `COORDINATE`.
+>
+> Even though the response returns several different attributes, the filtering can only be applied to specific ones: `displayName`, `name`, `valueType`, `id`, `dimensionItemType`, `programId`.
+>
+> The `order` will be considered invalid if it is set on top of `name` (ie.: order=*name:asc*) and a `filter` is set to `displayName` (ie.: filter=*displayName:ilike:aName*), and vice-versa.
+
+### 响应属性 { #webapi_data_items_response_attributes } 
+
+现在，我们已经了解了此端点的主要功能和用法，让我们看一下响应中返回的属性列表。
+
+Table: Data items attributes
+
+| 领域 | 描述 |
+|---|---|
+| id | The unique identifier. |
+| 码 | A custom code to identify the dimensional item. |
+| 名称 | The name given for the item. |
+| displayName | The display name defined. |
+| shortName | The short name given for the item. |
+| displayShortName | The display short name defined. |
+| dimensionItemType | The dimension type. Possible types: INDICATOR, DATA_ELEMENT, REPORTING_RATE, PROGRAM_INDICATOR, PROGRAM_DATA_ELEMENT, PROGRAM_ATTRIBUTE. |
+| valueType | The item value type (more specific definition). Possitble types: TEXT, LONG_TEXT, LETTER, BOOLEAN, TRUE_ONLY, UNIT_INTERVAL, PERCENTAGE, INTEGER, INTEGER_POSITIVE, INTEGER_NEGATIVE, INTEGER_ZERO_OR_POSITIVE, COORDINATE |
+| simplifiedValueType | The genereal representation of a value type. Valid values: NUMBER, BOOLEAN, DATE, FILE_RESOURCE, COORDINATE, TEXT |
+| programId | The associated programId. |
+
+## 查看分析性资源表示 { #webapi_viewing_analytical_resource_representations } 
+
+DHIS2 has several resources for data analysis. These resources include
+*maps*, *visualizations*, *eventVisualizations*, *reports* and *documents*. By visiting these resources you will retrieve information about the resource. For instance, by navigating to `/api/visualizations/R0DVGvXDUNP` the response will contain the name, last date of modification and so on for the chart. To retrieve the analytical representation, for instance, a PNG representation of the visualization, you can append */data* to all these resources. For instance, by visiting `/api/visualizations/R0DVGvXDUNP/data` the system will return a PNG image of the visualization.
+
+Table: Analytical resources
+
+| Resource | 描述 | Data URL | Resource representations |
+|---|---|---|---|
+| eventCharts | 活动图 | /api/eventCharts/<identifier\>/data | png |
+| maps | 地图 | /api/maps/<identifier\>/data | png |
+| visualizations | Pivot tables and charts | /api/visualizations/<identifier\>/data | json &#124; jsonp &#124; html &#124; xml &#124; pdf &#124; xls &#124; csv 
+| eventVisualizations | 活动图 | /api/eventVisualizations/<identifier\>/data | png 
+| png |
+| reports | 标准报告 | /api/reports/<identifier\>/data | pdf &#124; xls &#124; html |
+| documents | 资源资源 | /api/documents/<identifier\>/data | <follows document\> |
+
+解析表示的数据内容可以通过以下方式修改
+提供 *date* 查询参数。这就要求分析
+为期间维度的相对期间设置资源。
+
+Table: Data query parameters
+
+| 查询参数 | 值 | 描述 |
+|---|---|---|
+| date | Date in yyyy-MM-dd format | Basis for relative periods in report (requires relative periods) |
+
+Table: Query parameters for png / image types (visualizations, maps)
+
+| 查询参数 | 描述 |
+|---|---|
+| width | Width of image in pixels |
+| height | Height of image in pixels |
+
+用于检索各种分析的有效 URL 的一些示例
+代表如下。
+
+    /api/visualizations/R0DVGvXDUNP/data
+    /api/visualizations/R0DVGvXDUNP/data?date=2013-06-01
+
+    /api/visualizations/jIISuEWxmoI/data.html
+    /api/visualizations/jIISuEWxmoI/data.html?date=2013-01-01
+    /api/visualizations/FPmvWs7bn2P/data.xls
+    /api/visualizations/FPmvWs7bn2P/data.pdf
+
+    /api/eventVisualizations/x5FVFVt5CDI/data
+    /api/eventVisualizations/x5FVFVt5CDI/data.png
+
+    /api/maps/DHE98Gsynpr/data
+    /api/maps/DHE98Gsynpr/data?date=2013-07-01
+
+    /api/reports/OeJsA6K1Otx/data.pdf
+    /api/reports/OeJsA6K1Otx/data.pdf?date=2014-01-01
+

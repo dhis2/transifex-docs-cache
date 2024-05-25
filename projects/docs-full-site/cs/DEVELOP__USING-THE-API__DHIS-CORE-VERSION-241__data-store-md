@@ -1,0 +1,859 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.41/src/developer/web-api/data-store.md"
+revision_date: '2024-02-20'
+tags:
+- DHIS core version 2.41
+- Vývoj
+---
+
+# Data store { #data-store } 
+
+## Data store { #webapi_data_store } 
+
+Using the *dataStore* resource, developers can store arbitrary data for
+their apps. Access to a datastore's key is based on its sharing settings.
+By default all keys created are publicly accessible (read and write).
+Additionally,  access to a datastore's namespace is limited to the user's
+access to the corresponding app, if the app has reserved the namespace.
+For example a user with access to the "sampleApp" application will also
+be able to use the sampleApp namespace in the datastore. If a namespace
+is not reserved, no specific access is required to use it.
+
+    /api/33/dataStore
+
+Note that there are reserved namespaces used by the system that require 
+special authority to be able to read or write entries. 
+For example the namespace for the android settings app `ANDROID_SETTINGS_APP`
+will require the `M_androidsettingsapp` authority.
+
+### Struktura úložiště Data store { #webapi_data_store_structure } 
+
+Data store entries consist of a namespace, key and value. The
+combination of namespace and key is unique. The value data type is JSON.
+
+Tabulka: Struktura úložiště dat
+
+| Položka | Popis | Datový typ |
+|---|---|---|
+| Jmenný prostor | Jmenné prostory pro organizaci záznamů. | Řetězec |
+| Klíč | Klíč pro identifikaci hodnot. | Řetězec |
+| Hodnota | Hodnota, která obsahuje informace o záznamu. | JSON |
+| Šifrováno | Označuje, zda má být hodnota daného klíče zašifrována | Boolean |
+
+### Získejte klíče a jmenné prostory { #webapi_data_store_get_keys_and_namespaces } 
+
+Seznam všech existujících jmenných prostorů:
+
+    GET /api/33/dataStore
+
+Příklad požadavku curl pro výpis:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore" -u admin:district
+```
+
+Příklad odpovědi:
+
+```json
+[
+  "foo",
+  "bar"
+]
+```
+
+Seznam všech klíčů ve jmenném prostoru:
+
+    GET /api/33/dataStore/<namespace>
+
+Příklad požadavku curl pro výpis:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo" -u admin:district
+```
+
+Příklad odpovědi:
+
+```json
+[
+  "key_1",
+  "key_2"
+]
+```
+
+Načtení hodnoty pro existující klíč z oboru názvů:
+
+    GET /api/33/dataStore/<namespace>/<key>
+
+Příklad curl požadavku pro načtení:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo/key_1"-u admin:district
+```
+
+Příklad odpovědi:
+
+```json
+{
+  "foo":"bar"
+}
+```
+
+Načtení metadat pro existující klíč z oboru názvů:
+
+    GET /api/33/dataStore/<namespace>/<key>/metaData
+
+Příklad curl požadavku pro načtení:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo/key_1/metaData" -u admin:district
+```
+
+Příklad odpovědi:
+
+```json
+{
+  "id": "dsKeyUid001", 
+  "created": "...",
+  "user": {...},
+  "namespace": "foo",
+  "key": "key_1"
+}
+```
+
+### Query API { #query-api } 
+The query API is allows you to query and filter values over all keys in a namespace. The `fields` parameter is used to specify the query. This is useful for retrieving specific values of keys across a namespace in a single request. 
+
+    GET /api/dataStore/<namespace>?fields=
+
+Seznam `fields` může být:
+
+* prázdné: vrátí pouze vstupní klávesy
+* `.`: vrátí kořenovou hodnotu tak, jak byla uložena
+* comma separated list of paths: `<path>[,<path>]`; each `<path>` can be a simple property name (like `age`) or a nested path (like `person.age`) 
+
+Furthermore, entries can be filtered using one or more `filter` parameters 
+and sorted using the `order` parameter. 
+
+Multiple filters can be combined using `rootJunction=OR` (default) or `rootJunction=AND`. 
+
+Všechny podrobnosti o parametrech `fields`, `filter` a `order` jsou uvedeny v následujících částech.
+
+#### Paging { #paging } 
+By default, results use paging. Use `pageSize` and `page` to adjust size and offset. 
+The parameter `paging=false` can be used to opt-out and always return all matches. 
+This should be used with caution as there could be many entries in a namespace. The default page size is 50.
+
+    GET /api/dataStore/<namespace>?fields=.&page=2&pageSize=10
+
+Když je stránkování vypnuto, položky se vrátí jako prosté pole výsledků jako kořenová struktura JSON. Stejného efektu lze dosáhnout při stránkovaných výsledcích pomocí `headless=true`.
+
+```json
+{
+  "pager": { ... },
+  "entries": [...]
+}
+```
+vs.
+```json
+[...]
+```
+
+#### Value extraction { #value-extraction } 
+The data store allows extracting entire simple or complex values 
+as well as the extraction of parts of complex JSON values.
+
+> **Note**
+> 
+> For clarity of the examples the responses shown mostly omit the outermost object with the `pager` information
+> and the `entries` array that the examples show.
+
+To filter a certain set of fields add a `fields` parameter to the namespace 
+query:
+
+    GET /api/dataStore/<namespace>?fields=name,description
+
+This returns a list of all entries having a non-null `name` and/or a 
+`description` field like in the following example:
+
+```json
+[
+  {"key": "key1", "name": "name1", "description": "description1"},
+  {"key": "key2", "name": "name2", "description": "description2"}
+]
+```
+
+If for some reason we even want entries where none of the extracted fields 
+is non-null contained in the result list the `includeAll` parameter can be 
+added:
+
+    GET /api/dataStore/<namespace>?fields=name,description&includeAll=true
+
+Odpověď nyní může vypadat takto:
+
+```json
+[
+  {"key": "key1", "name": "name1", "description": "description1"},
+  {"key": "key2", "name": "name2", "description": "description2"},
+  {"key": "key3", "name": null, "description": null},
+  {"key": "key4", "name": null, "description": null}
+]
+```
+
+The extraction is not limited to simple root level members but can pick 
+nested members as well by using square or round brackets after a members name:
+
+    GET /api/dataStore/<namespace>?fields=name,root[child1,child2]
+    GET /api/dataStore/<namespace>?fields=name,root(child1,child2)
+
+Příklad odpovědi může vypadat takto:
+
+```json
+[
+  { "key": "key1", "name": "name1", "root": {"child1": 1, "child2": []}},
+  { "key": "key2", "name": "name2", "root": {"child1": 2, "child2": []}}
+]
+```
+
+Stejná syntaxe funguje pro vnořené členy:
+
+    GET /api/dataStore/<namespace>?fields=root[level1[level2[level3]]]
+    GET /api/dataStore/<namespace>?fields=root(level1(level2(level3)))
+
+Příklad odpovědi zde:
+
+```json
+[
+  { "key": "key1", "root": {"level1": {"level2": {"level3": 42}}}},
+  { "key": "key1", "root": {"level1": {"level2": {"level3": 13}}}}
+]
+```
+
+When such deeply nested values are extracted we might not want to keep the 
+structure but extract the leaf member to a top level member in the response.
+Aliases can be used to make this happen. An alias can be placed anywhere 
+after a member name using `~hoist` followed by the alias in round brackets like so:
+
+    GET /api/dataStore/<namespace>?fields=root[level1[level2[level3~hoist(my-prop)]]]
+
+Odpověď by nyní vypadala takto:
+
+```json
+[
+  { "key": "key1", "my-prop": 42},
+  { "key": "key2", "my-prop": 13}
+]
+```
+
+If the full path should be kept while giving an alias to a nested member the 
+parent path needs to be repeated using dot-syntax to indicate the nesting.
+This can also be used to restructure a response in a new different structure 
+like so:
+
+    GET /api/dataStore/<namespace>?fields=root[level1[level2[level3~hoist(my-root.my-prop)]]]
+
+Nově strukturovaná odpověď nyní vypadá takto:
+
+```json
+[
+  { "key": "key1", "my-root": {"my-prop": 42}},
+  { "key": "key2", "my-root": {"my-prop": 13}}
+]
+```
+
+OBS! An alias cannot be used to rename an intermediate level. However, an alias
+could be used to resolve a name collision with the `key` member.
+
+    GET /api/dataStore/<namespace>?fields=id,key~hoist(value-key)
+
+```json
+[
+  { "key": "key1", "id": 1, "value-key": "my-key1"},
+  { "key": "key2", "id": 2, "value-key": "my-key2"}
+]
+```
+
+### Sorting results { #sorting-results } 
+Results can be sored by a single property using the `order=<path>[:direction]` parameter.
+This can be any valid value `<path>` or the entry key (use `_` as path).
+
+Ve výchozím nastavení je řazení alfanumerické za předpokladu, že hodnota na cestě je řetězec smíšeného typu.
+
+Chcete-li například extrahovat vlastnost name a také podle ní seřadit výsledek, použijte:
+
+    GET /api/dataStore/<namespace>?fields=name&order=name
+
+Pro přepnutí na sestupné pořadí použijte `:desc`:
+
+    GET /api/dataStore/<namespace>?fields=name&order=name:desc
+
+Sometimes the property sorted by is numeric so alphanumeric interpretation would be confusing.
+In such cases special ordering types `:nasc` and `:ndesc` can be used.
+
+Stručně řečeno, pořadí může být jedno z následujících:
+
+* `asc`: alfanumerické vzestupné pořadí
+* `desc:`: alfanumerické sestupné pořadí
+* `nasc`: číselné vzestupné pořadí
+* `ndesc`: číselné sestupné pořadí
+
+> **OBS!**
+> 
+> When using numeric order all matches must have a numeric value for the property at the provided `<path>`.
+
+### Filtering entries { #filtering-entries } 
+To filter entries within the query API context add one or more `filter` parameters
+while also using the `fields` parameter.
+
+Každý parametr `filter` má následující tvar:
+
+* unární operátory: `<path>:<operator>`
+* binární operátory: `<path>:<operator>:<value>`
+* sada operatorů: `<path>:<operator>:[<value>,<value>,...]`
+
+Unární operátory jsou:
+
+| Operátor | Popis |
+| -------- | ----------- |
+| `null`   | hodnota je JSON `null` |
+| `!null`  | hodnota je definována, ale liší se od JSON `null` |
+| `empty`  | hodnota je prázdný objekt, prázdné pole nebo řetězec JSON o délce nula |
+| `!empty` | hodnota se liší od prázdného objektu, prázdného pole nebo řetězce nulové délky |
+
+Binární operátory jsou:
+
+| Operátor | Popis |
+| -------- | ----------- |
+| `eq`     | hodnota se rovná danému booleovskému číslu, číslu nebo řetězci |
+| `!eq`, `ne`, `neq` | hodnota se nerovná danému booleovskému číslu, číslu nebo řetězci |
+| `lt`     | hodnota je číselně nebo abecedně menší než zadané číslo nebo řetězec |
+| `le`     | hodnota je číselně nebo abecedně menší nebo rovna danému číslu nebo řetězci |
+| `gt`     | hodnota je číselně nebo abecedně větší než zadané číslo nebo řetězec |
+| `ge`     | hodnota je číselně nebo abecedně větší nebo rovna danému číslu nebo řetězci |
+
+Binární operátory pro shodu textových vzorů jsou:
+
+| Operátor | Nerozlišují se malá a velká písmena |  Popis |
+| -------- | ---------------- | ----------- |
+| `like`   | `ilike`          | hodnota odpovídá danému vzoru textu |
+| `!like`  | `!ilike`         | hodnota neodpovídá zadanému vzoru textu |
+| `$like`  | `$ilike`, `startswith`   | hodnota začíná zadaným textovým vzorem |
+| `!$like` | `!$ilike`, `!startswith` | hodnota nezačíná zadaným textovým vzorem |
+| `like$`  | `ilike$`, `endswith`     | hodnota končí zadaným textovým vzorem |
+| `!like$` | `!ilike$`, `!endswith`   | hodnota nekončí zadaným textovým vzorem |
+
+For operators that work for multiple JSON node types the semantic is determined from the provided value.
+If the value is `true` or `false` the filter matches boolean JSON values.
+If the value is a number the filter matches number JSON values.
+Otherwise, the value matches string JSON values or mixed types of values.
+
+> **Tip**
+>
+> To force text comparison for a value that is numeric quote the value in single quotes.
+> For example, the value `'13'` is the text 13 while `13` is the number 13.  
+
+Operátoři sady jsou:
+
+| Operátor | Popis |
+| -------- | ----------- |
+| `in`     | vstupní hodnota je textově rovna jedné z uvedených hodnot (je v sadě) |
+| `!in`    | vstupní hodnota není textově rovna žádné z uvedených hodnot (není nastavena) |
+
+`<path>` může být:
+
+* `_`: vstupní klíč je
+* `.`: kořenová hodnota záznamu je
+* `<member>`: člen kořenové hodnoty je
+* `<member>.<member>`: člen na cestě je (až do hloubky 5 úrovní)
+
+A `<member>` path expression can be a member name or in case of arrays an array index.
+In case of an array the index can also be given in the form: `[<index>]`.
+For example, the path `addresses[0].street` would be identical to `addresses.0.street`.
+
+Některé příklady dotazů naleznete níže.
+
+Jméno (kořenového objektu) je "Luke":
+
+    GET /api/dataStore/<namespace>?fields=.&filter=name:eq:Luke
+
+Věk (kořenového objektu) je větší než 42 (číselný):
+
+    GET /api/dataStore/<namespace>?fields=.&filter=age:gt:42
+
+Kořenová hodnota je číslo větší než 42 (číselná shoda odvozená z hodnoty):
+
+    GET /api/dataStore/<namespace>?fields=.&filter=.:gt:42
+
+Povoleno (kořenového objektu) má hodnotu true (logická shoda odvozená z hodnoty):
+
+    GET /api/dataStore/<namespace>?fields=.&filter=enabled:eq:true
+
+Kořenový objekt má jméno obsahující „Pet“ a má věk vyšší než 20:
+
+    GET /api/dataStore/<namespace>?fields=.&filter=name:like:Pet&filter=age:gt:20
+
+Kořenový objekt je buď označen jako neplnoletý, nebo má méně než 18 let:
+
+    GET /api/dataStore/<namespace>?fields=.&filter=minor:eq:true&filter=age:lt:18&rootJunction=or
+
+### Vytvořte hodnoty { #webapi_data_store_create_values } 
+
+Vytvoření nového klíče a hodnoty pro jmenný prostor:
+
+    POST /api/33/dataStore/<namespace>/<key>
+
+Příklad curl požadavku pro vytvoření za předpokladu platného datového obsahu JSON:
+
+```bash
+curl "https://play.dhis2.org/demo/api/33/dataStore/foo/key_1" -X POST
+  -H "Content-Type: application/json" -d "{\"foo\":\"bar\"}" -u admin:district
+```
+
+Příklad odpovědi:
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 201,
+  "status": "OK",
+  "message": "Key 'key_1' created."
+}
+```
+
+Pokud požadujete šifrování dat, která ukládáte (například pověření uživatele apod.), Můžete k adrese URL připojit dotaz takto:
+
+    GET /api/33/dataStore/<namespace>/<key>?encrypt=true
+
+### Aktualizace hodnot { #webapi_data_store_update_values } 
+
+Aktualizace klíče, který existuje ve jmenném prostoru:
+
+    PUT /api/33/dataStore/<namespace>/<key>
+
+Příklad curl požadavku pro aktualizaci za předpokladu platného datového obsahu JSON:
+
+```bash
+curl "https://play.dhis2.org/demo/api/33/dataStore/foo/key_1" -X PUT -d "[1, 2, 3]"
+  -H "Content-Type: application/json" -u admin:district
+```
+
+Příklad odpovědi:
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 200,
+  "status": "OK",
+  "message": "Key 'key_1' updated."
+}
+```
+
+### Smazání klíčů { #webapi_data_store_delete_keys } 
+
+Odstranění existujícího klíče z jmenného prostoru:
+
+    DELETE /api/33/dataStore/<namespace>/<key>
+
+Příklad žádosti o smazání curl:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo/key_1" -X DELETE -u admin:district
+```
+
+Příklad odpovědi:
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 200,
+  "status": "OK",
+  "message": "Key 'key_1' deleted from namespace 'foo'."
+}
+```
+
+Odstranění všech klíčů ve jmenném prostoru:
+
+    DELETE /api/33/dataStore/<namespace>
+
+Příklad žádosti o smazání curl:
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo" -X DELETE -u admin:district
+```
+
+Příklad odpovědi:
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 200,
+  "status": "OK",
+  "message": "Namespace 'foo' deleted."
+}
+```
+
+### Sharing data store keys { #webapi_data_store_sharing } 
+
+Sharing of data store keys follows the same principle as for other metadata sharing (see
+[Sharing](#webapi_sharing)).
+
+Chcete-li získat nastavení sdílení pro konkrétní klíč úložiště dat:
+
+    GET /api/33/sharing?type=dataStore&id=<uid>
+
+Kde id klíče úložiště dat pochází z koncového bodu `/metaData` pro tento klíč:
+
+    GET /api/33/dataStore/<namespace>/<key>/metaData
+
+As usual the `access` property in the response reflects the capabilities of the 
+current user for the target entry.
+Namespace wide protection might still apply and render a user incapable to
+perform certain changes.
+
+Chcete-li upravit nastavení sdílení pro konkrétní klíč úložiště dat:
+
+    POST /api/33/sharing?type=dataStore&id=<uid>
+
+s následujícím požadavkem:
+
+```json
+{
+  "object": {
+    "publicAccess": "rw------",
+    "externalAccess": false,
+    "user": {},
+    "userAccesses": [],
+    "userGroupAccesses": [
+      {
+        "id": "hj0nnsVsPLU",
+        "access": "rw------"
+      },
+      {
+        "id": "qMjBflJMOfB",
+        "access": "r-------"
+      }
+    ]
+  }
+}
+```
+
+## Úložiště uživatelských dat { #webapi_user_data_store } 
+
+In addition to the *dataStore* which is shared between all users of the
+system, a user-based data store is also available. Data stored to the
+*userDataStore* is associated with individual users, so that each user
+can have different data on the same namespace and key combination. All
+calls against the *userDataStore* will be associated with the logged in
+user. This means one can only see, change, remove and add values
+associated with the currently logged in user.
+
+    /api/33/userDataStore
+
+### Struktura úložiště uživatelských dat { #webapi_user_data_store_structure } 
+
+*userDataStore* consists of a user, a namespace, keys and associated
+values. The combination of user, namespace and key is unique.
+
+Tabulka: Struktura úložiště uživatelských dat
+
+| Položka | Popis | Datový typ |
+|---|---|---|
+| Uživatel | Uživatel, se kterým jsou tato data spojena | Řetězec |
+| Jmenný prostor | Jmenný prostor, do kterého klíč patří | Řetězec |
+| Klíč | Klíč, na kterém je uložena hodnota | Řetězec |
+| Hodnota | Uložená hodnota | JSON |
+| Šifrováno | Označuje, zda má být hodnota zašifrována | Boolean |
+
+### Získejte jmenné prostory { #webapi_user_data_store_get_namespaces } 
+
+Vrátí pole všech existujících jmenných prostorů
+
+    GET /api/33/userDataStore
+
+Příklad
+    požadavek:
+
+```bash
+curl -H "Content-Type: application/json" -u admin:district "play.dhis2.org/api/33/userDataStore"
+```
+
+```json
+[
+  "foo",
+  "bar"
+]
+```
+
+### Získejte klíče { #webapi_user_data_store_get_keys } 
+
+Vrátí pole všech existujících klíčů v daném oboru názvů
+
+    GET /api/userDataStore/<namespace>
+
+Příklad požadavku:
+
+```bash
+curl -H "Content-Type: application/json" -u admin:district "play.dhis2.org/api/33/userDataStore/foo"
+```
+
+```json
+[
+  "key_1",
+  "key_2"
+]
+```
+
+### Získejte hodnoty { #webapi_user_data_store_get_values } 
+
+Vrátí hodnotu pro daný jmenný prostor a klíč
+
+    GET /api/33/userDataStore/<namespace>/<key>
+
+Příklad požadavku:
+
+```bash
+curl -H "Content-Type: application/json" -u admin:district "play.dhis2.org/api/33/userDataStore/foo/bar"
+```
+
+```json
+{
+  "some": "value"
+}
+```
+
+### Vytvořte hodnotu { #webapi_user_data_store_create_values } 
+
+Přidá novou hodnotu k danému klíči v daném jmenném prostoru.
+
+    POST /api/33/userDataStore/<namespace>/<key>
+
+Příklad požadavku:
+
+```bash
+curl -X POST -H "Content-Type: application/json" -u admin:district -d "['some value']"
+  "play.dhis2.org/api/33/userDataStore/foo/bar"
+```
+
+```json
+{
+  "httpStatus": "Created",
+  "httpStatusCode": 201,
+  "status": "OK",
+  "message": "Key 'bar' in namespace 'foo' created."
+}
+```
+
+Pokud požadujete šifrování hodnoty (například pověření uživatele apod.), Můžete k adrese URL připojit dotaz takto:
+
+    GET /api/33/userDataStore/<namespace>/<key>?encrypt=true
+
+### Aktualizace hodnot { #webapi_user_data_store_update_values } 
+
+Aktualizuje existující hodnotu
+
+    PUT /api/33/userDataStore/<namespace>/<key>
+
+Příklad požadavku:
+
+```bash
+curl -X PUT -H "Content-Type: application/json" -u admin:district -d "['new value']"
+  "play.dhis2.org/api/33/userDataStore/foo/bar"
+```
+
+```json
+{
+  "httpStatus":"Created",
+  "httpStatusCode":201,
+  "status":"OK",
+  "message":"Key 'bar' in namespace 'foo' updated."
+}
+```
+
+### Odstranit klíč { #webapi_user_data_store_delete_key } 
+
+Odstranění klíče
+
+    DELETE /api/33/userDataStore/<namespace>/<key>
+
+Příklad požadavku:
+
+```bash
+curl -X DELETE -u admin:district "play.dhis2.org/api/33/userDataStore/foo/bar"
+```
+
+```json
+{
+  "httpStatus":"OK",
+  "httpStatusCode":200,
+  "status":"OK",
+  "message":"Key 'bar' deleted from the namespace 'foo."
+}
+```
+
+### Odstranit jmenný prostor { #webapi_user_data_store_delete_namespace } 
+
+Odstranění všech klíčů v daném jmenném prostoru
+
+    DELETE /api/33/userDataStore/<namespace>
+
+Příklad požadavku:
+
+```bash
+curl -X DELETE -u admin:district "play.dhis2.org/api/33/userDataStore/foo"
+```
+
+```json
+{
+  "httpStatus":"OK",
+  "httpStatusCode":200,
+  "status":"OK",
+  "message":"All keys from namespace 'foo' deleted."
+}
+```
+
+### Admin Access to another User's Datastore { #admin-access-to-another-users-datastore } 
+Admins can manipulate another user's datastore by adding the `username`
+parameter to any of the manipulations described above to not have them affect
+the admins own datastore but the datastore of the user given by the `username`
+parameter.
+
+Například pro přidání hodnoty do datového úložiště `Peter` správce používá:
+
+    POST /api/userDataStore/<namespace>/<key>?username=Peter
+
+## Partial Update (Experimental) { #partial-update-experimental } 
+Both the datastore and user datastore allow partial updating of entry values.  
+
+All the subsequent examples operate on the basis that the following JSON entry is in the namespace `pets` with key `whiskers`.  
+
+```json
+{
+  "name": "wisker",
+  "favFood": [
+    "fish", "rabbit"
+  ]
+}
+```
+
+We can perform many update operations on this entry. The following examples use `{store}` in the API calls, please substitute with `dataStore` or `userDataStore` for your use case.
+
+### Update root (entire entry) { #update-root-entire-entry } 
+We can update the entry at the root by not supplying the `path` request param or leaving it empty `path=`.  
+
+`PUT` `/api/{store}/pets/whiskers` with body `"whiskers"` updates the entry to be the supplied body. So a `GET` request to `/api/{store}/pets/whiskers` would now show:  
+```json
+"whiskers"
+```
+
+### Update at specific path { #update-at-specific-path } 
+We can update the entry at a specific path by supplying the `path` request param and the property to update.
+
+`PUT` `/api/{store}/pets/whiskers?path=name` with body `"whiskers"` updates the entry at the `name` property only. So a `GET` request to `/api/{store}/pets/whiskers` would now show the updated `name`:
+
+```json
+{
+    "name": "whiskers",
+    "favFood": [
+        "fish",
+        "rabbit"
+    ]
+}
+```
+
+We can update an array element at a specific path.
+
+`PUT` `/api/{store}/pets/whiskers?path=favFood.[0]` with body `"carrot"` updates the first element in the `favFood` array only. So a `GET` request to `/api/{store}/pets/whiskers` would now show the updated `favFood`:
+
+```json
+{
+    "name": "wisker",
+    "favFood": [
+        "carrot",
+        "rabbit"
+    ]
+}
+```
+
+### Benefits { #benefits } 
+- smaller payloads required for small changes
+- less error-prone (no copy-pasting large entries to change 1 property)
+
+## Roll (Experimental) { #roll-experimental } 
+The `roll` request param enables the user to have a 'rolling' number of elements in an array. In our example we have the `favFood` array. If we wanted to update this array previously, we'd have to supply the whole payload like so:  
+`PUT` `/api/{store}/pets/whiskers` with body
+
+```json
+{
+    "name": "wisker",
+    "favFood": [
+        "fish",
+        "rabbit",
+        "carrot"
+    ]
+}
+```
+
+Now we can use the `roll` request param (with the `path` functionality) to state that we want the rolling functionality for _n_ number of elements.
+In this example we state that we want the array to have a rolling value of 3, passing in an extra element in the call.  
+`PUT` `/api/{store}/pets/whiskers?roll=3&path=favFood` with body `"carrot"` would result in the following state.
+
+```json
+{
+    "name": "wisker",
+    "favFood": [
+        "fish",
+        "rabbit",
+        "carrot"
+    ]
+}
+```
+
+Since we passed the rolling value of `3`, this indicates that we only want the last 3 elements passed into the array. So if we now make another call and add a new element to the array, we would expect the first element (`fish`) to be dropped from the array.
+`PUT` `/api/{store}/pets/whiskers?roll=3&path=favFood` with body `"bird"` would result in the following state:
+
+```json
+{
+    "name": "wisker",
+    "favFood": [
+        "rabbit",
+        "carrot",
+        "bird"
+    ]
+}
+```
+
+> **Note**
+>
+> Once a rolling value has been set (e.g. `role=3`), it can only be increased (e.g. `roll=5`) and cannot be decreased (e.g. `roll=2`)
+
+Dot notation does allow for nested calls. Let's say we have this current entry value:
+
+```json
+{
+  "name": "wisker",
+  "favFood": [
+    "fish", "rabbit"
+  ],
+  "type": {
+    "breed": ["shorthair"]
+  }
+}
+```
+
+If we wanted to add another breed using a rolling array we could make the call:
+`PUT` `/api/{store}/pets/whiskers?roll=3&path=type.breed` with body `"small"` which would result in the following state:
+
+```json
+{
+  "name": "wisker",
+  "favFood": [
+    "fish", "rabbit"
+  ],
+  "type": {
+    "breed": ["shorthair, small"]
+  }
+}
+```
+
+### Benefits { #benefits } 
+- Only interested in keeping track of _n_ values which may change over time
+
