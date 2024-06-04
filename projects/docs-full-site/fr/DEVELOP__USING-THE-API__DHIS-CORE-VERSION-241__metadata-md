@@ -86,7 +86,7 @@ Pour que le résultat soit ordonné selon une propriété spécifique :
 
     /api/indicators.json?order=shortName:desc
 
-To order the result based on created datetime property first (descending order) and then by name property (ascending order):
+Pour que le résultat soit d'abord ordonné selon la propriété créée "date et heure" (ordre décroissant), puis selon la propriété "nom" (ordre croissant) :
 
     /api/indicators.json?order=created:desc,name:asc
 
@@ -943,19 +943,18 @@ Tableau : Paramètres d'importation
 | preheatMode (mode préchauffage) | REFERENCE, ALL, NONE (référence, tous, aucun) | Définit le mode de préchauffage ; il est utilisé pour signaler si le préchauffage doit être fait pour `TOUS` (comme c'était le cas auparavant avec *preheatCache=true*) ou faire un scan plus intelligent des objets pour voir ce qu'il faut préchauffer (actuellement le paramètre par défaut). Il n'est pas recommandé de le définir sur `AUCUN`. |
 | importStrategy (stratégie d'importation) | CRÉER_ET_METTRE À JOUR, CRÉER, METTRE À JOUR, SUPPRIMER | Définit la stratégie d'importation ; `CREATE_AND_UPDATE` essaiera de trouver une correspondance avec l'identifiant. Si aucune correspondance n'est trouvée, l'objet sera créé. |
 | Mode atomique | ALL, NONE (tous, aucun) | Définit le mode atomique. Dans l'ancien importateur, nous faisions toujours une importation *best effort* (mode au mieux), ce qui signifie que même si certaines références n'existaient pas, l'importation se faisait quand même (par exemple, des éléments de données manquants dans un groupe d'éléments de données). Par défaut, le nouvel importateur ne permet pas cela et rejette les erreurs de validation. Définir le mode `NONE` (aucun) émulait l'ancien fonctionnement. |
-| flushMode | AUTO, OBJET | Définit le mode de vidage, qui contrôle quand vider le cache interne. Il est *fortement* recommandé de maintenir ce mode sur `AUTO` (qui est le mode par défaut). N'utilisez `OBJECT` qu'à des fins de débogage, lorsque vous voyez des exceptions liées à l'hibernation et que vous voulez localiser l'emplacement exact où l'empilement se produit (l'hibernation ne se déclenche qu'au moment du vidage, il peut donc être difficile de savoir quel objet a eu des problèmes). | 
+| flushMode (mode de vidage) | AUTO, OBJET | Définit le mode de vidage, qui contrôle quand vider le cache interne. Il est *fortement* recommandé de maintenir ce mode sur `AUTO` (qui est le mode par défaut). N'utilisez `OBJECT` qu'à des fins de débogage, lorsque vous voyez des exceptions liées à l'hibernation et que vous voulez localiser l'emplacement exact où l'empilement se produit (l'hibernation ne se déclenche qu'au moment du vidage, il peut donc être difficile de savoir quel objet a eu des problèmes). | 
 | skipSharing (ignorer le partage) | faux, vrai | Permet d'ignorer les propriétés de partage, d'éviter la fusion des éléments partagées lors des mises à jour et l'ajout d'un accès à un groupe d'utilisateurs lors de la création de nouveaux objets. |
 | skipValidation (ignorer la validation) | faux, vrai | Permet d'ignorer la validation lors de l'importation. Ce paramètre n'est pas recommandé : `NOT RECOMMENDED`. |
-| async | faux, vrai | Asynchronous import, returns immediately with a *Location* header pointing to the location of the *importReport*. The payload also contains a json object of the job created. |
-| inclusionStrategy | NON_NULL, ALWAYS, NON_EMPTY | *NON_NULL* includes properties which are not null, *ALWAYS* include all properties, *NON_EMPTY* includes non empty properties (will not include strings of 0 length, collections of size 0, etc.) |
-| userOverrideMode | NONE, CURRENT, SELECTED | Allows you to override the user property of every object you are importing, the options are NONE (do nothing), CURRENT (use import user), SELECTED (select a specific user using overrideUser=X) |
-| overrideUser | User ID | If userOverrideMode is SELECTED, use this parameter to select the user you want override with. |
+| async | faux, vrai | Importation asynchrone ; la réponse est renvoyée immédiatement avec un en-tête *Emplacement* qui pointe vers l'emplacement du *rapport d'importation*. La charge contient également un objet json de la tâche créée. |
+| inclusionStrategy (stratégie d'inclusion) | NON_NULL, ALWAYS, NON_EMPTY | *NON_NULL* inclut les propriétés qui ne sont pas nulles, *ALWAYS* inclut toutes les propriétés, *NON_EMPTY* inclut les propriétés qui ne sont pas vides (n'inclut pas les chaînes de longueur 0, les collections de taille 0, etc.) |
+| userOverrideMode (utiliser le mode de remplacement) | NONE, CURRENT, SELECTED (aucun, actuel, sélectionné) | Ceci vous permet de remplacer la propriété utilisateur de chaque objet que vous importez. Les options sont NONE (ne rien faire), CURRENT (utiliser l'utilisateur d'importation), SELECTED (sélectionner un utilisateur spécifique en utilisant overrideUser=X). |
+| overrideUser (remplacer l'utilisateur) | ID de l'utilisateur | Si le mode de remplacement de l'utilisateur (userOverrideMode) est défini sur "SELECTED", utilisez ce paramètre pour sélectionner l'utilisateur avec lequel vous voulez effectuer le remplacement. |
 
-> **NOTE** When updating objects, all property values will be overwritten even if the new values are `null`. Please use [JSON Patch API](#webapi_partial_updates) in case you want do partial update to an object.
+> **REMARQUE** Lors de la mise à jour des objets, toutes les valeurs des propriétés seront écrasées même si les nouvelles valeurs sont `null`. Veuillez utiliser [JSON Patch API](#webapi_partial_updates) si vous voulez effectuer une mise à jour partielle d'un objet.
 
 
-An example of a metadata payload to be imported looks like this. Note how
-each entity type have their own property with an array of objects:
+Voici un exemple de charge d'importation de métadonnées. Vous remarquerez que chaque type d'entité possède sa propre propriété avec un tableau d'objets :
 
 ```json
 {
@@ -992,10 +991,7 @@ each entity type have their own property with an array of objects:
 }
 ```
 
-When posting this payload to the metadata endpoint, the response will contain
-information about the parameters used during the import and a summary per
-entity type including how many objects were created, updated, deleted and
-ignored:
+Lors de l'envoi de cette charge au point d'extrémité des métadonnées, la réponse contiendra des informations sur les paramètres utilisés lors de l'importation et un récapitulatif par type d'entité, lequel contiendra le nombre d'objets créés, mis à jour, supprimés et ignorés :
 
 ```json
 {
@@ -1049,40 +1045,33 @@ ignored:
 
 ## GeoJSON import <!-- DHIS2-EDIT:https://github.com/dhis2/dhis2-docs/edit/2.41/src/developer/web-api/geo-json.md --> { #geojson-import } 
 
-The GeoJSON import is used to attach geometry data to organisation units.
+L'importation GeoJSON est utilisée pour relier les données géométriques aux unités d'organisation.
 
-For a bulk import a GeoJSON file with a feature collection is expected.
-Each feature in the collection requires a reference to the organisation unit it
-should be linked to.
+Pour une importation en masse, il faut un fichier GeoJSON avec une collection d'éléments.
+Chaque élément de la collection a besoin d'une référence à l'unité d'organisation à laquelle il doit être relié.
 
-By default, the geometry from the file is stored as the `geometry` property of
-an organisation unit. To store additional geometries attributes of type
-`GEOJSON` can be created. When attributes are use all geometries from a file
-are stored for the same attribute which is provided with an additional 
-parameter `attributeId`.
+Par défaut, la géométrie du fichier est stockée en tant que propriété `geometry` d'une unité d'organisation. Pour stocker des géométries supplémentaires, des attributs de type `GEOJSON` peuvent être créés. Lorsque des attributs sont utilisés, toutes les géométries d'un fichier sont stockées pour le même attribut qui est fourni avec un paramètre supplémentaire `attributeId`.
 
-### GeoJSON Bulk Data Import { #webapi_geojson_bulk_import }
+### Importation de données en masse avec GeoJSON { #webapi_geojson_bulk_import }
 
-Table: Import Parameters
+Tableau : Paramètres d'importation
 
 | Nom ;              | Type                           | Par défaut | Description ;                                                                                                                       |
 |-------------------|--------------------------------|---|-----------------------------------------------------------------------------------------------------------------------------------|
-| `geoJsonId`       | `booléen`                      | `vrai` | When `true` the `id` property of the GeoJSON features is expected to hold the organisation unit identifier                        |
-| `geoJsonProperty` | `Chaîne`                       | _undefined_ | If `geoJsonId` is `false` this parameter names the property in the GeoJSON feature's `properties` that holds the organisation unit identifier |
-| `orgUnitProperty` | `enum`: [`id`, `code`, `name`] | `id` | The property of the organisation unit that is referred to by the identifiers used in the GeoJSON file                             |
-| `attributeId`     | `Chaîne` | _undefined_ | When set the geometry is stored as value of the attribute referenced  by ID                                                       |
-| `dryRun`          | `booléen` | `faux` | When `true` the import is processed without actually updating the organisation units |
-| `async`           | `booléen` | `faux` | When `true` the import is processed asnychronously |
+| `geoJsonId`       | `boolean`                      | `true` | Si le paramètre est défini sur `true`, la propriété `id` des éléments GeoJSON est censée contenir l'identifiant de l'unité d'organisation.                        |
+| `geoJsonProperty` | `String`                       | _undefined_ | Si `geoJsonId` est défini sur `false`, ce paramètre nomme la propriété dans les `properties` de l'élément GeoJSON qui contient l'identifiant de l'unité d'organisation. |
+| `orgUnitProperty` | `enum`: [`id`, `code`, `name`] | `id` | La propriété de l'unité d'organisation à laquelle se réfèrent les identifiants utilisés dans le fichier GeoJSON.                             |
+| `attributeId`     | `String` | _undefined_ | Lorsqu'elle est définie, la géométrie est stockée en tant que valeur de l'attribut référencé par l'ID.                                                       |
+| `dryRun`          | `booléen` | `faux` | Si le paramètre est défini sur `true`, l'importation est traitée sans que les unités d'organisation ne soient mis à jour. |
+| `async`           | `booléen` | `faux` | Lorsque le paramètre est défini sur `true`, l'importation est traitée de manière asynchrone. |
 
 Uasge:
 
     POST /api/organisationUnits/geometry
 
-The post body is the GeoJSON file. Content type should be `application/json` or
-`application/geo+json`. The file may be `.zip` or `.gzip` compressed.
+Le corps du message est le fichier GeoJSON. Le type de contenu doit être `application/json` ou `application/geo+json`. Le fichier peut être compressé en `.zip` ou `.gzip`.
 
-For example, a default file where `id` is used to refer to an organisation unit 
-id has this structure:
+Par exemple, un fichier par défaut dans lequel `id` est utilisé pour faire référence à l'identifiant d'une unité d'organisation a la structure suivante :
 
 ```json
 { 
@@ -1098,8 +1087,7 @@ id has this structure:
 }
 ```
 
-A file where a feature property is used to refer to the organisation unit code
-would have this structure:
+Un fichier dans lequel une propriété d'élément est utilisée pour faire référence au code de l'unité d'organisation devrait avoir la structure suivante :
 
 ```json
 { 
@@ -1114,65 +1102,58 @@ would have this structure:
   ]
 }
 ```
-The `coordinates` in a `geometry` may be pairs or triplets. 
-If a third dimension is present it is stripped during the import.
+Les `coordonnées` d'une `géométrie` peuvent être des paires ou des triplets.
+Si une troisième dimension est présente, elle est supprimée lors de l'importation.
 
-A `geometry` may also be `null` to effectively clear or delete the geometry 
-for specific organisation units. There is a special bulk deletion API that is
-described in the next section.
+Une `geometry` peut également être `null` pour effacer ou supprimer efficacement la géométrie pour des unités d'organisation spécifiques. Il existe une API spéciale de suppression en masse ; elle est décrite dans la section suivante.
 
-When run synchronously an import report is returned directly.
-The HTTP status code is always `OK`, the `status` in the message payload
-indicates if all rows were imported successfully.
-The import counts statistics contained in the report give further information:
+Lorsqu'elle est exécutée de manière synchrone, un rapport d'importation est renvoyé directement.
+Le code de statut HTTP est toujours `OK`, le `status` dans le message indique si toutes les lignes ont été importées avec succès.
+Les statistiques sur le nombre de lignes importées, contenues dans le rapport donnent des informations supplémentaires :
 
-* `imported`: number of organisation units that were successfully updated with a geometry that did not have one before for the updated property
-* `updated`: number of organisation units that were successfully updated with a geometry that did have value for the updated property already
-* `ignored`: number of organisation units that failed to update
-* `deleted`: number of organisation units that where successfully update with a _empty_ geometry
+* `imported` : nombre d'unités d'organisation qui ont été mises à jour avec succès avec une géométrie qui n'avait aucune valeur pour la propriété mise à jour.
+* `updated` : nombre d'unités d'organisation qui ont été mises à jour avec succès avec une géométrie qui avait déjà une valeur pour la propriété mise à jour.
+* `ignored` : nombre d'unités d'organisation qui n'ont pas été mises à jour
+* `deleted` : nombre d'unités d'organisation qui ont été mises à jour avec succès avec une géométrie _vide_.
 
-When the import is run asynchronous the request returns immediately with status 
-`OK` and job configuration response that contains a relative reference to 
-the task endpoint that allows to track the status of the asynchronous import.
-For example:
+Lorsque l'importation est exécutée de manière asynchrone, la requête renvoie immédiatement le statut `OK` de même que la réponse de configuration de la tâche qui contient une référence relative au point d'extrémité de la tâche qui permet de suivre le statut de l'importation asynchrone. Voici un exemple :
 
     /api/system/tasks/GEOJSON_IMPORT/{job-id}
 
-The summary that is returned directly for synchronous execution is available at
+Le récapitulatif renvoyé directement pour une exécution synchrone est disponible à l'adresse suivante 
 
     /api/system/taskSummaries/GEOJSON_IMPORT/{job-id}
 
-once the import is finished.
+dès que l'importation est terminée.
 
-### GeoJSON Bulk Data Deletion { #webapi_geojson_bulk_deletion }
-To clear or unset the `geometry` data for all organisation units use:
+### Suppression de données en masse avec GeoJSON { #webapi_geojson_bulk_deletion }
+Pour effacer ou désactiver les données `geometry` pour toutes les unités d'organisation, utilisez :
 
     DELETE /api/organisationUnits/geometry
 
-To clear or unset the geometry data for a specific `GEOJSON` attribute for
-all organisation units use:
+Pour effacer ou désactiver les données géométriques d'un attribut `GEOJSON` spécifique pour toutes les unités d'organisation :
 
     DELETE /api/organisationUnits/geometry?attributeId={attr-id}
 
-Clearing is always synchronous and returns a similar report as the bulk import.
-It does not support any other parameters. No `dry-run` can be performed.
-Bulk clearing requires the `F_PERFORM_MAINTENANCE` authority.
+Le nettoyage se fait toujours de façon synchrone et renvoie un rapport similaire à celui de l'importation en masse.
+Il ne prend en charge aucun autre paramètre. Aucun `essai` ne peut être effectué.
+Pour effectuer un nettoyage en masse, l'utilisateur doit disposer de l'autorité `F_PERFORM_MAINTENANCE`.
 
-### GeoJSON Single Data Import { #webapi_geojson_single_import }
-The single import allows to update the geometry of a single organisation unit.
+### Importation de données uniques avec GeoJSON { #webapi_geojson_single_import }
+L'importation unique permet de mettre à jour la géométrie d'une seule unité d'organisation.
 
     POST /api/organisationUnits/{id}/geometry
 
-The post body only contains the GeoJSON `geometry` value, for example:
+Le corps du message ne contient que la valeur GeoJSON `geometry`, par exemple :
 ```json
 {
   "type": "Polygon",
   "coordinates": [...]
 }
 ```
-Single import only supports `attributeId` and `dryRun` parameters.
+L'importation unique ne prend en charge que les paramètres `attributeId` et `dryRun`.
 
-### GeoJSON Single Data Deletion { #webapi_geojson_single_deletion }
+### Suppression de données uniques avec GeoJSON { #webapi_geojson_single_deletion }
 To clear the `geometry` GeoJSON data of an individual organisation unit use:
 
     DELETE /api/organisationUnits/{id}/geometry
@@ -1207,7 +1188,7 @@ To get JSON schema for a specific class:
     GET /api/schemas/dataElement.json
 
 
-## Icons { #webapi_icons } 
+## Icônes { #webapi_icons } 
 
 DHIS2 includes a collection of icons that can be used to give visual
 context to metadata. There are two different kind of icons:
@@ -1425,7 +1406,7 @@ Table: Style properties
 
 | Propriété | Description ; | Type |
 |---|---|---|
-| color | A color, represented by a hexadecimal. | String (#000000) |
+| color | A color, represented by a hexadecimal. | Chaîne (#000000) |
 | icon | An icon, represented by a icon-name. | Chaîne |
 
 Currently, there is no official list or support for icon-libraries, so
@@ -1661,7 +1642,7 @@ The payload in JSON format looks like the following:
 }
 ```
 
-The JSON properties are described in the following table.
+Les propriétés JSON sont décrites dans le tableau suivant.
 
 Table: Merge payload fields
 
@@ -1757,9 +1738,9 @@ Sample error response looks like:
 }
 ```
 
-## Indicator Types { #webapi_indicator_types}
+## Types d'indicateurs { #webapi_indicator_types}
 
-### Merge indicator types { #webapi_indicator_type_merge}
+### Fusionner les types d'indicateurs { #webapi_indicator_type_merge}
 
 The indicator type merge endpoint allows you to merge a number of indicator types into a target indicator type.
 
@@ -1788,7 +1769,7 @@ The payload in JSON format looks like the following:
 }
 ```
 
-The JSON properties are described in the following table.
+Les propriétés JSON sont décrites dans le tableau suivant.
 
 Table: Merge payload fields
 
@@ -1986,7 +1967,7 @@ The payload in JSON format looks like the following:
 }
 ```
 
-The JSON properties are described in the following table.
+Les propriétés JSON sont décrites dans le tableau suivant.
 
 Table: Split payload fields
 
@@ -2045,7 +2026,7 @@ The payload in JSON format looks like the following:
 }
 ```
 
-The JSON properties are described in the following table.
+Les propriétés JSON sont décrites dans le tableau suivant.
 
 Table: Merge payload fields
 
@@ -2384,7 +2365,7 @@ To retrieve description of programRule condition you can use POST and provide co
 
     /api/programRules/condition/description?<program_rule_uid>
 
-## Forms { #webapi_forms } 
+## Formulaires { #webapi_forms } 
 
 To retrieve information about a form (which corresponds to a data set
 and its sections) you can interact with the `form` resource. The form
@@ -2954,7 +2935,7 @@ Certain types of files are blocked from being uploaded for security reasons.
 
 The following content types are blocked.
 
-| Content type | Content type |
+| Type de contenu | Type de contenu |
 | ------------------------------------- | ---- |
 | text/html                             | application/x-ms-dos-executable |
 | text/css                              | application/vnd.microsoft.portable-executable |

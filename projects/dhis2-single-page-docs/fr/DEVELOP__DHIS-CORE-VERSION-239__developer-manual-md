@@ -1,8 +1,8 @@
 ---
 revision_date: '2024-05-23'
 tags:
-- DHIS version 2.39
 - Développement
+- DHIS version 2.39
 template: single.html
 ---
 
@@ -1522,19 +1522,18 @@ Tableau : Paramètres d'importation
 | importStrategy (stratégie d'importation) | CRÉER_ET_METTRE À JOUR, CRÉER, METTRE À JOUR, SUPPRIMER | Définit la stratégie d'importation ; `CREATE_AND_UPDATE` essaiera de trouver une correspondance avec l'identifiant. Si aucune correspondance n'est trouvée, l'objet sera créé. |
 | Mode atomique | ALL, NONE (tous, aucun) | Définit le mode atomique. Dans l'ancien importateur, nous faisions toujours une importation *best effort* (mode au mieux), ce qui signifie que même si certaines références n'existaient pas, l'importation se faisait quand même (par exemple, des éléments de données manquants dans un groupe d'éléments de données). Par défaut, le nouvel importateur ne permet pas cela et rejette les erreurs de validation. Définir le mode `NONE` (aucun) émulait l'ancien fonctionnement. |
 | ~~mergeMode~~ (mode de fusion) | ~~REPLACE, MERGE~~ (remplacer, fusionner) | ~~Définit le mode de fusion. Lors des mises à jour nous avons deux façons de fusionner l'ancien objet avec le nouveau. Le mode `MERGE` ne remplacera l'ancienne propriété que si la nouvelle n'est pas nulle. Pour le mode `REPLACE`, toutes les propriétés sont remplacées qu'elles soient nulles ou non.~~ (*) |
-| flushMode | AUTO, OBJET | Définit le mode de vidage, qui contrôle quand vider le cache interne. Il est *fortement* recommandé de maintenir ce mode sur `AUTO` (qui est le mode par défaut). N'utilisez `OBJECT` qu'à des fins de débogage, lorsque vous voyez des exceptions liées à l'hibernation et que vous voulez localiser l'emplacement exact où l'empilement se produit (l'hibernation ne se déclenche qu'au moment du vidage, il peut donc être difficile de savoir quel objet a eu des problèmes). | 
+| flushMode (mode de vidage) | AUTO, OBJET | Définit le mode de vidage, qui contrôle quand vider le cache interne. Il est *fortement* recommandé de maintenir ce mode sur `AUTO` (qui est le mode par défaut). N'utilisez `OBJECT` qu'à des fins de débogage, lorsque vous voyez des exceptions liées à l'hibernation et que vous voulez localiser l'emplacement exact où l'empilement se produit (l'hibernation ne se déclenche qu'au moment du vidage, il peut donc être difficile de savoir quel objet a eu des problèmes). | 
 | skipSharing (ignorer le partage) | faux, vrai | Permet d'ignorer les propriétés de partage, d'éviter la fusion des éléments partagées lors des mises à jour et l'ajout d'un accès à un groupe d'utilisateurs lors de la création de nouveaux objets. |
 | skipValidation (ignorer la validation) | faux, vrai | Permet d'ignorer la validation lors de l'importation. Ce paramètre n'est pas recommandé : `NOT RECOMMENDED`. |
-| async | faux, vrai | Asynchronous import, returns immediately with a *Location* header pointing to the location of the *importReport*. The payload also contains a json object of the job created. |
-| inclusionStrategy | NON_NULL, ALWAYS, NON_EMPTY | *NON_NULL* includes properties which are not null, *ALWAYS* include all properties, *NON_EMPTY* includes non empty properties (will not include strings of 0 length, collections of size 0, etc.) |
-| userOverrideMode | NONE, CURRENT, SELECTED | Allows you to override the user property of every object you are importing, the options are NONE (do nothing), CURRENT (use import user), SELECTED (select a specific user using overrideUser=X) |
-| overrideUser | User ID | If userOverrideMode is SELECTED, use this parameter to select the user you want override with. |
+| async | faux, vrai | Importation asynchrone ; la réponse est renvoyée immédiatement avec un en-tête *Emplacement* qui pointe vers l'emplacement du *rapport d'importation*. La charge contient également un objet json de la tâche créée. |
+| inclusionStrategy (stratégie d'inclusion) | NON_NULL, ALWAYS, NON_EMPTY | *NON_NULL* inclut les propriétés qui ne sont pas nulles, *ALWAYS* inclut toutes les propriétés, *NON_EMPTY* inclut les propriétés qui ne sont pas vides (n'inclut pas les chaînes de longueur 0, les collections de taille 0, etc.) |
+| userOverrideMode (utiliser le mode de remplacement) | AUCUN, ACTUEL, SÉLECTIONNÉ | Ceci vous permet de remplacer la propriété utilisateur de chaque objet que vous importez. Les options sont NONE (ne rien faire), CURRENT (utiliser l'utilisateur d'importation), SELECTED (sélectionner un utilisateur spécifique en utilisant overrideUser=X). |
+| overrideUser (remplacer l'utilisateur) | ID de l'utilisateur | Si le mode de remplacement de l'utilisateur est sélectionné, utilisez ce paramètre pour sélectionner l'utilisateur avec lequel vous voulez effectuer le remplacement. |
 
 > (*) Currently the `mergeMode=MERGE` option of the import service has limitations and doesn't support all objects. It doesn't work with some object types such as Embedded objects, or objects which are saved as JSONB format in database ( sharing, attributeValues, etc...). Fixing those issues are complicated and would just cause new issues. Therefore, this `mergedMode=MERGE` is deprecated and currently is not recommended to use. The update mode should always be mergedMode=REPLACE. We have developed a new [JSON Patch API](#webapi_partial_updates) which can be used as an alternative approach. This feature is introduced in 2.37 release.
 
 
-An example of a metadata payload to be imported looks like this. Note how
-each entity type have their own property with an array of objects:
+Voici un exemple de charge d'importation de métadonnées. Vous remarquerez que chaque type d'entité possède sa propre propriété avec un tableau d'objets :
 
 ```json
 {
@@ -1571,10 +1570,7 @@ each entity type have their own property with an array of objects:
 }
 ```
 
-When posting this payload to the metadata endpoint, the response will contain
-information about the parameters used during the import and a summary per
-entity type including how many objects were created, updated, deleted and
-ignored:
+Lors de l'envoi de cette charge au point d'extrémité des métadonnées, la réponse contiendra des informations sur les paramètres utilisés lors de l'importation et un récapitulatif par type d'entité, lequel contiendra le nombre d'objets créés, mis à jour, supprimés et ignorés :
 
 ```json
 {
@@ -1629,40 +1625,33 @@ ignored:
 
 ## GeoJSON import <!-- DHIS2-EDIT:https://github.com/dhis2/dhis2-docs/edit/2.39/src/developer/web-api/geo-json.md --> { #geojson-import } 
 
-The GeoJSON import is used to attach geometry data to organisation units.
+L'importation GeoJSON est utilisée pour relier les données géométriques aux unités d'organisation.
 
-For a bulk import a GeoJSON file with a feature collection is expected.
-Each feature in the collection requires a reference to the organisation unit it
-should be linked to.
+Pour une importation en masse, il faut un fichier GeoJSON avec une collection d'éléments.
+Chaque élément de la collection a besoin d'une référence à l'unité d'organisation à laquelle il doit être relié.
 
-By default, the geometry from the file is stored as the `geometry` property of
-an organisation unit. To store additional geometries attributes of type
-`GEOJSON` can be created. When attributes are use all geometries from a file
-are stored for the same attribute which is provided with an additional 
-parameter `attributeId`.
+Par défaut, la géométrie du fichier est stockée en tant que propriété `geometry` d'une unité d'organisation. Pour stocker des géométries supplémentaires, des attributs de type `GEOJSON` peuvent être créés. Lorsque des attributs sont utilisés, toutes les géométries d'un fichier sont stockées pour le même attribut qui est fourni avec un paramètre supplémentaire `attributeId`.
 
-### GeoJSON Bulk Data Import { #webapi_geojson_bulk_import }
+### Importation de données en masse avec GeoJSON { #webapi_geojson_bulk_import }
 
-Table: Import Parameters
+Tableau : Paramètres d'importation
 
 | Nom              | Type                           | Par défaut | Description                                                                                                                       |
 |-------------------|--------------------------------|---|-----------------------------------------------------------------------------------------------------------------------------------|
-| `geoJsonId`       | `booléen`                      | `vrai` | When `true` the `id` property of the GeoJSON features is expected to hold the organisation unit identifier                        |
-| `geoJsonProperty` | `Chaîne`                       | _undefined_ | If `geoJsonId` is `false` this parameter names the property in the GeoJSON feature's `properties` that holds the organisation unit identifier |
-| `orgUnitProperty` | `enum`: [`id`, `code`, `name`] | `id` | The property of the organisation unit that is referred to by the identifiers used in the GeoJSON file                             |
-| `attributeId`     | `Chaîne` | _undefined_ | When set the geometry is stored as value of the attribute referenced  by ID                                                       |
-| `dryRun`          | `booléen` | `faux` | When `true` the import is processed without actually updating the organisation units |
-| `async`           | `booléen` | `faux` | When `true` the import is processed asnychronously |
+| `geoJsonId`       | `booléen`                      | `vrai` | Si le paramètre est défini sur `true`, la propriété `id` des éléments GeoJSON est censée contenir l'identifiant de l'unité d'organisation.                        |
+| `geoJsonProperty` | `Chaîne`                       | _undefined_ | Si `geoJsonId` est défini sur `false`, ce paramètre nomme la propriété dans les `properties` de l'élément GeoJSON qui contient l'identifiant de l'unité d'organisation. |
+| `orgUnitProperty` | `enum`: [`id`, `code`, `name`] | `id` | La propriété de l'unité d'organisation à laquelle se réfèrent les identifiants utilisés dans le fichier GeoJSON.                             |
+| `attributeId`     | `Chaîne` | _undefined_ | Lorsqu'elle est définie, la géométrie est stockée en tant que valeur de l'attribut référencé par l'ID.                                                       |
+| `dryRun`          | `booléen` | `faux` | Si le paramètre est défini sur `true`, l'importation est traitée sans que les unités d'organisation ne soient mis à jour. |
+| `async`           | `booléen` | `faux` | Lorsque le paramètre est défini sur `true`, l'importation est traitée de manière asynchrone. |
 
 Uasge:
 
     POST /api/organisationUnits/geometry
 
-The post body is the GeoJSON file. Content type should be `application/json` or
-`application/geo+json`. The file may be `.zip` or `.gzip` compressed.
+Le corps du message est le fichier GeoJSON. Le type de contenu doit être `application/json` ou `application/geo+json`. Le fichier peut être compressé en `.zip` ou `.gzip`.
 
-For example, a default file where `id` is used to refer to an organisation unit 
-id has this structure:
+Par exemple, un fichier par défaut dans lequel `id` est utilisé pour faire référence à l'identifiant d'une unité d'organisation a la structure suivante :
 
 ```json
 { 
@@ -1678,8 +1667,7 @@ id has this structure:
 }
 ```
 
-A file where a feature property is used to refer to the organisation unit code
-would have this structure:
+Un fichier dans lequel une propriété d'élément est utilisée pour faire référence au code de l'unité d'organisation devrait avoir la structure suivante :
 
 ```json
 { 
@@ -1694,62 +1682,55 @@ would have this structure:
   ]
 }
 ```
-A `geometry` may also be `null` to effectively clear or delete the geometry 
-for specific organisation units. There is a special bulk deletion API that is
-described in the next section.
+Une `geometry` peut également être `null` pour effacer ou supprimer efficacement la géométrie pour des unités d'organisation spécifiques. Il existe une API spéciale de suppression en masse ; elle est décrite dans la section suivante.
 
-When run synchronously an import report is returned directly.
-The HTTP status code is always `OK`, the `status` in the message payload
-indicates if all rows were imported successfully.
-The import counts statistics contained in the report give further information:
+Lorsqu'elle est exécutée de manière synchrone, un rapport d'importation est renvoyé directement.
+Le code de statut HTTP est toujours `OK`, le `status` dans le message indique si toutes les lignes ont été importées avec succès.
+Les statistiques sur le nombre de lignes importées, contenues dans le rapport donnent des informations supplémentaires :
 
-* `imported`: number of organisation units that were successfully updated with a geometry that did not have one before for the updated property
-* `updated`: number of organisation units that were successfully updated with a geometry that did have value for the updated property already
-* `ignored`: number of organisation units that failed to update
-* `deleted`: number of organisation units that where successfully update with a _empty_ geometry
+* `imported` : nombre d'unités d'organisation qui ont été mises à jour avec succès avec une géométrie qui n'en avait pas pour la propriété mise à jour.
+* `updated` : nombre d'unités d'organisation qui ont été mises à jour avec succès avec une géométrie qui avait déjà une valeur pour la propriété mise à jour.
+* `ignored` : nombre d'unités d'organisation qui n'ont pas été mises à jour
+* `deleted` : nombre d'unités d'organisation qui ont été mises à jour avec succès avec une géométrie _vide_.
 
-When the import is run asynchronous the request returns immediately with status 
-`OK` and job configuration response that contains a relative reference to 
-the task endpoint that allows to track the status of the asynchronous import.
-For example:
+Lorsque l'importation est exécutée de manière asynchrone, la requête renvoie immédiatement le statut `OK` de même que la réponse de configuration de la tâche qui contient une référence relative au point d'extrémité de la tâche qui permet de suivre le statut de l'importation asynchrone. Voici un exemple :
 
     /api/system/tasks/GEOJSON_IMPORT/{job-id}
 
-The summary that is returned directly for synchronous execution is available at
+Le récapitulatif renvoyé directement pour une exécution synchrone est disponible à l'adresse suivante :
 
     /api/system/taskSummaries/GEOJSON_IMPORT/{job-id}
 
-once the import is finished.
+dès que l'importation est terminée.
 
-### GeoJSON Bulk Data Deletion { #webapi_geojson_bulk_deletion }
-To clear or unset the `geometry` data for all organisation units use:
+### Suppression de données en masse avec GeoJSON { #webapi_geojson_bulk_deletion }
+Pour effacer ou désactiver les données `geometry` pour toutes les unités d'organisation, utilisez :
 
     DELETE /api/organisationUnits/geometry
 
-To clear or unset the geometry data for a specific `GEOJSON` attribute for
-all organisation units use:
+Pour effacer ou désactiver les données géométriques d'un attribut `GEOJSON` spécifique pour toutes les unités d'organisation :
 
     DELETE /api/organisationUnits/geometry?attributeId={attr-id}
 
-Clearing is always synchronous and returns a similar report as the bulk import.
-It does not support any other parameters. No `dry-run` can be performed.
-Bulk clearing requires the `F_PERFORM_MAINTENANCE` authority.
+Le nettoyage se fait toujours de façon synchrone et renvoie un rapport similaire à celui de l'importation en masse.
+Il ne prend en charge aucun autre paramètre. Aucun `essai` ne peut être effectué.
+Pour effectuer un nettoyage en masse, l'utilisateur doit disposer de l'autorité `F_PERFORM_MAINTENANCE`.
 
-### GeoJSON Single Data Import { #webapi_geojson_single_import }
-The single import allows to update the geometry of a single organisation unit.
+### Importation de données à titre individuel avec GeoJSON { #webapi_geojson_single_import }
+L'importation unique permet de mettre à jour la géométrie d'une seule unité d'organisation.
 
     POST /api/organisationUnits/{id}/geometry
 
-The post body only contains the GeoJSON `geometry` value, for example:
+Le corps du message ne contient que la valeur GeoJSON `geometry`, par exemple :
 ```json
 {
   "type": "Polygon",
   "coordinates": [...]
 }
 ```
-Single import only supports `attributeId` and `dryRun` parameters.
+L'importation unique ne prend en charge que les paramètres `attributeId` et `dryRun`.
 
-### GeoJSON Single Data Deletion { #webapi_geojson_single_deletion }
+### Suppression de données uniques avec GeoJSON { #webapi_geojson_single_deletion }
 To clear the `geometry` GeoJSON data of an individual organisation unit use:
 
     DELETE /api/organisationUnits/{id}/geometry
@@ -1784,7 +1765,7 @@ To get JSON schema for a specific class:
     GET /api/schemas/dataElement.json
 
 
-## Icons { #webapi_icons } 
+## Icônes { #webapi_icons } 
 
 DHIS2 includes a collection of icons that can be used to give visual
 context to metadata. These icons can be accessed through the icons
@@ -1923,7 +1904,7 @@ Table: Style properties
 
 | Propriété | Description | Type |
 |---|---|---|
-| color | A color, represented by a hexadecimal. | String (#000000) |
+| color | A color, represented by a hexadecimal. | Chaîne (#000000) |
 | icon | An icon, represented by a icon-name. | Chaîne |
 
 Currently, there is no official list or support for icon-libraries, so
@@ -2246,7 +2227,7 @@ The payload in JSON format looks like the following:
 }
 ```
 
-The JSON properties are described in the following table.
+Les propriétés JSON sont décrites dans le tableau suivant.
 
 Table: Split payload fields
 
@@ -2305,7 +2286,7 @@ The payload in JSON format looks like the following:
 }
 ```
 
-The JSON properties are described in the following table.
+Les propriétés JSON sont décrites dans le tableau suivant.
 
 Table: Merge payload fields
 
@@ -2644,7 +2625,7 @@ To retrieve description of programRule condition you can use POST and provide co
 
     /api/programRules/condition/description?<program_rule_uid>
 
-## Forms { #webapi_forms } 
+## Formulaires { #webapi_forms } 
 
 To retrieve information about a form (which corresponds to a data set
 and its sections) you can interact with the `form` resource. The form
@@ -3177,7 +3158,7 @@ Certain types of files are blocked from being uploaded for security reasons.
 
 The following content types are blocked.
 
-| Content type | Content type |
+| Type de contenu | Type de contenu |
 | ------------------------------------- | ---- |
 | text/html                             | application/x-ms-dos-executable |
 | text/css                              | application/vnd.microsoft.portable-executable |
@@ -7500,38 +7481,38 @@ Exaple: Get audits between `2021-01-01` and `2022-01-01` for org unit `DiszpKrYN
 
 # Messagerie { #messaging } 
 
-## Message conversations { #webapi_message_conversations } 
+## Conversations par messages { #webapi_message_conversations } 
 
-DHIS2 features a mechanism for sending messages for purposes such as
-user feedback, notifications, and general information to users. Messages
-are grouped into conversations. To interact with message conversations
-you can send POST and GET request to the *messageConversations*
-resource.
+DHIS2 dispose d'un mécanisme permettant d'envoyer des messages à des fins tels que 
+le retour d'information des utilisateurs, les notifications et les informations générales à l'intention des utilisateurs. Les messages 
+sont regroupés en conversations. Pour interagir avec les conversations de messages, 
+vous pouvez envoyer des requêtes POST et GET à la ressource 
+*messageConversations*.
 
     /api/33/messageConversations
 
-Messages are delivered to the DHIS2 message inbox but can also be sent
-to the user's email addresses and mobile phones as SMS. In this example,
-we will see how we can utilize the Web API to send, read and manage
-messages. We will pretend to be the *DHIS2 Administrator* user and send
-a message to the *Mobile* user. We will then pretend to be the mobile
-user and read our new message. Following this, we will manage the admin
-user inbox by marking and removing messages.
+Les messages sont transmis à la boîte de réception DHIS2, mais ils peuvent également être envoyés 
+aux adresses électroniques et aux téléphones portables de l'utilisateur sous forme de SMS. Dans cet exemple, 
+nous verrons comment utiliser l'API Web pour envoyer, lire et gérer des 
+messages. Nous allons nous faire passer pour l'utilisateur *Administrateur DHIS2* et envoyer 
+un message à l'utilisateur *Mobile*. Nous allons ensuite nous faire passer pour l'utilisateur 
+mobile et lire notre nouveau message. Ensuite, nous allons gérer la boîte de réception de l'utilisateur 
+administrateur en marquant et en supprimant des messages.
 
-### Writing and reading messages { #webapi_writing_messages } 
+### Écrire et lire des messages { #webapi_writing_messages } 
 
-The resource we need to interact with when sending and reading messages
-is the *messageConversations* resource. We start by visiting the Web API
-entry point at <http://play.dhis2.org/demo/api> where we find and follow
-the link to the *messageConversations* resource at
-<http://play.dhis2.org/demo/api/messageConversations>. The description
-tells us that we can use a POST request to create a new message using
-the following XML format for sending to multiple users:
+La ressource avec laquelle nous devons interagir pour envoyer et lire des messages 
+est la ressource *messageConversations*. Nous commençons par visiter le point d'entrée 
+de l'API Web à l'adresse <http://play.dhis2.org/demo/api>, où nous trouvons et suivons 
+le lien vers la ressource *messageConversations* à l'adresse
+<http://play.dhis2.org/demo/api messageConversations>. La description 
+nous indique que nous pouvons utiliser une requête POST pour créer un nouveau message 
+en utilisant le format XML suivant pour l'envoyer à plusieurs utilisateurs :
 
 ```xml
 <message xmlns="http://dhis2.org/schema/dxf/2.0">
-  <subject>This is the subject</subject>
-  <text>This is the text</text>
+  <subject>Voici le sujet</subject>
+  <text>Voici le texte</text>
   <users>
     <user id="user1ID" />
     <user id="user2ID" />
@@ -7540,13 +7521,13 @@ the following XML format for sending to multiple users:
 </message>
 ```
 
-For sending to all users contained in one or more user groups, we can
-use:
+Pour l'envoi à tous les utilisateurs appartenant à un ou plusieurs groupes d'utilisateurs, nous pouvons
+utiliser :
 
 ```xml
 <message xmlns="http://dhis2.org/schema/dxf/2.0">
-  <subject>This is the subject</subject>
-  <text>This is the text</text>
+  <subject>Voici le sujet</subject>
+  <text>Voici le texte</text>
   <userGroups>
     <userGroup id="userGroup1ID" />
     <userGroup id="userGroup2ID" />
@@ -7555,13 +7536,13 @@ use:
 </message>
 ```
 
-For sending to all users connected to one or more organisation units, we
-can use:
+Pour l'envoi à tous les utilisateurs connectés à une ou plusieurs unités d'organisation, nous 
+pouvons utiliser :
 
 ```xml
 <message xmlns="http://dhis2.org/schema/dxf/2.0">
-  <subject>This is the subject</subject>
-  <text>This is the text</text>
+  <subject>Voici le sujet</subject>
+  <text>Voici le texte</text>
   <organisationUnits>
     <organisationUnit id="ou1ID" />
     <organisationUnit id="ou2ID" />
@@ -7570,35 +7551,35 @@ can use:
 </message>
 ```
 
-Since we want to send a message to our friend the mobile user we need to
-look up her identifier. We do so by going to the Web API entry point and
-follow the link to the *users* resource at `/api/users`. We continue by
-following link to the mobile user at `/api/users/PhzytPW3g2J` where we learn
-that her identifier is *PhzytPW3g2J*. We are now ready to put our XML
-message together to form a message where we want to ask the mobile user
-whether she has reported data for January 2014:
+Puisque nous voulons envoyer un message à notre ami l'utilisateur mobile, nous devons 
+rechercher son identifiant. Nous le faisons en allant au point d'entrée de l'API Web et 
+en suivant le lien vers la ressource *utilisateurs* à `/api/users`. Nous continuons en 
+suivant le lien vers l'utilisateur mobile à `/api/users/PhzytPW3g2J` où nous apprenons 
+que son identifiant est *PhzytPW3g2J*. Nous sommes maintenant prêts à rassembler nos messages 
+XML pour former un message dans lequel nous voulons demander à l'utilisateur mobile 
+s'il a déclaré des données pour janvier 2014 :
 
 ```xml
 <message xmlns="http://dhis2.org/schema/dxf/2.0">
-  <subject>Mortality data reporting</subject>
-  <text>Have you reported data for the Mortality data set for January 2014?</text>
+  <subject>Rapport sur les données de mortalité</subject>
+  <text>Avez-vous déclaré des données pour l'ensemble de données sur la mortalité pour janvier 2014 ?</text>
   <users>
     <user id="PhzytPW3g2J" />
   </users>
 </message>
 ```
 
-To test this we save the XML content into a file called *message.xml*.
-We use cURL to dispatch the message the DHIS2 demo instance where we
-indicate that the content-type is XML and authenticate as the *admin*
-user:
+Pour le tester, nous enregistrons le contenu XML dans un fichier appelé *message.xml*. 
+Nous utilisons cURL pour envoyer le message à l'instance de démonstration DHIS2 où nous 
+indiquons que le type de contenu est XML et où nous nous authentifions en tant qu'utilisateur 
+*admin* :
 
 ```bash
 curl -d @message.xml "https://play.dhis2.org/demo/api/messageConversations"
   -H "Content-Type:application/xml" -u admin:district -X POST
 ```
 
-A corresponding payload in JSON and POST command looks like this:
+La charge correspondante en JSON et la commande POST ressemblent à ceci :
 
 ```json
 {
@@ -7630,23 +7611,23 @@ curl -d @message.json "https://play.dhis2.org/demo/api/33/messageConversations"
   -H "Content-Type:application/json" -u admin:district -X POST
 ```
 
-If all is well we receive a *201 Created* HTTP status code. Also, note
-that we receive a *Location* HTTP header which value informs us of the
-URL of the newly created message conversation resource - this can be
-used by a consumer to perform further action.
+Si tout se passe bien, nous recevons un code de statut HTTP *201 Créé*. Notez également 
+que nous recevons un en-tête HTTP *Localisation* qui nous informe de 
+l'URL de la ressource de conversation de messages nouvellement créée - celle-ci peut être 
+utilisée par un utilisateur pour effectuer d'autres actions.
 
-We will now pretend to be the mobile user and read the message which was
-just sent by dispatching a GET request to the *messageConversations*
-resource. We supply an *Accept* header with *application/xml* as the
-value to indicate that we are interested in the XML resource
-representation and we authenticate as the *mobile* user:
+Nous allons maintenant nous faire passer pour l'utilisateur mobile et lire le message qui 
+vient d'être envoyé en envoyant une requête GET à la ressource *messageConversations*. 
+Nous fournissons un en-tête *Accepter* avec l'*application/xml* comme 
+valeur pour indiquer que nous sommes intéressés par la représentation de la ressource 
+XML et nous nous authentifions en tant qu'utilisateur *mobile* :
 
 ```bash
 curl "https://play.dhis2.org/demo/api/33/messageConversations"
   -H "Accept:application/xml" -u mobile:district
 ```
 
-In response we get the following XML:
+En réponse, nous obtenons le fichier XML suivant :
 
 ```xml
 <messageConversations xmlns="http://dhis2.org/schema/dxf/2.0"
@@ -7658,12 +7639,12 @@ In response we get the following XML:
 </messageConversations>
 ```
 
-From the response, we are able to read the identifier of the newly sent
-message which is *ZjHHSjyyeJ2*. Note that the link to the specific
-resource is embedded and can be followed in order to read the full
-message. We can reply directly to an existing message conversation once we know
-the URL by including the message text as the request payload. We
-are now able to construct a URL for sending our reply:
+Dans la réponse, nous pouvons lire l'identifiant du nouveau message envoyé, 
+qui est *ZjHHSjyyeJ2*. Notez que le lien vers la ressource spécifique 
+est intégré et peut être suivi pour lire le message 
+complet. Une fois que nous connaissons l'URL, nous pouvons répondre directement à 
+une conversation sur un message existant en incluant le texte du message dans la charge de la requête. Nous 
+sommes maintenant en mesure de créer une URL pour envoyer notre réponse :
 
 ```bash
 curl -d "Oui, l'ensemble des données sur la mortalité a été déclaré"
@@ -7671,44 +7652,44 @@ curl -d "Oui, l'ensemble des données sur la mortalité a été déclaré"
   -H "Content-Type:text/plain" -u mobile:district -X POST
 ```
 
-If all went according to plan you will receive a *200 OK* status code.
+Si tout s'est déroulé comme prévu, vous recevrez un code de statut *200 OK*.
 
-In 2.30 we added an URL search parameter:
+Dans la version 2.30, nous avons ajouté un paramètre de recherche d'URL :
 
     queryString=?&queryOperator=?
 
-The filter searches for matches in subject, text, and senders for message
-conversations. The default query operator is *token*, however other operators
-can be defined in the query.
+Le filtre recherche des correspondances dans l'objet, le texte et les expéditeurs pour les conversations 
+de messages. L'opérateur de requête par défaut est *token* (jeton), mais d'autres opérateurs 
+peuvent être définis dans la requête.
 
-### Managing messages { #webapi_managing_messages } 
+### Gérer les messages { #webapi_managing_messages } 
 
-As users receive and send messages, conversations will start to pile up
-in their inboxes, eventually becoming laborious to track. We will now
-have a look at managing a user's messages inbox by removing and marking
-conversations through the Web-API. We will do so by performing some
-maintenance in the inbox of the "DHIS Administrator" user.
+Au fur et à mesure que les utilisateurs reçoivent et envoient des messages, les conversations commencent à s'empiler 
+dans leur boîte de réception, ce qui devient éventuellement difficile à suivre. Nous allons maintenant 
+voir comment gérer la boîte de réception des messages d'un utilisateur en supprimant et en marquant 
+des conversations par l'intermédiaire de la Web-API. Pour ce faire, nous allons effectuer quelques 
+opérations de maintenance dans la boîte de réception de l'utilisateur « Administrateur DHIS ».
 
-First, let's have a look at removing a few messages from the inbox. Be
-sure to note that all removal operations described here only remove the
-relation between a user and a message conversation. In practical terms
-this means that we are not deleting the messages themselves (or any
-content for that matter) but are simply removing the message thread from
-the user such that it is no longer listed in the
-`/api/messageConversations` resource.
+Commençons par supprimer quelques messages de la boîte de réception. Notez 
+bien que toutes les opérations de suppression décrites ici ne suppriment que la 
+relation entre un utilisateur et une conversation de messages. En termes pratiques, 
+cela signifie que nous ne supprimons pas les messages eux-mêmes (ni aucun 
+contenu d'ailleurs) mais que nous supprimons simplement le fil de messages de 
+l'utilisateur de sorte qu'il ne soit plus listé dans 
+la ressource `/api/messageConversations`.
 
-To remove a message conversation from a users inbox we need to issue a
-*DELETE* request to the resource identified by the id of the message
-conversation and the participating user. For example, to remove the user
-with id `xE7jOejl9FI` from the conversation with id `jMe43trzrdi`:
+Pour supprimer une conversation de messages de la boîte de réception d'un utilisateur, nous devons envoyer une 
+requête *DELETE* à la ressource identifiée par l'identifiant de la conversation de 
+messages et l'utilisateur participant. Par exemple, pour supprimer l'utilisateur 
+avec l'identifiant `xE7jOejl9FI` de la conversation avec l'identifiant `jMe43trzrdi` :
 
 ```bash
 curl "https://play.dhis2.org/demo/api/33/messageConversations/jMe43trzrdi
 ```
 
-If the request was successful the server will reply with a *200 OK*. The
-response body contains an XML or JSON object (according to the accept
-header of the request) containing the id of the removed user.
+Si la demande a abouti, le serveur répondra par un *200 OK*. Le 
+corps de la réponse contient un objet XML ou JSON (selon l'en-tête "accepter" 
+de la demande) contenant l'identifiant de l'utilisateur supprimé.
 
 ```json
 {
@@ -7716,8 +7697,8 @@ header of the request) containing the id of the removed user.
 }
 ```
 
-On failure the returned object will contain a message payload which
-describes the error.
+En cas d'échec, l'objet renvoyé contiendra un message qui 
+décrit l'erreur.
 
 ```json
 {
@@ -7725,48 +7706,48 @@ describes the error.
 }
 ```
 
-The observant reader will already have noticed that the object returned
-on success in our example is actually a list of ids (containing a single
-entry). This is due to the endpoint also supporting batch removals. The
-request is made to the same *messageConversations* resource but follows
-slightly different semantics. For batch operations, the conversation ids
-are given as query string parameters. The following example removes two
-separate message conversations for the current user:
+Le lecteur observateur aura déjà remarqué que l'objet renvoyé en cas 
+de succès dans notre exemple est en fait une liste d'identifiants (contenant une seule 
+entrée). Ceci est dû au fait que le endpoint prend également en charge les suppressions par lots. La 
+requête est faite à la même ressource *messageConversations* mais suit 
+une sémantique légèrement différente. Pour les opérations par lots, les identifiants 
+de conversation sont donnés en tant que paramètres de la chaîne de requête. L'exemple suivant supprime deux 
+conversations de messages distinctes pour l'utilisateur actuel :
 
 ```bash
 curl "https://play.dhis2.org/demo/api/messageConversations?mc=WzMRrCosqc0&mc=lxCjiigqrJm"
   -X DELETE -u admin:district
 ```
 
-If you have sufficient permissions, conversations can be removed on
-behalf of another user by giving an optional user id parameter.
+Si vous disposez d'autorisations suffisantes, vous pouvez supprimer des conversations au 
+nom d'un autre utilisateur en indiquant un paramètre facultatif, l'identifiant de l'utilisateur.
 
 ```bash
 curl "https://play.dhis2.org/demo/api/messageConversations?mc=WzMRrCosqc0&mc=lxCjiigqrJm&user=PhzytPW3g2J"
   -X DELETE -u admin:district
 ```
 
-As indicated, batch removals will return the same message format as for
-single operations. The list of removed objects will reflect successful
-removals performed. Partially erroneous requests (i.e. non-existing id)
-will therefore not cancel the entire batch operation.
+Comme indiqué, les suppressions par lots renvoient le même format de message que pour 
+les opérations individuelles. La liste des objets supprimés reflétera les suppressions 
+effectuées avec succès. Les demandes partiellement erronées (c'est-à-dire les identifiants inexistants) 
+n'annuleront donc pas l'ensemble de l'opération par lots.
 
-Messages carry a boolean *read* property. This allows tracking whether a
-user has seen (opened) a message or not. In a typical application
-scenario (e.g. the DHIS2 web portal) a message will be marked read as
-soon as the user opens it for the first time. However, users might want
-to manage the read or unread status of their messages in order to keep
-track of certain conversations.
+Les messages comportent une propriété booléenne *read* (lire). Cette propriété permet de savoir si un 
+utilisateur a vu (ouvert) un message ou non. Dans un scénario d'application 
+typique (par exemple, le portail web DHIS2), un message est marqué comme 
+lu dès que l'utilisateur l'ouvre pour la première fois. Cependant, les utilisateurs peuvent vouloir 
+gérer le statut « lu » ou « non lu » de leurs messages afin de garder une 
+trace de certaines conversations.
 
-Marking messages read or unread follows similar semantics as batch
-removals, and also supports batch operations. To mark messages as read
-we issue a *POST* to the `messageConversations/read` resource with a
-request body containing one or more message ids. To mark messages as
-unread we issue an identical request to the `messageConversations/unread`
-resource. As is the case for removals, an optional *user* request parameter
-can be given.
+Le marquage des messages comme lus ou non lus suit une sémantique similaire à celle des suppressions 
+de lots, et supporte également les opérations par lots. Pour marquer des messages comme lus, 
+nous envoyons un *POST* à la ressource `messageConversations/read` avec un 
+corps de requête contenant un ou plusieurs identifiants de message. Pour marquer des messages comme 
+non lus, nous envoyons une requête identique à la ressource `messageConversations/unread`. 
+Comme pour les suppressions, un paramètre de requête optionnel *utilisateur* peut 
+être fourni.
 
-Let's mark a couple of messages as read by the current user:
+Marquons quelques messages comme lus par l'utilisateur actuel :
 
 ```bash
 curl "https://play.dhis2.org/dev/api/messageConversations/read"
@@ -7774,7 +7755,7 @@ curl "https://play.dhis2.org/dev/api/messageConversations/read"
   -H "Content-Type: application/json" -u admin:district
 ```
 
-The response is a *200 OK* with the following JSON body:
+La réponse est un *200 OK* avec le contenu JSON suivant :
 
 ```json
 {
@@ -7782,12 +7763,12 @@ The response is a *200 OK* with the following JSON body:
 }
 ```
 
-You can add recipients to an existing message conversation. The resource is located at:
+Vous pouvez ajouter des destinataires à une conversation de messages existante. La ressource est située à l'adresse suivante : 
 
     /api/33/messageConversations/id/recipients
 
-The options for this resource is a list of users, user groups and
-organisation units. The request should look like this:
+Les options de cette ressource sont une liste d'utilisateurs, de groupes d'utilisateurs et 
+d'unités d'organisation. La requête doit ressembler à ceci :
 
 ```json
 {
@@ -7813,23 +7794,23 @@ organisation units. The request should look like this:
 
 ```
 
-### Message Attachments { #webapi_message_attachments } 
+### Pièces jointes aux messages { #webapi_message_attachments } 
 
-Creating messages with attachments is done in two steps: uploading the
-file to the *attachments* resource, and then including one or several of
-the attachment IDs when creating a new message.
+La création de messages avec des pièces jointes se fait en deux étapes : le téléchargement du 
+fichier dans la ressource *attachments* (pièces jointes), puis inclure un ou plusieurs
+pièces jointes lors de la création d'un nouveau message.
 
-A POST request to the *attachments* resource will upload the file to the
-server.
+Une requête POST à la ressource *attachments* téléchargera le fichier sur le
+serveur.
 
 ```
 curl -F file=@attachment.png "https://play.dhis2.org/demo/api/messageConversations/attachments"
   -u admin:district
 ```
 
-The request returns an object that represents the attachment. The id of
-this object must be used when creating a message in order to link the
-attachment with the message.
+La demande renvoie un objet qui représente la pièce jointe. L'identifiant de
+cet objet doit être utilisé lors de la création d'un message afin de lier la 
+pièce jointe au message.
 
 ```json
 {
@@ -7855,8 +7836,8 @@ attachment with the message.
 }
 ```
 
-When creating a new message, the ids can be passed in the request body
-to link the uploaded files to the message being created.
+Lors de la création d'un nouveau message, les identifiants peuvent être transmis dans le contenu de la requête
+pour lier les fichiers téléchargés au message en cours de création.
 
 ```json
 {
@@ -7887,8 +7868,8 @@ to link the uploaded files to the message being created.
 }
 ```
 
-When replying to a message, the ids can be passed as a request
-parameter.
+Lorsque vous répondez à un message, les identifiants peuvent être transmis en tant que paramètre de la 
+requête.
 
 ```bash
 curl -d "Oui, l'ensemble des données sur la mortalité a été déclaré"
@@ -7896,51 +7877,49 @@ curl -d "Oui, l'ensemble des données sur la mortalité a été déclaré"
   -H "Content-Type:text/plain" -u mobile:district -X POST
 ```
 
-Once a message with an attachment has been created, the attached file
-can be accessed with a GET request to the following URL:
+Une fois qu'un message avec une pièce jointe a été créé, il est possible d'accéder à la pièce jointe 
+à l'aide d'une requête GET à l'URL suivante :
 
     /api/messageConversations/<mcv-id>/<msg-id>/attachments/<attachment-id>
 
-Where <mcv-id> is the *message conversation* ID, <msg-id> is the ID of
-the *message* that contains the attachment and <attachment-id> is the
-ID of the specific *message attachment*.
+Où <mcv-id>est l'ID de la *conversation du message*, <msg-id>est l'ID du *message* qui contient la pièce jointe et <attachment-id>est l'ID de la *pièce jointe* spécifique du message.
 
-### Tickets and Validation Result Notifications { #webapi_messaging_tickets } 
+### Notifications des tickets et des résultats de validation { #webapi_messaging_tickets } 
 
-You can use the "write feedback" tool to create tickets and messages.
-The only difference between a ticket and a message is that you can give
-a status and a priority to a ticket. To set the status:
+Vous pouvez utiliser l'outil « écrire un feedback » pour créer des tickets et des messages.
+La seule différence entre un ticket et un message est que vous pouvez donner 
+un statut et une priorité à un ticket. Pour définir le statut :
 
     POST /api/messageConversations/<uid>/status
 
-To set the priority:
+Pour définir la priorité :
 
     POST /api/messageConversations/<uid>/priority
 
-In 2.29, messages generated by validation analysis now also be used in
-the status and priority properties. By default, messages generated by
-validation analysis will inherit the priority of the validation rule in
-question, or the highest importance if the message contains multiple
-rules.
+Dans la version 2.29, les messages générés par l'analyse de validation peuvent désormais être utilisés dans 
+les propriétés de statut et de priorité. Par défaut, les messages générés par 
+l'analyse de validation héritent de la priorité de la règle de validation en 
+question, ou de la plus grande importance si le message contient plusieurs 
+règles.
 
-In 2.30, validation rules can be assigned to any user while tickets
-still need to be assigned to a user in the system's feedback recipient
-group.
+Dans la version 2.30, les règles de validation peuvent être affectées à n'importe quel utilisateur, alors que les tickets 
+doivent toujours être affectés à un utilisateur appartenant au groupe des destinataires du retour d'information du 
+système.
 
 
 
-Table: A list of valid status and priority values
+Tableau : Liste des valeurs de statut et de priorité valides
 
-| Statut | Priority |
+| Statut | Priorité |
 |---|---|
-| OPEN | LOW |
-| PENDING | MEDIUM |
-| INVALID | HIGH |
-| SOLVED ||
+| OUVRIR | BAS |
+| EN ATTENTE | MOYEN |
+| INVALIDE | ÉLEVÉ |
+| RÉSOLU ||
 
-You can also add an internal message to a ticket, which can only be seen
-by users who have "Manage tickets" permissions. To create an internal
-reply, include the "internal" parameter, and set it to
+Vous pouvez également ajouter un message interne à un ticket, qui ne peut être vu que 
+par les utilisateurs ayant les permissions « Gérer les tickets ». Pour créer une réponse 
+interne, vous devez inclure le paramètre « interne » et le définir sur:
 
 ```bash
 curl -d "Ceci est un message interne"
@@ -8279,29 +8258,29 @@ Tableau : Attributs de visualisation
 | legendSet (ensemble de légende) | Un objet représentant les définitions de la légende. |
 | legendDisplayStyle (style d'affichage de légende) | Le style d'affichage de la légende. Il peut être : FILL ( remplit) ou TEXT ( texte). |
 | legendDisplayStrategy (stratégie d'affichage de la légende) | Le style d'affichage de la légende. Il peut être : FIXE ou BY_DATA_ITEM (par élément de données). |
-| Type d'agrégation | Determines how the values in the pivot table are aggregated. Valid options: SUM, AVERAGE, AVERAGE_SUM_ORG_UNIT, LAST, LAST_AVERAGE_ORG_UNIT, FIRST, FIRST_AVERAGE_ORG_UNIT, COUNT, STDDEV, VARIANCE, MIN, MAX, NONE, CUSTOM or DEFAULT. |
-| regressionType | A valid regression type: NONE, LINEAR, POLYNOMIAL or LOESS. |
-| targetLineValue | The chart target line. Accepts a Double type. |
-| targetLineLabel | The chart target line label. |
-| rangeAxisLabel | The chart vertical axis (y) label/title. |
-| domainAxisLabel | The chart horizontal axis (x) label/title. |
-| rangeAxisMaxValue | The chart axis maximum value. Values outside of the range will not be displayed. |
-| rangeAxisMinValue | The chart axis minimum value. Values outside of the range will not be displayed. |
-| rangeAxisSteps | The number of axis steps between the minimum and maximum values. |
-| rangeAxisDecimals | The number of decimals for the axes values. |
-| baseLineValue | A chart baseline value. |
-| baseLineLabel | A chart baseline label. |
-| digitGroupSeparator | The digit group separator. Valid values: COMMA, SPACE or NONE. |
-| topLimit | The top limit set for the Pivot table. |
-| Critères de mesure | Describes the criteria applied to this measure. |
-| percentStackedValues | Uses stacked values or not. More likely to be applied for graphics/charts. Boolean value. |
-| noSpaceBetweenColumns | Show/hide space between columns. Boolean value. |
-| regression | Indicates whether the Visualization contains regression columns. More likely to be applicable to Pivot/Report. Boolean value. |
-| externalAccess | Indicates whether the Visualization is available as external read-only. Only applies when no user is logged in. Boolean value. |
-| userOrganisationUnit | Indicates if the user has an organisation unit. Boolean value. |
-| userOrganisationUnitChildren | Indicates if the user has a children organisation unit. Boolean value. |
+| Type d'agrégation | Détermine la manière dont les valeurs du tableau croisé dynamique sont agrégées. Options valides : SUM (somme), AVERAGE (moyenne), AVERAGE_SUM_ORG_UNIT ( somme moyenne des unités d'organisation), LAST (dernier), LAST_AVERAGE_ORG_UNIT (dernière moyenne des unités d'organisation), FIRST (premier), FIRST_AVERAGE_ORG_UNIT (première moyenne des unités d'organisation), COUNT (nombre), STDDEV (écart type), VARIANCE (écart), MIN (minimum), MAX (maximum), NONE (aucun), CUSTOM (personnalisé) ou DEFAULT (par défaut). |
+| regressionType (type de régression) | Un type de régression valide : NONE (aucun), LINEAR (linéaire), POLYNOMIAL (polynomial) ou LOESS. |
+| targetLineValue (valeur de la ligne cible) | La ligne cible du graphique. Accepte un type Double. |
+| targetLineLabel (étiquette de la ligne cible) | L'étiquette de la ligne cible du graphique. |
+| rangeAxisLabel (Étiquette de l'axe de la plage ) | L'étiquette/titre de l'axe vertical (y) du graphique. |
+| domainAxisLabel (étiquette de l'axe du domaine) | L'étiquette/titre de l'axe horizontal (x) du graphique. |
+| rangeAxisMaxValue (Plage de l'axe de la valeur maximale) | La valeur maximale de l'axe du graphique. Les valeurs en dehors de la plage ne seront pas affichées. |
+| rangeAxisMinValue (Plage de l'axe de la Valeur minimale) | La valeur minimale de l'axe du graphique. Les valeurs en dehors de la plage ne seront pas affichées. |
+| rangeAxisSteps (Étapes de l'axe de la plage) | Le nombre de pas d'axe entre les valeurs minimale et maximale. |
+| rangeAxisDecimals (Décimales de l'axe de la plage) | Le nombre de décimales pour les valeurs des axes. |
+| baseLineValue (Valeur de la ligne de base) | Une valeur de référence du graphique. |
+| baseLineLabel (étiquette de la ligne de base) | Une étiquette de ligne de base du graphique. |
+| digitGroupSeparator (Séparateur de groupes de chiffres) | Séparateur de groupes de chiffres. Valeurs valides : VIRGULE, ESPACE ou AUCUN. |
+| topLimit (Limite maximale) | La limite maximale fixée pour le tableau croisé dynamique. |
+| Critères de mesure | Décrit les critères appliqués à cette mesure. |
+| percentStackedValues (Pourcentage des valeurs empilées) | Utilise ou non des valeurs empilées. Plus susceptible d'être utilisé pour les graphiques. Valeur booléenne. |
+| noSpaceBetweenColumns (Aucun espace entre les colonnes) | Afficher/masquer l'espace entre les colonnes. Valeur booléenne. |
+| régression | Indique si la visualisation contient des colonnes de régression. Plus susceptible de s'appliquer aux rapports/croisés dynamiques. Valeur booléenne. |
+| externalAccess (accès externe) | Indique si la visualisation est disponible en lecture seule externe. Ne s'applique que si aucun utilisateur n'est connecté. Valeur booléenne. |
+| userOrganisationUnit (Unité d'organisation de l'utilisateur) | Indique si l'utilisateur dispose d'une unité d'organisation. Valeur booléenne. |
+| userOrganisationUnitChildren (Unité d'organisation subordonnées de l'utilisateur ) | Indique si l'utilisateur a des unités d'organisation subordonnées. Valeur booléenne. |
 | userOrganisationUnitGrandChildren | Indicates if the user has a grand children organisation unit . Boolean value. |
-| reportingParams | Object used to define boolean attributes related to reporting. |
+| reportingParams (Paramètres de déclaration) | Object used to define boolean attributes related to reporting. |
 | rowTotals | Displays (or not) the row totals. Boolean value. |
 | colTotals | Displays (or not) the columns totals. Boolean value. |
 | rowSubTotals | Displays (or not) the row sub-totals. Boolean value. |
@@ -8829,25 +8808,25 @@ Tableau : Attributs de la visualisation d'événements
 | périodes relatives | Un objet représentant les périodes relatives utilisées dans la requête analytique. |
 | légende | An object representing the definitions for the legend and legend set, display style (FILL or TEXT) and display strategy (FIXED or BY_DATA_ITEM). |
 | Type d'agrégation | Determines how the values are aggregated (if applicable). Valid options: SUM, AVERAGE, AVERAGE_SUM_ORG_UNIT, LAST, LAST_AVERAGE_ORG_UNIT, FIRST, FIRST_AVERAGE_ORG_UNIT, COUNT, STDDEV, VARIANCE, MIN, MAX, NONE, CUSTOM or DEFAULT. |
-| regressionType | A valid regression type: NONE, LINEAR, POLYNOMIAL or LOESS. |
-| targetLineValue | The chart target line. Accepts a Double type. |
-| targetLineLabel | The chart target line label. |
-| rangeAxisLabel | The chart vertical axis (y) label/title. |
-| domainAxisLabel | The chart horizontal axis (x) label/title. |
-| rangeAxisMaxValue | The chart axis maximum value. Values outside of the range will not be displayed. |
-| rangeAxisMinValue | The chart axis minimum value. Values outside of the range will not be displayed. |
-| rangeAxisSteps | The number of axis steps between the minimum and maximum values. |
-| rangeAxisDecimals | The number of decimals for the axes values. |
-| baseLineValue | A chart baseline value. |
-| baseLineLabel | A chart baseline label. |
-| digitGroupSeparator | The digit group separator. Valid values: COMMA, SPACE or NONE. |
-| topLimit | The top limit set for the Pivot table. |
-| Critères de mesure | Describes the criteria applied to this measure. |
-| percentStackedValues | Uses stacked values or not. More likely to be applied for graphics/charts. Boolean value. |
-| noSpaceBetweenColumns | Show/hide space between columns. Boolean value. |
-| externalAccess | Indicates whether the EventVisualization is available as external read-only. Boolean value. |
-| userOrganisationUnit | Indicates if the user has an organisation unit. Boolean value. |
-| userOrganisationUnitChildren | Indicates if the user has a children organisation unit. Boolean value. |
+| regressionType (type de régression) | Un type de régression valide : NONE (aucun), LINEAR (linéaire), POLYNOMIAL (polynomial) ou LOESS. |
+| targetLineValue (valeur de la ligne cible) | La ligne cible du graphique. Accepte un type Double. |
+| targetLineLabel (étiquette de la ligne cible) | L'étiquette de la ligne cible du graphique. |
+| rangeAxisLabel (Étiquette de l'axe de la plage ) | L'étiquette/titre de l'axe vertical (y) du graphique. |
+| domainAxisLabel (étiquette de l'axe du domaine) | L'étiquette/titre de l'axe horizontal (x) du graphique. |
+| rangeAxisMaxValue (Plage de l'axe de la valeur maximale) | La valeur maximale de l'axe du graphique. Les valeurs en dehors de la plage ne seront pas affichées. |
+| rangeAxisMinValue (Plage de l'axe de la Valeur minimale) | La valeur minimale de l'axe du graphique. Les valeurs en dehors de la plage ne seront pas affichées. |
+| rangeAxisSteps (Étapes de l'axe de la plage) | Le nombre de pas d'axe entre les valeurs minimale et maximale. |
+| rangeAxisDecimals (Décimales de l'axe de la plage) | Le nombre de décimales pour les valeurs des axes. |
+| baseLineValue (Valeur de la ligne de base) | Une valeur de référence du graphique. |
+| baseLineLabel (étiquette de la ligne de base) | Une étiquette de ligne de base du graphique. |
+| digitGroupSeparator (Séparateur de groupes de chiffres) | Séparateur de groupes de chiffres. Valeurs valides : VIRGULE, ESPACE ou AUCUN. |
+| topLimit (Limite maximale) | La limite maximale fixée pour le tableau croisé dynamique. |
+| Critères de mesure | Décrit les critères appliqués à cette mesure. |
+| percentStackedValues (Pourcentage des valeurs empilées) | Utilise ou non des valeurs empilées. Plus susceptible d'être utilisé pour les graphiques. Valeur booléenne. |
+| noSpaceBetweenColumns (Aucun espace entre les colonnes) | Afficher/masquer l'espace entre les colonnes. Valeur booléenne. |
+| externalAccess (accès externe) | Indicates whether the EventVisualization is available as external read-only. Boolean value. |
+| userOrganisationUnit (Unité d'organisation de l'utilisateur) | Indique si l'utilisateur dispose d'une unité d'organisation. Valeur booléenne. |
+| userOrganisationUnitChildren (Unité d'organisation subordonnées de l'utilisateur ) | Indique si l'utilisateur a des unités d'organisation subordonnées. Valeur booléenne. |
 | userOrganisationUnitGrandChildren | Indicates if the user has a grand children organisation unit. Boolean value. |
 | rowTotals | Displays (or not) the row totals. Boolean value. |
 | colTotals | Displays (or not) the columns totals. Boolean value. |
@@ -18232,7 +18211,7 @@ Actuellement, le point d'extrémité de l'importation Tracker prend en charge le
 | categoryOptionIdScheme (Schéma d'identification des options de catégorie) | Indique le schéma d'identification à utiliser pour les options de catégorie lors de l'importation. | Énumération | `UID`, `CODE`, `NOM`, `ATTRIBUT` |
 | importStrategy (stratégie d'importation) | Indique l'effet que l'importation doit avoir. Les différentes possibilités sont `CRÉER`, `METTRE À JOUR`, `CRÉER_ET_METTRE À JOUR` et `SUPPRIMER`. Respectivement, elles permettent d'importer de nouvelles données, d'importer des modifications à des données existantes, d'importer de nouvelles données ou des mises à jour à des données existantes et, enfin, de supprimer des données. | Énumération | `CRÉER`, `METTRE À JOUR`, `CRÉER_ET_METTRE À JOUR` et `SUPPRIMER` |
 | Mode atomique | Indique comment l'importation répond aux erreurs de validation. S'il est défini sur `TOUS`, toutes les données importées doivent être valides avant que chaque donnée ne soit commitée. Par contre s'il est défini sur `OBJET`, seules les données commitées doivent être valides, tandis que d'autres données peuvent être invalides. | Énumération | `TOUS`, `OBJET` |
-| flushMode | Indique la fréquence de vidange. Il s'agit de la fréquence à laquelle les données sont introduites dans la base de données au cours de l'importation. Il est principalement utilisé à des fins de débogage et ne doit pas être modifié dans un environnement de production. | Énumération | `AUTO`, `OBJET` |
+| flushMode (mode de vidage) | Indique la fréquence de vidange. Il s'agit de la fréquence à laquelle les données sont introduites dans la base de données au cours de l'importation. Il est principalement utilisé à des fins de débogage et ne doit pas être modifié dans un environnement de production. | Énumération | `AUTO`, `OBJET` |
 | Mode de validation | Indique l'intégralité de l'étape de validation. Il peut être sauté, configuré pour échouer rapidement (retour à la première erreur) ou complet (par défaut), ce qui renverra toutes les erreurs trouvées. | Énumération | `COMPLET`, `ÉCHOUER_RAPIDEMENT`, `SAUTER` |
 | Validation du modèle de saut | S'il est défini sur 'vrai', la validation du modèle des attributs générés sera sautée. | Booléen | `VRAI`, `FAUX` |
 | Sauter les effets secondaires | Si défini sur 'vrai', les effets secondaires de l'importation seront ignorés. | Booléen | `VRAI`, `FAUX` |

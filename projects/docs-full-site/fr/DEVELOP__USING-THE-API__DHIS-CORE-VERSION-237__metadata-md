@@ -827,19 +827,18 @@ Tableau : Paramètres d'importation
 | importStrategy (stratégie d'importation) | CRÉER_ET_METTRE À JOUR, CRÉER, METTRE À JOUR, SUPPRIMER | Définit la stratégie d'importation ; `CREATE_AND_UPDATE` essaiera de trouver une correspondance avec l'identifiant. Si aucune correspondance n'est trouvée, l'objet sera créé. |
 | Mode atomique | ALL, NONE (tous, aucun) | Définit le mode atomique. Dans l'ancien importateur, nous faisions toujours une importation *best effort* (mode au mieux), ce qui signifie que même si certaines références n'existaient pas, l'importation se faisait quand même (par exemple, des éléments de données manquants dans un groupe d'éléments de données). Par défaut, le nouvel importateur ne permet pas cela et rejette les erreurs de validation. Définir le mode `NONE` (aucun) émulait l'ancien fonctionnement. |
 | ~~mergeMode~~ (mode de fusion) | ~~REPLACE, MERGE~~ (remplacer, fusionner) | ~~Définit le mode de fusion. Lors des mises à jour nous avons deux façons de fusionner l'ancien objet avec le nouveau. Le mode `MERGE` ne remplacera l'ancienne propriété que si la nouvelle n'est pas nulle. Pour le mode `REPLACE`, toutes les propriétés sont remplacées qu'elles soient nulles ou non.~~ (*) |
-| flushMode | AUTO, OBJET | Définit le mode de vidage, qui contrôle quand vider le cache interne. Il est *fortement* recommandé de maintenir ce mode sur `AUTO` (qui est le mode par défaut). N'utilisez `OBJECT` qu'à des fins de débogage, lorsque vous voyez des exceptions liées à l'hibernation et que vous voulez localiser l'emplacement exact où l'empilement se produit (l'hibernation ne se déclenche qu'au moment du vidage, il peut donc être difficile de savoir quel objet a eu des problèmes). | 
+| flushMode (mode de vidage) | AUTO, OBJET | Définit le mode de vidage, qui contrôle quand vider le cache interne. Il est *fortement* recommandé de maintenir ce mode sur `AUTO` (qui est le mode par défaut). N'utilisez `OBJECT` qu'à des fins de débogage, lorsque vous voyez des exceptions liées à l'hibernation et que vous voulez localiser l'emplacement exact où l'empilement se produit (l'hibernation ne se déclenche qu'au moment du vidage, il peut donc être difficile de savoir quel objet a eu des problèmes). | 
 | skipSharing (ignorer le partage) | faux, vrai | Permet d'ignorer les propriétés de partage, d'éviter la fusion des éléments partagées lors des mises à jour et l'ajout d'un accès à un groupe d'utilisateurs lors de la création de nouveaux objets. |
 | skipValidation (ignorer la validation) | faux, vrai | Permet d'ignorer la validation lors de l'importation. Ce paramètre n'est pas recommandé : `NOT RECOMMENDED`. |
-| async | faux, vrai | Asynchronous import, returns immediately with a *Location* header pointing to the location of the *importReport*. The payload also contains a json object of the job created. |
-| inclusionStrategy | NON_NULL, ALWAYS, NON_EMPTY | *NON_NULL* includes properties which are not null, *ALWAYS* include all properties, *NON_EMPTY* includes non empty properties (will not include strings of 0 length, collections of size 0, etc.) |
-| userOverrideMode | NONE, CURRENT, SELECTED | Allows you to override the user property of every object you are importing, the options are NONE (do nothing), CURRENT (use import user), SELECTED (select a specific user using overrideUser=X) |
-| overrideUser | User ID | If userOverrideMode is SELECTED, use this parameter to select the user you want override with. |
+| async | faux, vrai | Importation asynchrone ; la réponse est renvoyée immédiatement avec un en-tête *Emplacement* qui pointe vers l'emplacement du *rapport d'importation*. La charge contient également un objet json de la tâche créée. |
+| inclusionStrategy (stratégie d'inclusion) | NON_NULL, ALWAYS, NON_EMPTY | *NON_NULL* inclut les propriétés qui ne sont pas nulles, *ALWAYS* inclut toutes les propriétés, *NON_EMPTY* inclut les propriétés qui ne sont pas vides (n'inclut pas les chaînes de longueur 0, les collections de taille 0, etc.) |
+| userOverrideMode (utiliser le mode de remplacement) | AUCUN, ACTUEL, SÉLECTIONNÉ | Ceci vous permet de remplacer la propriété utilisateur de chaque objet que vous importez. Les options sont NONE (ne rien faire), CURRENT (utiliser l'utilisateur d'importation), SELECTED (sélectionner un utilisateur spécifique en utilisant overrideUser=X). |
+| overrideUser (remplacer l'utilisateur) | ID de l'utilisateur | Si le mode de remplacement de l'utilisateur est sélectionné, utilisez ce paramètre pour sélectionner l'utilisateur avec lequel vous voulez effectuer le remplacement. |
 
 > (*) Currently the `mergeMode=MERGE` option of the import service has limitations and doesn't support all objects. It doesn't work with some object types such as Embedded objects, or objects which are saved as JSONB format in database ( sharing, attributeValues, etc...). Fixing those issues are complicated and would just cause new issues. Therefore, this `mergedMode=MERGE` is deprecated and currently is not recommended to use. The update mode should always be mergedMode=REPLACE. We have developed a new [JSON Patch API](#webapi_partial_updates) which can be used as an alternative approach. This feature is introduced in 2.37 release.
 
 
-An example of a metadata payload to be imported looks like this. Note how
-each entity type have their own property with an array of objects:
+Voici un exemple de charge d'importation de métadonnées. Vous remarquerez que chaque type d'entité possède sa propre propriété avec un tableau d'objets :
 
 ```json
 {
@@ -876,10 +875,7 @@ each entity type have their own property with an array of objects:
 }
 ```
 
-When posting this payload to the metadata endpoint, the response will contain
-information about the parameters used during the import and a summary per
-entity type including how many objects were created, updated, deleted and
-ignored:
+Lors de l'envoi de cette charge au point d'extrémité des métadonnées, la réponse contiendra des informations sur les paramètres utilisés lors de l'importation et un récapitulatif par type d'entité, lequel contiendra le nombre d'objets créés, mis à jour, supprimés et ignorés :
 
 ```json
 {
@@ -952,7 +948,7 @@ To get JSON schema for a specific class:
     GET /api/schemas/dataElement.json
 
 
-## Icons { #webapi_icons } 
+## Icônes { #webapi_icons } 
 
 DHIS2 includes a collection of icons that can be used to give visual
 context to metadata. These icons can be accessed through the icons
@@ -1090,7 +1086,7 @@ Table: Style properties
 
 | Propriété | Description | Type |
 |---|---|---|
-| color | A color, represented by a hexadecimal. | String (#000000) |
+| color | A color, represented by a hexadecimal. | Chaîne (#000000) |
 | icon | An icon, represented by a icon-name. | Chaîne |
 
 Currently, there is no official list or support for icon-libraries, so
@@ -1413,7 +1409,7 @@ The payload in JSON format looks like the following:
 }
 ```
 
-The JSON properties are described in the following table.
+Les propriétés JSON sont décrites dans le tableau suivant.
 
 Table: Split payload fields
 
@@ -1472,7 +1468,7 @@ The payload in JSON format looks like the following:
 }
 ```
 
-The JSON properties are described in the following table.
+Les propriétés JSON sont décrites dans le tableau suivant.
 
 Table: Merge payload fields
 
@@ -1805,7 +1801,7 @@ To retrieve description of programRule condition you can use POST and provide co
 
     /api/programRules/condition/description?<program_rule_uid>
 
-## Forms { #webapi_forms } 
+## Formulaires { #webapi_forms } 
 
 To retrieve information about a form (which corresponds to a data set
 and its sections) you can interact with the `form` resource. The form
@@ -2333,7 +2329,7 @@ Certain types of files are blocked from being uploaded for security reasons.
 
 The following content types are blocked.
 
-| Content type | Content type |
+| Type de contenu | Type de contenu |
 | ------------------------------------- | ---- |
 | text/html                             | application/x-ms-dos-executable |
 | text/css                              | application/vnd.microsoft.portable-executable |
