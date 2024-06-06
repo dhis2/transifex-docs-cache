@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/tracker.md"
-revision_date: '2024-06-03'
+revision_date: '2024-06-05'
 tags:
-- DHIS核心 主版
 - Develop
+- DHIS核心 主版
 ---
 
 # Tracker { #webapi_tracker }
@@ -493,7 +493,7 @@ automatically.
 > Although nested payloads can be easier for clients to manage, the payload will always be flattened
 > before the import. For large imports, using a flat structured payload offers more control and
 > reduces overhead during the import process.
-> 
+>
 > That being said, you cannot nest new tracked entities, enrollments or events in a relationship.
 
 ```json
@@ -560,7 +560,7 @@ automatically.
 ### Create { #create } 
 
 Make a `POST` to `/api/tracker` with the `importStrategy` set to `CREATE` or `CREATE_AND_UPDATE` and
-a payload as described [here](#payload). 
+a payload as described [here](#payload).
 
 ### Update { #update } 
 
@@ -573,7 +573,7 @@ omitted, as demonstrated in [update attribute values](#update-data-values) and [
 values](#update-data-values).
 
 > **Note**
-> 
+>
 > * Deleted tracker objects cannot be updated.
 > * Relationships cannot be updated.
 
@@ -745,13 +745,13 @@ authorities `F_TEI_CASCADE_DELETE` and `F_ENROLLMENT_CASCADE_DELETE`.
 
 ### CSV import { #csv-import } 
 
-To import events using CSV make a `POST` request with CSV body file and the `Content-Type` set to 
+To import events using CSV make a `POST` request with CSV body file and the `Content-Type` set to
 ***application/csv*** or ***text/csv***.
 
 #### 大事记 { #events } 
 
-Every row of the CSV payload represents an event and a data value. So, for events with multiple 
-data values, the CSV file will have `x` rows per event, where `x` is the number of data values 
+Every row of the CSV payload represents an event and a data value. So, for events with multiple
+data values, the CSV file will have `x` rows per event, where `x` is the number of data values
 in that event.
 
 ##### ***CSV PAYLOAD*** example { #csv-payload-example } 
@@ -1430,6 +1430,114 @@ Some examples of configurable validations:
 
 These configurations will further change how validation is performed during import.
 
+### Generated tracked entity attributes { #webapi_generate_te_attributes }
+
+Tracked entity attributes that use automatic generation of unique values
+have three endpoints utilized by apps for generating and reserving these values.
+> More info on how TextPattern works can be found [here](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/additional-information/dhis2-tutorials.html#working-with-textpattern)
+
+#### Finding Required Values { #finding-required-values } 
+
+A TextPattern may include variables that change based on different factors. Some of these factors are unknown to the server;
+thus, the values for these variables must be supplied when generating and reserving values.
+
+This endpoint returns a map of required and optional values that the server will inject into the TextPattern when generating new values.
+Required variables must be supplied for generation, whereas optional variables should only be provided if necessary.
+
+  GET /api/33/trackedEntityAttributes/Gs1ICEQTPlG/requiredValues
+
+```json
+{
+  "REQUIRED": [
+    "ORG_UNIT_CODE"
+  ],
+  "OPTIONAL": [
+    "RANDOM"
+  ]
+}
+```
+
+####   Generate value endpoint { #webapi_generate_values }
+
+Online web apps and other clients can use this endpoint to generate a unique value for immediate use.
+The generated value is guaranteed to be unique at the time of generation and is reserved for 3 days.
+If your TextPattern includes required values, they can be passed as parameters.
+
+To override the expiration time, add `?expiration=<number-of-days>` to the request.
+
+    GET /api/33/trackedEntityAttributes/Gs1ICEQTPlG/generate?ORG_UNIT_CODE=OSLO
+
+```json
+{
+  "ownerObject": "TRACKEDENTITYATTRIBUTE",
+  "ownerUid": "Gs1ICEQTPlG",
+  "key": "RANDOM(X)-OSL",
+  "value": "C-OSL",
+  "created": "2018-03-02T12:01:36.680",
+  "expiryDate": "2018-03-05T12:01:36.678"
+}
+```
+
+#### 产生并保留价值终点 { #webapi_generate_reserve_values }
+
+Offline clients can use this endpoint to reserve a number of unique IDs for later use when registering new tracked entity instances.
+The number of IDs to generate can be specified with the `numberToReserve` parameter (default is 1).
+
+To override the default expiration time of 60 days, add `?expiration=<number-of-days>` to the request.
+
+    GET /api/33/trackedEntityAttributes/Gs1ICEQTPlG/generateAndReserve?numberToReserve=3&ORG_UNIT_CODE=OSLO
+
+```json
+[
+  {
+    "ownerObject": "TRACKEDENTITYATTRIBUTE",
+    "ownerUid": "Gs1ICEQTPlG",
+    "key": "RANDOM(X)-OSL",
+    "value": "B-OSL",
+    "created": "2018-03-02T13:22:35.175",
+    "expiryDate": "2018-05-01T13:22:35.174"
+  },
+  {
+    "ownerObject": "TRACKEDENTITYATTRIBUTE",
+    "ownerUid": "Gs1ICEQTPlG",
+    "key": "RANDOM(X)-OSL",
+    "value": "Q-OSL",
+    "created": "2018-03-02T13:22:35.175",
+    "expiryDate": "2018-05-01T13:22:35.174"
+  },
+  {
+    "ownerObject": "TRACKEDENTITYATTRIBUTE",
+    "ownerUid": "Gs1ICEQTPlG",
+    "key": "RANDOM(X)-OSL",
+    "value": "S-OSL",
+    "created": "2018-03-02T13:22:35.175",
+    "expiryDate": "2018-05-01T13:22:35.174"
+  }
+]
+```
+
+#### 保留值 { #reserved-values } 
+
+目前无法通过 api 访问保留值，但是，它们
+由`generate` 和`generateAndReserve` 端点返回。这
+下表解释了保留值对象的属性：
+
+Table: Reserved values
+
+| Property | 描述 |
+|---|---|
+| ownerObject | The metadata type referenced when generating and reserving the value. Currently only TRACKEDENTITYATTRIBUTE is supported. |
+| ownerUid | The uid of the metadata object referenced when generating and reserving the value. |
+| key | A partially generated value where generated segments are not yet added. |
+| 价值 | The fully resolved value reserved. This is the value you send to the server when storing data. |
+| created | The timestamp when the reservation was made |
+| expiryDate | The timestamp when the reservation will no longer be reserved |
+
+过期的预订每天都会被删除。如果模式发生变化，则值
+存储数据时将接受已经保留的数据，即使
+它们与新模式不匹配，只要预订没有
+已到期。
+
 ### Program Rules { #webapi_tracker_program_rules }
 
 Users can configure [Program Rules](#webapi_program_rules), which adds conditional behavior to
@@ -1553,14 +1661,14 @@ Tracker export endpoints allow you to retrieve the previously imported objects w
 
 > **NOTE**
 >
-> * All tracker export endpoints default to a `JSON` response content. `CSV` is only supported 
+> * All tracker export endpoints default to a `JSON` response content. `CSV` is only supported
 >   by tracked entities and events.
-> * You can export a CSV file by adding the `Accept` header ***text/csv*** or ***application/csv*** 
->   to the request. 
+> * You can export a CSV file by adding the `Accept` header ***text/csv*** or ***application/csv***
+>   to the request.
 > * You can download in zip and gzip formats:
->     *  CSV for Tracked entities 
+>     *  CSV for Tracked entities
 >     *  JSON and CSV for Events
-> * You can export a Gzip file by adding the `Accept` header ***application/csv+gzip*** for CSV 
+> * You can export a Gzip file by adding the `Accept` header ***application/csv+gzip*** for CSV
 > or ***application/json+gzip*** for JSON.
 > * You can export a Zip file by adding the `Accept` header ***application/csv+zip*** for CSV or  
 > ***application/json+zip*** for JSON.
@@ -1622,13 +1730,13 @@ Two endpoints are dedicated to tracked entities:
 - `GET /api/tracker/trackedEntities/{id}`
   - retrieves a tracked entity given the provided id
 
-If not otherwise specified, JSON is the default response for the `GET` method. 
-The API also supports CSV export for single and collection endpoints. Furthermore, compressed 
+If not otherwise specified, JSON is the default response for the `GET` method.
+The API also supports CSV export for single and collection endpoints. Furthermore, compressed
 CSV types is an option for the collection endpoint.
 
 #### CSV { #csv } 
 
-In the case of CSV, the `fields` request parameter has no effect, and the response will always 
+In the case of CSV, the `fields` request parameter has no effect, and the response will always
 contain the following fields:
 
   - trackedEntity (UID)
@@ -1641,7 +1749,7 @@ contain the following fields:
   - inactive (boolean)
   - deleted (boolean)
   - potentialDuplicate (boolean)
-  - geometry (WKT, https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry. 
+  - geometry (WKT, https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry.
     You can omit it in case of a `Point` type and with `latitude` and `longitude` provided)
   - latitude (Latitude of a `Point` type of Geometry)
   - longitude (Longitude of a `Point` type of Geometry)
@@ -1778,7 +1886,7 @@ A query filter with a value that needs escaping and will be interpreted as `:,/`
 
 ##### Tracked Entities response example { #tracked-entities-response-example } 
 
-The API supports CSV and JSON response for `GET /api/tracker/trackedEntities`. 
+The API supports CSV and JSON response for `GET /api/tracker/trackedEntities`.
 
 ##### JSON { #json } 
 
@@ -1879,7 +1987,7 @@ A query for a tracked entity:
 
 ##### Tracked Entity response example { #tracked-entity-response-example } 
 
-The API supports CSV and JSON response for `GET /api/tracker/trackedEntities/{uid}` 
+The API supports CSV and JSON response for `GET /api/tracker/trackedEntities/{uid}`
 
 ###### JSON { #json } 
 
@@ -2025,7 +2133,7 @@ An example of a json response:
 
 ###### CSV { #csv } 
 
-The response will be the same as the collection endpoint but referring to a single tracked 
+The response will be the same as the collection endpoint but referring to a single tracked
 entity, although it might have multiple rows for each attribute.
 
 ### Enrollments (`GET /api/tracker/enrollments`) { #enrollments-get-apitrackerenrollments } 
@@ -2185,12 +2293,12 @@ Two endpoints are dedicated to events:
     - retrieves an event given the provided id
 
 If not otherwise specified, JSON is the default response for the `GET` method.
-The API also supports CSV export for single and collection endpoints. Furthermore, it supports 
+The API also supports CSV export for single and collection endpoints. Furthermore, it supports
 compressed JSON and CSV for the collection endpoint.
 
 #### Events CSV { #events-csv } 
 
-In the case of CSV, the `fields` request parameter has no effect, and the response will always 
+In the case of CSV, the `fields` request parameter has no effect, and the response will always
 contain the following fields:
 
   - event (UID)
@@ -2201,7 +2309,7 @@ contain the following fields:
   - orgUnit (UID)
   - occurredAt (DateTime)
   - scheduledAt (DateTime)
-  - geometry (WKT, https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry. 
+  - geometry (WKT, https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry.
     You can omit it in case of a `Point` type and with `latitude` and `longitude` provided)
   - latitude (Latitude of a `Point` type of Geometry)
   - longitude (Longitude of a `Point` type of Geometry)
@@ -2229,12 +2337,12 @@ See [Events](#events) and [Data Values](#data-values) for more field description
 
 #### Events GZIP { #events-gzip } 
 
-The response is file `events.json.gz` or `events.csv.gzip` containing the `events.json` 
+The response is file `events.json.gz` or `events.csv.gzip` containing the `events.json`
 or `events.csv` file.
 
 #### Events ZIP { #events-zip } 
 
-The response is file`events.json.gz` or `events.json.zip` containing the `events.json` 
+The response is file`events.json.gz` or `events.json.zip` containing the `events.json`
 or `events.csv` file.
 
 #### Events Collection endpoint `GET /api/tracker/events` { #events-collection-endpoint-get-apitrackerevents } 
@@ -2434,7 +2542,7 @@ A query for an Event:
 
 ##### Event response example { #event-response-example } 
 
-The API supports CSV and JSON response for `GET /api/tracker/trackedEntities` 
+The API supports CSV and JSON response for `GET /api/tracker/trackedEntities`
 
 ###### JSON { #json } 
 
@@ -2471,7 +2579,7 @@ The API supports CSV and JSON response for `GET /api/tracker/trackedEntities`
 
 ###### CSV { #csv } 
 
-The response will be the same as the collection endpoint but referring to a single event, 
+The response will be the same as the collection endpoint but referring to a single event,
 although it might have multiple rows for each data element value.
 
 ### Relationships (`GET /api/tracker/relationships`) { #relationships-get-apitrackerrelationships } 
@@ -2870,4 +2978,123 @@ See an example payload below:
   }
 }
 ```
+
+## 潜在重复   { #potential-duplicates } 
+
+Potential duplicates are records identified by the data deduplication feature as possibly being duplicates. Due to the nature of this feature, the API endpoint has certain restrictions.
+
+A potential duplicate represents a pair of records suspected to be duplicates.
+
+To retrieve a list of potential duplicates, use the following endpoint:
+
+    GET /api/potentialDuplicates
+
+The response payload for a potential duplicate looks like this:
+
+```json
+{
+  "created": "2024-06-04T10:11:29.110",
+  "lastUpdated": "2024-06-04T10:11:29.110",
+  "original": "<UID>",
+  "duplicate": "<UID>",
+  "status": "OPEN|INVALID|MERGED",
+  "id": "<id>"
+}
+```
+
+These are the parameters this endpoint accepts:
+
+| Parameter name | 描述 | 类型 | Allowed values |
+|---|---|---|---|
+| trackedEntities | List of tracked entities | List of string (separated by comma)| existing tracked entity UIDs |
+| status | Potential duplicate status | string | `OPEN`, `INVALID`, `MERGED`, `ALL` |
+
+To inspect individual potential duplicate records, use the following endpoint:
+
+    GET /api/potentialDuplicates/<id>
+
+To create a new potential duplicate, use this endpoint:
+
+    POST / api / potentialDuplicates
+
+The payload you provide must include the UIDs of the original and duplicate tracked entities. New potential duplicates are open by default.
+
+```json
+{
+  "original": "<UID>",
+  "duplicate": "<UID>"
+}
+```
+
+| Status code | 描述
+|---|---|
+| 400 | Input original or duplicate is null or has invalid uid
+| 403 | User do not have access to read origianl or duplicate TEs
+| 404 | TE not found
+| 409 | Pair of original and duplicate TEs already existing
+
+To update the status of a potential duplicate, use the following endpoint:
+
+    PUT /api/potentialDuplicates/<id>
+
+| Parameter name | 描述 | 类型 | Allowed values |
+|---|---|---|---|
+| status | Potential duplicate status | string | `OPEN`, `INVALID` |
+
+| Status code | 描述
+|---|---|
+| 400 | You can't update a potential duplicate to MERGED as this is possible only by a merging request
+| 400 | You can't update a potential duplicate that is already in a MERGED status
+
+### Merging Tracked Entities { #merging-tracked-entities } 
+Tracked entities can be merged together if they are deemed viable. To initiate a merge, the first step is to define two tracked entities as a Potential Duplicate. The merge endpoint moves data from the duplicate tracked entity to the original tracked entity and deletes the remaining data of the duplicate.
+
+To merge a Potential Duplicate, i.e. the two tracked entities the Potential Duplicate represents, use the following endpoint:
+    POST /api/potentialDuplicates/<id>/merge
+
+| Parameter name | 描述 | 类型 | Allowed values |
+|---|---|---|---|
+| mergeStrategy | Strategy to use for merging the potentialDuplicate | string | AUTO(default) or MANUAL |
+
+The endpoint accepts a single parameter, `mergeStrategy`, which determines the strategy used when merging. For the `AUTO` strategy, the server will attempt to merge the two tracked entities automatically without user input. This strategy only allows merging tracked entities without conflicting data (see examples below). The `MANUAL` strategy requires the user to send in a payload describing how the merge should be done. For examples and rules for each strategy, see their respective sections below.
+
+#### Merge Strategy AUTO { #merge-strategy-auto } 
+The automatic merge evaluates the mergability of the two tracked entities and merges them if they are deemed mergable. The mergability is based on whether the two tracked entities have any conflicts. Conflicts refer to data that cannot be merged automatically. Examples of possible conflicts include:
+- The same attribute has different values in each tracked entity.
+- Both tracked entities are enrolled in the same program.
+- Tracked entities have different types.
+
+If any conflict is encountered, an error message is returned to the user.
+
+When no conflicts are found, all data in the duplicate that is not already in the original will be moved to the original. This includes attribute values, enrollments (including events), and relationships. After the merge completes, the duplicate is deleted and the Potential Duplicate is marked as `MERGED`.
+
+When requesting an automatic merge, a payload is not required and will be ignored.
+
+#### Merge Strategy MANUAL { #merge-strategy-manual } 
+The manual merge is suitable when there are resolvable conflicts or when not all the data needs to be moved during the merge. For example, if an attribute has different values in both tracked entity instances, the user can specify whether to keep the original value or move over the duplicate's value. Since the manual merge involves the user explicitly requesting to move data, there are some additional checks:
+- Relationship cannot be between the original and the duplicate (This results in an invalid self-referencing relationship)
+- Relationship cannot be of the same type and to the same object in both tracked entities (IE. between original and other, and duplicate and other; This would result in a duplicate relationship)
+
+There are two ways to do a manual merge: With and without a payload.
+
+When a manual merge is requested without a payload, we are telling the API to merge the two tracked entities without moving any data. In other words, we are just removing the duplicate and marking the
+potentialDuplicate MERGED. This might be valid in a lot of cases where the tracked entity was just created, but not enrolled for example.
+
+Otherwise, if a manual merge is requested with a payload, the payload refers to what data should be moved from the duplicate to the original. The payload looks like this:
+```json
+{
+  "trackedEntityAttributes": ["B58KFJ45L9D"],
+  "enrollments": ["F61SJ2DhINO"],
+  "relationships": ["ETkkZVSNSVw"]
+}
+```
+
+This payload contains three lists, one for each of the types of data that can be moved. `trackedEntityAttributes` is a list of uids for tracked entity attributes, `enrollments` is a list of uids for enrollments and `relationships` 
+a list of uids for relationships. The uids in this payload have to refer to data that actually exists on the duplicate. There is no way to add new data or change data using the merge endpoint - Only moving data.
+
+#### Additional information about merging { #additional-information-about-merging } 
+Currently it is not possible to merge tracked entities that are enrolled in the same program, due to the added complexity. A workaround is to manually remove the enrollments from one of the tracked entities before starting the merge.
+
+All merging is based on data already persisted in the database, which means the current merging service is not validating that data again. This means if data was already invalid, it will not be reported during the merge.
+The only validation done in the service relates to relationships, as mentioned in the previous section.
 
