@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/tracker.md"
-revision_date: '2024-06-20'
+revision_date: '2024-06-26'
 tags:
 - Développement
 - Version Master de DHIS2 Central
@@ -160,7 +160,6 @@ signalera les cas exceptionnels entre ces deux.
 
 Les `Relations` sont des objets qui relient deux autres objets Tracker. Les contraintes auxquelles chaque côté 
 de la relation doit se conformer sont basées sur le `Type de relation` de la `Relation`.
-
 
 | Propriété | Description ; | Obligatoire | Immuable | Type | Exemple |
 |---|---|---|---|---|---|
@@ -1479,7 +1478,7 @@ To override the expiration time, add `?expiration=<number-of-days>` to the reque
 }
 ```
 
-#### Generate and reserve value endpoint { #webapi_generate_reserve_values }
+#### Point d'extrémité de génération et de réservation de valeur { #webapi_generate_reserve_values }
 
 Offline clients can use this endpoint to reserve a number of unique IDs for later use when registering new tracked entity instances.
 The number of IDs to generate can be specified with the `numberToReserve` parameter (default is 1).
@@ -1517,27 +1516,22 @@ To override the default expiration time of 60 days, add `?expiration=<number-of-
 ]
 ```
 
-#### Reserved values { #reserved-values } 
+#### Valeurs réservées { #reserved-values } 
 
-Reserved values are currently not accessible through the api, however, they
-are returned by the `generate` and `generateAndReserve` endpoints. The
-following table explains the properties of the reserved value object:
+Les valeurs réservées ne sont actuellement pas accessibles via l'API, mais elles sont renvoyées par les points d'extrémité `generate` (génération) et `generate And Reserve` (génération et réservation). Le tableau suivant explique les propriétés de l'objet de valeur réservée :
 
-Table: Reserved values
+Tableau : Valeurs réservées
 
 | Propriété | Description |
 |---|---|
-| ownerObject | The metadata type referenced when generating and reserving the value. Currently only TRACKEDENTITYATTRIBUTE is supported. |
-| ownerUid | The uid of the metadata object referenced when generating and reserving the value. |
-| clé | A partially generated value where generated segments are not yet added. |
-| valeur | The fully resolved value reserved. This is the value you send to the server when storing data. |
-| créés | The timestamp when the reservation was made |
-| expiryDate | The timestamp when the reservation will no longer be reserved |
+| ownerObject  | Le type de métadonnées référencé lors de la génération et de la réservation de la valeur. Actuellement, seul TRACKEDENTITYATTRIBUTE (attribut d'entité suivie) est pris en charge. |
+| ownerUid | L'uid de l'objet de métadonnées référencé lors de la génération et de la réservation de la valeur. |
+| clé | Une valeur partiellement générée où les segments générés ne sont pas encore ajoutés. |
+| valeur | La valeur réservée. C'est la valeur que vous envoyez au serveur lorsque vous stockez des données. |
+| créés | Date et heure à laquelle la réservation a été effectuée |
+| expiryDate | Date et heure à partir de laquelle la réservation ne sera plus valable. |
 
-Expired reservations are removed daily. If a pattern changes, values
-that were already reserved will be accepted when storing data, even if
-they don't match the new pattern, as long as the reservation has not
-expired.
+Les réservations expirées sont supprimées quotidiennement. Si un modèle change, les valeurs déjà réservées seront acceptées lors du stockage des données, même si elles ne correspondent pas au nouveau modèle, tant que la réservation n'a pas expiré.
 
 ### Program Rules { #webapi_tracker_program_rules }
 
@@ -2132,6 +2126,67 @@ Exemple de réponse json :
 The response will be the same as the collection endpoint but referring to a single tracked
 entity, although it might have multiple rows for each attribute.
 
+#### Tracked entity attribute value change logs { #webapi_tracker_attribute_change_logs }
+`GET /api/tracker/trackedEntities/{uid}/changeLogs`
+
+This endpoint retrieves change logs for the attributes of a specific tracked entity. It returns a list of all tracked entity attributes that have changed over time for that entity.
+
+|Paramètre|Type|Valeurs autorisées|
+|---|---|---|
+|path `/{uid}`|`String`|Tracked entity `UID`.|
+|`programme`|`String`|Program `UID` (optional).|
+
+##### Tracked entity attribute value change logs response example { #tracked-entity-attribute-value-change-logs-response-example } 
+
+Exemple de réponse json :
+
+```json
+{
+   "pager":{
+      "page":1,
+      "pageSize":10
+   },
+   "changeLogs":[
+      {
+         "createdBy":{
+            "uid":"AIK2aQOJIbj",
+            "username":"tracker",
+            "firstName":"Tracker demo",
+            "surname":"User"
+         },
+         "createdAt":"2024-06-20T14:51:16.433",
+         "type":"UPDATE",
+         "change":{
+            "dataValue":{
+               "dataElement":"bx6fsa0t90x",
+               "previousValue":"true",
+               "currentValue":"false"
+            }
+         }
+      },
+      {
+         "createdBy":{
+            "uid":"AIK2aQOJIbj",
+            "username":"tracker",
+            "firstName":"Tracker demo",
+            "surname":"User"
+         },
+         "createdAt":"2024-06-20T14:50:32.966",
+         "type":"CREATE",
+         "change":{
+            "dataValue":{
+               "dataElement":"ebaJjqltK5N",
+               "currentValue":"0"
+            }
+         }
+      }
+   ]
+}
+```
+
+The change log type can be `CREATE`, `UPDATE`, or `DELETE`.
+`CREATE` and `DELETE` will always hold a single value: the former shows the current value, and the latter shows the value that was deleted. UPDATE will hold two values: the previous and the current.
+
 ### Inscriptions (`GET /api/tracker/enrollments`) { #enrollments-get-apitrackerenrollments }
 
 Deux points d'extrémité sont dédiés aux inscriptions :
@@ -2576,6 +2631,83 @@ The API supports CSV and JSON response for `GET /api/tracker/trackedEntities`
 The response will be the same as the collection endpoint but referring to a single event,
 although it might have multiple rows for each data element value.
 
+#### Event data value change logs { #webapi_event_data_value_change_logs }
+`GET /api/tracker/events/{uid}/changeLogs`
+
+This endpoint retrieves change logs for the data values of a specific event. It returns a list of all event data values that have changed over time for that particular event.
+
+|Paramètre|Type|Valeurs autorisées|
+|---|---|---|
+|path `/{uid}`|`String`|Event `UID`.|
+
+##### Event data value change logs response example { #event-data-value-change-logs-response-example } 
+
+Exemple de réponse json :
+
+```json
+{
+   "pager":{
+      "page":1,
+      "pageSize":10
+   },
+   "changeLogs":[
+      {
+         "createdBy":{
+            "uid":"AIK2aQOJIbj",
+            "username":"tracker",
+            "firstName":"Tracker demo",
+            "surname":"User"
+         },
+         "createdAt":"2024-06-20T15:43:36.342",
+         "type":"DELETE",
+         "change":{
+            "dataValue":{
+               "dataElement":"UXz7xuGCEhU",
+               "previousValue":"12"
+            }
+         }
+      },
+      {
+         "createdBy":{
+            "uid":"AIK2aQOJIbj",
+            "username":"tracker",
+            "firstName":"Tracker demo",
+            "surname":"User"
+         },
+         "createdAt":"2024-06-20T15:43:27.175",
+         "type":"CREATE",
+         "change":{
+            "dataValue":{
+               "dataElement":"UXz7xuGCEhU",
+               "currentValue":"12"
+            }
+         }
+      },
+      {
+         "createdBy":{
+            "uid":"AIK2aQOJIbj",
+            "username":"tracker",
+            "firstName":"Tracker demo",
+            "surname":"User"
+         },
+         "createdAt":"2024-06-20T14:51:16.433",
+         "type":"UPDATE",
+         "change":{
+            "dataValue":{
+               "dataElement":"bx6fsa0t90x",
+               "previousValue":"true",
+               "currentValue":"false"
+            }
+         }
+      }
+   ]
+}
+```
+
+The change log type can be `CREATE`, `UPDATE`, or `DELETE`.
+`CREATE` and `DELETE` will always hold a single value: the former shows the current value, and the latter shows the value that was deleted. UPDATE will hold two values: the previous and the current.
+
+
 ### Relations (`GET /api/tracker/relationships`) { #relationships-get-apitrackerrelationships }
 
 Les relations sont des liens entre deux entités dans le Tracker.
@@ -2857,71 +2989,138 @@ trackedEntities
 
 ## Working Lists { #working-lists } 
 
-Working lists allows users to efficiently organizate their workflow. Users can save filters and
-sorting preferences for working with tracked entities, enrollments and events. Tracked entities,
-enrollments and events each have a dedicated API to manage working lists.
+Working lists allow users to efficiently organize their workflow by saving filters and sorting
+preferences for tracked entities, enrollments, and events. Each type of working list—tracked
+entities, enrollments, and events—has a dedicated API for management.
+
+Working lists are [metadata](#webapi_metadata), making them shareable and subject to the same
+[sharing](#webapi_sharing) patterns as other metadata. When using the
+[`/api/sharing`](#webapi_sharing) endpoint, the type parameter should be set to the name of the
+working list API. For example, use trackedEntityInstanceFilter for [tracked entity working
+lists](#tracked-entity-instance-filters).
+
+Since working lists are metadata refer to [metadata](#webapi_metadata) on how to create, update and
+delete metadata. The following sections describe the payloads of each of the working lists
+endpoints.
+
+### Tracked entity working lists { #tracked-entity-working-lists } 
+
+Create, update and delete tracked entity working lists using
+
+    /api/trackedEntityInstanceFilters
+
+#### Payload { #payload } 
+
+Tableau : Charge 
+
+| Propriété | Description | Exemple |
+|---|---|---|
+|nom|Nom de la liste de tâches. Obligatoire.||
+|Description|Il s'agit d'une description de la liste de tâches.||
+|sortOrder (ordre de tri)|The sort order of the working list.||
+|style|Object containing css style.|`{"color": "blue", "icon": "fa fa-calendar"}`|
+|programme|Objet contenant l'identifiant du programme. Obligatoire.|`{ "id" : "uy2gU8kTjF"}`|
+|entityQueryCriteria|An object representing various possible filtering values. See *Entity Query Criteria* definition table below.
+|eventFilters|A list of eventFilters. See *Event filters* definition table below.|`[{"programStage": "eaDH9089uMp", "eventStatus": "OVERDUE", "eventCreatedPeriod": {"periodFrom": -15, "periodTo": 15}}]`|
+
+Table: Entity Query Criteria definition
+
+| Propriété | Description | Exemple |
+|---|---|---|
+|Filtres des valeurs d'attributs|A list of attributeValueFilters. This is used to specify filters for attribute values when listing tracked entity instances|`"attributeValueFilters"=[{"attribute": "abcAttributeUid","le": "20","ge": "10","lt": "20","gt": "10","in": ["India", "Norway"],"like": "abc","sw": "abc","ew": "abc","dateFilter": {"startDate": "2014-05-01","endDate": "2019-03-20","startBuffer": -5,"endBuffer": 5,"period": "LAST_WEEK","type": "RELATIVE"}}]`|
+|Statut de l'inscription|The tracked entities enrollment status. Can be none(any enrollmentstatus) or ACTIVE&#124;COMPLETED&#124;CANCELLED||
+|Suivi|When this parameter is true, the working list only returns tracked entities that have an enrollment with `folloWup=true`.||
+|organisationUnit|To specify the uid of the organisation unit|`{"organisationUnit": "a3kGcGDCuk7"}`|
+|ouMode (Mode d'unité d'organisation)|To specify the organisation unit selection mode. Possible values are SELECTED&#124; CHILDREN&#124;DESCENDANTS&#124;ACCESSIBLE&#124;CAPTURE&#124;ALL|`"ouMode": "SELECTED"`|
+|Mode d'utilisateur assigné|To specify the assigned user selection mode for events. Possible values are CURRENT&#124; PROVIDED&#124; NONE &#124; ANY. See table below to understand what each value indicates. If PROVIDED (or null), non-empty assignedUsers in the payload will be considered.|"assignedUserMode": "PROVIDED"|
+|assignedUser (Utilisateur assigné)|To specify a list of assigned users for events. To be used along with PROVIDED assignedUserMode above.|`"assignedUsers": ["a3kGcGDCuk7", "a3kGcGDCuk8"]`|
+|Ordre d'affichage des colonnes|To specify the output ordering of columns|`"displayOrderColumns": ["enrollmentDate", "program"]`|
+|Ordre|To specify ordering/sorting of fields and its directions in comma separated values. A single item in order is of the form "orderDimension:direction". Note: Supported orderDimensions are trackedEntity, created, createdAt, createdAtClient, updatedAt, updatedAtClient, enrolledAt, inactive and the tracked entity attributes|`"order"="a3kGcGDCuk6:desc"`|
+|Étape de programme|To specify a programStage uid to filter on. tracked entities will be filtered based on presence of enrollment in the specified program stage.|`"programStage"="a3kGcGDCuk6"`|
+|TrackedEntityType (Type d'entité suivie)|To specify a trackedEntityType filter tracked entities on.|`{"trackedEntityType"="a3kGcGDCuk6"}`|
+|trackedEntities|To specify a list of trackedEntityInstances to use when querying tracked entities.|`"trackedEntityInstances"=["a3kGcGDCuk6","b4jGcGDCuk7"]`|
+|enrollmentCreatedDate|[DateFilterPeriod](#webapi_tracker_workinglists_common_objects) object date filtering based on enrollment created date.|`"enrollmentCreatedDate": {     "period": "LAST_WEEK",     "type": "RELATIVE"   }`|
+|enrollmentIncidentDate|[DateFilterPeriod](#webapi_tracker_workinglists_common_objects) object date filtering based on enrollment incident date.|`"enrollmentIncidentDate": {     "startDate": "2014-05-01",     "endDate": "2019-03-20",     "startBuffer": -5,     "endBuffer": 5,     "period": "LAST_WEEK",     "type": "RELATIVE"   }`|
+|eventStatus (statut d'événement)|Il s'agit du statut de l'événement. Les valeurs possibles sont ACTIF, EFFECTUÉ, VISITÉ, PROGRAMMÉ, EN RETARD, SAUTÉ et VISITÉ.|`"status":"VISITED"`|
+|eventDate (date de l'événement)|[DateFilterPeriod](#webapi_tracker_workinglists_common_objects) object date filtering based on event date.|`"eventDate": {"startBuffer": -5,"endBuffer": 5,     "type": "RELATIVE"   }`|
+|lastUpdatedDate|[DateFilterPeriod](#webapi_tracker_workinglists_common_objects) object date filtering based on last updated date.|`"lastUpdatedDate": {"startDate": "2014-05-01",     "endDate": "2019-03-20",     "type": "ABSOLUTE"   }`|
+
+Table: Event filters definition
+
+| Propriété | Description | Exemple |
+|---|---|---|
+|Étape de programme|Which programStage the tracked entity needs an event in to be returned.|`"eaDH9089uMp"`|
+|eventStatus (statut d'événement)|The events status. Can be none(any event status) or ACTIVE&#124;COMPLETED&#124;SCHEDULE&#124;OVERDUE|`ACTIVE`|
+|eventCreatedPeriod|FilterPeriod object containing a period in which the event must be created. See *Period* definition below.|`{ "periodFrom": -15, "periodTo": 15}`|
+|Mode d'utilisateur assigné|To specify the assigned user selection mode for events. Possible values are CURRENT (events assigned to current user)&#124; PROVIDED (events assigned to users provided in "assignedUsers" list) &#124; NONE (events assigned to no one) &#124; ANY (events assigned to anyone). If PROVIDED (or null), non-empty assignedUsers in the payload will be considered.|`"assignedUserMode": "PROVIDED"`|
+|assignedUser (Utilisateur assigné)|To specify a list of assigned users for events. To be used along with PROVIDED assignedUserMode above.|`"assignedUsers": ["a3kGcGDCuk7", "a3kGcGDCuk8"]`|
+
+Table: FilterPeriod definition
+
+| Propriété | Description | Exemple |
+|---|---|---|
+|periodFrom|Number of days from current day. Can be positive or negative integer.|-15|
+|periodTo|Number of days from current day. Must be bigger than periodFrom. Can be positive or negative integer.|15|
+
+#### Query Request Parameters { #query-request-parameters } 
+
+Table: Tracked entity instance filters query parameters
+
+| Paramètre de requête | Description |
+|---|---|
+|programme|Program identifier. Restricts filters to the given program.|
 
 ### Program stage working lists { #program-stage-working-lists } 
 
-Program stage working lists pre-established working lists relevant to a particular program stage. This functionality enables
-users to save filters and sorting preferences that are related to program stages, facilitating the
-organisation and management of their workflow. To interact with them, you'll need to use the
-*/api/programStageWorkingLists* resource. These lists can be shared and follow the same sharing
-pattern as any other metadata. When using the */api/sharing* the type parameter will be
-*programStageWorkingLists*.
+Create, update and delete program stage working lists using
 
     /api/programStageWorkingLists
 
 #### Payload { #payload } 
 
-The endpoint above can be used to get all program stage working lists. To get a single one, append
-the working list id. This is the same in case you want to delete it. On the other hand, if you are
-looking to create or update a program stage working list, besides the endpoint mentioned above,
-you'll need to provide a payload in the following format:
-
 Tableau : Charge 
 
 | Valeurs de la charge  | Description | Exemple |
 |---|---|---|
-| nom | Nom de la liste de tâches. Obligatoire. ||
-| Description | Il s'agit d'une description de la liste de tâches. ||
-| programme | Objet contenant l'identifiant du programme. Obligatoire. | {"id" : "uy2gU8kTjF"} |
-| Étape de programme | Objet contenant l'identifiant de l'étape de programme. Obligatoire. | {"id" : "oRySG82BKE6"} |
-| programStageQueryCriteria (Critères de requête de l'étape de programme) | Un objet représentant diverses valeurs de filtrage possibles. Voir le tableau de définition des *Critères de requête de l'étape de programme* ci-dessous.
+|nom|Nom de la liste de tâches. Obligatoire.||
+|Description|Il s'agit d'une description de la liste de tâches.||
+|programme|Objet contenant l'identifiant du programme. Obligatoire.|`{"id" : "uy2gU8kTjF"}`|
+|Étape de programme|Objet contenant l'identifiant de l'étape de programme. Obligatoire.|`{"id" : "oRySG82BKE6"}`|
+|programStageQueryCriteria (Critères de requête de l'étape de programme)|Un objet représentant diverses valeurs de filtrage possibles. Voir le tableau de définition des *Critères de requête de l'étape de programme* ci-dessous.
 
 Tableau : Critères de requête de l'étape de programme
 
 | Valeurs des critères | Description | Exemple |
 |---|---|---|
-| eventStatus (statut d'événement) | Il s'agit du statut de l'événement. Les valeurs possibles sont ACTIF, EFFECTUÉ, VISITÉ, PROGRAMMÉ, EN RETARD, SAUTÉ et VISITÉ. | "statut": "VISITÉ" |
-| Évènement créé à | L'objet "Période de filtrage des dates" effectue le filtrage sur la base de la date de création de l'événement. | {"type":"ABSOLUTE","startDate":"2020-03-01","endDate":"2022-12-30"} |
-| eventOccurredAt | L'objet "Période de filtrage des dates" effectue le filtrage sur la base de la date à laquelle l'événement s'est produit. | {"type":"RELATIVE","period":"TODAY"} |
-| eventScheduledAt | L'objet "Période de filtrage des dates" effectue le filtrage sur la base de la date de programmation de l'événement. | {"type":"RELATIVE","period":"TODAY"} |
-| Statut de l'inscription | Any valid EnrollmentStatus. Possible values are ACTIVE, COMPLETED and CANCELLED. | "Statut de l'inscription": "EFFECTUÉ" |
-| Suivi | Indique s'il faut filtrer ou non les inscriptions marquées pour le suivi | "suivi": vrai |
-| inscrit à | L'objet "Période de filtrage des dates" effectue le filtrage sur la base de la date d'inscription de l'événement. | "enrolledAt": {"type":"RELATIVE","period":"THIS_MONTH"} |
-| Inscription effectué à | L'objet "Période de filtrage des dates" effectue le filtrage sur la base de la date à laquelle l'événement s'est produit. | {"type":"RELATIVE","period":"THIS_MONTH"} |
-| orgUnit (Unité d'organisation) | Un UID d'unité d'organisation valide | "orgUnit": "Rp268JB6Ne4" |
-| ouMode (Mode d'unité d'organisation) | Un mode de sélection d'unités d'organisation valide | "ouMode": "SELECTED" |
-| Mode d'utilisateur assigné | Il s'agit d'un mode de sélection d'utilisateur valide pour les événements. Les valeurs possibles sont ACTUEL, FOURNI, AUCUN, TOUT et TOUS. S’il est FOURNI (ou nul), il sera attendu dans la charge utile des utilisateurs assignés non vides. | "Mode d'utilisateur assigné" : "FOURNI" |
-| assignedUser (Utilisateur assigné) | Une liste des utilisateurs assignés aux événements. À utiliser avec le mode d'utilisateur assigné, fourni ci-dessus. | "Utilisateurs assignés":["DXyJmlo9rge"] |
-| Ordre | Liste des champs et de leurs directions en valeurs séparées par des virgules, les résultats seront triés en fonction de cette liste. Un seul élément dans l'ordre est de la forme « orderDimension:direction ». | "ordre": "w75KJ2mc4zz:asc" |
-| Ordre d'affichage des colonnes | Ordre de sortie des colonnes | "Ordre de sortie des colonnes":["w75KJ2mc4zz","zDhUuAYrxNC"] |
-| Filtres de données | Une liste d'éléments contenant les filtres à utiliser lors de requêtes d'événements | "Filtres de données":[{"dataItem": "GXNUsigphqK","ge": "10","le": "20"}] |
-| Filtres des valeurs d'attributs | Une liste de filtres de valeurs d'attribut. Elle est utilisée pour définir des filtres pour les valeurs d'attributs lors de l'établissement de la liste des entités suivies. | "Filtres de valeurs d'attribut":[{"attribute": "ruQQnf6rswq","eq": "15"}] |
+|eventStatus (statut d'événement)|Il s'agit du statut de l'événement. Les valeurs possibles sont ACTIF, EFFECTUÉ, VISITÉ, PROGRAMMÉ, EN RETARD, SAUTÉ et VISITÉ.|`"status":"VISITED"`|
+|Évènement créé à|[DateFilterPeriod](#webapi_tracker_workinglists_common_objects) object filtering based on the event creation date.|`{"type":"ABSOLUTE","startDate":"2020-03-01","endDate":"2022-12-30"}`|
+|eventOccurredAt|[DateFilterPeriod](#webapi_tracker_workinglists_common_objects) object filtering based on the event occurred date.|`{"type":"RELATIVE","period":"TODAY"}`|
+|eventScheduledAt|[DateFilterPeriod](#webapi_tracker_workinglists_common_objects) object filtering based on the event scheduled date.|`{"type":"RELATIVE","period":"TODAY"}`|
+|Statut de l'inscription|Any valid EnrollmentStatus. Possible values are ACTIVE, COMPLETED and CANCELLED.|`"enrollmentStatus": "COMPLETED"`|
+|Suivi|Indique s'il faut filtrer ou non les inscriptions marquées pour le suivi|`"followUp":true`|
+|inscrit à|[DateFilterPeriod](#webapi_tracker_workinglists_common_objects) object filtering based on the event enrollment date.|`"enrolledAt": {"type":"RELATIVE","period":"THIS_MONTH"}`|
+|Inscription effectué à|[DateFilterPeriod](#webapi_tracker_workinglists_common_objects) object filtering based on the event occurred date.|`{"type":"RELATIVE","period":"THIS_MONTH"}`|
+|orgUnit (Unité d'organisation)|Un UID d'unité d'organisation valide|`"orgUnit": "Rp268JB6Ne4"`|
+|ouMode (Mode d'unité d'organisation)|Un mode de sélection d'unités d'organisation valide|`"ouMode": "SELECTED"`|
+|Mode d'utilisateur assigné|Il s'agit d'un mode de sélection d'utilisateur valide pour les événements. Les valeurs possibles sont ACTUEL, FOURNI, AUCUN, TOUT et TOUS. S’il est FOURNI (ou nul), il sera attendu dans la charge utile des utilisateurs assignés non vides.|"Mode d'utilisateur assigné" : "FOURNI"|
+|assignedUser (Utilisateur assigné)|Une liste des utilisateurs assignés aux événements. À utiliser avec le mode d'utilisateur assigné, fourni ci-dessus.|"Utilisateurs assignés":["DXyJmlo9rge"]|
+|Ordre|Liste des champs et de leurs directions en valeurs séparées par des virgules, les résultats seront triés en fonction de cette liste. Un seul élément dans l'ordre est de la forme « orderDimension:direction ».|"ordre": "w75KJ2mc4zz:asc"|
+|Ordre d'affichage des colonnes|Ordre de sortie des colonnes|"Ordre de sortie des colonnes":["w75KJ2mc4zz","zDhUuAYrxNC"]|
+|Filtres de données|Une liste d'éléments contenant les filtres à utiliser lors de requêtes d'événements|"Filtres de données":[{"dataItem": "GXNUsigphqK","ge": "10","le": "20"}]|
+|Filtres des valeurs d'attributs|Une liste de filtres de valeurs d'attribut. Elle est utilisée pour définir des filtres pour les valeurs d'attributs lors de l'établissement de la liste des entités suivies.|"Filtres de valeurs d'attribut":[{"attribute": "ruQQnf6rswq","eq": "15"}]|
 
 Ci-dessous, un exemple de charge :
 
 ```json
 {
   "name": "Test WL",
+  "description": "Test WL definition",
   "program": {
     "id": "uy2gU8kT1jF"
   },
   "programStage": {
     "id": "oRySG82BKE6"
   },
-  "description": "Test WL definition",
   "programStageQueryCriteria": {
     "eventStatus": "VISITED",
     "eventCreatedAt": {
@@ -2971,11 +3170,98 @@ Ci-dessous, un exemple de charge :
 }
 ```
 
+### Event working lists { #event-working-lists } 
+
+Create, update and delete event working lists using
+
+    /api/eventFilters
+
+#### Payload { #payload } 
+
+Tableau : Charge 
+
+| Propriété | Description | Exemple |
+|---|---|---|
+|nom|Name of the working list.|"name":"My working list"|
+|Description|Il s'agit d'une description de la liste de tâches.|"description":"for listing all events assigned to me".|
+|programme|The uid of the program.|"program" : "a3kGcGDCuk6"|
+|Étape de programme|The uid of the program stage.|"programStage" : "a3kGcGDCuk6"|
+|eventQueryCriteria|Object containing parameters for querying, sorting and filtering events.|"eventQueryCriteria": {     "organisationUnit":"a3kGcGDCuk6",     "status": "COMPLETED",     "createdDate": {       "from": "2014-05-01",       "to": "2019-03-20"     },     "dataElements": ["a3kGcGDCuk6:EQ:1", "a3kGcGDCuk6"],     "filters": ["a3kGcGDCuk6:EQ:1"],     "programStatus": "ACTIVE",     "ouMode": "SELECTED",     "assignedUserMode": "PROVIDED",     "assignedUsers" : ["a3kGcGDCuk7", "a3kGcGDCuk8"],     "followUp": false,     "trackedEntityInstance": "a3kGcGDCuk6",     "events": ["a3kGcGDCuk7", "a3kGcGDCuk8"],     "fields": "eventDate,dueDate",     "order": "dueDate:asc,createdDate:desc"   }|
+
+Table: Event Query Criteria definition
+
+| Propriété | Description | Exemple |
+|---|---|---|
+|Suivi|Used to filter events based on enrollment followUp flag. Possible values are true&#124;false.|"followUp": true|
+|organisationUnit|To specify the uid of the organisation unit|"organisationUnit": "a3kGcGDCuk7"|
+|ouMode (Mode d'unité d'organisation)|To specify the OU selection mode. Possible values are SELECTED&#124; CHILDREN&#124;DESCENDANTS&#124;ACCESSIBLE&#124;CAPTURE&#124;ALL|"ouMode": "SELECTED"|
+|Mode d'utilisateur assigné|To specify the assigned user selection mode for events. Possible values are CURRENT&#124; PROVIDED&#124; NONE &#124; ANY. See table below to understand what each value indicates. If PROVIDED (or null), non-empty assignedUsers in the payload will be considered.|"assignedUserMode": "PROVIDED"|
+|assignedUser (Utilisateur assigné)|To specify a list of assigned users for events. To be used along with PROVIDED assignedUserMode above.|"assignedUsers": ["a3kGcGDCuk7", "a3kGcGDCuk8"]|
+|Ordre d'affichage des colonnes |To specify the output ordering of columns|"displayOrderColumns": ["eventDate", "dueDate", "program"]|
+|Ordre|To specify ordering/sorting of fields and its directions in comma separated values. A single item in order is of the form "dataItem:direction".|"order"="a3kGcGDCuk6:desc,eventDate:asc"|
+|Filtres de données|To specify filters to be applied when listing events|"dataFilters"=[{       "dataItem": "abcDataElementUid",       "le": "20",       "ge": "10",       "lt": "20",       "gt": "10",       "in": ["India", "Norway"],       "like": "abc",       "dateFilter": {         "startDate": "2014-05-01",         "endDate": "2019-03-20",         "startBuffer": -5,         "endBuffer": 5,         "period": "LAST_WEEK",         "type": "RELATIVE"       }     }]|
+|statut|Any valid EventStatus|"eventStatus": "COMPLETED"|
+|événements|To specify list of events|"events"=["a3kGcGDCuk6"]|
+|completedDate|[DateFilterPeriod](#webapi_tracker_workinglists_common_objects) object date filtering based on completed date.|"completedDate": {     "startDate": "2014-05-01",     "endDate": "2019-03-20",     "startBuffer": -5,     "endBuffer": 5,     "period": "LAST_WEEK",     "type": "RELATIVE"   }|
+|eventDate (date de l'événement)|[DateFilterPeriod](#webapi_tracker_workinglists_common_objects) object date filtering based on event date.|"eventDate": {     "startBuffer": -5,     "endBuffer": 5,     "type": "RELATIVE"   }|
+|dueDate|[DateFilterPeriod](#webapi_tracker_workinglists_common_objects) object date filtering based on due date.|"dueDate": {     "period": "LAST_WEEK",     "type": "RELATIVE"   }|
+|lastUpdatedDate|[DateFilterPeriod](#webapi_tracker_workinglists_common_objects) object date filtering based on last updated date.|"lastUpdatedDate": {     "startDate": "2014-05-01",     "endDate": "2019-03-20",     "type": "ABSOLUTE"   }|
+
+Ci-dessous, un exemple de charge :
+
+```json
+{
+  "name": "event working list",
+  "program": "VBqh0ynB2wv",
+  "eventQueryCriteria": {
+    "eventDate": {
+      "period": "LAST_WEEK",
+      "type": "RELATIVE"
+    },
+    "dataFilters": [
+      {
+        "ge": "35",
+        "le": "70",
+        "dataItem": "qrur9Dvnyt5"
+      }
+    ],
+    "assignedUserMode": "PROVIDED",
+    "assignedUsers": [
+      "CotVI2NX0rI",
+      "xE7jOejl9FI"
+    ],
+    "status": "ACTIVE",
+    "order": "occurredAt:desc",
+    "displayColumnOrder": [
+      "occurredAt",
+      "status",
+      "assignedUser",
+      "qrur9Dvnyt5",
+      "oZg33kd9taw"
+    ]
+  }
+}
+```
+
+### Common Objects { #webapi_tracker_workinglists_common_objects }
+
+Table: DateFilterPeriod object definition
+
+| Propriété | Description | Exemple |
+|---|---|---|
+|type|Specify whether the date period type is ABSOLUTE &#124; RELATIVE|`"type" : "RELATIVE"`|
+|période|Specify if a relative system defined period is to be used. Applicable only when `type` is RELATIVE. (see [Relative Periods](#webapi_date_relative_period_values) for supported relative periods)|`"period" : "THIS_WEEK"`|
+|date de début|Absolute start date. Applicable only when `type` is ABSOLUTE|`"startDate":"2014-05-01"`|
+|date de fin|Absolute end date. Applicable only when `type` is ABSOLUTE|`"startDate":"2014-05-01"`|
+|startBuffer|Relative custom start date. Applicable only when `type` is RELATIVE|`"startBuffer":-10`|
+|endBuffer|Relative custom end date. Applicable only when `type` is RELATIVE|`"startDate":+10`|
+
+
 ## Potential Duplicates   { #potential-duplicates } 
 
-Potential duplicates are records identified by the data deduplication feature as possibly being duplicates. Due to the nature of this feature, the API endpoint has certain restrictions.
-
-A potential duplicate represents a pair of records suspected to be duplicates.
+Potential duplicates are records identified by the data deduplication feature as possibly being
+duplicates. Due to the nature of this feature, the API endpoint has certain restrictions. A
+potential duplicate represents a pair of records suspected to be duplicates.
 
 To retrieve a list of potential duplicates, use the following endpoint:
 
@@ -3009,7 +3295,8 @@ To create a new potential duplicate, use this endpoint:
 
     POST /api/potentialDuplicates
 
-The payload you provide must include the UIDs of the original and duplicate tracked entities. New potential duplicates are open by default.
+The payload you provide must include the UIDs of the original and duplicate tracked entities. New
+potential duplicates are open by default.
 
 ```json
 {
@@ -3021,7 +3308,7 @@ The payload you provide must include the UIDs of the original and duplicate trac
 | Status code | Description
 |---|---|
 | 400 | Input original or duplicate is null or has invalid uid
-| 403 | User do not have access to read origianl or duplicate TEs
+| 403 | User do not have access to read original or duplicate TEs
 | 404 | TE not found
 | 409 | Pair of original and duplicate TEs already existing
 
@@ -3039,9 +3326,15 @@ To update the status of a potential duplicate, use the following endpoint:
 | 400 | You can't update a potential duplicate that is already in a MERGED status
 
 ### Merging Tracked Entities { #merging-tracked-entities } 
-Tracked entities can be merged together if they are deemed viable. To initiate a merge, the first step is to define two tracked entities as a Potential Duplicate. The merge endpoint moves data from the duplicate tracked entity to the original tracked entity and deletes the remaining data of the duplicate.
 
-To merge a Potential Duplicate, i.e. the two tracked entities the Potential Duplicate represents, use the following endpoint:
+Tracked entities can be merged together if they are deemed viable. To initiate a merge, the first
+step is to define two tracked entities as a Potential Duplicate. The merge endpoint moves data from
+the duplicate tracked entity to the original tracked entity and deletes the remaining data of the
+duplicate.
+
+To merge a Potential Duplicate, i.e. the two tracked entities the Potential Duplicate represents,
+use the following endpoint:
+
     POST /api/potentialDuplicates/<id>/merge
 
 | Nom du paramètre | Description | Type | Valeurs autorisées |
@@ -3051,28 +3344,47 @@ To merge a Potential Duplicate, i.e. the two tracked entities the Potential Dupl
 The endpoint accepts a single parameter, `mergeStrategy`, which determines the strategy used when merging. For the `AUTO` strategy, the server will attempt to merge the two tracked entities automatically without user input. This strategy only allows merging tracked entities without conflicting data (see examples below). The `MANUAL` strategy requires the user to send in a payload describing how the merge should be done. For examples and rules for each strategy, see their respective sections below.
 
 #### Merge Strategy AUTO { #merge-strategy-auto } 
-The automatic merge evaluates the mergability of the two tracked entities and merges them if they are deemed mergable. The mergability is based on whether the two tracked entities have any conflicts. Conflicts refer to data that cannot be merged automatically. Examples of possible conflicts include:
+
+The automatic merge evaluates the mergability of the two tracked entities and merges them if they
+are deemed mergeable. The mergability is based on whether the two tracked entities have any
+conflicts. Conflicts refer to data that cannot be merged automatically. Examples of possible
+conflicts include:
+
 - The same attribute has different values in each tracked entity.
 - Both tracked entities are enrolled in the same program.
 - Tracked entities have different types.
 
 If any conflict is encountered, an error message is returned to the user.
 
-When no conflicts are found, all data in the duplicate that is not already in the original will be moved to the original. This includes attribute values, enrollments (including events), and relationships. After the merge completes, the duplicate is deleted and the Potential Duplicate is marked as `MERGED`.
-
-When requesting an automatic merge, a payload is not required and will be ignored.
+When no conflicts are found, all data in the duplicate that is not already in the original will be
+moved to the original. This includes attribute values, enrollments (including events), and
+relationships. After the merge completes, the duplicate is deleted and the Potential Duplicate is
+marked as `MERGED`. When requesting an automatic merge, a payload is not required and will be
+ignored.
 
 #### Merge Strategy MANUAL { #merge-strategy-manual } 
-The manual merge is suitable when there are resolvable conflicts or when not all the data needs to be moved during the merge. For example, if an attribute has different values in both tracked entity instances, the user can specify whether to keep the original value or move over the duplicate's value. Since the manual merge involves the user explicitly requesting to move data, there are some additional checks:
-- Relationship cannot be between the original and the duplicate (This results in an invalid self-referencing relationship)
-- Relationship cannot be of the same type and to the same object in both tracked entities (IE. between original and other, and duplicate and other; This would result in a duplicate relationship)
+
+The manual merge is suitable when there are resolvable conflicts or when not all the data needs to
+be moved during the merge. For example, if an attribute has different values in both tracked entity
+instances, the user can specify whether to keep the original value or move over the duplicate's
+value. Since the manual merge involves the user explicitly requesting to move data, there are some
+additional checks:
+
+- Relationship cannot be between the original and the duplicate (This results in an invalid
+self-referencing relationship)
+- Relationship cannot be of the same type and to the same object in both tracked entities (IE.
+between original and other, and duplicate and other; This would result in a duplicate relationship)
 
 There are two ways to do a manual merge: With and without a payload.
 
-When a manual merge is requested without a payload, we are telling the API to merge the two tracked entities without moving any data. In other words, we are just removing the duplicate and marking the
-potentialDuplicate MERGED. This might be valid in a lot of cases where the tracked entity was just created, but not enrolled for example.
+When a manual merge is requested without a payload, we are telling the API to merge the two tracked
+entities without moving any data. In other words, we are just removing the duplicate and marking the
+potentialDuplicate MERGED. This might be valid in a lot of cases where the tracked entity was just
+created, but not enrolled for example.
 
-Otherwise, if a manual merge is requested with a payload, the payload refers to what data should be moved from the duplicate to the original. The payload looks like this:
+Otherwise, if a manual merge is requested with a payload, the payload refers to what data should be
+moved from the duplicate to the original. The payload looks like this:
+
 ```json
 {
   "trackedEntityAttributes": ["B58KFJ45L9D"],
@@ -3081,12 +3393,20 @@ Otherwise, if a manual merge is requested with a payload, the payload refers to 
 }
 ```
 
-This payload contains three lists, one for each of the types of data that can be moved. `trackedEntityAttributes` is a list of uids for tracked entity attributes, `enrollments` is a list of uids for enrollments and `relationships`
-a list of uids for relationships. The uids in this payload have to refer to data that actually exists on the duplicate. There is no way to add new data or change data using the merge endpoint - Only moving data.
+This payload contains three lists, one for each of the types of data that can be moved.
+`trackedEntityAttributes` is a list of uids for tracked entity attributes, `enrollments` is a list
+of uids for enrollments and `relationships` a list of uids for relationships. The uids in this
+payload have to refer to data that actually exists on the duplicate. There is no way to add new data
+or change data using the merge endpoint - Only moving data.
 
 #### Additional information about merging { #additional-information-about-merging } 
-Currently it is not possible to merge tracked entities that are enrolled in the same program, due to the added complexity. A workaround is to manually remove the enrollments from one of the tracked entities before starting the merge.
 
-All merging is based on data already persisted in the database, which means the current merging service is not validating that data again. This means if data was already invalid, it will not be reported during the merge.
-The only validation done in the service relates to relationships, as mentioned in the previous section.
+Currently it is not possible to merge tracked entities that are enrolled in the same program, due to
+the added complexity. A workaround is to manually remove the enrollments from one of the tracked
+entities before starting the merge.
+
+All merging is based on data already persisted in the database, which means the current merging
+service is not validating that data again. This means if data was already invalid, it will not be
+reported during the merge. The only validation done in the service relates to relationships, as
+mentioned in the previous section.
 
