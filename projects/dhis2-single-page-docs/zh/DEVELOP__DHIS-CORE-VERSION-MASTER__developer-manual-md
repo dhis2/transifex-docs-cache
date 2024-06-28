@@ -1,5 +1,5 @@
 ---
-revision_date: '2024-06-25'
+revision_date: '2024-06-26'
 tags:
 - DHIS核心 主版
 - Develop
@@ -8843,6 +8843,7 @@ Example: Get audits for data element `BOSZApCrBni`, org unit `DiszpKrYNg8` and c
     /api/33/audits/dataValue?de=BOSZApCrBni&ou=DiszpKrYNg8&co=TkDhg29x18A
 
 ### 跟踪实体数据价值审核 { #webapi_tracked_entity_data_value_audits }
+**deprecated for removal in version 43 use [tracked entity data value change log endpoint](https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/tracker.md#event-data-value-change-logs--webapi_event_data_value_change_logs-)**
 
 The endpoint for tracked entity data value audits is located at:
 
@@ -8876,6 +8877,8 @@ Example: Get audits for org unit `O6uvpzGd5pu` including descendant org units in
     /api/audits/trackedEntityDataValue?ou=O6uvpzGd5pu&ouMode=DESCENDANTS
 
 ### 跟踪实体属性值审核 { #webapi_tracked_entity_attribute_value_audits }
+
+**deprecated for removal in version 43 use [tracked entity attribute change log endpoint](https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/tracker.md#tracked-entity-attribute-value-change-logs--webapi_tracker_attribute_change_logs-)**
 
 The endpoint for tracked entity attribute value audits is located at:
 
@@ -8993,7 +8996,6 @@ Example: Get audits for data approval workflow `i5m0JPw4DQi`:
 Exaple: Get audits between `2021-01-01` and `2022-01-01` for org unit `DiszpKrYNg8`:
 
     /api/33/audits/dataApproval?ou=DiszpKrYNg8&startDate=2021-01-01&endDate=2022-01-01
-
 
 
 # 讯息传递 { #messaging } 
@@ -15972,6 +15974,7 @@ The aggregate data exchange data model / payload is described in the following s
 | source.requests.filters.items                     | Array/String   | 不          | Item identifiers for the filter.                             |
 | source.requests.inputIdScheme                     | 串         | 不          | Input ID scheme, can be `UID`, `CODE`, `ATTRIBUTE:{ID}`.     |
 | source.requests.outputDataElementIdScheme         | 串         | 不          | Output data element ID scheme, can be `UID`, `CODE`, `ATTRIBUTE:{ID}`. |
+| source.requests.outputDataItemIdScheme         | 串         | 不          | Output data item ID scheme applies to data elements, indicators and program indicators, can be `UID`, `CODE`, `ATTRIBUTE:{ID}`. |
 | source.requests.outputOrgUnitIdScheme             | 串         | 不          | Output org unit ID scheme, can be `UID`, `CODE`, `ATTRIBUTE:{ID}`. |
 | source.requests.outputIdScheme                    | 串         | 不          | Output general ID scheme, can be `UID`, `CODE`, `ATTRIBUTE:{ID}`. |
 | source.target                                     | 目的         | 是的         | Target for  aggregate data exchange.                         |
@@ -15986,6 +15989,9 @@ The aggregate data exchange data model / payload is described in the following s
 | source.target.request.orgUnitIdScheme             | 串         | 不          | Input org unit ID scheme, can be `UID`, `CODE`, `ATTRIBUTE:{ID}`. |
 | source.target.request.categoryOptionComboIdScheme | 串         | 不          | Input category option combo ID scheme, can be `UID`, `CODE`, `ATTRIBUTE:{ID}`. |
 | source.target.request.idScheme                    | 串         | 不          | Input general ID scheme, can be `UID`, `CODE`, `ATTRIBUTE:{ID}`. |
+| source.target.request.importStrategy                    | 串         | 不          | Import strategy, can be `CREATE_AND_UPDATE`, `CREATE`, `UPDATE`, `DELETE`. |
+| source.target.request.skipAudit                    | Boolean         | 不          | Skip audit, meaning audit values will not be generated. Improves performance at the cost of ability to audit changes. Requires authority "F_SKIP_DATA_IMPORT_AUDIT". |
+| source.target.request.dryRun                    | Boolean         | 不          | Whether to save changes on the server or just return the import summary. |
 
 ### Error handling { #error-handling } 
 
@@ -16089,7 +16095,6 @@ The example will exchange data using the DHIS 2 play environment, and refer to t
 * In the **target** instance, navigate to the *Data entry* app, select org unit _Sierra Leone_, data set _Data exchange_ and period _January 2022_. Observe that the exchanged data values are visible in the form.
 
 总而言之，在此示例中，事件数据记录在组织单位层次结构中从设施级别汇总到国家级别，并使用计划指标从事件数据汇总到每月数据值。通过使用`代码`属性引用元数据，数据值与目标 DHIS 2 实例交换。
-
 
 
 # I18n { #i18n } 
@@ -19944,6 +19949,67 @@ An example of a json response:
 The response will be the same as the collection endpoint but referring to a single tracked
 entity, although it might have multiple rows for each attribute.
 
+#### Tracked entity attribute value change logs { #webapi_tracker_attribute_change_logs }
+`GET /api/tracker/trackedEntities/{uid}/changeLogs`
+
+This endpoint retrieves change logs for the attributes of a specific tracked entity. It returns a list of all tracked entity attributes that have changed over time for that entity.
+
+|Parameter|类型|Allowed values|
+|---|---|---|
+|path `/{uid}`|`String`|Tracked entity `UID`.|
+|`program`|`String`|Program `UID` (optional).|
+
+##### Tracked entity attribute value change logs response example { #tracked-entity-attribute-value-change-logs-response-example } 
+
+An example of a json response:
+
+```json
+{
+   "pager":{
+      "page":1,
+      "pageSize":10
+   },
+   "changeLogs":[
+      {
+         "createdBy":{
+            "uid":"AIK2aQOJIbj",
+            "username":"tracker",
+            "firstName":"Tracker demo",
+            "surname":"User"
+         },
+         "createdAt":"2024-06-20T14:51:16.433",
+         "type":"UPDATE",
+         "change":{
+            "dataValue":{
+               "dataElement":"bx6fsa0t90x",
+               "previousValue":"true",
+               "currentValue":"false"
+            }
+         }
+      },
+      {
+         "createdBy":{
+            "uid":"AIK2aQOJIbj",
+            "username":"tracker",
+            "firstName":"Tracker demo",
+            "surname":"User"
+         },
+         "createdAt":"2024-06-20T14:50:32.966",
+         "type":"CREATE",
+         "change":{
+            "dataValue":{
+               "dataElement":"ebaJjqltK5N",
+               "currentValue":"0"
+            }
+         }
+      }
+   ]
+}
+```
+
+The change log type can be `CREATE`, `UPDATE`, or `DELETE`.
+`CREATE` and `DELETE` will always hold a single value: the former shows the current value, and the latter shows the value that was deleted. UPDATE will hold two values: the previous and the current.
+
 ### Enrollments (`GET /api/tracker/enrollments`) { #enrollments-get-apitrackerenrollments } 
 
 Two endpoints are dedicated to enrollments:
@@ -20389,6 +20455,83 @@ The API supports CSV and JSON response for `GET /api/tracker/trackedEntities`
 
 The response will be the same as the collection endpoint but referring to a single event,
 although it might have multiple rows for each data element value.
+
+#### Event data value change logs { #webapi_event_data_value_change_logs }
+`GET /api/tracker/events/{uid}/changeLogs`
+
+This endpoint retrieves change logs for the data values of a specific event. It returns a list of all event data values that have changed over time for that particular event.
+
+|Parameter|类型|Allowed values|
+|---|---|---|
+|path `/{uid}`|`String`|Event `UID`.|
+
+##### Event data value change logs response example { #event-data-value-change-logs-response-example } 
+
+An example of a json response:
+
+```json
+{
+   "pager":{
+      "page":1,
+      "pageSize":10
+   },
+   "changeLogs":[
+      {
+         "createdBy":{
+            "uid":"AIK2aQOJIbj",
+            "username":"tracker",
+            "firstName":"Tracker demo",
+            "surname":"User"
+         },
+         "createdAt":"2024-06-20T15:43:36.342",
+         "type":"DELETE",
+         "change":{
+            "dataValue":{
+               "dataElement":"UXz7xuGCEhU",
+               "previousValue":"12"
+            }
+         }
+      },
+      {
+         "createdBy":{
+            "uid":"AIK2aQOJIbj",
+            "username":"tracker",
+            "firstName":"Tracker demo",
+            "surname":"User"
+         },
+         "createdAt":"2024-06-20T15:43:27.175",
+         "type":"CREATE",
+         "change":{
+            "dataValue":{
+               "dataElement":"UXz7xuGCEhU",
+               "currentValue":"12"
+            }
+         }
+      },
+      {
+         "createdBy":{
+            "uid":"AIK2aQOJIbj",
+            "username":"tracker",
+            "firstName":"Tracker demo",
+            "surname":"User"
+         },
+         "createdAt":"2024-06-20T14:51:16.433",
+         "type":"UPDATE",
+         "change":{
+            "dataValue":{
+               "dataElement":"bx6fsa0t90x",
+               "previousValue":"true",
+               "currentValue":"false"
+            }
+         }
+      }
+   ]
+}
+```
+
+The change log type can be `CREATE`, `UPDATE`, or `DELETE`.
+`CREATE` and `DELETE` will always hold a single value: the former shows the current value, and the latter shows the value that was deleted. UPDATE will hold two values: the previous and the current.
+
 
 ### Relationships (`GET /api/tracker/relationships`) { #relationships-get-apitrackerrelationships } 
 
@@ -21093,6 +21236,8 @@ All merging is based on data already persisted in the database, which means the 
 service is not validating that data again. This means if data was already invalid, it will not be
 reported during the merge. The only validation done in the service relates to relationships, as
 mentioned in the previous section.
+
+
 
 
 # 电子邮件 { #email } 
