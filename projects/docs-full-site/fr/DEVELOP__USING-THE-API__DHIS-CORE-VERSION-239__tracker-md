@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.39/src/developer/web-api/tracker.md"
-revision_date: '2024-02-12'
+revision_date: '2024-07-02'
 tags:
-- Développement
 - DHIS version 2.39
+- Développement
 ---
 
 # Tracker { #tracker } 
@@ -1948,9 +1948,13 @@ La stratégie d'importation SYNC ne doit être utilisée que par la tâche de sy
 
 Un nouveau concept appelé "Propriété du Tracker" est introduit à partir de la version 2.30. Désormais, il n'y aura plus qu'une seule unité d'organisation propriétaire pour une instance d'entité suivie dans le cadre d'un programme. Les programmes configurés avec un niveau d'accès *PROTECTED* (protégé) ou *CLOSED* (fermé) respecteront les privilèges de propriété. Seuls les utilisateurs appartenant à l'unité d'organisation propriétaire d'une combinaison entité suivie-programme pourront accéder aux données liées à ce programme pour cette entité suivie.
 
-#### Annulation de la propriété Tracker : briser le verre { #webapi_tracker_ownership_override_api }
+When requesting tracked entities without specifying a program, the response will include only tracked entities that satisfy [metadata sharing settings](#webapi_tracker_metadata_sharing) and one of the following criteria:
+- The tracked entity is enrolled in at least one program the user has data access to, and the user has access to the owner organisation unit.
+- The tracked entity is not enrolled in any program the user has data access to, but the user has access to the tracked entity registering organisation unit.
 
-Il est possible d'annuler temporairement ce privilège de propriété pour un programme configuré avec un niveau d'accès *PROTECTED*. Tout utilisateur sera en mesure d'obtenir temporairement l'accès aux données liées au programme s'il fournit une raison d'accéder aux données de la combinaison Entité suivie - Programme. Ce fait d'obtenir temporairement l'accès est appelé *briser la glace*. Actuellement, l'accès temporaire est accordé pour une durée de 3 heures. DHIS2 vérifie l'aspect "briser la glace" ainsi que la raison fournie par l'utilisateur. Il n'est pas possible d'obtenir un accès temporaire à un programme qui a été configuré avec un niveau d'accès *CLOSED*. Pour briser la glace d'une combinaison Entité suivie - Programme, la requête POST suivante peut être utilisée :
+#### Annulation de la Propriété Tracker : Briser le verre { #webapi_tracker_ownership_override_api }
+
+Il est possible d'annuler temporairement ce privilège de propriété pour un programme configuré avec un niveau d'accès *PROTECTED*. Tout utilisateur sera en mesure d'obtenir temporairement l'accès aux données liées au programme s'il fournit une raison d'accéder aux données de la combinaison Entité suivie - Programme. Ce fait d'obtenir temporairement l'accès est appelé *briser la glace*. Actuellement, l'accès temporaire est accordé pour une durée de 3 heures. DHIS2 vérifie l'aspect "briser la glace" ainsi que la raison fournie par l'utilisateur. Il n'est pas possible d'obtenir un accès temporaire à un programme qui a été configuré avec un niveau d'accès *CLOSED*. Pour briser la glace avec une combinaison Entité suivie - Programme, vous pouvez utiliser la requête POST suivante :
 
     /api/33/tracker/ownership/override?trackedEntityInstance=DiszpKrYNg8
       &program=eBAyeGv0exc&reason=patient+showed+up+for+emergency+care
@@ -1983,10 +1987,10 @@ Vous pouvez récupérer une liste de doublons potentiels en utilisant le point d
 
     GET /api/potentialDuplicates
 
-| Le nom du paramètre | Description | Type | Valeurs autorisées |
+| Nom du paramètre | Description | Type | Valeurs autorisées |
 |---|---|---|---|
 | teis | Liste des instances d'entités suivies | Liste de chaînes (séparées par une virgule)| identifiant de l'instance d'entité suivie existante |
-| statut | Statut de doublon potentiel | chaîne | `OPEN <default>`, `INVALID`, `MERGED`, `ALL` |
+| status | Statut de doublon potentiel | chaîne | `OPEN <default>`, `INVALID`, `MERGED`, `ALL` |
 
 | Code de statut | Description
 |---|---|
@@ -2004,9 +2008,9 @@ You can also filter potential duplicates by Tracked Entity Instance (referred as
 
     GET /api/potentialDuplicates/tei/<tei>
 
-| Le nom du paramètre | Description | Type | Valeurs autorisées |
+| Nom du paramètre | Description | Type | Valeurs autorisées |
 |---|---|---|---|
-| statut | Statut de doublon potentiel | chaîne | `OPEN`, `INVALID`, `MERGED`, `ALL <default>` |
+| status | Statut de doublon potentiel | chaîne | `OPEN`, `INVALID`, `MERGED`, `ALL <default>` |
 
 | Code de statut | Description
 |---|---|
@@ -2038,9 +2042,9 @@ Pour mettre à jour un statut de doublon potentiel :
 
     PUT /api/potentialDuplicates/<id>
 
-| Le nom du paramètre | Description | Type | Valeurs autorisées |
+| Nom du paramètre | Description | Type | Valeurs autorisées |
 |---|---|---|---|
-| statut | Statut de doublon potentiel | chaîne | `OPEN`, `INVALID`, `MERGED` |
+| status | Statut de doublon potentiel | chaîne | `OPEN`, `INVALID`, `MERGED` (ouvert / invalide / fusionné) |
 
 | Code de statut | Description
 |---|---|
@@ -2053,7 +2057,7 @@ To flag as potential duplicate a Tracked Entity Instance (referred as tei)
 
  `PUT /api/trackedEntityInstances/{tei}/potentialDuplicate`
 
-| Le nom du paramètre | Description | Type | Valeurs autorisées |
+| Nom du paramètre | Description | Type | Valeurs autorisées |
 |---|---|---|---|
 | flag | either flag or unflag a tei as potential duplicate | chaîne | `true`, `false` |
 
@@ -2071,15 +2075,15 @@ Pour fusionner un doublon potentiel ou les deux instances d'entités suivies que
 
     POST /potentialDuplicates/<id>/merge
 
-| Le nom du paramètre | Description | Type | Valeurs autorisées |
+| Nom du paramètre | Description | Type | Valeurs autorisées |
 |---|---|---|---|
-| mergeStrategy | Stratégie à utiliser pour fusionner le doublon potentiel  | enum | AUTO(default) or MANUAL |
+| mergeStrategy | Stratégie à utiliser pour fusionner le doublon potentiel  | énumération | AUTO (par défaut) ou MANUAL |
 
 Le point d'extrémité accepte un seul paramètre, "mergeStrategy", qui détermine la stratégie à utiliser lors de la fusion. Avec la stratégie AUTO, le serveur tentera de fusionner les deux entités suivies automatiquement, sans aucune intervention de l'utilisateur. Cette stratégie permet uniquement de fusionner des entités suivies qui n'ont pas de données incompatibles (voir les exemples ci-dessous). L'autre stratégie, MANUAL, exige que l'utilisateur envoie une charge décrivant la manière dont la fusion doit être effectuée. Pour voir des exemples et des règles pour chaque stratégie, consultez leurs sections respectives ci-dessous.
 
 ### Stratégie de fusion AUTO { #merge-strategy-auto } 
-La fusion automatique évalue la possibilité de fusionner les deux instances d'entités suivies et les fusionne si elles sont jugées fusionnables. La fusion est basée sur l'existence ou non de divergences entre les deux instances d'entités suivies. Les divergences concernent les données qui ne peuvent pas être fusionnées automatiquement. Voici quelques exemples de divergences possibles :
-- Le même attribut a des valeurs différentes dans chaque instance d'entité suivie
+La fusion automatique évalue la possibilité de fusionner les deux instances d'entités suivies et les fusionne si elles sont jugées fusionnables. La fusion est basée sur l'existence ou non de conflits entre les deux instances d'entités suivies. Les conflits concernent les données qui ne peuvent pas être fusionnées automatiquement. Voici quelques exemples possibles de conflits :
+- Un même attribut a des valeurs différentes dans chaque instance d'entité suivie
 - Les deux instances d'entités suivies sont inscrites au même programme
 - Les instances d'entités suivies sont de différents types
 
@@ -2090,13 +2094,13 @@ Si aucun conflit n'est détecté, toutes les données du doublon qui ne se trouv
 Lorsque vous effectuez une requête de fusion automatique comme celle-ci, une charge n'est pas nécessaire et cette partie sera ignorée.
 
 ### Stratégie de fusion MANUAL { #merge-strategy-manual } 
-La fusion manuelle peut être utilisée lorsque des conflits peuvent être résolus ou lorsque toutes les données ne doivent pas être transférées au cours de la fusion. Par exemple, si un attribut a des valeurs différentes dans les deux instances d'entité suivies, l'utilisateur peut spécifier s'il souhaite conserver la valeur originale ou déplacer la valeur du doublon. Étant donné que, dans le cas d'une fusion manuelle, c'est l'utilisateur lui-même qui configure le transfert des données, les vérifications effectuées sont différentes :
-- La relation ne peut pas être entre l'original et le doublon (ceci résulte en une relation d'autoréférencement invalide).
-- La relation ne peut pas être du même type et concerner le même objet dans les deux instances d'entités suivies (par exemple, entre l'original et un autre, et entre le doublon et un autre ; il en résulterait une relation dupliquée).
+La fusion manuelle peut être utilisée lorsque des conflits peuvent être résolus ou lorsque toutes les données ne doivent pas être transférées au cours de la fusion. Par exemple, si un attribut a des valeurs différentes dans les deux instances d'entité suivies, l'utilisateur peut spécifier s'il souhaite conserver la valeur originale ou déplacer la valeur du doublon. Étant donné que, dans le cas d'une fusion manuelle, c'est l'utilisateur lui-même qui configure le transfert des données, des vérifications sont faites :
+- Il ne peut pas y avoir de relation entre l'originale et le doublon (ceci résulte en une relation d'autoréférencement invalide).
+- La relation ne peut pas être du même type et concerner le même objet dans les deux instances d'entités suivies (par exemple, entre l'originale et un autre, et entre le doublon et un autre ; il en résulterait une relation dupliquée).
 
 Il existe deux façons d'effectuer une fusion manuelle : Avec et sans charge.
 
-Lorsqu'une requête pour une fusion manuelle est effectuée sans charge, il est demandé à l'API de fusionner les deux instances d'entités suivies sans déplacer de données. En d'autres termes, nous supprimons simplement le doublon et marquons le doublon potentiel MERGED. Cela peut être valable dans de nombreux cas où l'instance d'entité suivie vient d'être créée, mais qu'elle n'a pas été inscrite, par exemple.
+Lorsqu'une requête de fusion manuelle est effectuée sans charge, il est demandé à l'API de fusionner les deux instances d'entités suivies sans déplacer de données. En d'autres termes, nous supprimons simplement le doublon et marquons le doublon potentiel MERGED. Cela peut être valable dans de nombreux cas où l'instance d'entité suivie vient d'être créée, mais qu'elle n'a pas été inscrite, par exemple.
 
 Dans le cas contraire, si une requête de fusion manuelle est effectuée avec une charge, celle-ci indique les données qui doivent être transférées du doublon vers l'original. La charge se présente comme suit :
 ```json
@@ -2112,7 +2116,7 @@ a list of uids for relationships. The uids in this payload have to refer to data
 
 
 ### Informations complémentaires sur la fusion { #additional-information-about-merging } 
-Actuellement, il n'est pas possible de fusionner les instances d'entités suivies qui sont inscrites à un même programme, en raison de la complexité accrue. Une alternative consiste à supprimer manuellement les inscriptions de l'une des instances avant de commencer la fusion.
+Actuellement, il n'est pas possible de fusionner des instances d'entités suivies qui sont inscrites à un même programme, en raison de la complexité accrue. Une alternative consiste à supprimer manuellement les inscriptions de l'une des instances avant de commencer la fusion.
 
 Toutes les fusions sont basées sur des données déjà conservées dans la base de données ; le service de fusion actuel ne valide donc pas ces données à nouveau. Cela signifie que si des données étaient déjà invalides, elles ne seront pas signalées lors de la fusion. La seule validation effectuée dans le service concerne les relations, tel qu'indiqué dans la section précédente.
 
@@ -2154,13 +2158,13 @@ Tableau : Charge du Modèle de notification de programme
 
 | Champ | Obligatoire | Description | Valeurs |
 |---|---|---|---|
-| nom | Oui | name of Program Notification Tempalte | case-notification-alert |
-| notificationTrigger | Oui | Définit le moment où la notification doit être déclenchée. Les valeurs possibles sont ENROLLMENT, COMPLETION, PROGRAM_RULE, SCHEDULED_DAYS_DUE_DATE.| INSCRIPTION |
+| name | Oui | name of Program Notification Tempalte | case-notification-alert |
+| notificationTrigger | Oui | Définit le moment où la notification doit être déclenchée. Les valeurs possibles sont ENROLLMENT, COMPLETION, PROGRAM_RULE, SCHEDULED_DAYS_DUE_DATE.| ENROLLMENT |
 | subjectTemplate | Non | Subject template string | Case notification V{org_unit_name} |
 | messageTemplate | Oui | Chaîne du modèle de message | Case notification A{h5FuguPFF2j} |
 | notificationRecipient | OUI | Destinataire de la notification. Les valeurs possibles sont USER_GROUP, ORGANISATION_UNIT_CONTACT, TRACKED_ENTITY_INSTANCE, USERS_AT_ORGANISATION_UNIT, DATA_ELEMENT, PROGRAM_ATTRIBUTE, WEB_HOOK.  | USER_GROUP |
 | deliveryChannels | Non | Le canal qui doit être utilisé pour envoyer cette notification. Les différentes options sont SMS, EMAIL et HTTP. | SMS |
-| sendRepeatable | Non | Détermine si la notification doit être envoyée plusieurs fois | faux |
+| sendRepeatable | Non | Détermine si la notification doit être envoyée plusieurs fois | false |
 
 NOTE : WEB_HOOK notificationRecipient est utilisé uniquement pour envoyer (POST) des requêtes http à un système externe. Assurez-vous de choisir le canal HTTP lorsque vous utilisez WEB_HOOK.
 
@@ -2201,7 +2205,7 @@ Les messages de programme peuvent être envoyés à l'aide de deux canaux :
 Les messages de programme peuvent être envoyés à différents destinataires :
 
   - Instance d'entité suivie : Le système recherchera les attributs de 
-    type PHONE_NUMBER ou EMAIL (en fonction des canaux spécifiés) et utilisera les valeurs d'attribut correspondantes.
+    type PHONE_NUMBER ou EMAIL (en fonction des canaux 
     spécifiés) et utilisera les valeurs d'attribut correspondantes.
 
   - Unité d'organisation : Le système utilisera le numéro de téléphone ou l'adresse électronique
@@ -2213,7 +2217,7 @@ Les messages de programme peuvent être envoyés à différents destinataires :
   - Liste d'adresses électroniques : Le système utilisera les adresses électroniques définies.
      
 
-Vous trouverez ci-dessous un exemple de charge JSON pour l'envoi de messages à l'aide de requêtes POST. Notez que la ressource "message" accepte un objet enveloppeur nommé `programMessages` qui peut contenir un nombre quelconque de messages de programme.
+Vous trouverez ci-dessous un exemple de charge JSON pour l'envoi de messages à l'aide de requêtes POST. Notez que la ressource "message" accepte un objet enveloppeur nommé `programMessages`, qui peut contenir un nombre quelconque de messages de programme.
 
     POST /api/33/messages
 
@@ -2266,7 +2270,7 @@ Tableau : Charge du message de programme
 | programStageInstance | Soit ceci, soit programInstance (instance de programme) est requis. | L'instance ou l'événement de l'étape de programme. | ID de l'événement. |
 | deliveryChannels | Oui | Tableau des canaux d'envoi de messages. | SMS | EMAIL |
 | subject | Non | L'objet du message. Ne s'applique pas au canal SMS. | Text. |
-| texte | Oui | Le texte du message. | Text. |
+| text | Oui | Le texte du message. | Text. |
 | storeCopy | Non | Indique si une copie du message doit être stockée dans DHIS2. | false (par défaut) | true |
 
 Un exemple minimaliste d'envoi de message par SMS à une instance d'entité suivie ressemble à ceci :
