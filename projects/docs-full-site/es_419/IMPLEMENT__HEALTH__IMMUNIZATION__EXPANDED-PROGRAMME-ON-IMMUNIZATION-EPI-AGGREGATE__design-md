@@ -1,0 +1,157 @@
+---
+edit_url: "https://github.com/dhis2-metadata/IMM_AGG/blob/master/docs/imm_agg-design.md"
+revision_date: '2023-04-17'
+tags:
+- Implementar
+---
+
+# Expanded Programme on Immunization (EPI) - System Design Document { #imm-agg-design }
+
+## Background and Purpose { #background-and-purpose } 
+
+This document describes the design of an immunization module in DHIS2 optimized for integration with a national HMIS. The module is most widely used by countries that have integrated their **Expanded Programme on Immunization (EPI)** reporting into the HMIS.
+
+The module includes standard indicators and dashboards to support core immunization program analyses recommended by the [**WHO's Guidance on the Analysis & Use of Health Facility Data for Immunization Program Managers**](https://www.who.int/publications/m/item/analysis-and-use-of-health-facility-data-guidance-for-immunization-programme-managers). The module contains aggregate monthly data sets which can be used flexibility depending on system maturity:
+
+- For **routine direct reporting** into DHIS2 where facility data remain paper-based (data entry can be done at facility or district levels); or
+- **Populated by aggregating individual-level electronic data** from DHIS2 tracker or another system into the pre-defined aggregate dimensions needed to support the data analysis framework.
+
+## Package Structure { #package-structure } 
+
+| Dataset      | Descripción       |
+|--------------|----------|
+| Inmunización | **Monthly** dataset. <br> Reports immunization activities (outreach activities included), adverse events following immunization, stock, and cold chain.  |
+
+> **Note**
+>
+> This data set was designed using a custom form in DHIS2, in particular to accommodate the stock section within this data set. If a section form was used, the stock section would extend beyond the width of the majority of user’s screens who do not have a high-resolution monitor, causing them to have to scroll left/right when entering data within this section.
+
+## Intended users { #intended-users } 
+
+- **Health facility users**: capture and report key data on immunization activities
+- **Program managers**: managers at national and sub-national level may be responsible for supporting data entry and analysis.
+- **National and local health authorities**: to monitor and analyze the surveillance of data through dashboards and analytics tools, to conduct risk assessments and plan response measures; to generate reports for regional and global reporting
+
+## Dataset Details { #dataset-details } 
+
+### Outreach Sessions { #outreach-sessions } 
+
+![Data entry for outreach sessions](resources/images/imm-epiagg-1.0.0-001.png)
+
+The info for outreach sessions have been designed as individual data elements without any disaggregation, although a catCombo could be added if needed. Should the activities not include outreach sessions, the section can be removed from the dataset.
+
+### Vaccinations - Children { #vaccinations-children } 
+
+![Data entry for vaccinated children - the screenshot does not include the full table](resources/images/imm-epiagg-1.0.0-002.png)
+
+This section has been configured using an **age disaggregation (<1, >=1)** for each data element within the section.From an analytical point of view, this allows to quickly add in the age breakdowns and pivot them as required. The totals are automatically calculated.
+Some cells, like for example the cell for OPV 0 for children above the year of age, are blocked and **grayed out to prevent data entry** as per indications of the global guidelines - e.g. OPV 0 is normally administered at birth. The cells can be unblocked in case of need should the local guidelines differ from the global ones.
+
+### Vaccinations - Women of Childbearing age { #vaccinations-women-of-childbearing-age } 
+
+![Data entry for vaccinated women](resources/images/imm-epiagg-1.0.0-003.png)
+
+This section has been configured using a **disaggregation for pregnant women (Pregnant, Other)**.
+From an analytical point of view, this solution allows to quickly add in the breakdown of pregnancy status and pivot them as required. The disaggregation and the list of vaccines can and should be edited locally to better represent the contextual needs if needed.
+
+### Adverse Events Following Immunization { #adverse-events-following-immunization } 
+
+![Data entry for reported AEFI](resources/images/imm-epiagg-1.0.0-004.png)
+
+This basic table reports the number of AEFIs by severity. Should the AEFIs require a more detailed reporting form, the DHIS2 global packages also include an [**AEFI tracker**](#aefi-design) that can be used and expanded for the purpose.
+
+### Stock { #stock } 
+
+![Data entry for the stock - the screenshot does not include the full table](resources/images/imm-epiagg-1.0.0-005.png)
+
+![Details of the stock disaggregation](resources/images/imm-epiagg-1.0.0-006.png)
+
+The default configuration of the stock section includes just a handful of vaccines together with some fundamental items normally used in vaccination activities (e.g. safety boxes and vaccination cards). The **list should be improved and expanded locally** to better mirror the real local stock.
+
+A **“flat” structure has been applied** to the stock section (ie. no disaggregations have been applied, this section consists solely of individual data elements).
+
+This structure is required as the “used stock” column is made up by the calculation: (starting balance + received) - (VVM + frozen + expired + broken + missing + ending balance). Using two separate category options (ie. opening balance, received, discarded -VVM, frozen, expired, broken, missing-, closing balance) would not be appropriate given that a number of these options do not apply to several of the data elements within this section. It was therefore decided that applying different structures to thematically linked data elements was not the most effective approach.
+While using this type of structure increases the number of data elements significantly, using a category option combination that would add up all of these items would not work within this structure, given that a total does not provide you with any meaningful information when reviewing the “used stock” column.
+
+The stock section was added for the purpose of simplicity at the point of data collection. Should a separate tally sheet be more useful, a [**logistics dataset**](https://docs.dhis2.org/en/topics/metadata/immunization/epi-logistics/lmis-design.html) is also available as a standalone package to be edited locally.
+
+### Cold Chain { #cold-chain } 
+
+The info for cold chain has been designed as individual data elements without any disaggregation.
+
+## Analytics and Indicators { #analytics-and-indicators } 
+
+Be it for lack of reliable data or for mistakes in calculations, population data and its use in denominators often sets a difficult task.
+
+Up until any DHIS2 version before 2.35.12 the targets and coverages were simply based on the antigen administered VS the target population through the time (months of a year) cumulatively the target population has been divided by 12 (months) as the target population was entered annually. The indicators shuld have beeen adjusted according to the periodicity of the analysis (quarterly/yearly/etc.) and the periodicity with which the target population is reported; while the coverage would have simply been based on the annualization of the indicator.
+The use of [cumulative over-time aggregate indicators](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-235/configuring-the-system/metadata.html#manage_indicator) is recommended to ensure accurate calculations of coverage. This is possible using the **periodOffset function** in indicators in versions above 2.35.12. As a result, coverage indicators use the sum of the last 12 months as a numerator instead of annualizing the indicator. This is a more accurate way of calculating coverage indicators than annualizing them.
+
+Here below, an example of the type of indicators that are now available to better calculate the coverage.
+
+| | |
+|-----------|-----------|
+| Indicador | **EPI - BCG coverage (%) - period offset** |
+| UID | `lnC0fWd3sD4` |
+| Numerator | **BCG doses < 1 year this month plus last 11 months** <br> _EPI - BCG doses given <1 year + EPI - BCG doses given <1 year.periodOffset(-1) + EPI - BCG doses given <1 year.periodOffset(-2) + EPI - BCG doses given <1 year.periodOffset(-3) + EPI - BCG doses given <1 year.periodOffset(-4) + EPI - BCG doses given <1 year.periodOffset(-5) + EPI - BCG doses given <1 year.periodOffset(-6) + EPI - BCG doses given <1 year.periodOffset(-7) + EPI - BCG doses given <1 year.periodOffset(-8) + EPI - BCG doses given <1 year.periodOffset(-9) + EPI - BCG doses given <1 year.periodOffset(-10) + EPI - BCG doses given <1 year.periodOffset(-11)_ |
+| Denominator | **Live birth** <br> _GEN - Population live births_ |
+
+On the front of **immunization performance**, the package now contains a score assigned to the differtent OUs. The score is based on the combination of coverage and dropout rate of the antigens through the use of a logic statement in the formula (possible from 2.36 version).
+
+## Validation rules { #validation-rules } 
+
+The validation rules for the Immunization package are grouped in the “Immunization” validation rule group.
+The rules will run at data entry level (Run validation button) to flag any potential error in data entry.
+
+![Example of errors flagged by data validation](resources/images/imm-epiagg-1.0.0-007.png)
+
+## Dashboards { #dashboards } 
+
+The Immunization package includes one predefined dashboard. The table below lists only the items containing notes of interest for the implementation of the package and the set-up of the dashboard.
+
+| Item                                                    | Comentario  |
+|---------------------------------------------------------|-----|
+| Categorization of immunization performance by district  | Categorization of OrgUnits into four categories (1,2,3,4) depending on their performance: <br>- 1: Coverage > 90% / Dropout rate < 10% <br>- 2: Coverage > 90% / Dropout rate > 10% <br> - 3: Coverage < 90% / Dropout rate < 10% <br> - 4: Coverage < 90% / Dropout rate > 10% |
+
+## Visualizations from the Immunization App { #visualizations-from-the-immunization-app } 
+
+Over the past few DHIS2 releases there has been ongoing work on extending core analytics features to be able to meet the requirements that led to the development of the custom Immunization analysis.
+The representative visualizations of the “**Immunization analysis app**” present in the dashboard are:
+
+- EPI - Doses and coverage by antigens - months this year
+- Monitoring chart for antigens administered <1 years old child - Months this year
+- Monitoring chart for antigens administered in newborns - Months this year
+- Coverage and dropout rate categorization - last 12 months
+- Categorization of immunization performance by district - last 12 months
+
+In the description of each visualization you can find the relevant information on the content and structure
+
+## User groups { #user-groups } 
+
+As part of the package configuration, user groups have been created to be used to manage sharing settings in the metadata for all the modules. Core metadata that use these sharing settings include mainly the dataSets, dashboard, indicators and data Elements.
+
+The three user groups created include:
+
+| User group       | Tablero (Dashboard)         | Program Metadata  | Program data         |
+|------------------|-------------------|-------------------|----------------------|
+| EPI-Admin        | Puede editar y visualizar | Puede editar y visualizar | Solo lectura        |
+| EPI-Access       | Solo lectura     | Solo lectura     | Solo lectura        |
+| EPI-Data capture | No access         | Solo lectura     | Puede capturar y visualizar |
+
+- **EPI-Admin** - users in this group will have sharing setting with view/edit access metadata and view only access to data values in dataSets
+- **EPI-Access** - users in this group will have sharing setting with view only access to metadata and data values in dataSets
+- **EPI-Data capture**  - users in this group will have sharing setting with view only access to metadata and edit access to data values in dataSets
+
+Whereas it is important to maintain these userGroups while installing this package, feel free to review them in line with any existing userGroups setup or policy in the host instance.
+
+## Special considerations { #special-considerations } 
+
+### Population data { #population-data } 
+
+If not already in use, the dataset should be coupled with a second dataset to collect the population data necessary to calculate key indicators such as coverage, and to monitor important targets for activities and/or key populations (eg, children under 5 years of age or pregnant women).
+
+Please refer to the Indicators section for more information on the population data.
+
+## Referencias { #references } 
+
+World Health Organization, (2018), Analysis and use of health facility data: guidance for immunization programme managers. URL: <https://www.who.int/publications/m/item/analysis-and-use-of-health-facility-data-guidance-for-immunization-programme-managers>. [Accessed on 01/09/2022]
+
