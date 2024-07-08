@@ -1,0 +1,166 @@
+---
+edit_url: "https://github.com/dhis2-metadata/CHIS_AGG/blob/master/docs/chis_agg-design.md"
+revision_date: '2023-12-15'
+tags:
+- Implementar
+---
+
+# Community Health Information System (CHIS) - System Design Document { #chis-agg-design }
+
+## Introducción { #introduction } 
+
+A standardized and functioning Community Health Information System (CHIS) is key for the monitoring health, needs, and practices at community level. The Community Health Information Systems (CHIS) metadata package is designed to facilitate the capture and analysis of a core set of indicators for community-based health services. The CHIS metadata package accompanies the [WHO Analysis and Use of Community Data: Guidance for community health service monitoring](https://www.healthdatacollaborative.org/working-groups/community-data/guidance-for-community-health-worker-strategic-information-and-service-monitoring/). The guidance responds to the 2019 World Health Assembly resolution WHA72.3 which calls for a) alignment of data and digital efforts to optimize Community Health Worker (CHW) programmes, and b) the generation of a stronger evidence base for the impact of CHWs.
+
+This package has been designed in response to the need to align the efforts to enhance community programmes, to monitor their impact, and to make evidence-based policy adjustments according to the real needs of the targeted communities. The system design has been informed by years of collaboration between HISP and MOH implementing DHIS2 for community health services data management. A [practical guide](https://drive.google.com/file/d/0B5Jsq_TjUPGjdFNVTzZNYnhlYzQ/view?resourcekey=0-mU2mmaaahcyHEaJ7e2_aqg) is also available for national and local-decision makers involved in the design, planning, deployment, governance and scale up of successful DHIS2-based CHIS. 
+This guide (developed by HISP UiO, Akros Zambia and the Health Data Collaborative) supplements the WHO normative guidance with an in-depth review of key questions that should be considered when addressing issues relevant for governance, design, development and use of large-scale CHIS.
+
+## Descripción general del diseño del sistema { #system-design-overview } 
+
+### Modular structure { #modular-structure } 
+
+Community Health Workers (CHW) are responsible for a wide range of tasks and activities depending on the countries and contexts. For this reason, the CHIS package and the WHO/UNICEF guidelines have been organized with a **modular approach**. Such a proposal allows for more flexibility as it can be modified for in-country use according to the maturity level of the CHIS and the breadth of services provided at community level.
+
+The CHIS package features **21 modules** and **37 datasets** with monthly and/or yearly periodicity of data collection.
+
+1. [Adolescent Health (Monthly and Yearly)](#chis-agg-ah-design)
+2. [Child Health (Monthly and Yearly)](#chis-agg-ch-design)
+3. [Child protection and Interpersonal violence (Monthly and Yearly)](#chis-agg-cpiv-design)
+4. [Civil registration and vital statistics (monthly and Yearly)](#chis-agg-crvs-design)
+5. [Clean energy (Yearly)](#chis-agg-ene-design)
+6. [Community based surveillance (Monthly)](#chis-agg-cbs-design)
+7. [HIV (Monthly and Yearly)](#chis-agg-hiv-design)
+8. [Integrated community case management (Monthly)](#chis-agg-iccm-design)
+9. [Immunization (Monthly and Yearly)](#chis-agg-epi-design)
+10. [Malaria (Monthly and Yearly)](#chis-agg-mal-design)
+11. [Maternal health (Monthly and Yearly)](#chis-agg-mat-design)
+12. [Mental health (Monthly and Yearly)](#chis-agg-men-design)
+13. [Non-communicable diseases (Monthly and Yearly)](#chis-agg-ncd-design)
+14. [Newborn Health (Monthly and Yearly)](#chis-agg-nbh-design)
+15. [Neglected tropical diseases (Monthly and Yearly)](#chis-agg-ntd-design)
+16. [Nutrition (Monthly and Yearly)](#chis-agg-nut-design)
+17. [People-centered services (Monthly and Yearly)](#chis-agg-pcs-design)
+18. [Population composition (Yearly)](#chis-agg-pop-design)
+19. [Sexual and reproductive health (Monthly and Yearly)](#chis-agg-srh-design)
+20. [Tuberculosis (Monthly and Yearly)](#chis-agg-tb-design)
+21. [Water, sanitation and hygiene (Yearly)](#chis-agg-wash-design)
+
+The principle of flexibility is also reflected in the presence of the **same data elements and indicators in different modules**. These have been distributed according to the theoretical possibility of the presence of certain activities associated with specific modules.
+
+For example, the data element “*CH041a - People assessed for MNS disorders/ MH conditions*” belongs to a section on the assessment of mental health needs in the community. As the activity can be part of various activities, it is included in six modules (Mental health, Neglected Tropical Diseases, Maternal Health, Adolescent Health, HIV, Tuberculosis). Depending on the nature of services delivered by CHW networks, this data element can be redistributed, edited, or removed. As the mapping of an extensive package such as the CHIS package can be confusing, the system design document for each module reports the modules and the datasets where the same DE and/or indicator can be found.
+
+This package contains metadata for monthly and yearly reporting of aggregate data and analysis. It therefore does **not include** individual-level metadata. This metadata package is not designed to support individual consultations by CHWs, but to facilitate routine aggregate reporting into the HMIS.
+
+### Organization Unit Hierarchy and Inclusion of CHWs { #organization-unit-hierarchy-and-inclusion-of-chws } 
+
+In the context of the HMIS, the organization unit hierarchy is typically established with a national level, followed by provinces, districts, or health facilities. These organizational units play a crucial role in facilitating various data-related processes, including data entry, ensuring data security, capturing outputs, and for analyzing data. Specifically, this structure allows for data aggregation as it progresses up the hierarchy.
+Likewise, when designing a Community Health Information System (CHIS), a similar structure can be adopted. However, it becomes essential to consider the inclusion of Community Health Workers (CHWs) in the reporting hierarchy, as it ensures the effective integration of CHWs into the reporting structure for easy attribution of data and efforts based on their area of service. Given the potential significant number of CHWs involved, this decision holds fundamental importance in shaping the overall design of the CHIS.  The [CHIS Implementation guide](https://docs.dhis2.org/en/implement/chis-implementation/sustainable-design-and-architecture.html) provides essential questions for evaluating the CHIS hierarchy:
+
+- Does the hierarchy enable data to be captured against an organizational unit that represents where and who the data is associated?
+- Does the hierarchy enable security and access controls?
+- Does the aggregation produce the desired outputs: indicators, analytics, dashboards, maps, etc.?
+- Is the data able to be associated with a single CHW?
+
+The guide has tested several scenarios and recommends some for this implementation. However, it is important that your implementation is thoroughly assessed, and the most appropriate option for your use-case is considered.
+
+#### Option 1: Community data is submitted through a health facility { #option-1-community-data-is-submitted-through-a-health-facility } 
+
+The current metadata package is designed based on this option. It assumes that data from all CHWs serving different communities will be aggregated, and a single report will be submitted for each reporting period to affiliated health facilities. However, this option does not allow for the association of data with specific CHWs and the communities they serve, as they are not included in the reporting structure for attribution. While this approach may not meet the criteria for associating data with CHWs, we acknowledge that many countries opt for this implementation as it provides a convenient way to integrate community data with the HMIS.  For this option, datasets will be attached at the health facility level as showed in the structure below:
+
+![Option 1](resources/images/CHIS_INTRO_002.png)
+
+#### Option 2: One or more CHWs work in only one community  { #option-2-one-or-more-chws-work-in-only-one-community } 
+
+This option assumes a scenario where one or more CHWs are assigned to a single community structure under a health facility, without any overlapping of communities by CHWs. In this structure, each CHW is expected to submit their individual report for a reporting period. This setup ensures that the data collected is attributed to the specific CHW and corresponds to a particular community without mixing up, the CHW is assigned to their own organizational unit, which represents the lowest level in the hierarchy. Consequently, they will only have access to the data they have personally collected. Aggregating the data at each level will enable the accumulation of information at the levels starting from the CHWs, Communities, facilities, regions and national level. For this option, datasets would be attached at the CHW level as outlined in the hierarchy structure below:
+
+![Option 2](resources/images/CHIS_INTRO_003.png)
+
+#### Option 3:  CHW works in several communities that is not shared by others { #option-3-chw-works-in-several-communities-that-is-not-shared-by-others } 
+
+This option assumes a scenario where a single CHW is responsible for serving multiple communities within a health facility, without any overlap of communities by CHWs. In this structure, each CHW is required to submit individual reports for each of the communities they support. This ensures that the data is attributed to the specific community where it was collected and belongs explicitly to the assigned CHW. 
+
+Each CHW will be assigned to their own organizational unit at Level 5 in the hierarchy. They will have access to the data that belongs to their organization unit and its children at Level 6. In this case, the children refer to the communities in which the CHW operates. Consequently, the CHW can only access data that they have personally collected. And this data can be aggregated at each level; village, CHW, facility, region and national levels. For this option, datasets would be attached at the Community level as outlined in the hierarchy structure below:
+
+![Option 3](resources/images/CHIS_INTRO_004.png)
+
+#### Option 4: CHW as category Option attributes { #option-4-chw-as-category-option-attributes } 
+
+In this scenario, CHWs have the flexibility to work in any community, and there may be instances where multiple CHWs serve the same community. However, each time a CHW submits a report, regardless of the community they served, it can be attributed to that specific CHW. This is achieved by utilizing category options, which allow for the creation of a list of CHWs that can be generated as a category combination and attached to the datasets. The hierarchy structure will include communities where the dataset is attached, but not the CHWs. 
+Sharing options can also be set to enable users to access only the options assigned to them, reducing errors in data capture.  Data can be captured at the Community level, and a relationship can be established between the data and the CHW using the CHW Category as a filter. Data can be aggregated at each level; community, facility, region and national levels. The data can be disaggregated by CHW by utilizing the Category as a filter, allowing for a breakdown of data specific to each CHW. 
+
+> **_NOTE:_**
+It's important to note that this configuration may not be scalable for large CHIS with a substantial number of CHWs.
+
+![Example of configuration as per Option 4](resources/images/CHIS_INTRO_000.png)
+
+### Workflow { #workflow } 
+
+The types of services that community health workers provide in communities are highly heterogeneous across countries. Each module includes a list of standardized indicators to be reviewed, adapted, and adopted according to the functions of CHWs in the country’s health system, the burden of their work and maturity of the CHIS. The WHO/UNICEF guidelines propose a **multi-step approach** for the mapping of the national strategies and the identification of the modules/indicators needed for the monitoring and evaluation of the community activities as illustrated below:
+
+![CHIS workflow](resources/images/chis-workflow.png)
+
+### Usuarios previstos { #intended-users } 
+
+The package has been developed with the following user profiles in mind:
+
+1. **National and sub-national program managers** responsible for data analysis and performance monitoring
+2. **District managers and supervisors** responsible for directing and monitoring community-based activities
+3. **Community health workers** delivering health services, conducting community assessments, collecting and reporting data on community health activities
+
+## User groups { #user-groups } 
+
+As part of the package configuration, user groups have been created to be used to manage sharing settings in the metadata for all the modules. Core metadata that use these sharing settings include mainly the dataSets, dashboard, indicators and data Elements. The 3 user groups created include:
+
+1. **CHIS admin** - users in this group have view/edit access to metadata and view only access to data values in data sets
+2. **CHIS access** - users in this group have view only access to metadata and data values in data sets
+3. **CHIS capture** - users in this group have view only access to metadata and view/edit access to data values in data sets
+
+Whereas it is important to maintain these userGroups while installing this package, feel free to review them inline with any existing userGroups setup or policy in the host instance.
+
+## Facility-Community integration { #facility-community-integration } 
+
+When adopting this package, it is crucial to consider integration of CHIS and HMIS data. The integration requirements and needs will vary depending on the existing  implementations: databases may already be integrated but different datasets for both CHIS and HMIS data or databases may be separate. Alternatively, CHIS could be tracker domain while HMIS is aggregated data and it is also possible that HMIS or CHIS may use other  software platforms other than DHIS2. Each of these scenarios presents unique complexities for integration. For this metadata package, we recommend two approaches for the integration: composite indicators and using the data exchange app as explained in the sections that follow.
+
+### Configuring Composite Indicators { #configuring-composite-indicators } 
+
+Composite indicators involve creating indicators that utilize data elements from both the CHIS and HMIS sources. This approach enables a comprehensive view,  triangulation and supports seamless routine data analysis of the entire health information. While the HMIS dataset primarily focuses on data collection at the facility level, the CHIS metadata package is specifically designed to capture and analyze a core set of indicators for community-based health services.It is important to note that both the aggregate HMIS and CHIS packages cover similar health areas, such as HIV, TB, Malaria, nutrition, EPI, and NCD, among others and these often share common data elements and indicators. When both the HMIS and CHIS packages are installed in the same instance, it becomes possible to develop composite indicators for these shared data elements across the system. 
+As illustrated in the table below, simple output indicators can be created, and it is also possible for coverage indicators at sub-national levels. However, caution should be taken when determining the denominators, especially if communities overlap and extend beyond sub-national units. Failure to consider this may result in inaccurate estimations of coverage for the composite indicators. Also to ensure meaningful analysis, the period of data collection should be aligned to cover a complete period for both sources. Additionally, data quality control measures and checks should be  in place to minimize double reporting at both the facility and community levels as it likely to occur 
+
+Below are some of the examples to learn from and create additional composite indicators as this CHIS package is adopted. Feel free to utilize these examples as a reference and explore more composite indicators as you incorporate the CHIS package into your data analysis workflows.
+
+Table 1: Examples of possible composite indicators for some the programs in CHIS.
+
+| Programa | Facility + Community = Numerator                                                                                                               | Denominator                                                                          | Example of Composite indicators                                   |
+|---------|------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------|-------------------------------------------------------------------|
+| TB      | [New, relapse and cases with unknown treatment history] <br>+ <br>[CH128b - Notified TB cases] in the catchment area]                          | N/A                                                                                  | Notified TB case at facility and community                        |
+| VIH     | [HIV - HIV tests performed] <br>+ <br>[CH028b - HIV tests returned]                                                                            | N/A                                                                                  | HIV tests performed at facility and community                     |
+| Paludismo | [MAL - Malaria suspects tested (RDT)]<br> + <br>[CH119a - Febrile cased tested by RDT]                                                         | N/A                                                                                  | Malaria cases tested with RDT at facility and community           |
+|         | [MAL - RDT positive malaria cases]<br> + <br>[CH121 - Confirmed malaria cases]                                                                 | [MAL - Malaria suspects tested (RDT)]<br>+<br>[CH119a - Febrile cased tested by RDT] | Malaria RDT positivity rate in  facility and community(%)         |
+| NUT     | [NUT - Receipt of iron containing supplements antenatal care contacts in facility] <br>+ <br>[CH037 - Women given iron supplements during ANC] | N/A                                                                                  | Women given iron supplements during ANC at facility and community |
+|         | [NUT - Vitamin A supplement 6-59 months routine in facility]<br>+ <br>[CH061a - Children (6-59m) given Vit A in semester 1&2 - routine]        | Population of Children (6-59m)                                                       | Children (6-59m) given Vit A at facility and community            |
+
+### Using Data Exchange  { #using-data-exchange } 
+
+Considering a scenario where the CHIS package is installed on a separate instance from the HMIS, or even within the same database but different data sets, an [aggregate data exchange](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-239/data-exchange.html) service and the [exchange application](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-239/exchanging-data/data-exchange.html) can be used to facilitate moving data between CHIS and HMIS platforms. Thus service and application have been introduced in the DHIS2 version 2.39 which requires the source instance of DHIS2 to be version 2.39 or later, while the target instance should be version 2.38 or later.
+With the assumption of separate instances for CHIS and HMIS, it is therefore possible to set up the service, install and use the application to transfer data between the instances as illustrated in the figure below. Once the CHIS data is moved into the HMIS instance, you can also create composite indicators as detailed in the previous section of this guide. Below are some the steps to follow while setting up the service:
+
+1) Update the metadata (indicators) in the source instance (CHIS) whose data requires exchange. It is important to ensure that these indicators have metadata codes that will enable successful data exchange.
+2) Update the metadata (data elements) in the target instance (HMIS) to align with the source metadata. This involves establishing similar codes in the target instance's metadata to match the code ID scheme used in the source instance. Note that the current exchange service only supports data elements without categories or non-disaggregated data.
+3) Create the data exchange payload in JSON format. This payload should include all the necessary configurations for the setup, including information about the target instance, authentication requirements, and the ID scheme to be used. Once created, this configuration should be uploaded into the CHIS instance.
+4)Install the data exchange application available in the DHIS2 App Hub within the CHIS instance. This application will enable the movement of data from the CHIS instance to the HMIS instance using the configured settings and payload.
+
+![Data exchage](resources/images/CHIS_INTRO_001.png)
+
+## Agradecimientos { #acknowledgements } 
+
+The CHIS package was developed with **UNICEF** and **WHO** with support from the **Global Fund to Fight AIDS, Tuberculosis and Malaria**.
+
+## Referencias { #references } 
+
+[Analysis and use of community-based health service data. Guidance for community health workers, strategic information and service monitoring.](https://www.healthdatacollaborative.org/fileadmin/uploads/hdc/Documents/Working_Groups/Community_Data/210305_UNICEF_CHW_Guidance_EN.pdf).  March 2021. Published by United Nations Children’s Fund (UNICEF)
+
+[DHIS2 Community Health Information Systems Guidelines](https://drive.google.com/file/d/0B5Jsq_TjUPGjdFNVTzZNYnhlYzQ/view?resourcekey=0-mU2mmaaahcyHEaJ7e2_aqg). 2017. University of Oslo Health Information Systems Programme
+
+[Aggregate data exchange](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-239/data-exchange.html). 2023. University of Oslo, Health Information Systems Programme
+
+[Sustainable CHIS DHIS2 Design and Architecture](https://docs.dhis2.org/en/implement/chis-implementation/sustainable-design-and-architecture.html). 2022.  University of Oslo, Health Information Systems Programme
+
