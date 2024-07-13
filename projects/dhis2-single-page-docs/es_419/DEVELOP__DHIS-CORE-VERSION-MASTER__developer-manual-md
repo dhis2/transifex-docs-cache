@@ -1,8 +1,8 @@
 ---
-revision_date: '2024-07-08'
+revision_date: '2024-07-12'
 tags:
-- DHIS core version master
 - Desarrollar
+- DHIS core version master
 template: single.html
 ---
 
@@ -862,7 +862,7 @@ objects, is supported as well.
 
 Table: Available Operators
 
-| Operator | Types | Value required | Descripción |
+| Operador | Types | Value required | Descripción |
 |---|---|---|---|
 | eq | string &#124; boolean &#124; integer &#124; float &#124; enum &#124; collection (checks for size) &#124; date | verdadero | Equality |
 | !eq | string &#124; boolean &#124; integer &#124; float &#124; enum &#124; collection (checks for size) &#124; date | verdadero | Inequality |
@@ -1044,7 +1044,7 @@ using the `:` operator.
 
 Table: Property operators
 
-| Operator | Descripción |
+| Operador | Descripción |
 |---|---|
 | <field-name\> | Include property with name, if it exists. |
 | <object\>[<field-name\>, ...] | Includes a field within either a collection (will be applied to every object in that collection), or just on a single object. |
@@ -2193,6 +2193,226 @@ following payload to change the style:
 }
 ```
 
+## Data Elements { #data-elements } 
+
+### Merge data elements { #data_element_merge }
+
+> **Caution**
+>
+> Merging DataElements should be carried out with the utmost care. Particular attention
+> should be given to the merging of data values that have data element references involved in the
+> merge. Knowing the potential side effects of a merge should be fully understood before performing
+> the merge. The merging of DataElements has far-reaching effects. The information below
+> will try to help show what's involved in a DataElement merge. A DataElement merge
+> touches all the major parts of the system (metadata, data, tracker, analytics and audit).
+> 
+> System performance may be impacted if the source DataElements are linked to large amounts of Data/Audit records particularly.
+
+The data element merge endpoint allows you to merge a number of data elements (sources) into a target data element.
+
+#### Authorisation { #authorisation } 
+
+The main authority required to perform a data element merge is `F_DATA_ELEMENT_MERGE`.  
+Other authorities required relate to the general sharing and access of data elements, `F_DATAELEMENT_PUBLIC_ADD` and `F_DATAELEMENT_DELETE`.
+
+#### Request { #request } 
+
+Merge data elements with a POST request:
+
+```
+POST /api/dataElements/merge
+```
+
+The payload in JSON format looks like the following:
+
+```json
+{
+  "sources": [
+    "jNb63DIHuwU",
+    "WAjjFMDJKcx"
+  ],
+  "target": "V9rfpjwHbYg",
+  "deleteSources": true,
+  "dataMergeStrategy": "DISCARD"
+}
+```
+
+The JSON properties are described in the following table.
+
+Table: Merge payload fields
+
+| Field             | Requerido | Value                                                                                                                                                                                   |
+|-------------------|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| sources           | Sí       | Array of identifiers of the data elements to merge (the source data elements)                                                                                                           |
+| target            | Sí       | Identifier of the data element to merge the sources into (the target data element)                                                                                                      |
+| deleteSources     | No       | Whether to delete the source data elements after the operation. Default is false. If true is chosen, then all source audit records will also be deleted.                                |
+| dataMergeStrategy | Sí       | How to handle merging of data values. Options are 'DISCARD' or 'LAST_UPDATED'. DISCARD will delete all source data values. LAST_UPDATED will use the data value which was last updated. |
+
+The merge operation will merge the source data elements into the target data element. One or many source data elements can be specified. Only one target should be specified.
+
+The merge operation will transfer all source data element metadata associations to the target data element.
+The following metadata get updated:
+
+
+| Metadatos                          | Property                  | Action taken               |
+|-----------------------------------|---------------------------|----------------------------|
+| DataDimensionItem                 | dataElement               | set to target              |
+| EventVisualization                | dataElementValueDimension | set to target              |
+| ProgramStageDataElement           | dataElement               | set to target              |
+| ProgramNotificationTemplate       | recipientDataElement      | set to target              |
+| ProgramRuleVariable               | dataElement               | set to target              |
+| ProgramRuleAction                 | dataElement               | set to target              |
+| TrackedEntityDataElementDimension | dataElement               | set to target              |
+| MinMaxDataElement                 | dataElement               | set to target              |
+| SMSCode                           | dataElement               | set to target              |
+| SMSCode                           | dataElement               | set to target              |
+| Predictor                         | output                    | set to target              |
+| DataSetElement                    | dataElement               | set to target              |
+| DataElementOperand                | dataElement               | set to target              |
+| ProgramStageDataElement           | dataElements              | remove sources, add target |
+| Section                           | dataElements              | remove sources, add target |
+| DataElementGroup                  | members                   | remove sources, add target |
+| Evento                             | eventDataValues           | remove sources, add target |
+| Indicador                         | numerator                 | replace source with target |
+| Indicador                         | denominator               | replace source with target |
+| Predictor                         | generator                 | replace source with target |
+| Predictor                         | sampleSkipTest            | replace source with target |
+| DataEntryForm                     | htmlCode                  | replace source with target |
+| ProgramIndicator                  | expression                | replace source with target |
+| ProgramIndicator                  | filter                    | replace source with target |
+| DataValue                         | dataElement               |                            |
+
+
+| Datos                            | Property        | Action taken                                                                                                                                                                                             |
+|---------------------------------|-----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Evento                           | eventDataValues | action based on merge strategy (DISCARD / LAST_UPDATED). DISCARD will delete all source event data values. LAST_UPDATED will use the event data value which was last updated, when more than one exists. |
+| DataValue                       | dataElement     | action based on merge strategy (DISCARD / LAST_UPDATED). DISCARD will delete all source data values. LAST_UPDATED will use the data value which was last updated, when more than one exists.             |
+| TrackedEntityDataValueChangeLog |                 | deleted if sources are being deleted, otherwise no action.                                                                                                                                               |
+| DataValueAudit                  |                 | deleted if sources are being deleted, otherwise no action.                                                                                                                                               |
+
+
+#### Validación { #validation } 
+
+The following constraints and error codes apply.
+
+Table: Constraints and error codes
+
+| Error code | Descripción                                                                                                                                 |
+|------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| E1550      | At least one source data element must be specified                                                                                          |
+| E1551      | Target data element must be specified                                                                                                       |
+| E1552      | Target data element cannot be a source indicator                                                                                            |
+| E1553      | Source/Target data element does not exist: `{uid}`                                                                                          |
+| E1554      | All source ValueTypes must match target ValueType: `ValueType`. Other ValueTypes found: `ValueType`                                         |
+| E1555      | All source DataElementDomains must match target DataElementDomain: `DataElementDomain`. Other DataElementDomains found: `DataElementDomain` |
+| E1556      | dataMergeStrategy field must be specified. With value `DISCARD` or `LAST_UPDATED`                                                           |
+
+#### Database constraints { #database-constraints } 
+There are unique constraints in place that can prevent a successful merge. These constraints are set by DHIS2 in order to maintain a logical domain model.    
+Below are a list of the known database unique key constraints at the time of writing. For example, you
+can only have 1 data set element with the same dataset and data element.
+
+Table: Database table unique key constraints
+
+| Table                   | Unique key constraint                     |
+|-------------------------|-------------------------------------------|
+| minmaxdataelement       | orgunit, dataelement, categoryoptioncombo |
+| programstagedataelement | programstage, dataelement                 |
+| datasetelement          | dataset, dataelement                      |
+
+
+#### Response { #response } 
+##### Success { #success } 
+Sample success response looks like:
+
+```json
+{
+    "httpStatus": "OK",
+    "httpStatusCode": 200,
+    "status": "OK",
+    "response": {
+        "mergeReport": {
+            "mergeErrors": [],
+            "mergeType": "DATA_ELEMENT",
+            "sourcesDeleted": [
+                "vQ0dGV9EDrw"
+            ],
+            "message": "DATA_ELEMENT merge complete"
+        }
+    }
+}
+```
+
+##### Failure { #failure } 
+Sample error response looks like:
+
+```json
+{
+    "httpStatus": "Conflict",
+    "httpStatusCode": 409,
+    "status": "WARNING",
+    "message": "One or more errors occurred, please see full details in merge report.",
+    "response": {
+        "mergeReport": {
+            "mergeErrors": [
+                {
+                    "message": "At least one source data element must be specified",
+                    "errorCode": "E1550",
+                    "args": []
+                },
+                {
+                    "message": "Target data element does not exist: `abcdefg1221`",
+                    "errorCode": "E1553",
+                    "args": [
+                        "Target",
+                        "abcdefg1221"
+                    ]
+                }
+            ],
+            "mergeType": "DATA_ELEMENT",
+            "sourcesDeleted": [],
+            "message": "DATA_ELEMENT merge has errors"
+        }
+    }
+}
+```
+
+Another sample validation error response:
+
+```json
+{
+    "httpStatus": "Conflict",
+    "httpStatusCode": 409,
+    "status": "WARNING",
+    "message": "One or more errors occurred, please see full details in merge report.",
+    "response": {
+        "mergeReport": {
+            "mergeErrors": [
+                {
+                    "message": "All source ValueTypes must match target ValueType: `TEXT`. Other ValueTypes found: `NUMBER`",
+                    "errorCode": "E1554",
+                    "args": []
+                }
+            ],
+            "mergeType": "DATA_ELEMENT",
+            "sourcesDeleted": [],
+            "message": "DATA_ELEMENT merge has errors"
+        }
+    }
+}
+```
+
+A database constraint sample error response:
+
+```json
+{
+  "httpStatus": "Conflict",
+  "httpStatusCode": 409,
+  "status": "ERROR",
+  "message": "ERROR: duplicate key value violates unique constraint \"minmaxdataelement_unique_key\"\n  Detail: Key (sourceid, dataelementid, categoryoptioncomboid)=(193236, 1148617, 167661) already exists."
+}
+```
+
 ## Indicators { #webapi_indicators } 
 
 This section describes indicators and indicator expressions.
@@ -2412,7 +2632,7 @@ The following metadata get updated:
 | Visualization       | sorting                                    | Replace any source reference with the target reference as Sorting dimension |
 
 
-#### Validation { #validation } 
+#### Validación { #validation } 
 
 The following constraints and error codes apply.
 
@@ -2525,7 +2745,7 @@ The merge operation will merge the source indicator types into the target indica
 
 The merge operation will transfer all of the indicator metadata associations to the source indicator types over to the target indicator type.
 
-#### Validation { #validation } 
+#### Validación { #validation } 
 
 The following constraints and error codes apply.
 
@@ -2726,7 +2946,7 @@ The split operation will transfer all of the metadata associations of the source
 
 The operation will transfer all data records of the source org unit over to the org unit specified as the primary target, or if not specified, the first specified target org unit. This includes aggregate data values, data approval records, events, tracked entities and more.
 
-#### Validation { #validation } 
+#### Validación { #validation } 
 
 The following constraints and error codes apply.
 
@@ -2786,7 +3006,7 @@ The merge operation will transfer all of the metadata associations of the source
 
 The specified data value merge strategy defines how data values are handled. For strategy `LAST_UPDATED`, data values for all source org units are transferred over to the target org unit, and in situation where data values exist for the same parameters, the last updated or created data value will be used. This is done to avoid duplication of data. For strategy `DISCARD`, data values are not transferred over to the target org unit, and simply deleted. The specified data approval merge strategy defines how data approval records are handled, and follows the same logic as data values.
 
-#### Validation { #validation } 
+#### Validación { #validation } 
 
 The following constraints and error codes apply.
 
@@ -3310,10 +3530,10 @@ Table: Validation Rule CSV Format
 | 2 | UID | No | UID | Stable identifier. Max 11 char. Will be generated by system if not specified. |
 | 3 | Code | No || Stable code. Max 50 |
 | 4 | Descripción | No || Free text description. |
-| 5 | Instruction | No || Free text instruction. |
+| 5 | Instrucción | No || Free text instruction. |
 | 6 | Importance | No | MEDIUM &#124; HIGH &#124; LOW | Importance of validation rule. |
 | 7 | Rule type (ignored) | No | VALIDATION &#124; SURVEILLANCE | Type of validation rule. |
-| 8 | Operator | No | equal_to &#124; not_equal_to &#124; greater_than &#124; greater_than_or_equal_to &#124; less_than &#124; less_than_or_equal_to &#124; compulsory_pair &#124; exclusive_pair | Expression operator. |
+| 8 | Operador | No | equal_to &#124; not_equal_to &#124; greater_than &#124; greater_than_or_equal_to &#124; less_than &#124; less_than_or_equal_to &#124; compulsory_pair &#124; exclusive_pair | Expression operator. |
 | 9 | Period type | No | Monthly &#124; Daily &#124; Weekly &#124; Quarterly &#124; SixMontly &#124; Yearly | Period type. |
 | 10 | Left side expression | Sí  || Mathematical formula based on data element and option combo UIDs. |
 | 11 | Left side expression description | Sí  || Free text. |
@@ -8103,7 +8323,7 @@ curl -X PATCH -d @payload.json -H "Content-Type: application/json-patch+json" "h
 | atomic | falso | If this is set to true, then the batch function will stop and not updating any objects if there is an error <br> Otherwise, if this is false then the function will try to proceed with best effort mode. |
 
 
-## Validation { #validation } 
+## Validación { #validation } 
 - All object ID will be validated for existence.
 - Current User need to have metadata READ/WRITE permission on updating objects.
 - All existing validations from metadata import service will also be applied.
@@ -8998,6 +9218,7 @@ Example: Get audits for data approval workflow `i5m0JPw4DQi`:
 Exaple: Get audits between `2021-01-01` and `2022-01-01` for org unit `DiszpKrYNg8`:
 
     /api/33/audits/dataApproval?ou=DiszpKrYNg8&startDate=2021-01-01&endDate=2022-01-01
+
 
 
 # Messaging { #messaging } 
@@ -12349,7 +12570,7 @@ The available operators are listed below.
 
 Table: Filter operators
 
-| Operator | Descripción |
+| Operador | Descripción |
 |---|---|
 | EQ | Equal to |
 | !EQ | Not equal to |
@@ -13099,7 +13320,7 @@ The available operators are listed below.
 
 Table: Filter operators
 
-| Operator | Descripción |
+| Operador | Descripción |
 |---|---|
 | EQ | Equal to |
 | GT | Greater than |
@@ -16106,6 +16327,7 @@ The example will exchange data using the DHIS 2 play environment, and refer to t
 * In the **target** instance, navigate to the *Data entry* app, select org unit _Sierra Leone_, data set _Data exchange_ and period _January 2022_. Observe that the exchanged data values are visible in the form.
 
 To summarize, in this example, event data records were aggregated from the facility level to the national level in the org unit hierarchy and from event data to monthly data values using program indicators. The data values were exchanged with a target DHIS 2 instance by using the `code` property to reference metadata.
+
 
 
 # I18n { #i18n } 
@@ -19696,7 +19918,7 @@ To query on an attribute using multiple values in an *IN* filter:
 
 You can use a range of operators for the filtering:
 
-|Operator|  Descripción|
+|Operador|  Descripción|
 |---|---|
 |`EQ`|Equal to|
 |`GE`|Greater than or equal to|
@@ -21257,6 +21479,7 @@ reported during the merge. The only validation done in the service relates to re
 mentioned in the previous section.
 
 
+
 # Email { #email } 
 
 ## Email { #webapi_email } 
@@ -21628,7 +21851,7 @@ Each `filter` parameter has the following form:
 
 Unary operators are:
 
-| Operator | Descripción |
+| Operador | Descripción |
 | -------- | ----------- |
 | `null`   | value is JSON `null` |
 | `!null`  | value is defined but different to JSON `null` |
@@ -21637,7 +21860,7 @@ Unary operators are:
 
 Binary operators are:
 
-| Operator | Descripción |
+| Operador | Descripción |
 | -------- | ----------- |
 | `eq`     | value is equal to the given boolean, number or string |
 | `!eq`, `ne`, `neq` | value is not equal to the given boolean, number or string |
@@ -21648,7 +21871,7 @@ Binary operators are:
 
 Text pattern matching binary operators are:
 
-| Operator | Case Insensitive |  Descripción |
+| Operador | Case Insensitive |  Descripción |
 | -------- | ---------------- | ----------- |
 | `like`   | `ilike`          | value matches the text pattern given |
 | `!like`  | `!ilike`         | value does not match the text pattern given |
@@ -21669,7 +21892,7 @@ Otherwise, the value matches string JSON values or mixed types of values.
 
 Set operators are:
 
-| Operator | Descripción |
+| Operador | Descripción |
 | -------- | ----------- |
 | `in`     | entry value is textually equal to one of the given values (is in set) |
 | `!in`    | entry value is not textually equal to any of the given values (is not in set) |
