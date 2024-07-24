@@ -1,0 +1,202 @@
+---
+edit_url: "https://github.com/dhis2-metadata/IMM_AGG/blob/master/docs/imm_agg-design.md"
+revision_date: '2024-07-23'
+tags:
+- Implementace
+---
+
+# Expanded Programme on Immunization (EPI) - System Design Document { #imm-agg-design }
+
+## Background and Purpose { #background-and-purpose } 
+
+This document describes the design of an immunization module in DHIS2 optimized for integration with a national HMIS. The module is most widely used by countries that have integrated their **Expanded Programme on Immunization (EPI)** reporting into the HMIS.
+
+The module includes standard indicators and dashboards to support core immunization program analyses recommended by the [**WHO's Guidance on the Analysis & Use of Health Facility Data for Immunization Program Managers**](https://www.who.int/publications/m/item/analysis-and-use-of-health-facility-data-guidance-for-immunization-programme-managers). The module contains aggregate monthly data sets which can be used flexibility depending on system maturity:
+
+- For **routine direct reporting** into DHIS2 where facility data remain paper-based (data entry can be done at facility or district levels); or
+- **Populated by aggregating individual-level electronic data** from DHIS2 tracker or another system into the pre-defined aggregate dimensions needed to support the data analysis framework.
+
+## Package Structure { #package-structure } 
+
+| Datová sada      | Popis                                                                                                                                             |
+|--------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Imunizace | **Monthly** dataset. <br> Reports immunization activities (outreach activities included), adverse events following immunization, stock, and cold chain. |
+
+> **Note**
+>
+> This data set was designed using a custom form in DHIS2, in particular to accommodate the stock section within this data set. If a section form was used, the stock section would extend beyond the width of the majority of user’s screens who do not have a high-resolution monitor, causing them to have to scroll left/right when entering data within this section.
+
+## Předpokládaní uživatelé { #intended-users } 
+
+- **Health facility users**: capture and report key data on immunization activities
+- **Programoví manažeři**: manažeři na národní a nižší než národní úrovni mohou být zodpovědní za podporu zadávání dat a analýzy.
+- **National and local health authorities**: to monitor and analyze the surveillance of data through dashboards and analytics tools, to conduct risk assessments and plan response measures; to generate reports for regional and global reporting
+
+## Dataset Details { #dataset-details } 
+
+### Outreach Sessions { #outreach-sessions } 
+
+![Data entry for outreach sessions](resources/images/imm-epiagg-1.0.0-001.png)
+
+The info for outreach sessions have been designed as individual data elements without any disaggregation, although a catCombo could be added if needed. Should the activities not include outreach sessions, the section can be removed from the dataset.
+
+### Vaccinations - Children { #vaccinations-children } 
+
+![Data entry for vaccinated children - the screenshot does not include the full table](resources/images/imm-epiagg-1.0.0-002.png)
+
+This section has been configured using an **age disaggregation (<1, >=1)** for each data element within the section.From an analytical point of view, this allows to quickly add in the age breakdowns and pivot them as required. The totals are automatically calculated.
+Some cells, like for example the cell for OPV 0 for children above the year of age, are blocked and **grayed out to prevent data entry** as per indications of the global guidelines - e.g. OPV 0 is normally administered at birth. The cells can be unblocked in case of need should the local guidelines differ from the global ones.
+
+### Vaccinations - Women of Childbearing age { #vaccinations-women-of-childbearing-age } 
+
+![Data entry for vaccinated women](resources/images/imm-epiagg-1.0.0-003.png)
+
+This section has been configured using a **disaggregation for pregnant women (Pregnant, Other)**.
+From an analytical point of view, this solution allows to quickly add in the breakdown of pregnancy status and pivot them as required. The disaggregation and the list of vaccines can and should be edited locally to better represent the contextual needs if needed.
+
+### Adverse Events Following Immunization { #adverse-events-following-immunization } 
+
+![Data entry for reported AEFI](resources/images/imm-epiagg-1.0.0-004.png)
+
+This basic table reports the number of AEFIs by severity. Should the AEFIs require a more detailed reporting form, the DHIS2 global packages also include an [**AEFI tracker**](#aefi-design) that can be used and expanded for the purpose.
+
+### Sklad { #stock } 
+
+![Data entry for the stock - the screenshot does not include the full table](resources/images/imm-epiagg-1.0.0-005.png)
+
+![Details of the stock disaggregation](resources/images/imm-epiagg-1.0.0-006.png)
+
+The default configuration of the stock section includes just a handful of vaccines together with some fundamental items normally used in vaccination activities (e.g. safety boxes and vaccination cards). The **list should be improved and expanded locally** to better mirror the real local stock.
+
+A **“flat” structure has been applied** to the stock section (i.e. no disaggregations have been applied, this section consists solely of individual data elements).
+
+This structure is required as the “used stock” column is made up by the calculation: (starting balance + received) - (VVM + frozen + expired + broken + missing + ending balance). Using two separate category options (i.e. opening balance, received, discarded -VVM, frozen, expired, broken, missing-, closing balance) would not be appropriate given that a number of these options do not apply to several of the data elements within this section. It was therefore decided that applying different structures to thematically linked data elements was not the most effective approach.
+While using this type of structure increases the number of data elements significantly, using a category option combination that would add up all of these items would not work within this structure, given that a total does not provide you with any meaningful information when reviewing the “used stock” column.
+
+The stock section was added for the purpose of simplicity at the point of data collection. Should a separate tally sheet be more useful, a [**logistics dataset**](https://docs.dhis2.org/en/topics/metadata/immunization/epi-logistics/lmis-design.html) is also available as a standalone package to be edited locally.
+
+### Chladný řetěz { #cold-chain } 
+
+The info for cold chain has been designed as individual data elements without any disaggregation.
+
+## Analytics and Indicators { #analytics-and-indicators } 
+
+Be it for lack of reliable data or for mistakes in calculations, population data and its use in denominators often sets a difficult task.
+
+Up until any DHIS2 version before 2.35.12 the targets and coverages were simply based on the antigen administered VS the target population through the time (months of a year) cumulatively the target population has been divided by 12 (months) as the target population was entered annually. The indicators should have been adjusted according to the periodicity of the analysis (quarterly/yearly/etc.) and the periodicity with which the target population is reported; while the coverage would have simply been based on the annualization of the indicator.
+The use of [cumulative over-time aggregate indicators](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-235/configuring-the-system/metadata.html#manage_indicator) is recommended to ensure accurate calculations of coverage. This is possible using the **periodOffset function** in indicators in versions above 2.35.12. As a result, coverage indicators use the sum of the last 12 months as a numerator instead of annualizing the indicator. This is a more accurate way of calculating coverage indicators than annualizing them.
+
+Here below, an example of the type of indicators that are now available to better calculate the coverage.
+
+|             |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+|-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Indikátor   | **EPI - BCG coverage (%) - period offset**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| UID         | `lnC0fWd3sD4`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Čitatel   | **BCG doses < 1 year this month plus last 11 months** <br> _EPI - BCG doses given <1 year + EPI - BCG doses given <1 year.periodOffset(-1) + EPI - BCG doses given <1 year.periodOffset(-2) + EPI - BCG doses given <1 year.periodOffset(-3) + EPI - BCG doses given <1 year.periodOffset(-4) + EPI - BCG doses given <1 year.periodOffset(-5) + EPI - BCG doses given <1 year.periodOffset(-6) + EPI - BCG doses given <1 year.periodOffset(-7) + EPI - BCG doses given <1 year.periodOffset(-8) + EPI - BCG doses given <1 year.periodOffset(-9) + EPI - BCG doses given <1 year.periodOffset(-10) + EPI - BCG doses given <1 year.periodOffset(-11)_ |
+| Jmenovatel |  **Live birth** <br> _GEN - Population live births_                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+
+On the front of **immunization performance**, the package now contains a score assigned to the differtent OUs. The score is based on the combination of coverage and dropout rate of the antigens through the use of a logic statement in the formula (possible from 2.36 version).
+
+## Pravidla ověřování { #validation-rules } 
+
+The validation rules for the Immunization package are grouped in the “Immunization” validation rule group.
+The rules will run at data entry level (Run validation button) to flag any potential error in data entry.
+
+![Example of errors flagged by data validation](resources/images/imm-epiagg-1.0.0-007.png)
+
+## Ovládací panely { #dashboards } 
+
+The Immunization package includes one predefined dashboard. The table below lists only the items containing notes of interest for the implementation of the package and the set-up of the dashboard.
+
+| Položka                                                   | Komentář                                                                                                                                                                                                                                                                         |
+|--------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Categorization of immunization performance by district | Categorization of OrgUnits into four categories (1,2,3,4) depending on their performance: <br>- 1: Coverage > 90% / Dropout rate < 10% <br>- 2: Coverage > 90% / Dropout rate > 10% <br> - 3: Coverage < 90% / Dropout rate < 10% <br> - 4: Coverage < 90% / Dropout rate > 10% |
+
+## Visualizations from the Immunization App { #visualizations-from-the-immunization-app } 
+
+Over the past few DHIS2 releases there has been ongoing work on extending core analytics features to be able to meet the requirements that led to the development of the custom Immunization analysis.
+The representative visualizations of the “**Immunization analysis app**” present in the dashboard are:
+
+- EPI - Doses and coverage by antigens - months this year
+- Monitoring chart for antigens administered <1 years old child - Months this year
+- Monitoring chart for antigens administered in newborns - Months this year
+- Coverage and dropout rate categorization - last 12 months
+- Categorization of immunization performance by district - last 12 months
+
+In the description of each visualization you can find the relevant information on the content and structure
+
+## User groups { #user-groups } 
+
+As part of the package configuration, user groups have been created to be used to manage sharing settings in the metadata for all the modules. Core metadata that use these sharing settings include mainly the dataSets, dashboard, indicators and data Elements.
+
+The three user groups created include:
+
+| Uživatelská skupina       | Ovládací panel         | Program Metadata  | Programové data         |
+|------------------|-------------------|-------------------|----------------------|
+| EPI-Admin        | Může upravovat a prohlížet | Může upravovat a prohlížet | Lze pouze prohlížet        |
+| EPI-Access       | Lze pouze prohlížet     | Lze pouze prohlížet     | Lze pouze prohlížet        |
+| EPI-Data capture | Žádný přístup         | Lze pouze prohlížet     | Může zachytit a zobrazit |
+
+- **EPI-Admin** - users in this group will have sharing setting with view/edit access metadata and view only access to data values in dataSets
+- **EPI-Access** - users in this group will have sharing setting with view only access to metadata and data values in dataSets
+- **EPI-Data capture**  - users in this group will have sharing setting with view only access to metadata and edit access to data values in dataSets
+
+I když je důležité udržovat tyto userGroups při instalaci tohoto balíčku, neváhejte je zkontrolovat v souladu s jakýmkoli existujícím nastavením nebo zásadou userGroups v instanci hostitele.
+
+## Special considerations { #special-considerations } 
+
+### Population data { #population-data } 
+
+Accurate target population estimates are vital for calculating vaccination coverage. For vaccines administered beyond the first year, the target is typically the estimate of surviving children from the birth cohort [WHO, 2020](https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data)
+
+If not already in use, the dataset should be coupled with a second dataset to collect the population data necessary to calculate key indicators such as coverage and to monitor important targets for activities and/or key populations (eg, children under 5 years of age or pregnant women). Alternatively, a linkage with the [Vital Events tracker](https://docs.dhis2.org/en/implement/health/crvs-mortality/vital-events/overview.html) or the national CRVS system could provide the updated birth cohort.
+
+Další informace o údajích o populaci naleznete v části Indikátory.
+
+### Vaccination Coverage and Age Groups { #vaccination-coverage-and-age-groups } 
+
+Vaccination coverage is often disaggregated by age groups, crucial for monitoring and improving immunization programs. Common disaggregation includes age ranges like 0-11 months, 12-23 months, and ≥24 months​ [PAHO, 2017](https://iris.paho.org/handle/10665.2/34510).
+Recording vaccinations accurately based on the child's age is essential. For instance, a child receiving the first dose of the MR vaccine at 15 months should be recorded as MR1 (12-23 months)​ [WHO, 2020](https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data). 
+
+The [WHO Handbook](https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data) emphasizes the importance of immunization beyond infancy. Initially, the Expanded Programme on Immunizations (EPI) focused on children under one year of age, but it has since evolved to include new vaccines, booster doses, and vaccinations throughout the life course. As new vaccines are developed and recommended, immunization schedules should be updated accordingly to protect populations against emerging health threats and maintain immunity throughout life.
+Countries should adopt integrated immunization schedules that account for vaccinations from birth through adolescence and into adulthood. This approach ensures that booster doses and new vaccines are administered at appropriate ages, maintaining continuous immunity and reducing the number of zero-dose children. A lifespan approach is crucial for ensuring ongoing protection against vaccine-preventable diseases.
+Additionally, leveraging community-based information systems and integrating health data to track immunization status over time is essential. Monitoring systems must adapt to track vaccinations given to different age groups, ensuring comprehensive coverage across the lifespan [PAHO, 2017](https://iris.paho.org/handle/10665.2/34510), [USAID](https://usaidmomentum.org/resource/landscape-analysis-of-health-information-systems-and-data-tools-for-identifying-reaching-and-monitoring-zero-dose-and-under-immunized-children/).
+
+### Equity and Socio-economic Characteristics { #equity-and-socio-economic-characteristics } 
+
+Coverage surveys often measure coverage along socio-economic dimensions such as wealth, ethnicity, religion, and caretaker’s educational attainment. This helps in understanding and addressing immunization inequities​ [WHO, 2020](https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data). 
+In Latin America, electronic immunization registries and other data sources are used to disaggregate immunization data by equity dimensions, identifying sub-groups or localities with more zero-dose and under-immunized children [USAID](https://usaidmomentum.org/resource/landscape-analysis-of-health-information-systems-and-data-tools-for-identifying-reaching-and-monitoring-zero-dose-and-under-immunized-children/).
+
+### Timeliness (Recovered Children) Analyses { #timeliness-recovered-children-analyses } 
+
+Timeliness in vaccination refers to administering vaccines according to recommended schedules, which is crucial for maximizing their effectiveness and minimizing periods when children are vulnerable to preventable diseases.Vaccination schedules outline the minimum ages for the first dose and the required intervals between subsequent doses. Adhering to these schedules is essential for maintaining continuous protection against infectious diseases. Non-timely doses, while still valid, are administered significantly later than the recommended age, potentially leaving children unprotected for longer periods.
+
+Monitoring timeliness is also essential for effective decision-making in immunization programs. Timeliness rates, calculated as the percentage of reports submitted on time out of the expected reports, are vital for timely decision-making and reducing errors. The timeliness and completeness of data are critical for accurate monitoring and decision-making. Delayed or missing reports can lead to inaccurate coverage assessments and negatively impact program effectiveness.
+
+Surveys and electronic immunization registries (EIR) are more effective in monitoring timeliness compared to administrative systems, which tend to aggregate vaccinations into broad age categories, obscuring detailed timing information. Definitions of timeliness can vary, but vaccinations administered within three months of the recommended age are generally considered timely.
+
+Improving timeliness in vaccination involves ensuring that children receive vaccines at the optimal ages specified by health authorities, maximizing the vaccines' protective benefits and reducing the risk of disease outbreaks. Accurate and timely reporting is essential for assessing vaccine coverage accurately and making informed decisions to enhance program effectiveness. [WHO, 2020](https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data), [PAHO, 2017](https://iris.paho.org/handle/10665.2/34510), [GAVI](https://www.gavi.org/our-alliance/strategy/phase-5-2021-2025/equity-goal/zero-dose-children-missed-communities)
+
+**Country Examples**[PAHO, 2017](https://iris.paho.org/handle/10665.2/34510):
+- In Guatemala, an analysis revealed significant variation in the timeliness of DTP1 and DTP3 doses across different regions, highlighting the need for targeted interventions to improve timely vaccination coverage
+- In Costa Rica, a data quality self-assessment found that improving timeliness was essential for accurate coverage data and effective immunization programs​
+
+### Use of Data for Strategy Design { #use-of-data-for-strategy-design } 
+
+Effective data use involves integrating multiple data sources, including administrative records, surveys, and population data, to triangulate information and make informed decisions​ [WHO, 2020](https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data). Immunization programs can improve by analyzing administrative, surveillance, and GIS data to understand immunization inequities and design strategies to reach zero-dose and under-immunized children. For example, geospatial technology helps create accurate program targets and identifies missed communities [PAHO, 2017](https://iris.paho.org/handle/10665.2/34510), [USAID](https://usaidmomentum.org/resource/landscape-analysis-of-health-information-systems-and-data-tools-for-identifying-reaching-and-monitoring-zero-dose-and-under-immunized-children/)
+
+**Country Examples**:
+- Geospatial technology has been extensively used in Nigeria for polio eradication efforts, resulting in more accurate population estimates and identification of missed populations. This technology has shown promise in improving routine immunization through better microplanning and identifying undocumented settlements [WHO, 2020](https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data)
+- GIS tools have been used in polio eradication efforts in Kenya, including creating digital microplans for vaccination campaigns. A targeted door-to-door mobile strategy based on GIS data increased the number of fully immunized children by 33.5% in one year in poorly performing facilities and unreached rural-urban populations​[WHO, 2020](https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data)
+- GIS-based microplanning combined with community mobilization, strengthened data use, and logistics planning has helped double routine immunization coverage in urban settings in India. This approach shows the potential for similar strategies in other regions​ ​[WHO, 2020](https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data)
+- Vaccine distribution planners used GIS data to respond to the Ebola virus outbreak and are exploring its use for routine immunization planning to update health zone maps and population estimates in DRC. Participatory mapping approaches involving local health workers have been implemented to inform microplanning ​[WHO, 2020](https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data)
+
+Data quality assessments are crucial for ensuring the reliability of the data used in strategy design. Regular data quality checks help in maintaining accurate records and improving the overall effectiveness of immunization programs​. More information can be accessed in the DHIS2 [Data Quality](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-241/collecting-data/data-quality.html) user guide.
+
+## Reference { #references } 
+
+- World Health Organization, (2018), Analysis and use of health facility data: guidance for immunization programme managers. URL: <https://www.who.int/publications/m/item/analysis-and-use-of-health-facility-data-guidance-for-immunization-programme-managers>. [Accessed on 01/09/2022] <br>
+- World Health Organization, (2020), WHO Handbook on the use, collection, and improvement of immunization data. URL: https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data [Accessed on 23/07/2024] <br>
+- Pan American Health Organization (2017), Tools for monitoring the coverage of integrated public health interventions. Vaccination and deworming of soil-transmitted helminthiasis. URL: https://iris.paho.org/handle/10665.2/34510 [Accessed on 23/07/2024] <br>
+- USAID, Landscape Analysis of Health Information Systems and Data Tools for Identifying, Reaching, and Monitoring Zero-Dose and Under-Immunized Children URL: https://usaidmomentum.org/resource/landscape-analysis-of-health-information-systems-and-data-tools-for-identifying-reaching-and-monitoring-zero-dose-and-under-immunized-children/ [Accessed on 23/07/2024] <br>
+
