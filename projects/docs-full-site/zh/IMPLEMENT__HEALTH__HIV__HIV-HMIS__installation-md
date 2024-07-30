@@ -1,0 +1,184 @@
+---
+edit_url: "https://github.com/dhis2-metadata/HIV_AGG/blob/master/docs/hiv_agg-installation.md"
+revision_date: '2024-07-29'
+tags:
+- Implement
+---
+
+# HIV HMIS Aggregate Installation Guide { #hiv-agg-installation }
+
+This document includes an installation guide for the HIV aggregate packages.
+
+System default language: English
+
+## 总览 { #overview } 
+
+The package metadata json files contain a "package" component that provides technical details on package version and content. The files available in the current version of the package are listed below.
+
+## 安装 { #installation } 
+
+模块的安装包括以下几个步骤：
+
+1. [Preparing the metadata file with DHIS2 metadata](#preparing-the-metadata-file).
+2. [Importing the metadata file into DHIS2](#importing-metadata).
+3. [Configuring the imported metadata](#configuration).
+4. [Adapting the program after import](#adapting-the-program)
+
+It is recommended to first read through each section of the installation guide before starting the installation and configuration process in DHIS2. Identify applicable sections depending on the type of your import:
+
+1. import into a blank DHIS2 instance
+2. import into a DHIS2 instance with existing metadata.
+
+The steps outlined in this document should be tested in a test/staging DHIS2 instance and only then applied to a production environment.
+
+## 要求 { #requirements } 
+
+In order to install the module, an administrator user account on DHIS2 is required.
+
+Great care should be taken to ensure that the server itself and the DHIS2 application are well secured, access rights to collected data should be defined. Details on securing a DHIS2 system is outside the scope of this document, and we refer to the [DHIS2 documentation](https://docs.dhis2.org/).
+
+## Metadata files { #metadata-files } 
+
+尽管并非总是必要，但在将元数据文件导入DHIS2之前对其进行某些修改通常可能是有利的。
+
+## 准备元数据文件 { #preparing-the-metadata-file } 
+
+It is required to apply some changes to the metadata file before it can be imported. The scope of work may vary from package to package.
+
+### 默认数据维度 { #default-data-dimension } 
+
+In early versions of DHIS2, the UIDs of the default data dimensions were auto-generated. Thus, while all DHIS2 instances have a default category option, data element category, category combination and category option combination, the UIDs of these defaults can be different. Later versions of DHIS2 have hardcoded UIDs for the default dimension, and these UIDs are used in the configuration packages.
+
+To avoid conflicts when importing the metadata, it is advisable to search and replace the entire .json file for all occurrences of these default objects, replacing UIDs of the .json file with the UIDs from the instance in which the file will be imported. Table 1 shows the UIDs which should be replaced, as well as the API endpoints to identify the existing UIDs
+
+|目的                       | 用户标识           | API endpoint                                              |
+|-----------------------------|---------------|-----------------------------------------------------------|
+| 类别                    | `GLevLNI9wkl` | `../api/categories.json?filter=name:eq:default`           |
+| 类别选项             | `xYerKDKCefk` | `../api/categoryOptions.json?filter=name:eq:default`      |
+| Category combination        | `bjDvmb4bfuf` | `../api/categoryCombos.json?filter=name:eq:default`       |
+| Category option combination | `HllvX50cXC0` | `../api/categoryOptionCombos.json?filter=name:eq:default` |
+
+Identify the UIDs of the default dimesions in your instance using the listed API requests and replace the UIDs in the json file with the UIDs from the instance.
+
+> **NOTE**
+>
+> Note that this search and replace operation must be done with a plain text editor, not a word processor like Microsoft Word.
+
+### 指标类型 { #indicator-types } 
+
+Indicator type is another type of object that can create import conflict because certain names are used in different DHIS2 databases (.e.g "Percentage"). Since Indicator types are defined by their factor (including 1 for "numerator only" indicators), they are unambiguous and can be replaced through a search and replace of the UIDs. This method helps avoid potential import conflicts, and prevents the implementer from creating duplicate indicator types. The table below contains the UIDs which could be replaced, as well as the API endpoints to identify the existing UIDs:
+
+|目的                  | 用户标识           | API endpoint                                                          |
+|------------------------|---------------|-----------------------------------------------------------------------|
+| Numerator only (number)| `CqNPn5KzksS` | `../api/indicatorTypes.json?filter=number:eq:true&filter=factor:eq:1` |
+
+### Visualizations using Root Organisation Unit UID { #visualizations-using-root-organisation-unit-uid } 
+
+Visualizations, event reports, report tables and maps that are assigned to a specific organisation unit level or organisation unit group, have a reference to the root (level 1) organisation unit. Such objects, if present in the metadata file, contain a placeholder `<OU_ROOT_UID>`. Use the search function in the .json file editor to possibly identify this placeholder and replace it with the UID of the level 1 organisation unit in the target instance.
+
+## 导入元数据 { #importing-metadata } 
+
+Use [Import/Export](#import_export) DHIS2 app to import metadata packages. It is advisable to use the "dry run" feature to identify issues before attempting to do an actual import of the metadata. If "dry run" reports any issues or conflicts, see the [import conflicts](#handling-import-conflicts) section below. If the "dry run"/"validate" import works without error, attempt to import the metadata. If the import succeeds without any errors, you can proceed to [configuring](#configuration) the module. In some cases, import conflicts or issues are not shown during the "dry run", but appear when the actual import is attempted. In this case, the import summary will list any errors that need to be resolved.
+
+### 处理导入冲突 { #handling-import-conflicts } 
+
+> **NOTE**
+>
+> If you are importing the package into a new DHIS2 instance, you will not experience import conflicts, as there is no metadata in the target database. After import the metadata, proceed to the “[Configuration](#configuration)” section.
+
+There are a number of different conflicts that may occur, though the most common is that there are metadata objects in the configuration package with a name, shortname and/or code that already exist in the target database. There are a couple of alternative solutions to these problems, with different advantages and disadvantages. Which one is more appropriate will depend, for example, on the type of object for which a conflict occurs.
+
+#### 备选方案1 { #alternative-1 } 
+
+Rename the existing object in your DHIS2 database for which there is a conflict. The advantage of this approach is that there is no need to modify the .json file, as changes are instead done through the user interface of DHIS2. This is likely to be less error prone. It also means that the configuration package is left as is, which can be an advantage for example when updates to the package are released. The original package objects are also often referenced in training materials and documentation.
+
+#### 备选方案2 { #alternative-2 } 
+
+重命名.json文件中存在冲突的对象。这种方法的优点是现有的DHIS2元数据保持不变。当存在培训材料或文档（例如链接到所讨论对象的数据字典的SOP）时，这可能是一个因素，并且不存在通过修改用户熟悉的元数据而使用户感到困惑的风险。
+
+请注意，对于备选项1和2，修改可以简单到在名称中添加一个小的前缀/后缀，以最大程度地减少混乱的风险。
+
+#### 备选3 { #alternative-3 } 
+
+第三种也是更复杂的方法是修改.json文件以重新使用现有的元数据。例如，在某个概念的某个选项集已经存在的情况下（例如“性别”），可以从.json文件中删除该选项集，并且对其UID的所有引用都将替换为数据库中已经存在的相应选项集。这样做的最大优点（不限于直接导入冲突的情况）是避免在数据库中创建重复的元数据。执行这种类型的修改时，需要考虑一些关键因素：
+
+- 它需要有关DHIS2详细元数据结构的专业知识
+- 该方法不适用于所有类型的对象。特别地，某些类型的对象具有依赖关系，这种依赖关系以这种方式难以解决，例如与分解有关。
+- 将来对配置包的更新将很复杂。
+
+## 组态 { #configuration } 
+
+成功导入所有元数据后，需要执行一些步骤，模块才能正常运行。
+
+### 分享中 { #sharing } 
+
+First, you will have to use the *Sharing* functionality of DHIS2 to configure which users (user groups) should see the metadata and data associated with the program as well as who can register/enter data into the program. By default, sharing has been configured for the following:
+
+- 仪表板
+- Visualizations, maps, event reports and report tables
+- 数据集
+- Category options
+
+Please refer to the [DHIS2 documentation](#sharing) for more information on sharing.
+
+Three core user groups are included in the packages:
+
+- HIV access (view metadata/view data)
+- HIV admin (view and edit metadata/no access to data)
+- HIV data capture - (view metadata/capture and view data)
+
+For HIV Stock package the groups are:
+
+- HIV access (view metadata/view data)
+- HIV admin (view and edit metadata/no access to data)
+- HIV stock data capture - (view metadata/capture and view data)
+
+The users are assigned to the appropriate user group based on their role within the system. Sharing for other objects in the package may be adjusted depending on the setup. Refer to the [DHIS2 Documentation on sharing](#sharing) for more information.
+
+### 用户角色 { #user-roles } 
+
+用户将需要用户角色才能参与DHIS2中的各种应用程序。建议以下最低角色：
+
+1. 跟踪器数据分析：可以查看事件分析并访问仪表板，事件报告，事件可视化器，数据可视化器，数据透视表，报告和地图。
+2. 跟踪器数据捕获：可以添加数据值，更新跟踪的实体，跨组织单位搜索跟踪的实体以及访问跟踪器捕获
+
+Refer to the [DHIS2 Documentation](https://docs.dhis2.org/) for more information on configuring user roles.
+
+### Organisation unit assignment { #organisation-unit-assignment } 
+
+The data sets must be assigned to organisation units within existing hierarchy in order to be accessible via capture app.
+
+### Visualizations using Organisation Unit Group { #visualizations-using-organisation-unit-group } 
+
+There are visualizations, event reports, report tables and maps that have a reference to a specific organisation unit group called 'HMIS: All Health Facilities' with the UID 'zk3lBJfnL6b'. You must assign the organisation units that are health facilities within your own hierarchy into it in order to be able to see the correct visualizations.
+
+### Indicator mapping { #indicator-mapping } 
+
+When implementing the *dashboard package* only, the indicator numerators and denominators have to be configured using the metadata objects in the existing instance. Configuration information is available in the documentation and the description of numerators and denominators in the metadata file.
+
+### 重复的元数据 { #duplicated-metadata } 
+
+> **NOTE**
+>
+> This section only applies if you are importing into a DHIS2 database with existing metadata. If you are working with a new/blank DHIS2 instance, please skip this section and go to [Adapting the program](#adapting-the-program).
+> If you are using any third party applications that rely on the current metadata, please take into account that this update could break them”
+
+即使成功导入了元数据而没有任何导入冲突，元数据中也可能存在重复项-数据元素，跟踪的实体属性或已存在的选项集。正如上面有关解决冲突的部分所述，要牢记的一个重要问题是，在DHIS2中更改元数据的决定还需要考虑与现有元数据有不同关联的其他文档和资源。 ，以及通过配置包导入的元数据。因此，解决重复项不仅是“清理数据库”的问题，而且还要确保做到这一点，例如，不破坏与其他系统的集成，使用培训材料的可能性，破坏SOP等。这将非常很大程度上取决于上下文。
+
+One important thing to keep in mind is that DHIS2 has tools that can hide some of the complexities of potential duplications in metadata. For example, where duplicate option sets exist, they can be hidden for groups of users through [sharing](#sharing).
+
+## Adapting the program { #adapting-the-program } 
+
+Once the program has been imported, you might want to make certain modifications to the program. Examples of local adaptations that *could* be made include:
+
+- 向表单添加其他变量。
+- 根据国家惯例修改数据元素/选项名称。
+- 向变量和/或数据输入表单添加翻译。
+- Modifying indicators based on local case definitions
+
+但是，如果您决定更改或删除任何包含的表格/元数据，强烈建议格外小心。修改可能会破坏功能，例如程序规则和程序指示器。
+
+## Removing metadata { #removing-metadata } 
+
+In order to keep your instance clean and avoid errors, it is recommended that you remove the unnecessary metadata from your instance. Removing unnecessary metadat requires advanced knowledge of DHIS2 and various dependenies.
+
