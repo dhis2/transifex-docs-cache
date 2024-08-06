@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2-metadata/AH_EBS/blob/master/docs/ah_ebs-design.md"
-revision_date: '2024-06-05'
+revision_date: '2024-07-23'
 tags:
 - Implémentation
 ---
@@ -231,7 +231,7 @@ Within the program stages for ‘Epidemiology’ and ‘Measures and treatment�
 
 ## Analyse  { #analytics } 
 
-An animal surveillance dashboard has been developed based on experience gathered from countries implementations and reports used by international actors such as FAO and WOAH. Dashboards are primarily represented using program indicators, which have been configured to aggregate numbers based on conditions recorded in the tracker program.
+An animal surveillance [dashboard](https://demos.dhis2.org/hmis/dhis-web-dashboard/#/FHh9NTsTjQY) has been developed based on experience gathered from countries implementations and reports used by international actors such as FAO and WOAH. Dashboards are primarily represented using program indicators, which have been configured to aggregate numbers based on conditions recorded in the tracker program.
 
 ### Summary of events, cases, deaths reported by time and geographical distribution { #summary-of-events-cases-deaths-reported-by-time-and-geographical-distribution } 
 
@@ -258,4 +258,168 @@ The following user groups are included in the downloadable metadata file:
 | AH_EBS - Admin        | Lecture et saisie | Aucun accès            |
 | AH_EBS - Access       | Lecture seule     | Lecture seule        |
 | AH_EBS - Data Capture | Lecture seule     | Peut saisir et visualiser |
+
+## Notifications { #notifications } 
+
+Early detection and response to zoonotic disease events can be enhanced by sharing relevant surveillance data between animal and public health sectors. How can DHIS2 trigger and generate alerts based on what, when and where a possible health event is occurring? In this section, we describe how to configure and use core DHIS2 functionality to improve information sharing between these sectors. 
+
+Notifications features in DHIS2 support the automation of alerts and information sharing from DHIS2 based on pre-configured conditions or rules. These features allow you to:
+
+- Configure conditions and expressions for triggering a notification or outbound communication based on what, when & where: notifications can be generated based on combination of factors such as aggregate or tracker domain data, geographic level (org unit level), user groups, time period, fixed variables and other elements. 
+- Assign users or groups of users at different administrative levels to receive notifications based on the conditions and rules defined
+- Customize messaging templates with fixed and variables parameters to provide concise information and recommended actions to target recipients based on what type of health event occurred, when and where 
+- Automate sending notifications from the system to defined user groups
+- Set up mechanisms for sharing the notification such as by email or SMS or interoperability with other tools like Rapid Pro
+
+*Figure: cross-sector surveillance system interactions for zoonoses*
+
+![system interactions](resources/images/AH_00_system_interactions.png)
+
+### Use Case { #use-case } 
+
+In the context of One Health and sharing surveillance and early warning data between animal and public health sectors, setting up notifications in DHIS2 depends on how DHIS2 is used in the country context, who is managing the system (e.g. MOH, Ministry of Livestock, One Health desk), what data are captured, and what protocols are in place for notifications and cross-sector information sharing. Here we provide three illustrative examples depending on how DHIS2 is being used in the country:
+
+![notification flow](resources/images/AH_01_notifications_graphic.png)
+
+**Use Case A**: DHIS2 is used for *public health surveillance data* (such as eIDSR). Alerts and notifications can be triggered from the public health sector to users or actors in the animal health sector. Example: if a threshold for suspected rabies cases in humans is surpassed, a notification can be sent to the district veterinary officer; a hospitals reports a suspected case of anthrax which is later confirmed by the lab and should be notified to the national One Health desk. 
+
+For the public health surveillance use case, please see the documentation on incorporating outbreak alerts and notifications:
+
+- [Aggregate IDSR design](https://docs.dhis2.org/en/implement/health/disease-surveillance/ids-aggregate/design.html#validation-notifications)
+- [Case-based surveillance (tracker) design](https://docs.dhis2.org/en/implement/health/disease-surveillance/vpd-case-surveillance/design.html#notifications)
+
+**Use Case B**: DHIS2 is used as an *early warning system for animal health* (as in the Animal Health design guide). Alerts and notifications can be triggered from the animal health sector to the public health sector. Example: an outbreak of brucellosis has been detected in a nearby cattle population; health workers at nearby health facilities receive a notification so that they can be more vigilant in screening for symptoms in patients. 
+
+**Use Case C**: DHIS2 is used as an *integrated event-based surveillance (EBS)* or event management platform. Alerts and notifications can be parsed based on the data captured and redirected for signal triaging and verification. Example: a CHW reports an unusual cluster of dead cows near their village using the DHIS2 mobile app which triggers an alert to the veterinary officer; a CHW reports dog bites from a suspected rapid animal and an alert is sent both to nearby health facilities and to the district veterinary officer.
+
+### Configuration workflow { #configuration-workflow } 
+
+In this section, we provide practical examples and a workflow for customizing notifications in DHIS2 for the use case of sharing data from DHIS2 with actors in animal and public health sectors. These features allow you to define what information to share with which types of actors, under which conditions, and how the information should be disseminated. 
+
+For tracker data, the [program notifications](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/programs.html#create-a-program-stage-notification) feature is used. For aggregate data, [validation rule notifications](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/metadata.html?h=notifications+use#about_validation_rule) are used. 
+
+We recommend that implementers consider and map out the following before follow these steps to define and configure notifications in DHIS2 according to local context:
+
+1. Define the notification protocol: when, what, where, who?
+2. Set up user group
+3. Configure the validation rule or program stage notification
+4. Create the notification message content 
+5. Schedule automated jobs
+6. Set up the method of delivery
+7. Maintenance: users, user groups, scheduled jobs
+
+#### **Step 1: Define notification protocol: when, what, where, who** { #step-1-define-notification-protocol-when-what-where-who } 
+
+Under what condition(s) should the system trigger a notification? To whom? Relevant protocols should be consulted and verified with the actors in both public health and animal health & livestock sectors to define and map the conditions for sending notifications based on data collected in DHIS2 by one sector to contacts in another sector. 
+
+- When: Notification is shared when a specific condition is met, which may be based on:
+  - Number of cases: 1 or more
+  - Period: weekly, monthly, etc
+  - Place: health facility, district, etc
+- What: Content of the notification, what variables?
+- Where: which levels (facility, district?) should receive a notification -- within or outside their unit/level?
+- Who: recipients of the notification - DHIS2 users and non-DHIS2 users
+
+**Example use case example (A)**: DHIS2 is used by health facilities for weekly aggregate IDSR reporting of priority infectious diseases and for immediate case-based reporting of notifiable diseases. These include reporting of several suspected zoonotic conditions like rabies and anthrax which should also be notified to the district veterinary health officer for further investigation. The District Veterinary Officer (DVO) is not a typical DHIS2 user; however, when 1 or more human rabies cases is reported into the weekly IDSR in DHIS2 by any health center, the DVO should receive an email notification.
+
+#### **Step 2: Set up users and user groups** { #step-2-set-up-users-and-user-groups } 
+
+Depending on the notification protocol defined in Step 1, new user groups may be needed. When the target recipients of the notification are already DHIS2 users, simply adding these users to an appropriate user group may be sufficient. If the target recipients are not DHIS2 users, they can be set up users or a user can be set up in DHIS2 to represent listservs that are managed in other platforms. Lastly, if an integration solution is being applied, a dedicated user may be required and should be discussed on a case-by-case basis. To receive e-mail notifications from DHIS2, the user does not need access to other parts of the DHIS2 system. 
+
+**Use case example (A):** District Veterinary Officers (DVOs) are *not* typical DHIS2 users. They only receive notifications from DHIS2, but they are not expected to log in to capture data or to analyze data. A District Veterinary Officer user group is configured in DHIS2 in order to configure and send notifications. A DHIS2 user account for each district is set up with the appropriate access to org units to facilitate notifications to the designated DVO email address, but the user does not have access to capture, view or analyze data in DHIS2. 
+
+#### **Step 3: configure your program notification or your validation notification**  { #step-3-configure-your-program-notification-or-your-validation-notification } 
+
+Based on the conditions defined in Step 1, configure a program notification (for tracker data) or validation notification (for aggregate data and outbreak thresholds). These conditions will depend on the existing configuration and what data is being captured in DHIS2. 
+
+In the *aggregate domain*, validation rule notifications can be configured to trigger an alert when a given disease threshold for a given geographic area and time frame is reached. For more information, **see the [validation rule notifications](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/metadata.html?h=notifications+use#about_validation_rule) documentation.** Remember that you may first need to create your validation rule to establish the condition for a threshold.
+
+In the *tracker domain*, program notifications and program stage notifications can trigger a notification based on a flexible range of variables captured in the DHIS2 tracker program. For more information, **see the [program notifications](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/programs.html#create-a-program-stage-notification) documentation.** Remember that you may need to first create a program rule to establish the condition. 
+
+**Example use case (A): Validation Notification**
+
+We want to configure an alert to the District Veterinary Officer when 1 or more human rabies cases is reported in the weekly aggregate IDSR dataset.
+
+1. Create a validation rule to represent the condition for your threshold. In this case, assign the data element on the left hand side operator as 'Rabies cases', the operator as less than, the right hand side as 1. When the time period is set to one week and the org unit is set to Facility Level, the rule will allow a notification to be triggered any time a facility that reports more than one rabies case in a given weekly period. 
+
+![validation rule](resources/images/AH_02_validation_rule_rabies.png)
+
+*Tip: Remember to tick the box 'Skip this rule during form validation' if you do not want this rule evaluated during data entry!*
+
+![validation rule skip](resources/images/AH_02_validation_rule_skip.png)
+
+2. Create a validation rule notification. 
+
+Select your desired validation rule ("under what condition will I send a notification?")
+
+Select the desired recipient user group ("who will receive this notification?")
+
+![validation rule](resources/images/AH_02_validation_notification.png)
+
+**Example use case (A): Program Notification**
+
+We want to configure an alert to the District Veterinary Officer when a suspected rabies case reported in a case-based tracker program receives a lab confirmation. 
+
+1. Select the program whose data will trigger a notification. In this case, we are using a program stage notification because we want to use the values of the option set lab results collected as a data element in the Lab Results program stage to trigger our notification. 
+2. Configure "what to send" using the notification message content (also described in Step 4). 
+
+![what to send](resources/images/AH_05_program_what.png)
+
+3. Configure "when to send" the notification.  In this case, we want to trigger based on an existing program rule that filters events with a confirmed lab results. 
+
+*Tip: Remember you may need to configure a program rule first, using the ProgramRuleActionType.SENDMESSAGE to make this trigger successful.*
+
+![when to send](resources/images/AH_04c_program_notification.png)
+
+4. Configure "who to send it to". Select user groups, users assigned to the org unit, or other parameters as relevant (for example, web hooks can support interoperability with other messaging tools). In this case, we will send it to the user group 'District Veterinary Officers', restricting the notification only to the parent org unit. This is because we want to send the notification to a user at the District level for a case reported at any facility within the parent district in the DHIS2 OU hierarchy. 
+
+*Tip: You can also decide whether to only notify users in the hierarchy; or only the parent org unit (for example: a district in Case X should only be sent to users at its parent Province Y)*
+
+![what to send](resources/images/AH_05_program_who.png)
+
+#### Step 4: Create notification message content { #step-4-create-notification-message-content } 
+
+When configuring the validation notification or a program notification, you will set your notification message template. 
+
+*Tip: ensure your message notification template includes action points and reminders to the target user based on local protocols.* 
+
+![message template](resources/images/AH_04_message_template_rabies.png)
+
+Template variables can be used to generate dynamic messages based on parameters such as organisation unit, current date, and period. 
+
+*Figure: Template variables for validation rules*
+
+![template variable](resources/images/AH_04_message_template_variables.gif)
+
+Template variables render dynamically in the message to the target user. In this example, we can see that the rabies cases were reported from Mahosot Hospital (reporting org unit) in epi Week 28 2024 (based on weekly data set). 
+
+![rabies message](resources/images/AH_04_message_rabies.png)
+
+#### Step 5: Schedule automated jobs { #step-5-schedule-automated-jobs } 
+
+Several jobs need to run in sequence in order to automate validation notifications (these can also be run manually). See the [documentation for scheduling](https://docs.dhis2.org/en/implement/health/disease-surveillance/ids-aggregate/installation.html#idsr-scheduling) and sequencing jobs to automate this process. 
+
+#### Step 6: Set up the delivery method { #step-6-set-up-the-delivery-method } 
+
+Recipients of notifications triggered by DHIS2 may or may not be users with access to other parts of the system. Core DHIS2 functionality supports the following mechanisms for notifications:
+
+- DHIS2 internal messaging service
+- SMS (by setting up an [SMS Gateway](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/maintaining-the-system/configure-sms.html)) or USSD
+- Email (emails of DHIS2 user accounts, see more information on [setting up email](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/system-settings.html#system_email_settings))
+
+More robust and complex notifications workflows or support for other types of communications platforms can be achieved through [integration](https://dhis2.org/integration/) with DHIS2 and other tools such as:
+
+- Rapid Pro (see [video](https://www.youtube.com/watch?v=Yvkvyefa3fo) and [code](https://github.com/dhis2/integration-dhis-rapidpro))
+
+- Chatbots and social media platforms (see [video](https://www.youtube.com/watch?v=L35svQE42Qo))
+- Other innovations leveraging the DHIS2 API and other extensibility features like web hooks 
+
+#### Step 7: Maintenance { #step-7-maintenance } 
+
+A system administrator should be designated to maintain the solution over time. This can typically be managed by the core DHIS2 team at the Ministry or similar:
+
+- Maintain user accounts and user groups (coordinating with animal health sector for up to date rosters/contacts: create new users, assign to user group, deactivate users)
+- Continue to monitor that scheduled jobs run as expected, in sequence
+- Configure new notifications, messages, conditions and user groups based on new requirements (such as priority disease conditions and thresholds) and changes in notification protocols
+- During DHIS2 upgrades: test functionality for your configuration
 
