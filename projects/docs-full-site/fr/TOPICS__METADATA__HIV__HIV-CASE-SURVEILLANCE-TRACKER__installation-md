@@ -1,0 +1,396 @@
+---
+edit_url: "https://github.com/dhis2-metadata/HIV_CS-TRK-HIV_Case_Surveillance/blob/master/docs/hiv_case_surveillance_installation.md"
+revision_date: "2021-10-05"
+---
+
+# HIV Case Surveillance Installation Guide { #hiv_cs_installation }
+
+Package Version b1.0.0
+
+DHIS2 Version compatibility 2.33.5 and above
+
+## Aperçu { #overview }
+
+The HIV Case Surveillance tracker package was developed using DHIS2.33.5. This was done in order to support some of the latest features in DHIS2. In order to use the package, it is recommended that you install it into a DHIS2 instance using DHIS2 2.33.5 or above. If you will be setting this up on a new instance, please refer to the [DHIS2 installation guide](https://docs.dhis2.org/master/en/dhis2_system_administration_guide/installation.html). This document covers the installation of the following packages:
+
+1. Case Surveillance tracker program
+
+You will have to follow the instructions to ensure that the package is installed and configured correctly.
+
+## Installation { #installation }
+
+L'installation du module se fait en plusieurs étapes :
+
+1. [Preparing](#preparing-the-metadata-file) the metadata file.
+2. [Importer](#importing-metadata) le fichier de métadonnées DHIS2.
+3. [Configurer](#configuration-additionnelle) les métadonnées importées.
+4. [Adapter](#adapting-the-tracker-program) le programme après son importation
+
+Il est recommandé de lire d'abord chaque section avant de commencer le processus d'installation et de configuration dans le DHIS2. Les sections non applicables ont été identifiées, selon que vous importiez dans une nouvelle instance de DHIS2 ou dans une instance de DHIS2 ayant déjà des métadonnées. La procédure décrite dans le présent document doit être testée dans un environnement de test et de simulation avant d'être répétée ou transférée dans une instance de production du système de DHIS2.
+
+## Conditions requises { #requirements }
+
+Pour installer le module, il faut nécessairement un compte d'utilisateur administrateur sur DHIS2. La procédure décrite dans le présent document doit être testée dans un environnement de test et de simulation avant d'être exécutée sur une instance de production du DHIS2.
+
+Il convient de veiller à ce que le serveur lui-même et l'application DHIS2 soient bien sécurisés, afin de limiter l'accès aux données collectées. Les détails relatifs à la sécurisation d'un système DHIS2 ne sont pas abordés dans le présent document, et nous renvoyons donc à la [documentation DHIS2] (http://dhis2.org/documentation).
+
+## Préparation du fichier de métadonnées { #preparing-the-metadata-file }
+
+**NOTE:** If you are installing the package on a new instance of DHIS2, you can skip the “Preparing the metadata file” section and move immediately to the section [Importing a metadata file into DHIS2](#importing-metadata)
+
+Bien que ce ne soit pas toujours nécessaire, il peut souvent être avantageux d'apporter certaines modifications au fichier de métadonnées avant son importation dans DHIS2.
+
+### Default data dimension (if applicable) { #default-data-dimension-if-applicable }
+
+Dans les premières versions de DHIS2, l'UID de la dimension des données par défaut était généré automatiquement. Ainsi, alors que toutes les instances du DHIS2 ont une option de catégorie par défaut, une catégorie d'élément de données, une combinaison de catégories et une combinaison d'options de catégories, les UID de ces valeurs par défaut peuvent être différents. Les versions plus récentes de DHIS2 ont des UID codés en dur pour la dimension par défaut, et ce sont ces UID qui sont utilisés dans les packages de configuration.
+
+Pour éviter les conflits lors de l'importation des métadonnées, il est conseillé de rechercher et de remplacer l'ensemble du fichier .json pour toutes les occurrences de ces objets par défaut, en remplaçant les UID du fichier .json par les UID de la base de données dans laquelle le fichier sera importé. Le tableau 1 indique les UID qui doivent être remplacés, ainsi que les point d'extrémité de l'API pour l'identification des UID existants.
+
+| Objet | UID | Point de terminaison de l'API |
+| :-- | :-- | :-- |
+| Catégorie | GLevLNI9wkl | `../api/categories.json?filter=name:eq:default` |
+| Option de catégorie | xYerKDKCefk | `../api/categoryOptions.json?filter=name:eq:default` |
+| Combinaison de catégories | bjDvmb4bfuf | `../api/categoryCombos.json?filter=name:eq:default` |
+| Combinaison d'options de catégorie | HllvX50cXC0 | `../api/categoryOptionCombos.json?filter=name:eq:default` |
+
+For example, if importing a configuration package into <https://play.dhis2.org/demo>, the UID of the default category option combination could be identified through <https://play.dhis2.org/demo/api/categoryOptionCombos.json?filter=name:eq:default> as bRowv6yZOF2.
+
+Vous pourriez alors rechercher et remplacer toutes les occurrences de `HllvX50cXC0` par `bRowv6yZOF2` dans le fichier .json, puisque c'est l'ID par défaut du système dans lequel vous importez. **_Notez que cette opération de recherche et de remplacement doit être effectuée avec un éditeur de texte brut_**, et non avec un logiciel de traitement de textes comme Microsoft Word.
+
+### Types d'indicateurs { #indicator-types }
+
+Le type d'indicateur est un autre type d'objet pouvant créer un conflit d'importation puisque certains noms sont utilisés dans différentes bases de données de DHIS2 ("Pourcentage", par exemple). Étant donné que les types d'indicateurs sont définis simplement par leur facteur et par le fait qu'il s'agisse ou non de simples nombres sans dénominateur, ils sont sans aucune ambiguïté et peuvent être remplacés par une recherche et un remplacement des UID. Cela permet d'éviter d'éventuels conflits d'importation et de ne pas créer de types d'indicateurs dupliqués. Le tableau 2 montre les UID qui pourraient être remplacés, ainsi que les points d'extrémité de l'API pour identifier les UID existants
+
+| Objet | UID | Point de terminaison de l'API |
+| :-- | :-- | :-- |
+| Pourcentage | hmSnCXmLYwt | `../api/indicatorTypes.json?filter=number:eq:false&filter=factor:eq:100` |
+
+### TrackedEntityType (Type d'entité suivie) { #tracked-entity-type }
+
+Comme pour les types d'indicateurs, il se peut que vous ayez déjà des types d'entités suivies dans votre base de données DHIS2. Les références au type d'entité suivie doivent être modifiées pour refléter ce qui se trouve dans votre système afin d'éviter la création de doublons. Le tableau 3 indique les UID qui pourraient être remplacés, ainsi que les points point d'extrémité de l'API permettant d'identifier les UID existants
+
+| Objet | UID | Point de terminaison de l'API |
+| :-- | :-- | :-- |
+| Personne | MCPQUTHX1Ze | `../api/trackedEntityTypes.json?filter=name:eq:Person` |
+
+## Importation de métadonnées { #importing-metadata }
+
+Le fichier de métadonnées .json est importé via l'application [Importer/Exporter](https://docs.dhis2.org/master/en/user/html/import_export.html) de DHIS2. Il est conseillé d'utiliser la fonction "test" pour identifier les problèmes avant d'effectuer une importation réelle des métadonnées. Si le "test" signale des problèmes ou des conflits, voir la section [importer des conflits] (#manipulation-importation-de-conflits) ci-dessous.
+
+Si l'importation "d'essai"/"de validation fonctionne sans erreur, essayez d'importer les métadonnées. Si l'importation réussit sans aucune erreur, vous pouvez alors passer à la [configuration](#configuration-additionnelle) du module. Dans certains cas, les conflits ou les problèmes d'importation ne sont pas affichés pendant le "test", mais apparaissent lorsque l'on tente l'importation proprement dite. Dans ce cas, le résumé de l'importation énumère les erreurs à résoudre.
+
+### Gestion des conflits d'importation { #handling-import-conflicts }
+
+**NOTE:** If you are importing into a new DHIS2 instance, you will not have to worry about import conflicts, as there is nothing in the database you are importing to to conflict with. Follow the instructions to import the metadata then please proceed to the “[Additional configuration](#additional-configuration)” section.
+
+Plusieurs de conflits peuvent survenir, mais le plus courant est le fait qu'il y ait des objets de métadonnées dans le package de configuration avec un nom, un nom abrégé et/ou un code qui existe déjà dans la base de données cible. Il existe plusieurs solutions alternatives à ces problèmes, avec de différents avantages et inconvénients. La solution la plus appropriée dépendra, par exemple, du type d'objet pour lequel un conflit survient.
+
+**_Alternative 1_**
+
+Renommez l'objet de votre base de données de DHIS2 pour lequel il y a un conflit. L'avantage de cette approche est que vous n'avez pas besoin de modifier le fichier .json, puisque les modifications sont effectuées par l'interface utilisateur de DHIS2. Cette méthode est probablement moins sujette aux erreurs. Cela signifie également que le progiciel de configuration est laissé tel quel, ce qui peut être un avantage, par exemple, lorsque du matériel de formation et de la documentation basés sur le progiciel de configuration seront utilisés.
+
+**_Alternative 2_**
+
+Renommez l'objet pour lequel il y a un conflit dans le fichier .json. L'avantage de cette approche est que les métadonnées DHIS2 existantes sont laissées telles quelles. Cela peut être un facteur lorsqu'il y a du matériel de formation ou de la documentation, comme les procédure normale d'exploitation des dictionnaires de données liés à l'objet en question, et cela n'implique aucun risque de confusion pour les utilisateurs lors de la modification des métadonnées qui leur sont familières.
+
+Notez que pour les deux options 1 et 2, la modification peut être aussi simple que l'ajout d'un petit pré/post-fixe au nom, pour minimiser le risque de confusion.
+
+**_Alternative 3_**
+
+Une troisième approche, plus complexe, consiste à modifier le fichier .json pour réutiliser les métadonnées existantes. Par exemple, dans les cas où un ensemble d'options existe déjà pour un certain concept (par exemple "sexe"), cet ensemble d'options pourrait être supprimé du fichier .json et toutes les références à son UID remplacées par l'ensemble d'options correspondant existant déjà dans la base de données. Le grand avantage de cette méthode (qui n'est pas limitée aux seuls cas où il y a un conflit d'importation direct) est d'éviter de créer des métadonnées dupliquées dans la base de données. Il y a des aspects essentiels à prendre en compte lors de ce type de modification :
+
+-   il nécessite une connaissance approfondie de la structure détaillée des métadonnées du DHIS2
+-   Cette approche ne fonctionne pas pour tous les types d'objets. En particulier, certains types d'objets ont des dépendances compliquées à résoudre de cette manière, par exemple en ce qui concerne les désagrégations.
+-   il sera compliqué de procéder aux futures mises à jour du package de configuration..
+
+### Configuration supplémentaire { #additional-configuration }
+
+Une fois que toutes les métadonnées sont importées avec succès, des étapes doivent être mises en oeuvre avant que le module ne soit fonctionnel.
+
+### Partage { #sharing }
+
+Tout d'abord, vous devrez utiliser la fonctionnalité _Partage_ du DHIS2 pour configurer quels utilisateurs (groupes d'utilisateurs) doivent voir les métadonnées et les données associées au programme ainsi que qui peut enregistrer/saisir des données dans le programme. Par défaut, le partage a été configuré pour ce qui suit :
+
+-   Type d'entité suivie
+-   Programme
+-   Étapes du programme
+-   Tableaux de bord
+
+There are four user groups that come with the package:
+
+-   HIV CS- Admin
+-   HIV CS- Data capture
+-   HIV CS- Data Analysis
+
+Les éléments suivants sont attribués par défaut à ces groupes d'utilisateurs
+
+| Objet | Groupes d'utilisateurs |  |  |  |
+| --- | --- | --- | --- | --- |
+|  | HIV - CS Admin | HIV CS- Data capture | HIV CS - Data analytics |  |
+| Type d'entité suivie | XXX | Metadata: can edit and view Data: can view | Metadata: can view Data: can capture and view | Metadata: can view Data: ca view |
+| Programme | XXX | Metadata: can edit and view Data: can view | Metadata: can view Data: can capture and view | Metadata: can view Data: can view |
+| Tableaux de bord | XXX | Metadata: can edit and view Data: can view | Metadata: can view Data: can view | Metadata: can view Data: can view |
+|  |  |  |  |  |
+
+Vous voudrez bien affecter vos utilisateurs au groupe d'utilisateurs approprié en fonction de leur rôle dans le système. Vous pouvez également activer le partage pour d'autres objets du paquet en fonction de votre configuration. Reportez-vous à la [Documentation DHIS2] (https://docs.dhis2.org/master/en/dhis2_user_manual_en/about-sharing-of-objects.html) pour plus d'informations sur la configuration du partage.
+
+### Rôles des utilisateurs { #user-roles }
+
+Les utilisateurs auront besoin de rôles d'utilisateur pour pouvoir utiliser les différentes applications du DHIS2. Les rôles minimums suivants sont recommandés :
+
+1. Analyse des données Tracker : Il peut visualiser des analyses d'événements et accéder à des tableaux de bord, des rapports d'événements, un visualiseur d'événements, un visualiseur de données, des tableaux croisés dynamiques, des rapports et des cartes.
+2. Saisie de données de suivi : possibilité d'ajouter des valeurs de données, de mettre à jour les entités suivies, de rechercher des entités suivies dans les unités d'organisation et d'accéder à l'application Saisie Tracker
+
+Reportez-vous à la [Documentation DHIS2] (http://dhis2.org/documentation) pour plus d'informations sur la configuration des rôles des utilisateurs.
+
+### Unités d’Organisation { #organisation-units }
+
+Vous devez assigner le programme à des unités d'organisation au sein de votre propre hiérarchie afin de pouvoir le visualiser dans Saisie Tracker.
+
+### Métadonnées dupliquées { #duplicated-metadata }
+
+**NOTE:** This section only applies if you are importing into a DHIS2 database in which there is already meta-data present. If you are working with a new DHIS2 instance, you may skip this section.
+
+Même lorsque les métadonnées sont importées avec succès sans aucun conflit d'importation, il peut y avoir des doublons dans les métadonnées - éléments de données, attributs d'entités suivies ou ensembles d'options qui existent déjà. Comme indiqué dans la section ci-dessus sur la résolution des conflits, il est important de garder à l'esprit que les décisions relatives à la modification des métadonnées dans le DHIS2 doivent également tenir compte d'autres documents et ressources associés de différentes manières aux métadonnées existantes et aux métadonnées importées par le biais du progiciel de configuration. La résolution des doublons ne consiste donc pas seulement à "nettoyer la base de données", mais aussi à s'assurer que cela est fait sans, par exemple, casser le potentiel d'intégration avec d'autres systèmes, la possibilité d'utiliser du matériel de formation, la rupture des SOP, etc. Cela dépend beaucoup du contexte.
+
+Il est important de garder à l'esprit que le DHIS2 dispose d'outils pouvant dissimuler certaines des complexités des duplications potentielles dans les métadonnées. Par exemple, lorsqu'il existe des ensembles d'options en double, ils peuvent être masqués pour des groupes d'utilisateurs par le biais de [Partage](https://docs.dhis2.org/master/en/user/html/sharing.html).
+
+#### Modèles de saisie de données { #data-entry-forms }
+
+-   After registering the first (test) case, access the **Settings** menu in the tracker capture form and select **Show/Hide Widgets**
+-   Switch from **Timeline Data Entry** to **Tabular Data Entry**
+-   Make sure that **Enrollment**, **Feedback** and **Profile** widgets are selected. Click **Close**.
+-   Adjust the widgets on the screen as shown below:
+
+Capture d'écran
+
+#### Top Bar { #top-bar }
+
+-   Access the **Settings** menu and select **Top bar settings**
+-   Select **Activate top bar**
+-   Select required information fields and assign their **Sort order**
+
+|                                    | Recommended fields | Sort order |
+| ---------------------------------- | ------------------ | ---------- |
+| Nom                            | 1                  |
+| Date de naissance                      | 2                  |
+| This person is in viral supression | 3                  |
+| Viral load latest                  | 4                  |
+| Days without medicine              | 5                  |
+
+-   Cliquez sur **Enregistrer**
+-   Return to the **Settings** menu. Click **Saved dashboard layout as default**. Lock layout for all users.
+
+## Adapter le programme tracker { #adapting-the-tracker-program }
+
+Une fois le programme importé, il est possible que vous souhaitiez y apporter certaines modifications. Voici quelques exemples d'adaptations locales que vous _pourrez_ effectuer :
+
+-   Ajout de variables supplémentaires au formulaire.
+-   Adapter les noms des éléments de données/options en fonction des usages au niveau national.
+-   Ajouter des traductions aux variables et/ou au formulaire de saisie des données.
+-   Modifying program indicators based on local case definitions.
+
+Toutefois, il est fortement recommandé de faire preuve d'une grande prudence si vous décidez de modifier ou de supprimer l'un des formulaires/métadonnées inclus. Il y a donc un risque que des modifications brisent des fonctionnalités, par exemple les règles du programme et les indicateurs du programme.
+
+## Event Reports { #event-reports }
+
+There is currently (08/03/2021) a bug that prevents the importing event reports (JIRA-DHIS2-10163). This means that some of the event report dashboards need to be recreated manually after the import.
+
+### 6.1.2HIV - Visit by Gender and Treatment Status { #612hiv-visit-by-gender-and-treatment-status }
+
+![Visit by gender and Treatment status](resources/images/image23.png)
+
+In order to recreate this pivot table, go to the app “event reports” and configure the following:
+
+Table Style: Pivot table Output type: Event Program: HIV Case surveillance Stage: Visit
+
+Selected data items: Program Attribute “Gender, M,F,TG” Data Element “HIV - Treatment Status”
+
+Periods: This Month Last three months
+
+Organisation unit: Select the corresponding org unit or level(Currently it is configured at national level)
+
+### HIV - Visit by Treatment Status and District { #hiv-visit-by-treatment-status-and-district }
+
+![Visit by Treatment Status and District](resources/images/image20.png)
+
+In order to recreate this pivot table, go to the app “event reports” and configure the following:
+
+Table Style: Pivot table Output type: Event Program: HIV Case surveillance Stage: Visit
+
+Selected data items: Data Element “HIV - Treatment Status”
+
+Periods: Last Month
+
+Organisation unit: Select the corresponding org unit or level (Currently it is configured at national level)
+
+Layout: Report filter: Periods Column dimensions: Data Element “HIV - Treatment Status” Row Dimensions: Organisation units
+
+### TPT Regimes { #tpt-regimes }
+
+![TB PReventive therapy regimes](resources/images/image17.png) In order to recreate this pivot table, go to the app “event reports” and configure the following:
+
+Table Style: Pivot table Output type: Event Program: HIV Case surveillance Stage: Visit
+
+Selected data items: Data Element “HIV - TPT Eligibility” Data Element “HIV - TPT Regimen”
+
+Periods: This month,Last Month, Last three months
+
+Organisation unit: Select the corresponding org unit (Currently it is configured as “User org unit”)
+
+Layout: Column dimensions: Organisation units, Periods Row Dimensions: DE HIV TPT Eligibility, DE HIV - TPT Regimen
+
+## Script Annex { #script-annex }
+
+In order to allow for analytics at the point of service when clients change the place where they receive treatment, we have created a script that will need to be installed on the instance.
+
+### Step 1: Create a Table { #step-1-create-a-table }
+
+First step is to create a new table in the database where we will log the OU selected when the user enrolls in a new TEI. Please note that only programinstanceid and organisationunitid columns are required. In this case the uid column has been added for clarity purposes. We could add any column required for auditing purposes (for example a timestamp with the creation date, etc…)
+
+```SQL
+CREATE TABLE public.enrollmentou (
+    programinstanceid bigint NOT NULL,
+    uid character varying(11),
+    organisationunitid bigint
+);
+
+ALTER TABLE public.enrollmentou OWNER TO postgres;
+
+ALTER TABLE ONLY public.enrollmentou
+    ADD CONSTRAINT enrollmentou_pkey PRIMARY KEY (programinstanceid);
+
+ALTER TABLE ONLY public.enrollmentou
+    ADD CONSTRAINT uk_d3lsa2h8me94ksyp53l6rpe4g UNIQUE (uid);
+
+CREATE INDEX index_enrollmentou ON public.enrollmentou USING btree (programinstanceid);
+
+ALTER TABLE ONLY public.enrollmentou
+    ADD CONSTRAINT fk_enrollmentou_programinstanceid FOREIGN KEY (programinstanceid) REFERENCES public.programinstance(programinstanceid);
+
+ALTER TABLE ONLY public.enrollmentou
+    ADD CONSTRAINT fk_enrollmentou_organisationunitid FOREIGN KEY (organisationunitid) REFERENCES public.organisationunit(organisationunitid);
+```
+
+Then, we define a function to be executed by a trigger. This function simply takes the NEW value(s) INSERTED or UPDATED in table programinstance (corresponding to an enrollment) stored in variable NEW and populates enrollementou table with them. It also makes sure that the new enrollment corresponds to program uid 'Xh88p1nyefp', HIV CS.
+
+```SQL
+@CREATE OR REPLACE FUNCTION log_enrollment_ou_changes()
+  RETURNS TRIGGER
+  LANGUAGE PLPGSQL
+  AS
+$$
+BEGIN
+    IF NEW.programid = (SELECT programid FROM program WHERE uid = 'Xh88p1nyefp')
+    THEN
+        INSERT INTO enrollmentou (programinstanceid, uid, organisationunitid)
+        VALUES(NEW.programinstanceid,NEW.uid,NEW.organisationunitid)
+        ON CONFLICT (programinstanceid) DO NOTHING;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+```
+
+Last step remaining is to create a trigger which will execute this function after an insert or update operation takes place in the programinstance table.
+
+```SQL
+CREATE TRIGGER enrollment_ou_changes
+  AFTER INSERT OR UPDATE
+  ON programinstance
+  FOR EACH ROW
+  EXECUTE PROCEDURE log_enrollment_ou_changes();
+```
+
+We check the table at present and verify that is empty:
+
+![table](resources/images/image15.png)
+
+After accessing the instance, we proceed to enroll a new case in the HIV CS program. The result is as follows:
+
+![Visit by Treatment Status and District](resources/images/image22.png)
+
+Please note that the UID for this new TEI is qFdfVhUGFZ8.
+
+Checking the table enrollmentou, we can see that a new row has been created.
+
+![Visit by Treatment Status and District](resources/images/image1.png)
+
+It is possible to create a SQL view to provide the contents of enrollmentou table in a more user friendly way, so the user can easily check what the enrollment ou was for each TEI in the program. The SQL view is as follows:
+
+```SQL
+SELECT tei.uid as tei_uid, eou.uid as enrollment_uid, ou.name as enrollment_ou
+FROM enrollmentou eou
+INNER JOIN programinstance pi ON eou.programinstanceid = pi.programinstanceid
+INNER JOIN trackedentityinstance tei ON pi.trackedentityinstanceid = tei.trackedentityinstanceid
+INNER JOIN organisationunit ou ON eou.organisationunitid = ou.organisationunitid;
+```
+
+And the result is:
+
+![Visit by Treatment Status and District](resources/images/image27.png)
+
+We can now verify the current enrollment OU and ownership OU are the same for this TEI:
+
+![Visit by Treatment Status and District](resources/images/image13.png)
+
+Also in the UI:
+
+![Visit by Treatment Status and District](resources/images/image19.png)
+
+### Step 2: Create a function and trigger on trackedentityprogramowner { #step-2-create-a-function-and-trigger-on-trackedentityprogramowner }
+
+We create the following function and trigger on table trackedentityprogramowner:
+
+```SQL
+CREATE OR REPLACE FUNCTION log_ownership_ou_changes()
+  RETURNS TRIGGER
+  LANGUAGE PLPGSQL
+  AS
+$$
+BEGIN
+    IF NEW.programid = (SELECT programid FROM program WHERE uid = 'Xh88p1nyefp') AND
+       NEW.lastupdated != NEW.created
+    THEN
+        UPDATE programinstance SET organisationunitid = NEW.organisationunitid
+        FROM trackedentityprogramowner
+        WHERE trackedentityprogramowner.trackedentityinstanceid = NEW.trackedentityinstanceid AND
+            trackedentityprogramowner.trackedentityinstanceid = programinstance.trackedentityinstanceid;
+
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER ownership_ou_changes
+  AFTER INSERT OR UPDATE
+  ON trackedentityprogramowner
+  FOR EACH ROW
+  EXECUTE PROCEDURE log_ownership_ou_changes();
+```
+
+Function log_ownership_ou_changes will be triggered when an INSERT or UPDATE takes place in trackedentityprogramowner. If the row affected corresponds to HIV program and the timestamp from update differs from the one stored in create (so it is an update of ownership), the enrollment ou in the programinstance table is updated accordingly.
+
+We proceed to refer the patient, making a permanent move:
+
+![Visit by Treatment Status and District](resources/images/image16.png)
+
+We can check that the ownership has changed to Crow Health Centre:
+
+We also check the table in the database:
+
+![Visit by Treatment Status and District](resources/images/image24.png)
+
+The OU ownership is “Crow Health Centre” but also that is the new enrollment OU as well, so the trigger successfully performed the update in the program instance table. If we refresh the browser, we see this:
+
+![Visit by Treatment Status and District](resources/images/image7.png)
+
+Ownership and enrollment are the same.
+
+Finally, we verify that nothing has changed in the enrollmentou table:
+
+![Visit by Treatment Status and District](resources/images/image13.png)
+
+So we still have the information about the enrollment organization unit.
