@@ -5,22 +5,22 @@ edit_url: "https://github.com/dhis2/dhis2-android-sdk/edit/master/docs/content/d
 
 <!--DHIS2-SECTION-ID:workflow-->
 
-Currently, the SDK is primarily oriented to build apps that work in an offline mode. In short, the SDK maintains a local database instance that is used to get the work done locally (create forms, manage data, ...). When requested by the client, this local database is synchronized with the server.
+Actuellement, le SDK est principalement orienté vers la construction d'applications qui fonctionnent en mode hors ligne. En bref, le SDK maintient une instance de base de données locale qui est utilisée pour effectuer le travail localement (créer des formulaires, gérer des données, ...). À la demande du client, cette base de données locale est synchronisée avec le serveur.
 
-A typical workflow would be like this:
+Voici un exemple de flux de travail typique :
 
 1. **Connexion**
-2. **Sync metadata:** the SDK downloads a subset of the server metadata so it is available to be used at any time. Metadata sync is totally user-dependent (see [Synchronization](#metadata-synchronization) for more details)
-3. **Download data:** if you want to have existing data available in the device even when offline, you can download and save existing tracker and aggregated data in the device.
-4. **Do the work:** at this point the app is able to create the data entry forms and show some existing data. Then the user can edit/delete/update data.
-5. **Upload data:** from time to time, the work done in the local database instance is sent to the server.
-6. **Sync metadata:** it is recommended to sync metadata quite often to detect changes in metadata configuration.
+2. **Synchronisation des métadonnées:** le SDK télécharge un sous-ensemble des métadonnées du serveur afin qu'elles puissent être utilisées à tout moment. La synchronisation des métadonnées dépend totalement de l'utilisateur (voir [Synchronisation](#metadata-synchronization) pour plus de détails).
+3. **Télécharger les données:** si vous souhaitez que les données existantes soient disponibles dans l'appareil même lorsqu'il est hors ligne, vous pouvez télécharger et sauvegarder les données de suivi et les données agrégées existantes dans l'appareil.
+4. **Faire le travail:** à ce stade, l'application est en mesure de créer les formulaires de saisie de données et d'afficher certaines données existantes. L'utilisateur peut ensuite modifier/supprimer/mettre à jour les données.
+5. **Charger les données:** de temps en temps, le travail effectué dans l'instance locale de la base de données est envoyé sur le serveur.
+6. **Synchroniser les métadonnées:** il est recommandé de synchroniser les métadonnées assez souvent pour détecter les modifications dans la configuration des métadonnées.
 
 ## Connexion / Déconnexion { #login_logout } 
 
 <!--DHIS2-SECTION-ID:login_logout-->
 
-Before interacting with the server it is required to login into the DHIS 2 instance. Currently, the SDK does only support one pair "user - server" simultaneously. That means that only one user can be authenticated in only one server at the same time.
+Avant d'interagir avec le serveur, il est nécessaire de se connecter à l'instance DHIS 2. Actuellement, le SDK ne prend simultanément en charge qu'une seule paire "utilisateur - serveur". Cela signifie qu'un seul utilisateur peut être authentifié dans un seul serveur à la fois.
 
 ```java
 d2.userModule().logIn(username, password, serverUrl)
@@ -28,35 +28,35 @@ d2.userModule().logIn(username, password, serverUrl)
 d2.userModule().logOut()
 ```
 
-After a logout, the SDK keeps track of the last logged user so that it is able to differentiate recurring and new users. It also keeps a hash of the user credentials in order to authenticate the user even when there is no connectivity. Given that said, the login method will:
+Après une déconnexion, le SDK garde la trace du dernier utilisateur connecté afin de pouvoir différencier les utilisateurs récurrents des nouveaux utilisateurs. Il conserve également un hachage des informations d'identification de l'utilisateur afin d'authentifier l'utilisateur même en l'absence de connectivité. Ceci étant dit, la méthode de connexion sera :
 
-- If an authenticated user already exists: throw an error.
-- Else if *Online*:
-  - Try **login online**: the SDK will send the username and password to the API, which will determine whether they are correct. If successful:
-        - If no database exists: create new database with encryption value from server.
-        - If database for another [serverUrl, user] exists, delete it and create new database with encryption value from server. Not synced data of previously logged user will be permanently lost.
-        - If database for the current [serverUrl, user] pair exists, open the database and encrypt or decrypt database if encryption status has changed in the server.
-  - If user account has been disabled in server: delete database and throw an error.
-- Else if *Offline*:
-  - If the [serverUrl, user] pair was the last authenticated:
-    - Try **login offline**: the SDK will verify that the credentials are the same as the last provided, which were previously validated by the API.
-  - If the [serverUrl, user] pair was not the last authenticated: throw an error
+- Si un utilisateur authentifié existe déjà : lancer une erreur.
+- Sauf si *Connecté* :
+  - Essayez la **connexion en ligne** : le SDK enverra le nom d'utilisateur et le mot de passe à l'API, qui déterminera s'ils sont corrects. En cas de succès :
+        - Si aucune base de données n'existe : créer une nouvelle base de données avec la valeur de cryptage du serveur.
+        - S'il existe une base de données pour une autre [Url du serveur, utilisateur], supprimez-la et créez une nouvelle base de données avec la valeur de cryptage du serveur. Les données non synchronisées de l'utilisateur précédemment connecté seront définitivement perdues.
+        - S'il existe une base de données pour la paire [URL du serveur, utilisateur] actuelle, ouvrez la base de données et cryptez ou décryptez la base de données si l'état de cryptage a changé dans le serveur.
+  - Si le compte de l'utilisateur a été désactivé dans le serveur : supprimez la base de données et générez une erreur.
+- Sauf si *Déconnecté* :
+  - Si la paire [ URL du serveur, utilisateur ] a été la dernière à être authentifiée :
+    - Essayez la **connexion hors ligne** : le SDK vérifiera que les informations d'identification sont les mêmes que les dernières fournies, qui ont été précédemment validées par l'API.
+  - Si la paire [ URL du serveur, utilisateur ] n'est pas la dernière à avoir été authentifiée : lancez une erreur
 
-Calling module or repository methods before a successful login or after a logout will result in "Database not created" errors.
+L'appel aux méthodes du module ou du référentiel avant une connexion réussie ou après une déconnexion entraînera des erreurs de type "Base de données non créée".
 
-Logout method removes user credentials, so a new login is required before any interaction with the server. Metadata and data is preserved so a user is able to logout/login without losing any information.
+La méthode de déconnexion supprime les informations d'identification de l'utilisateur, ce qui nécessite une nouvelle connexion avant toute interaction avec le serveur. Les métadonnées et les données sont préservées, ce qui permet à l'utilisateur de se déconnecter ou de se connecter sans perdre aucune donnée.
 
 ## Synchronisation des métadonnées { #metadata_synchronization } 
 
 <!--DHIS2-SECTION-ID:metadata_synchronization-->
 
-Metadata synchronization is usually the first step after login. It fetches and persists the metadata needed by the current user. To launch metadata synchronization we must execute:
+La synchronisation des métadonnées est généralement la première étape après la connexion. Elle permet de récupérer et de conserver les métadonnées nécessaires à l'utilisateur actuel. Pour lancer la synchronisation des métadonnées, nous devons exécuter :
 
 ```java
 d2.metadataModule().download();
 ```
 
-In order to save bandwidth usage and storage space, the SDK does not synchronize all the metadata in the server but a subset. This subset is defined as the metadata required by the user in order to perform data entry tasks: render programs and datasets, execute program rules, evaluate in-line program indicators, etc.
+Afin de préserver l'utilisation de la bande passante et l'espace de stockage, le SDK ne synchronise pas toutes les métadonnées du serveur, mais un sous-ensemble. Ce sous-ensemble est défini comme les métadonnées dont l'utilisateur a besoin pour effectuer des tâches de saisie de données : afficher des programmes et des ensembles de données, exécuter des règles de programme, évaluer des indicateurs de programme en ligne, etc.
 
 Sur cette base, la synchronisation des métadonnées comprend les éléments suivants :
 
@@ -68,7 +68,7 @@ Sur cette base, la synchronisation des métadonnées comprend les éléments sui
 | Utilisateur                  | Only authenticated user |
 | UserRole              | Roles assigned to authenticated user |
 | Autorisations             | Authorities assigned to authenticated user |
-| Programme               | Programs that user has (at least) read data access to and that are assigned to any orgunit visible by the user |
+| Programme               | Les programmes auxquels l'utilisateur a (au moins) accès en lecture et qui sont affectés à une unité d'organisation visible par l'utilisateur |
 | RelationshipTypes     | Tous |
 | OptionGroups          | Only if server is greater than 2.29 |
 | Ensemble de données               | DataSets that user has (at least) read data access to and that are assigned to any orgunit visible by the user |
@@ -80,23 +80,23 @@ Sur cette base, la synchronisation des métadonnées comprend les éléments sui
 | Constante              | Tous |
 | SMS Module metadata   | Only if SMS module enabled |
 
-In the case of Programs and DataSets, metadata sync includes all the metadata related to them: stages, sections, dataElements, options, categories, etc. Those elements that are not related to any Program or DataSet are not included.
+Dans le cas des programmes et des ensembles de données, la synchronisation des métadonnées inclut toutes les métadonnées qui leur sont liées : étapes, sections, éléments de données, options, catégories, etc. Les éléments qui ne sont pas liés à un programme ou à un ensemble de données ne sont pas inclus.
 
-### Corrupted configurations { #corrupted-configurations } 
+### Les configurations corrompues { #corrupted-configurations } 
 
-This partial metadata synchronization may expose server-side misconfiguration issues. For example, a ProgramRuleVariable pointing to a DataElement that does not belong to the program anymore. Due to the use of database-level constraints, this misconfiguration will appear as a Foreign Key error.
+Cette synchronisation partielle des métadonnées peut entraîner des problèmes de mauvaise configuration au niveau du serveur. Par exemple, une variable de règle de programme pointant vers un élément de données qui n'appartient plus au programme. En raison de l'utilisation de contraintes au niveau de la base de données, cette mauvaise configuration apparaîtra comme une erreur de Clé Étrangère.
 
-The SDK does not fail the synchronization, but it stores the errors in a table for inspection. These errors can be accessed by:
+Le SDK ne fait pas échouer la synchronisation, mais il stocke les erreurs dans un tableau à des fins d'inspection. Ces erreurs sont accessibles via :
 
 ```java
 d2.maintenanceModule().foreignKeyViolations()
 ```
 
-## Data states { #data_states } 
+## États des données { #data_states } 
 
 <!--DHIS2-SECTION-ID:data_states-->
 
-Data objects have a read-only `state` property that indicates the current state of the object in terms of synchronization with the server. This state is maintained by the SDK.
+Les objets de données ont une propriété `état` en lecture uniquement qui indique l'état actuel de l'objet en termes de synchronisation avec le serveur. Cet état est maintenu par le SDK.
 
 The possible states are:
 
@@ -113,11 +113,11 @@ Additionally, in `TrackedEntityInstance` we might have:
 
 - **RELATIONSHIP**. This TrackedEntityInstance has been downloaded with the sole purpose of fulfilling a relationship to another TEI. This `RELATIONSHIP` TEI only has basic information (uid, type, etc) and the list of TrackedEntityAttributes to be able to print meaningful information about the relationship. Other data such as enrollments, events or relationships are not downloaded for this TEI. Also, this TEI cannot be modified or uploaded to the server.
 
-## Tracker data { #tracker_data } 
+## Données de suivi { #tracker_data } 
 
 <!--DHIS2-SECTION-ID:tracker_data-->
 
-### Tracker data download { #tracker-data-download } 
+### Téléchargement des données de suivi { #tracker-data-download } 
 
 > **Important**
 >
@@ -133,12 +133,12 @@ pattern which allows the download of tracked entity instances filtering by
 **different parameters** as well as defining some **limits**. The same
 behavior can be found within the event module for events.
 
-The downloader tracks the latest successful download in order to avoid
-downloading unmodified data. It makes use of paging with a best effort
-strategy: in case a page fails to be downloaded or persisted, it is
-skipped and it will continue with the next pages.
+Le téléchargeur suit le dernier téléchargement réussi afin d'éviter 
+de télécharger des données non modifiées. Il utilise la pagination avec une stratégie du 
+meilleur effort : si une page ne parvient pas à être téléchargée ou conservée, elle est 
+ignorée et le téléchargement se poursuit avec les pages qui suivent.
 
-This is an example of how it can be used.
+Voici un exemple de son utilisation.
 
 ```java
 d2.trackedEntityModule().trackedEntityInstanceDownloader()
@@ -362,10 +362,10 @@ Tracked Entity Attributes configured as **unique** and **automatically generated
 The app is responsible for reserving generated values before going offline. This can be triggered by:
 
 ```java
-// Reserve values for all the unique and automatically generated trackedEntityAttributes.
+// Réserver des valeurs pour tous les attributs d'entités suivies uniques et générés automatiquement.
 d2.trackedEntityModule().reservedValueManager().downloadAllReservedValues(numValuesToFillUp)
 
-// Reserve values for a particular trackedEntityAttribute.
+// Réserver des valeurs pour un attribut d'entité suivie particulier.
 d2.trackedEntityModule().reservedValueManager().downloadReservedValues("attributeUid", numValuesToFillUp)
 ```
 
@@ -427,11 +427,11 @@ complete registration values** and **approvals** corresponding to:
 - **Periods**: all available periods, which means at least:
   - Days: last 60 days.
   - Weeks: last 13 weeks (including starting day variants).
-  - Biweekly: last 13 bi-weeks.
-  - Monthly: last 12 months.
-  - Bimonthly: last 6 bi-months.
-  - Quarters: last 5 quarters.
-  - Sixmonthly: last 5 six-months (starting in January and April).
+  - Bihebdomadaire : les 13 dernières quinzaines.
+  - Mensuel : 12 derniers mois.
+  - Bimestriel : les 6 derniers bimestres.
+  - Trimestres : 5 derniers trimestres.
+  - Semestriel : 5 derniers semestres (à compter de janvier et d'avril).
   - Yearly: last 5 years (including financial year variants).
 
   In addition, if any dataset allows data entry for **future periods**,
@@ -483,7 +483,7 @@ This will ensure that:
 2. The app will only be able to pick the future periods defined by the field `DataSet.openFuturePeriods`.
 3. The app will only be able to pick the past periods defined based on the limits declared on the section Aggregated Data Download.
 
-#### Data value { #data-value } 
+#### Valeur des données { #data-value } 
 
 DataValueCollectionRepository has a `value()` method that gives access to edition methods. The parameters accepted by this method are the parameters that unambiguously identify a value.
 
@@ -537,12 +537,12 @@ d2.dataSetModule().dataSetInstances()
     .[ filters ]
     .get()
 
-// For example
+// Par exemple
 d2.dataSetModule().dataSetInstances()
     .byDataSetUid().eq("datasetUid")
     .byOrganisationUnitUid().eq("orgunitUid")
     .byPeriod().in("201901", "201902")
-    .get();
+    .get() ;
 ```
 
 If you only need a high level overview of the aggregated data status, you can use the repository `DataSetInstanceSummary`. It accepts the same filters and returns a count of `DataSetInstance` for each combination.
@@ -597,7 +597,7 @@ The Sdk provides a helper to resize image files (`FileResizerHelper`). This help
 
 The possible dimensions are in the following table.
 
-| Small | Moyen | Large  |
+| Petit | Moyen | Grand  |
 |-------|--------|--------|
 | 256px | 512px  | 1024px |
 
@@ -607,12 +607,12 @@ In the event that the last image is smaller than the dimension to which you want
 
 The `resizeFile()` method will return a new file located in the same parent directory of the file to be resized under the name `resized-DIMENSION-` + the name of the file without resizing.
 
-### File resource directory helper { #file-resource-directory-helper } 
+### Assistant de répertoire des ressources de fichiers { #file-resource-directory-helper } 
 
-The `FileResourceDirectoryHelper` helper class provides two methods.
+La classe d'aide `FileResourceDirectoryHelper` ( Assistant de répertoire des ressources de fichiers ) fournit deux méthodes.
 
-- `getFileResourceDirectory()`. This method returns a `File` object whose path points to the `sdk_resources` directory where the Sdk will save the files associated with the file resources.
+- `getFileResourceDirectory()`. Cette méthode renvoie un objet `Fichier` dont le chemin pointe vers le répertoire `sdk_resources` (répertoire des ressources du Sdk) où le Sdk va sauvegarder les fichiers associés aux ressources du fichier.
 
-- `getFileCacheResourceDirectory()`. This method returns a `File` object whose path points to the `sdk_cache_resources` directory. This should be the place where volatile files are stored, such as camera photos or images to be resized. Since the directory is contained in the cache directory, Android may auto-delete the files in the cache directory once the system is about to run out of memory. Third party applications can also delete files from the cache directory. Even the user can manually clear the cache from Settings. However, the fact that the cache can be cleared in the methods explained above should not mean that the cache will automatically get cleared; therefore, the cache will need to be tidied up from time to time proactively.
+- `getFileCacheResourceDirectory()`. Cette méthode renvoie un objet `File` (fichier) dont le chemin pointe vers le répertoire `sdk_cache_resources` (ressources de cache sdk). Il s'agit de l'endroit où sont stockés les fichiers volatils, tels que les photos de l'appareil photo ou les images à redimensionner. Étant donné que le répertoire est contenu dans le répertoire cache, Android peut supprimer automatiquement les fichiers du répertoire cache lorsque le système est sur le point de manquer de mémoire. Les applications tierces peuvent également supprimer des fichiers du répertoire cache. L'utilisateur peut même effacer manuellement le cache à partir des paramètres. Cependant, le fait que le cache puisse être vidé par les méthodes expliquées ci-dessus ne signifie pas que le cache sera automatiquement vidé ; par conséquent, le cache devra être nettoyé de temps en temps de manière proactive.
 
 
