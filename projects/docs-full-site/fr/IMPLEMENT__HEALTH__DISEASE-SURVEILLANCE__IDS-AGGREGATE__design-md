@@ -1,0 +1,297 @@
+---
+edit_url: "https://github.com/dhis2-metadata/IDS_AGG/blob/master/docs/ids_agg-design.md"
+revision_date: '2023-04-17'
+tags:
+- Implémentation
+---
+
+# Integrated Disease Surveillance aggregate system design { #ids-agg-design }
+
+## Introduction { #introduction } 
+
+Ce document décrit la conception du système pour le package agrégé de données numériques de surveillance des maladies. Il comprend les éléments suivants :
+
+1. Maladie couverte dans le package
+2. Ensembles de données
+3. Mécanismes d'échange de données
+4. Tableaux de bord
+5. Règles de validation
+6. Notifications de validation
+7. Les prédicteurs
+
+Les métadonnées agrégées du package de surveillance sont proposées dans plusieurs configurations différentes afin de montrer aux pays les possibilités de configuration adaptées à leur propre contexte. Cela permet également aux pays de sélectionner les options de configuration qui correspondent le mieux à leur contexte.
+
+## Diseases Covered { #diseases-covered } 
+
+Les maladies couvertes par ce package sont les suivantes :
+
+|||||
+| ----------------------- | ----------------------- | ------------ | ------------ |
+| Paralysie flasque aiguë | Diarrhée aqueuse aiguë  | Choléra      | Dengue |
+| Diarrhée sanglante (Shigella)    | Diphtérie               | Rougeole      | Méningite   |
+| Tétanos néonatal        | Tétanos non néonatal    | Coqueluche    | Rage       |
+| Rubéole                 | Fièvre hémorragique virale | Fièvre jaune |              |
+
+Notez que vous pouvez ajouter une maladie au design selon vos besoins.
+
+## Data Set Overview { #data-set-overview } 
+
+Le package de configuration de la surveillance pour les rapports agrégés contient 4 ensembles de données qui sont décrits ci-dessous.
+
+| **Nom**                                                     | **Périodicité** | **Objectif**                                                  |
+| ------------------------------------------------------------ | --------------- | ------------------------------------------------------------ |
+| SIM - Rapport : Suspect, Confirmé, Décès                    | Hebdomadaire          | Rapport des activités de surveillance : cas suspects, cas confirmés et décès. Les cas suspects et les décès sont ventilés, les données portant sur les cas confirmés ne sont pas ventilées. |
+| SIM - Rapport : Suspect, Décès                               | Hebdomadaire          | Rapport des activités de surveillance : cas suspects et décès. Ces données sont ventilées. |
+| SIM - Rapport hebdomadaire agrégé de laboratoire                           | Hebdomadaire          | Déclaration des cas confirmés directement par les laboratoires. Ces données ne sont pas ventilées. |
+| Population par semaine                                            | Hebdomadaire          | Données de population hebdomadaires utilisées pour les alertes. Il s'agit de données hebdomadaires car la fonction prédicteur du DHIS2 est utilisée pour générer des seuils et ne peut actuellement pas combiner des données de périodicité différente (dans ce cas, des données de surveillance hebdomadaires avec des données de population annuelles). |
+
+### IDS - Report: Suspected, Confirmed, Death { #ids-report-suspected-confirmed-death } 
+
+L'ensemble de données **SIM - Rapport : Suspects, confirmés, décès** contient des informations sur les cas suspects, les cas confirmés et les décès pour les maladies décrites dans la section [maladies couvertes] (#diseases-covered). Pour certaines de ces maladies, les cas suspects et les décès sont **désagrégés** et l'on utilise un **formulaire personnalisé**. La conception du formulaire personnalisé résulte de la combinaison d'éléments de données désagrégés et non désagrégés qui appartiennent à la même maladie et doivent être regroupés.
+
+![image-20200719115335917](resources/images/Screen01.png)
+
+Les ventilations ont été appliquées en utilisant le modèle de catégorie dans le DHIS2. Ce modèle présente deux avantages essentiels lorsqu'on utilise des ventilations :
+
+- Il réduit le nombre d'éléments de données uniques à créer.
+- Au cours d’une analyse, cela permet d'ajouter rapidement les ventilations par âge qui peuvent pivoter selon les besoins. Nous pouvons également constater que les totaux sont très utiles pour déterminer le nombre total lié à une variable ou une période particulière.
+
+![image-20200719115354457](resources/images/Screen14.png)
+
+Si vous devez modifier cet ensemble de données de manière à ce qu'il ne soit pas ventilé par âge, vous pouvez le faire directement avant ou après l'installation. Il est recommandé de le faire avant l'installation en suivant les étapes du guide d'installation relatif à la modification du package.
+
+Cet ensemble de données présuppose une configuration complète dans laquelle les cas suspects, les cas confirmés et les décès sont tous collectés. Il suppose également que toute personne interagissant avec cet ensemble de données devrait avoir accès à l'édition de ces informations (c'est-à-dire saisir des données et modifier les valeurs des données existantes). Cela peut ne pas être le cas dans toutes les implémentations, si, par exemple, vous souhaitez séparer les personnes qui peuvent modifier les données sur les cas suspects et confirmés.
+
+In summary, if it is the case where you are ***not yet collecting data*** on confirmed cases or ***you want seperate groups to have the ability to edit*** suspected and confirmed case data, then this may not be the dataset to implement in your context. If ***you are collecting data*** on confirmed cases, and you want ***equal access for all users to edit*** the suspected and confirmed case data, then this type of dataset design would be suitable to implement in your own context.
+
+### IDS - Report: Suspected, Death { #ids-report-suspected-death } 
+
+L'ensemble de données **SIM - Rapport : Suspects, décès** contient des informations sur les cas suspects et les décès pour les maladies décrites dans la section [maladies couvertes](#diseases-covered). Notez qu'il ne contient pas d'informations sur les cas confirmés. La raison en est que la confirmation en laboratoire est un processus distinct, ou qu'un accès distinct doit être fourni à ceux qui saisissent les données sur les cas confirmés. Cet ensemble de données est donc lié à SIM - Rapport hebdomadaire agrégé de laboratoire au cas où les cas seraient confirmés par un processus distinct. Ce formulaire utilise les mêmes éléments de données et la même structure que l'ensemble de données SIM - Rapport hebdomadaire agrégé pour les cas et les décès. La conception du formulaire personnalisé de cet ensemble de données a donc été réutilisée de manière à ce qu'une conception uniforme soit appliquée entre cet ensemble de données et l'ensemble de données SIM - Rapport hebdomadaire agrégé de laboratoire.
+
+![image-20200719115644641](resources/images/Screenx42.png)
+
+Cet ensemble de données est destiné à des situations dans lesquelles soit
+
+1. Les données relatives aux cas confirmés ne sont pas encore collectées par le DHIS2
+2. Les données relatives aux cas confirmés sont collectées, mais il s'agit d'un processus distinct ou l'accès à la modification de ces données doit être séparé
+
+### IDS - Aggregate Lab Weekly Report { #ids-aggregate-lab-weekly-report } 
+
+L'ensemble de données SIM - Rapport hebdomadaire agrégé de laboratoire contient des informations sur les cas confirmés pour les maladies décrites dans le [Tableau 1](#tableau-1). Notez qu'il **ne contient pas d'informations sur les cas suspects et les décès**. Ce rapport est destiné à compléter l'ensemble **SIM - Rapport : Suspect, Confirmé, Décès** lorsque le processus de déclaration des cas confirmés en laboratoire est distinct de la déclaration des cas suspects et des décès. Cela inclut les situations dans lesquelles vous souhaitez que différents utilisateurs aient la possibilité de modifier les données sur les cas confirmés par rapport aux données sur les cas suspects/décès.
+
+Tout comme les ensembles de données `SIM - Report : Suspect, Confirmé, Décès` et `SIM - Rapport : Suspect, Décès`, cet ensemble de données utilise un formulaire personnalisé pour assurer la cohérence dans son apparence.
+
+### Population Weekly { #population-weekly } 
+
+The Population weekly dataset is used to collect weekly population data. The main function of this is for thresholds for ***meningitis***. It is a weekly data set as the DHIS2 predictor function is used to generate thresholds and currently can not combine data of different periodicity (in this case, weekly surveillance data with annual population data). The data element that it contains, population weekly, uses the aggregation type of "last value" and is meant to be equal to the estimated population total for a year within a given geographical region.
+
+À titre d'exemple, si la population annuelle du district A est de 1 000 personnes, la population hebdomadaire du district A sera également de 1 000 personnes. En utilisant le type d'agrégation "dernière valeur", ces valeurs hebdomadaires ne s'additionneront pas et seront toujours égales à 1000 tout au long de l'année dans ce district.
+
+## Data Exchange Mechanisms { #data-exchange-mechanisms } 
+
+Outre l'utilisation directe de l'API DHIS2, deux mécanismes d'échange de données sont disponibles :
+
+1. Pour les pays qui utilisent le DHIS2, une application d'échange de données a été créée pour transmettre les données directement de leur système DHIS2 à d'autres systèmes DHIS2
+2. Pour les pays qui n'utilisent pas DHIS2, une application permettant d'accepter les données au format Excel a été créée
+
+### DHIS2 to DHIS2 data exchange { #dhis2-to-dhis2-data-exchange } 
+
+Dans le cadre de ce package, une application appelée `dhis2 transfer` a été développée pour transmettre les données d'un système DHIS2 à un autre. Une fois que cette application est configurée, elle permet à un système DHIS2 d'envoyer ses données à un autre système DHIS2 (par exemple, un système régional collectant les données de plusieurs pays). La configuration initiale ne doit être effectuée qu'une seule fois, et peut être réalisée entièrement via l'interface utilisateur disponible. La configuration doit se faire pour deux éléments distincts :
+
+1. Les données réelles envoyées (c'est-à-dire les variables/items de données)
+2. La localisation des données envoyées (par exemple, dans le DHIS2, les unités d'organisation)
+
+Cette correspondance est nécessaire car les deux systèmes d'échange de données peuvent ne pas être exactement alignés en termes de noms, de codes ou d'identifiants qu'ils utilisent pour identifier ces différents objets qui font l'objet d'une synchronisation entre les deux systèmes. L'application envoie actuellement des données agrégées par le biais d'indicateurs agrégés du système source vers des éléments de données du système de destination. Les indicateurs correspondants devront donc être disponibles dans le système source (c'est-à-dire le système qui envoie les données)
+
+Un exemple de correspondance de variables est présenté ci-dessous :
+
+![image-20200719115734072](resources/images/Screen02.png)
+
+Une fois cette configuration sauvegardée, vous pouvez y faire appel si nécessaire, sélectionner la période pour laquelle vous souhaitez envoyer des données et envoyer les données.
+
+![confirm_transfer](resources/images/Screen11.png)
+
+> **NOTE**
+>
+>This process can also be scheduled if you want to send the data automatically
+
+Pour plus d'informations sur l'application de transfert de données, veuillez consulter le manuel de l'application.
+
+### Excel to DHIS2 data exchange { #excel-to-dhis2-data-exchange } 
+
+As part of this package an app called "data import wizard" has been made available in order for a DHIS2 system to receive Excel data. This tool also needs to be configured once with the mapping matching the information in the Excel sheet to the information available in DHIS2. Note that this app can be used beyond surveillance use cases as well.  
+
+Vous pouvez prévisualiser les données transférées dans le système pour vérifier que le mappage du fichier Excel est correct, comme indiqué ci-dessous.
+
+![image-20200719120021592](resources/images/Screen44.png)
+
+Une fois que les données ont été examinées et vérifiées à partir de la feuille Excel, elles peuvent être importées directement dans le système DHIS2.
+
+Pour plus d'informations sur l'assistant d'importation de données, veuillez consulter le manuel de l'application.
+
+## Tableaux de bord { #dashboards } 
+
+Des tableaux de bord sont disponibles pour chacune des maladies énumérées dans la section [maladies couvertes](#diseases-covered). Chaque tableau de bord spécifique à une maladie est présenté de la même manière :
+
+1. Tableau croisé dynamique montrant les zones suspectes d'épidémie au cours des 12 dernières semaines
+2. Carte montrant les zones suspectes d'épidémie au cours de la semaine dernière
+3. Tableau croisé dynamique montrant les zones suspectes d'épidémie au cours des 12 dernières semaines
+4. Map showing confirmed outbreak areas in the last week
+   ![dashboard_1](resources/images/dashboard_1.png)
+5. Tableau croisé dynamique indiquant le nombre total de semaines pendant lesquelles une zone a fait l'objet d'une suspicion d'épidémie l'année dernière.
+6. Carte montrant les zones suspectes d'épidémie au cours de l'année dernière
+7. Tableau croisé dynamique indiquant le nombre total de semaines pendant lesquelles une zone a été en épidémie confirmée au cours de l'année dernière
+8. Map showing confirmed outbreak areas in the last year
+   ![dashboard_2](resources/images/dashboard_2.png)
+9. Carte montrant le taux d'incidence au cours de la dernière semaine
+10. Carte montrant la répartition des cas au cours de la semaine dernière
+11. Graphique montrant le nombre de cas suspects et de décès au cours des 12 dernières semaines
+12. Pivot table showing the number of suspected cases and deaths in the last 12 weeks
+   ![dashboard_3](resources/images/dashboard_3.png)
+13. Chart showing a comparison of cases by weeks of this year and last year
+   ![dashboard_4](resources/images/dashboard_4.png)
+
+## Règles de validation { #validation-rules } 
+
+Des règles de validation ont été mises en place, comprenant à la fois des contrôles logiques de cohérence ainsi que la détection des foyers suspectés et confirmés sur la base de divers critères.
+
+### Validation Rules - Consistency Checks { #validation-rules-consistency-checks } 
+
+Les règles de validation qui effectuent des contrôles de cohérence comparent les cas confirmés hebdomadaires aux cas suspects hebdomadaires. L'hypothèse est que les cas confirmés doivent être inférieurs ou égaux aux cas suspects au cours d'une semaine donnée pour toutes les maladies énumérées dans la section [maladies couvertes](#diseases-covered). Pour une liste complète de ces règles de validation, veuillez vous référer au fichier de référence des métadonnées. Si cette hypothèse n'est pas correcte dans votre implémentation, veuillez modifier ces règles car elles apparaîtront pendant la saisie des données chaque fois qu'un utilisateur complétera un ensemble de données et qu'une violation sera détectée comme nous pouvons le voir dans l'exemple ci-dessous.
+
+![validation de la_cohérence](resources/images/consitency_rule.png)
+
+### Validation Rules - Thresholds { #validation-rules-thresholds } 
+
+Les règles de validation sont également utilisées pour déterminer si un seuil a été dépassé. Ces règles de validation utilisent parfois la sortie d'un prédicteur pour effectuer une comparaison en fonction des critères à respecter. Lorsque ces règles sont violées, une notification est envoyée.
+
+Les règles de validation suivantes sont déclenchées et envoient une notification sur la base des critères spécifiés ci-dessous :
+
+| Nom                                                         | Description/Déclencheur de notification                             |Prédicteur utilisé|
+| ------------------------------------------------------------ | ------------------------------------------------------------ |-----------|
+| Tétanos non néonatal suspecté                               | 1 cas suspect                                             |Non |
+| Fièvre jaune probable                                        | 1 cas avec un résultat positif pour l'IgM                                     |Non |
+| Rubéole confirmée                                            | 1 cas confirmé                                             |Non |
+| TDR positif pour le choléra                                         | 1 cas avec un résultat positif au TDR                                          |Non |
+| Cas suspects de peste                                             | 1 cas suspect                                             |Non |
+| Cas confirmés de rage                                             | 1 cas confirmé                                             |Non |
+| Cas suspects de rougeole/rubéole                                    | 5 cas suspects en 30 jours dans un district                 |Yes <br>  `IDS - Measles Suspected Outbreak` |
+| Anthrax confirmé                                            | 1 cas confirmé                                             |Non |
+| Cas confirmés de dengue                                       | 1 cas confirmé                                             |Non |
+| Cas suspects de coqueluche                                          | 1 cas suspect                                             |Non |
+| Épidémie de rougeole confirmée                                   | 3 cas confirmés en 30 jours dans un district                 |Oui <br> `SIM - Épidémie de rougeole confirmée`|
+| Au moins deux cas de diarrhée aqueuse aiguë (DAA) âgés de 2 ans ou plus ( en fonction du moment et du lieu) avec déshydratation sévère ou décès. | Au moins 2 cas de diarrhée aqueuse aiguë (DAA) âgés de 2 ans ou plus ( en fonction du moment et du lieu) avec déshydratation sévère ou décès. | Non |
+| Tétanos néonatal suspecté                                   | 1 cas suspect                                            | Non |
+| Alerte à la méningite                                             | 3 cas suspects/100 000 habitants / semaine (minimum de 2 cas en une semaine) pour les districts/sous-districts dont la population est supérieure à 30 000 habitants | Oui <br> `SIM - Alerte à la méningite` |
+| Fièvre hémorragique virale suspectée                            | 1 cas suspect                                             | Non |
+| Décès par diarrhée aqueuse aiguë                                  | Un décès dû à une diarrhée aqueuse aiguë sévère chez une personne âgée d'au moins 5 ans | Non|
+| Épidémie de méningite                                          | 10 cas suspect/100 000 habitants / semaine pour les districts/sous-districts dont la population est supérieure à 30 000 habitants <br> **OU** <br> 5 cas suspects en une semaine <br> **OU** <br> doublement du nombre de cas sur une période de trois semaines (alerte épidémique) pour les districts/sous-districts dont la population est inférieure à 30000 habitants | Oui <br> `SIM - Épidémie de méningite` |
+| Un décès dû à une DAA grave chez une personne de tout âge             | Un décès dû à une DAA grave chez une personne de tout âge               | Non |
+| PFA confirmée (PVDV)                                         | 1 cas confirmé                                             |Non |
+| Cas suspects de diphtérie                                          | 1 cas suspect                                             |Non |
+| PFA confirmée (PVS)                                          | 1 cas confirmé                                             |Non |
+| Diarrhée avec sang suspectée (Shigella)                     | 1 cas suspect                                             |Non |
+
+Notez la différence entre `cas suspects` et `cas confirmés`. Dans le contexte de ce programme de surveillance, les cas suspects indiquent si une zone est en alerte, tandis que les cas confirmés indiquent si une zone est en épidémie.
+
+Ces règles peuvent être configurées pour s'exécuter automatiquement ou peuvent également être exécutés manuellement. La configuration du processus automatisé est abordée dans le guide d'installation.
+
+## Validation Notifications { #validation-notifications } 
+
+En réponse au dépassement d'un seuil, des notifications peuvent être envoyées en utilisant une combinaison de 3 méthodes :
+
+- Le service de messagerie interne du DHIS2
+- SMS
+- E-mail
+
+Pour plus d'informations sur la configuration de ces services, reportez-vous à la documentation sur [email](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/system-settings.html#system_email_settings) and [SMS](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/maintaining-the-system/configure-sms.html).
+
+Voici un exemple d'e-mail envoyé lorsqu'une épidémie de rougeole est détectée.
+
+![image-20200719115221225](resources/images/Screen34.png)
+
+Pour consulter la liste complète des notifications de validation, consultez le fichier de référence des métadonnées. Les notifications de validation sont disponibles pour chaque maladie en fonction des critères définis dans la section [seuils des règles de validation](#validation-rules---thresholds).
+
+Ces notifications peuvent être envoyées en réponse à un processus manuel ou automatisé de vérification de vos données. La configuration du processus automatisé est abordée dans le guide d'installation.
+
+## Predictors { #predictors } 
+
+Pour plus d'informations sur la configuration des prédicteurs, veuillez consulter [la documentation](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/metadata.html#about-predictors).
+
+### Areas in outbreak { #areas-in-outbreak } 
+
+En plus d'être utilisés dans les règles de validation, les prédicteurs sont également utilisés pour visualiser les zones d'épidémie. Nous pouvons en voir des exemples dans les visualisations 1 à 8 de la section [tableaux de bord](#dashboards). Si les règles de validation peuvent être utilisées pour déclencher des notifications de validation, le résultat de ces règles n'est pas stocké dans un élément de données et ne peut donc pas être utilisé à des fins de visualisation. Une liste complète des prédicteurs est disponible dans le fichier de référence des métadonnées. Chaque maladie a des prédicteurs qui sont étiquetés comme étant soit une "alerte" -- utilisée dans les situations où des cas suspects sont vérifiés ; soit une "épidémie" -- utilisée dans les situations où des cas confirmés sont vérifiés.
+
+Les prédicteurs sont définis pour stocker des valeurs dans des éléments de données complémentaires qui peuvent ensuite être utilisés pour créer des visualisations permettant d'identifier les zones d'alerte ou les foyers. Les prédicteurs sont définis pour identifier les alertes et les épidémies en fonction de la section [seuils des règles de validation](#validation-rules---thresholds). Prenons deux prédicteurs et décomposons-les en leurs composants, car chaque prédicteur pour chaque maladie devra être compris pour être utilisé correctement ou modifié si nécessaire.
+
+#### Example 1: A disease where 1 suspected case is the threshold (ie. diptheria) { #example-1-a-disease-where-1-suspected-case-is-the-threshold-ie-diptheria } 
+
+Prenons un exemple dans lequel un cas suspect est le seuil permettant de déterminer si une zone est en alerte. Notez que cette même nomenclature s'appliquerait à un exemple dans lequel 1 cas confirmé est le seuil permettant d'identifier si une zone est en épidémie.
+
+Nous pouvons utiliser l'exemple de la `dipthérie` ; si nous examinons la section [seuils des règles de validation](#validation-rules---thresholds), nous verrons qu'un cas suspect de dipthérie est notre seuil.
+
+Au sein du prédicteur, nous avons les champs suivants :
+
+1. Le nom du prédicteur
+2. La description du prédicteur
+3. L'élément de données de sortie - c'est là que le résultat du prédicteur est stocké
+4. La période pendant laquelle le prédicteur s'exécute
+5. Le niveau d'unité de l'organisation de sortie de la valeur du prédicteur
+
+![formule_prédicteur_1](resources/images/predictor_formula_1.png)
+
+Après avoir défini cette formule, nous avons ce que l'on appelle le `générateur`. Le générateur est essentiellement la formule utilisée pour définir le prédicteur. Dans ce cas, en utilisant la dipthérie comme exemple, nous avons un test logique qui stipule ce qui suit
+
+Si le nombre de cas suspects de dipthérie est >= 1 dans une unité d'organisation donnée, retourner une valeur de 1. Si ce n'est pas le cas, retourner une valeur de 0.
+
+Ces types d'instructions logiques "si" sont utilisés dans tous les prédicteurs de ce package. Si vous n'êtes pas familier avec la logique booléenne, vous pouvez trouver un aperçu général [ici](https://www.lotame.com/what-is-boolean-logic/#:~:text=Boolean%20Logic%20is%20a%20form,are%20either%20true%20or%20false.).
+
+![formule_prédicteur_2](resources/images/predictor_formula_2.png)
+
+Les derniers composants du prédicteur identifient la période à partir de laquelle nous obtiendrons les données à utiliser dans notre générateur. Nous avons défini le nombre d'échantillons séquentiels et le nombre d'échantillons annuels à 0, ce qui signifie que le générateur n'obtiendra des données que pour la semaine au cours de laquelle le seuil est vérifié.
+
+![formule_prédicteur_3](resources/images/predictor_formula_3.png)
+
+#### Example 2: A disease where a specific threshold formula is used (ie. measles) { #example-2-a-disease-where-a-specific-threshold-formula-is-used-ie-measles } 
+
+In example 2, we can review the threshold for a ***confirmed measles outbreak***. This threshold is defined as `3 confirmed cases in one district in 30 days`. There are some key components that must be considered
+
+1. 3 cas au total dans le district
+2. Ces cas peuvent survenir sur une période de 30 jours
+
+Nous avons toujours les mêmes champs que dans l'exemple 1 pour lancer notre prédicteur
+
+1. Le nom du prédicteur
+2. La description du prédicteur
+3. L'élément de données de sortie - c'est là que le résultat du prédicteur est stocké
+4. La période pendant laquelle le prédicteur s'exécute
+5. Le niveau d'unité de l'organisation de sortie de la valeur du prédicteur
+
+![formule_prédicteur_11](resources/images/predictor_formula_11.png)
+
+Après avoir défini cette formule, nous avons ce que l'on appelle le `générateur`. Le générateur est essentiellement la formule utilisée pour définir le prédicteur. Dans ce cas, en utilisant la rougeole comme exemple, nous avons un test logique qui stipule ce qui suit
+
+>If the sum of confirmed measles cases is greater then 3, return a value of 1. If this is not the case return a value of 0.
+
+Notez que cette somme est prise au niveau où se trouvent les données, ce qui, dans cet exemple, correspond à nos établissements. En se basant uniquement sur le générateur, nous n'avons pas non plus satisfait à notre deuxième critère, qui consiste à examiner la situation sur une période de 30 jours.
+
+![formule_prédicteur_12](resources/images/predictor_formula_12.png)
+
+The last components of the predictor identifies which period we will be getting data from to use within our generator. We have defined  the sequential sample count as 4 and the annual sample count as 0. This means that the generator will be obtaining data from the last 4 weeks (since the predictor period is set to weekly), including the current week, for the current year in which the threshold is being checked. This is to meet the criteria of our 30 day period as defined in our threshold.
+
+![formule_prédicteur_13](resources/images/predictor_formula_13.png)
+
+### Predictor Summary { #predictor-summary } 
+
+**NB** : Nous utilisons des prédicteurs pour tester nos seuils et stocker les valeurs des données afin d'identifier les zones en alerte ou en épidémie. Les zones en alerte sont basées sur des seuils utilisant des cas suspects, tandis que les zones en épidémie font référence à des seuils utilisant des cas confirmés. Pour définir ces seuils à l'aide d'un prédicteur, nous devons tenir compte des éléments suivants
+
+1. L'élément de données dans lequel vous allez générer la valeur du prédicteur
+2. La période pendant laquelle le prédicteur vérifiera les données
+3. Le niveau de l'unité d'organisation auquel vous allez transmettre la valeur du prédicteur
+4. La formule du générateur, qui permettra de tester nos données par rapport à un seuil défini
+5. Les comptes d'échantillons séquentiels et annuels, qui définiront les périodes pour lesquelles le prédicteur obtient des données
+
+La modification de ces composants vous permettra de modifier la définition du seuil.
+
+Ces prédicteurs peuvent être configurés pour s'exécuter automatiquement ou peuvent également être exécutés manuellement. La configuration du processus automatisé est abordée dans le guide d'installation.
+
