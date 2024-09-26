@@ -5,220 +5,220 @@ tags:
 - Implémentation
 ---
 
-# TB Case Surveillance - System Design Document { #tb-cs-design }
+# Surveillance des cas de tuberculose - Document de conception du système { #tb-cs-design }
 
 ## Introduction { #introduction } 
 
-The **TB Case Surveillance Tracker (TB-CS) digital data package for DHIS2** is based on the [WHO recording and reporting framework](https://apps.who.int/iris/handle/10665/79199) from 2013. It provides a set of recommended metadata (data elements, program rules, etc) to enable electronic capture of individual/case-based TB surveillance data. The tracker metadata is configured to ensure that aggregated standard quarterly TB report indicators on notifications, first-line outcomes and second-line outcomes as defined by the WHO Definitions and reporting framework for TB (2013) can be automatically generated from the individual data captured. The TB Case Surveillance Tracker is not intended to support patient management or patient care. This requires more detailed analysis of roles, responsibilities, workflows and decision-making within the settings in which such systems would be implemented.
+Le **Package de données numériques du Tracker de surveillance des cas de tuberculose (TB-SC) pour DHIS2** repose sur le [cadre d'enregistrement et de notification de l'OMS] (https://apps.who.int/iris/handle/10665/79199) de 2013. Il fournit un ensemble de métadonnées recommandées (éléments de données, règles de programme, etc.) qui permettent la saisie électronique de données individuelles ou basées sur des cas pour la surveillance de la tuberculose. Les métadonnées du Tracker sont configurées de manière à ce que les indicateurs du rapport agrégé trimestriel standard sur la tuberculose concernant les notifications, les résultats de première intention et deuxième intention, tels que définis par les Définitions et le cadre de notification de l'OMS pour la tuberculose (2013), puissent être automatiquement générés à partir des données individuelles saisies. Le Tracker de surveillance des cas de tuberculose n'a pas pour but d'aider à la prise en charge des patients ou à leurs soins. Cela nécessite une analyse plus détaillée des rôles, des responsabilités, des flux de travail et de la prise de décision dans les contextes où de tels systèmes seraient implémentés.
 
-The system design document explains how the tracker program was configured to meet the data entry and analysis requirements and support a typical workflow. The document does not include an exhaustive listing of all metadata captured. This document also does not consider the resources and infrastructure needed to implement such a system, such as servers, power, internet connections, backups, training and user support. More information on the TB programme technical aspects informing this system design is available in the [WHO publication on electronic recording and reporting for tuberculosis care and control](https://apps.who.int/iris/handle/10665/44840). Supplementary implementation guidance for DHIS2 can be found in the [General DHIS2 Implementation Guide](https://docs.dhis2.org/en/implement/configuring-the-android-app/about-this-guide.html) and [DHIS2 tracker implementation guide](https://docs.dhis2.org/en/implement/understanding-dhis2-implementation/a-quick-guide-to-dhis2-implementation.html).
+Le document de conception du système explique comment le programme Tracker a été configuré pour répondre aux exigences en matière de saisie et d'analyse des données et pour soutenir un flux de travail typique. Le document n'inclut pas une liste exhaustive de toutes les métadonnées saisies. Ce document ne prend pas non plus en compte les ressources et l'infrastructure nécessaires à l'implémentation d'un tel système, comme les serveurs, l'alimentation électrique, les connexions Internet, les sauvegardes, la formation et l'assistance aux utilisateurs. De plus amples informations sur les aspects techniques du programme de lutte contre la tuberculose qui ont servi de base à la conception de ce système sont disponibles dans la [publication de l'OMS sur l'enregistrement et la notification électroniques pour le traitement et le contrôle de la tuberculose](https://apps.who.int/iris/handle/10665/44840). Supplementary implementation guidance for DHIS2 can be found in the [General DHIS2 Implementation Guide](https://docs.dhis2.org/en/implement/configuring-the-android-app/about-this-guide.html) et dans le [guide d'implémentation du Tracker de DHIS2](https://docs.dhis2.org/en/implement/understanding-dhis2-implementation/a-quick-guide-to-dhis2-implementation.html).
 
 ## Aperçu de la conception du système { #system-design-overview } 
 
 ### Contexte { #background } 
 
-Reliable epidemiological data is required for staff at all levels of a national TB programme to plan and provide effective tuberculosis care and control services, as well as monitor the performance of programmatic actions. A case-based surveillance system has clear advantages over an aggregate data collection system. Like an aggregate surveillance system a minimum set of epidemiological indicators can be captured, validated, aggregated, calculated and displayed but these can be disaggregated by any combination of time, location/area, age, sex, case type, previous treatment history, HIV status, drug resistance status and treatment regimens. This helps us to understand TB epidemiology in depth and monitor changes over time.
-It is expected that case-based electronic data will result in **improved data quality** because the number of data entry steps are reduced, automatic calculations and validations can be built into the system, inconsistent, erroneous or incomplete data can be corrected or completed rapidly for an individual record and de-duplication can be carried out to remove duplicate records. A case-based surveillance system should also allow the linking of surveillance records to the same case even if a TB case is transferred or referred between facilities during the course of treatment.
-See principle 2.4, page 16, of [**Policy on the Protection of Personal Data of Persons of Concern to UNHCR**](http://www.refworld.org/docid/55643c1d4.html).
+Le personnel à tous les niveaux d'un programme national de lutte contre la tuberculose a besoin de données épidémiologiques fiables pour planifier et fournir des services efficaces de soins et de contrôle de la tuberculose, ainsi que pour évaluer la performance des actions programmatiques. Un système de surveillance basé sur les cas est clairement plus avantageux qu'un système de collecte de données agrégées. Comme dans le cas d'un système de surveillance agrégé, il est possible de saisir, de valider, d'agréger, de calculer et d'afficher un nombre minimum d'indicateurs épidémiologiques, mais ceux-ci peuvent être désagrégés en fonction de toute combinaison de temps, de lieu/zone, d'âge, de sexe, de type de cas, de traitements antérieurs, de statut VIH, de statut de résistance aux médicaments et de schémas thérapeutiques. Cela nous aide à comprendre l'épidémiologie de la tuberculose en profondeur et à suivre les changements au fil du temps.
+Les données électroniques basées sur les cas devraient **améliorer la qualité des données** car le nombre d'étapes de saisie est réduit, des calculs et des validations automatiques peuvent être intégrés au système, des données incohérentes, erronées ou incomplètes peuvent être corrigées ou complétées rapidement dans un dossier individuel et des doublons peuvent être supprimés. Un système de surveillance basé sur les cas doit également permettre de relier les données de surveillance liés à un même cas, par exemple si un cas de tuberculose est transféré ou référé d'un établissement à un autre au cours de son traitement.
+Voir le principe 2.4, page 16, de la [**Politique sur la protection des données personnelles des personnes relevant de la compétence du HCR**](http://www.refworld.org/docid/55643c1d4.html)
 
 ### Cas d'utilisation { #use-case } 
 
-The TB Case Surveillance Tracker enables **registration and longitudinal tracking of TB cases from the point of notification to final case outcome, inclusive of laboratory results**. The program captures a minimum set of data points required for epidemiological analysis of case surveillance data as described in the background section. These include baseline and demographic information about the case, risk factors, laboratory results for diagnosis and routine check-ups, drug resistance type classification, treatment regimens provided, and case outcome. **This tracker program is not designed to support clinical management nor patient care**. Rather, the program serves as an electronic registry that supports decentralized electronic data capture of case surveillance data down to health facility and laboratory levels.
+Le Tracker de surveillance des cas de tuberculose permet **l'enregistrement et le suivi longitudinal des cas de tuberculose du point de notification au résultat final, en passant par les résultats de laboratoire**. Le programme saisit un nombre de données nécessaires à l'analyse épidémiologique des données de surveillance des cas, tel que décrit dans la section "Contexte". Il s'agit notamment des informations de base et démographiques concernant le cas, des facteurs de risque, des résultats de laboratoire pour le diagnostic et les examens de routine, de la classification des types de résistance aux médicaments, des régimes de traitement fournis et du résultat final du cas. **Ce programme Tracker  n'est pas conçu pour soutenir la prise en charge clinique des patients ou leurs soins**. Il s'agit plutôt d'un registre électronique qui permet la saisie électronique décentralisée des données de surveillance des cas jusqu'au niveau des établissements de santé et des laboratoires.
 
 ## Structure du programme { #program-structure } 
 
-The revised TB CS tracker program has been designed to reflect a **more generic workflow** able to integrate data entry both from the health facility side (e.g. clinicians and nurses), and the laboratory side. Workflows in countries may vary and the case surveillance program should be adapted as needed to local context.
+Le programme Tracker révisé 'TB-SC' a été conçu pour refléter un **flux de travail plus générique** capable d'intégrer la saisie de données à la fois au niveau de l'établissement de santé (par exemple, les cliniciens et les infirmiers) et du côté du laboratoire. Les flux de travail peuvent varier d'un pays à l'autre et le programme de surveillance des cas doit être adapté au contexte local.
 
 > **IMPORTANT**
 >
-> Veuillez noter que, compte tenu de la conception générique du tracker, ce guide de conception du système contient, tout au long des sections, des informations, des considérations et des justifications utiles qui peuvent être d'une grande importance pour l'implémentation. Le document doit donc être révisé en profondeur aussi bien par la partie requérante que par la partie chargée de l'implémentation.
+> Veuillez noter que, compte tenu de la conception générique du Tracker, ce guide de conception du système contient, tout au long des sections, des informations, des considérations et des justifications utiles qui peuvent être d'une grande importance pour l'implémentation. Le document doit donc être révisé en profondeur aussi bien par la partie requérante que par la partie chargée de l'implémentation.
 
-![Theoretical workflow](resources/images/tb_cs_001.png)
+![Flux de travail théorique](resources/images/tb_cs_001.png)
 
-Following this initial workflow, the program has been structured as follows:
+À la suite de ce processus initial, le programme a été structuré comme suit :
 
-![Data flow within the tracker stages](resources/images/tb_cs_029.png)
+![Flux de données dans les étapes du Tracker](resources/images/tb_cs_029.png)
 
-### Rationale for Program Structure { #rationale-for-program-structure } 
+### Justification de la structure du programme { #rationale-for-program-structure } 
 
-The design of the tracker has been improved to expand the information that could potentially be collected from the laboratory side. The expansion touched of course the metadata, which is now more comprehensive and allows to **discern between diagnostic and monitoring tests**, but it also created a more generic baseline upon which implementers and countries could build their own workflow. Depending on the local needs, the “Diagnostic laboratory results” and the “Diagnosis and notification” stages could have different orders; depending on the local resources and connectivity, the data entry could be centralized or decentralized between the laboratory and the health facility; depending on the local data flow, the data could be entered live or retrospectively.
+La conception du Tracker a été améliorée de manière à élargir les informations qui pourraient être collectées au niveau des laboratoires. Cet élargissement a bien sûr touché les métadonnées, qui sont désormais plus complètes et permettent de **discerner les tests de diagnostic et les tests de suivi**, mais il a également créé une base plus générique sur laquelle les implémenteurs et les pays peuvent construire leur propre flux de travail. En fonction des besoins locaux, les étapes "Résultats d'analyses en laboratoire" et "Diagnostic et notification" pourraient apparaître dans un ordre différent ; en fonction des ressources locales et de la connectivité, la saisie des données pourrait être centralisée ou décentralisée entre le laboratoire et l'établissement de santé ; en fonction du flux de données local, les données pourraient être saisies en direct ou de manière rétrospective.
 
-In particular, there could theoretically be **three general scenarios** that could change the flow and the order of the stages:
+Plus précisément, **trois scénarios généraux** pourraient modifier le déroulement et l'ordre des étapes :
 
-1) **The laboratory staff receives the tests requests and the “Diagnostic Laboratory Results” is the very first step** in the journey of the suspected case upon their enrollment. This scenario represents the theoretical work flow and should be the target to which countries should aim in the long-term investment in the digitalization of routine health data.
+1) **Le personnel du laboratoire reçoit les demandes d'analyses et les "Résultats d'analyses en laboratoire" constituent la toute première étape** dans le parcours du cas suspect après son inscription. Ce scénario représente le flux de travail théorique et devrait être l'objectif de tous les pays dans le cadre de leur investissement à long terme pour la digitalisation des données sanitaires de routine.
 
-   - In this case the “Enrollment” and “ Diagnostic Laboratory Results” stages are completed directly by the laboratory staff. The “Diagnosis and notification” stage can then occur in parallel or after the registration of the laboratory results. At this point the case can either become an official TB case, in which case they will have to receive a TB registration number in their enrollment stage, or they will receive negative laboratory results and be denotified.
+   - Dans ce cas, les étapes "Inscription" et "Résultats d'analyses en laboratoire" sont réalisées directement par le personnel du laboratoire. L'étape "Diagnostic et notification" peut alors se dérouler en parallèle ou après l'enregistrement des résultats de laboratoire. À ce stade, le cas peut soit être confirmé tuberculeux, et recevoir un numéro d'enregistrement de la tuberculose lors de l'étape d'inscription, soit recevoir des résultats négatifs et être dénotifié.
 
-2) **The suspected case gets enrolled and registered from the clinical side of the workflow before the samples are sent to the laboratory.**
+2) **Le cas suspect est inscrit et enregistré au niveau clinique du flux de travail avant que les échantillons ne soient envoyés au laboratoire.**
 
-   - In this case the “Enrollment” and the “Diagnosis and notification” stages are completed first.
-   - The “Diagnostic Laboratory Results” gets completed by the laboratory staff.
-   - The clinicians will complete the “Diagnosis and notification“ stage confirming or not their diagnosis and notifying the case if necessary. If the latter happens, the clinician will have to reopen the “Enrollment” and assign a TB registration number to the now-confirmed case.
+   - Dans ce cas, les étapes "Inscription" et "Diagnostic et notification" sont réalisées en premier.
+   - L'étape "Résultats d'analyses en laboratoire" est réalisée par le personnel du laboratoire.
+   - Les cliniciens réaliseront l'étape "Diagnostic et notification" en confirmant ou non leur diagnostic et en envoyant une notification si nécessaire. Dans ce dernier cas, le clinicien devra rouvrir l'étape "Inscription" et attribuer un numéro d'enregistrement de la tuberculose au cas désormais confirmé.
 
-   Please note that scenarios 1 and 2 are based on the assumption that the laboratory staff has the capacity to enter the data in the system locally and directly in their own facility.
+   Notez que les scénarios 1 et 2 partent du principe que le personnel de laboratoire a la capacité d'entrer les données dans le système localement et directement dans son propre établissement.
 
-   Should this capacity be inadequate for the local context, then scenario number 3 would occur:
+   Si cette capacité n'est pas adaptée au contexte local, le scénario numéro 3 se produira :
 
-3) **The data entry is centralized and there is no differentiation between laboratory and clinical staff** - the data entry relies on one (or multiple) data encoder.
-In this case the stages should be arranged in order to match the local flow of information and data.
+3) **La saisie des données est centralisée et il n'y a pas de différenciation entre le personnel de laboratoire et le personnel clinique** - la saisie des données repose sur un (ou plusieurs) encodeur de données.
+Dans ce cas, les étapes doivent être organisées de manière à correspondre au flux local d'informations et de données.
 
-Independently from the best fitting scenario for a defined local context,**the adaptation of the tracker workflow and its stages should also take in consideration whether the data entry will occur in real time or if it will rely on batch retrospective data entry**.
+Indépendamment du scénario le mieux adapté à un contexte local défini**, l'adaptation du flux de travail du Tracker et de ses étapes doit également prendre en considération le fait que la saisie des données se fera en temps réel ou de façon rétrospective et par lots**.
 
 ## Utilisateurs cibles { #intended-users } 
 
-Ce document est destiné aux personnes chargées de la mise en œuvre des systèmes de données sur la tuberculose et/ou des HMIS dans les pays, à savoir:
+Ce document est destiné aux implémenteurs des systèmes de données sur la tuberculose et/ou des HMIS dans les pays, à savoir:
 
-- **Administrateurs du système/points focaux du HMIS** : les responsables de l'installation des packages de métadonnées, de la conception et de la maintenance des systèmes de données du HMIS et/ou de la tuberculose
-- **Les points focaux du programme de lutte contre la tuberculose** Ils sont chargés de superviser les fonctions de collecte, de gestion, d'analyse et de communication des données du programme national de lutte contre la tuberculose
-- **Les spécialistes d'appui à l'implémentation**, par exemple ceux qui fournissent une assistance technique au programme de lutte contre la tuberculose ou à l'unité centrale HMIS pour soutenir et maintenir DHIS2 en tant que système national d'information sur la santé et/ou système de données sur la tuberculose
+- **Les administrateurs du système/les points focaux du HMIS** : ils sont chargés d'installer les packages de métadonnées, de concevoir et de maintenir le HMIS et/ou les systèmes de données sur la tuberculose.
+- **Les points focaux du programme de lutte contre la tuberculose**: ils sont chargés de superviser les fonctions de collecte, de gestion, d'analyse et de déclaration des données du programme national de lutte contre la tuberculose
+- **Les spécialistes d'appui à l'implémentation**: il s'agit par exemple de ceux qui fournissent une assistance technique au programme de lutte contre la tuberculose ou à l'équipe centrale du HMIS pour soutenir et maintenir DHIS2 en tant que système national d'information sur la santé et/ou système de données sur la tuberculose
 
-## Tracker Program Configuration { #tracker-program-configuration } 
+## Configuration du programme Tracker { #tracker-program-configuration } 
 
-![Overview of stages and sections](resources/images/tb_cs_030.png)
+![Aperçu des étapes et des sections](resources/images/tb_cs_030.png)
 
 | **Structure**                    | **Description**       |
 |-------------------------------|----------|
-| **Inscription**                    | The stage collects the basic TEI attributes. Please note that some of the attributes show the “GEN - “ prefix. To know more about the [**Common Metadata Library**](https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/common-metadata-library/design.html), please refer to the link provided.<br>The stage is non-repeatable.      |
-| **Diagnostic Laboratory Results** | In order to display the whole list of tests available for **diagnostic purposes**, the user should report first the “Sample information” section.<br>**The stage is repeatable**. The repeatability was set to allow countries to implement the tracker as per the local workflows and preferences - depending on whether there is the need to track ALL the samples (good and bad quality) or just the “good” samples, the stage can be repeated accordingly. |
-| **Diagnosis and notification**                  | The stage collects the baseline information, the risk factors, the potential HIV (co-)infection, and the diagnostic decision. The decision-maker will either **diagnose a suspected case with TB and notify** them, or will confirm the absence of infection. **SMS templates** for notifying the cases or confirming the absence of infection are included in the metadata package.<br>**The stage is non-repeatable**.                                    |
-| **Treatment**                     | The stage collects the information necessary for the overview of the **patient’s regimen** and status during their course of treatment.<br>**The stage is repeatable** but limited to two events and one treatment regimen change.    |
-| **Monitoring Laboratory Results** | In order to display the available tests for monitoring purposes (sputum microcopy and culture tests), the user should report first the “Sample information” section. The stage only displays the tests used for **monitoring confirmed cases** rather than all the tests that can be requested for the follow-up of the patient. The stage will display just the sputum microscopy for cases on fist-line treatment regimen, while will add the culture to teh microscopy for DRTB patients. <br>**The stage is repeatable**.    |
-| **Outcome**                       | The stage collects the final outcome of a confirmed case. In this stage the patients can be denotified if they result not being a TB case or in order to remove a duplicate enrollment. <br>**The stage is non-repeatable**.   |
+| **Inscription**                    | À cette étape sont collectés les attributs de TEI basiques. Notez que certains attributs ont le préfixe "GEN - ". Pour en savoir plus sur la [**Bibliothèque commune de métadonnée**](https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/common-metadata-library/design.html),référez-vous au lien fourni.<br>Cette étape n'est pas répétable.      |
+| **Résultats d'analyses en laboratoire** | Pour afficher la liste complète des tests disponibles à des **fins de diagnostic**, l'utilisateur doit d'abord consulter la section "Informations sur les échantillons".<br>**L'étape est répétable**. La répétabilité a été définie pour permettre aux pays d'implémenter le Tracker en fonction des flux de travail et des préférences locales - selon qu'il est nécessaire de suivre TOUS les échantillons (de bonne et de mauvaise qualité) ou seulement les "bons" échantillons, l'étape peut être répétée en conséquence. |
+| **Diagnostic et notification**                  | Cette étape permet de recueillir les informations de base, les facteurs de risque, la (co)infection potentielle par le VIH et la décision de diagnostic. Le responsable de cette étape va soit **diagnostiquer un cas suspect de tuberculose et le notifier au concerné**, soit confirmer l'absence d'infection. Des **modèles de SMS** permettant de notifier les cas ou confirmer l'absence d'infection sont inclus dans le package de métadonnées.<br>**Cette étape n'est pas répétable**.                                    |
+| **Traitement**                     | Cette étape permet de collecter les informations nécessaires pour avoir une vue d'ensemble du **régime** et de l'état du patient au cours de son traitement.<br>**L'étape répétable** mais elle est limitée à deux événements et à un changement de régime de traitement.    |
+| **Suivi des résultats de laboratoire** | Afin d'afficher les tests disponibles pour les besoins du suivi (tests de microscopie et de culture des expectorations), l'utilisateur doit d'abord renseigner la section "Informations sur les échantillons". L'étape n'affiche que les tests utilisés pour le **suivi des cas confirmés** et non tous les tests qui peuvent être demandés pour le suivi du patient. Elle n'affiche que l'examen microscopique de l'expectoration pour les cas sous traitement de première intention, tandis qu'elle ajoute la culture à l'examen microscopique pour les patients atteints de tuberculose résistante aux médicaments (DRTB). <br>**Cette étape est répétable**.    |
+| **Résultat**                       | Cette étape permet de recueillir les résultats finaux d'un cas confirmé. Au cours de cette étape, les patients peuvent être dénotifiés s'ils sont confirmés non tuberculeux ou pour éliminer une double inscription. <br>**Cette étape n'est pas répétable**.   |
 
-### Stage Details { #stage-details } 
+### Détails de l'étape { #stage-details } 
 
 #### Inscription { #enrollment } 
 
-When a client is enrolled in the TB case surveillance as a tracked entity instance (TEI), TEI attributes are recorded to form the case profile.
+Lorsqu'un client est inscrit au programme de surveillance des cas de tuberculose en tant qu'instance d'entité suivie (TEI), les attributs de la TEI sont enregistrés pour former le profil du cas.
 
-![Enrollment stage](resources/images/tb_cs_003.png)
+![Étape d'inscription](resources/images/tb_cs_003.png)
 
-**The enrollment date has been set up as a placeholder** allowing the users to utilize it according to the needs of implementation. It can be used as date of registration in DHIS2 or as date of first consultation, visit or investigation. When enrolling confirmed TB cases only, it is possible to keep using enrollment date as date of diagnosis. In this case, the Laboratory tracker should be isolated from the TB case surveillance module and set up as a separate program.
+**La date d'inscription a été définie comme un espace réservé** permettant aux utilisateurs de l'utiliser en fonction des besoins de l'implémentation. Elle peut être utilisée comme date de l'inscription à DHIS2 ou comme date de la première consultation, visite ou enquête. Lors de l'enregistrement des cas confirmés de tuberculose uniquement, il est possible de continuer à utiliser la date d'inscription comme date de diagnostic. Dans ce cas, le Tracker du laboratoire doit être isolé du module de surveillance des cas de tuberculose et configuré comme un programme distinct.
 
-**Note that the TB registration number has been left empty**. If the data entry is occurring in real time, at this stage the clinician/data entry operator cannot know whether the suspected case is confirmed or not. The users will have to reopen the enrollment and assign to the confirmed patient a registration number after having received the diagnostic laboratory results.
+**Notez que le numéro d'enregistrement de la tuberculose n'a pas été renseigné**. Si la saisie des données se fait en temps réel, à cette étape, le clinicien/l'opérateur de saisie ne peut pas savoir si le cas suspect est confirmé ou non. Les utilisateurs devront rouvrir l'inscription et attribuer un numéro d'enregistrement au patient confirmé après avoir reçu les résultats d'analyses en laboratoire.
 
-If the data entry is retrospective and done in batch, the data encoder will already know whether the patient has been confirmed or not, and will be able to already assign a registration number accordingly. For this reason the TB registration number has not been set as a compulsory attribute.
+Si la saisie des données se fait de façon rétrospective et par lots, l'opérateur de saisie saura déjà si le patient a été confirmé malade ou non et pourra déjà attribuer un numéro d'enregistrement. Ceci explique pourquoi le numéro d'enregistrement de la tuberculose n'a pas été défini comme un attribut obligatoire.
 
-Upon the completion of the enrollment, the **landing page for the next stages appears blank**. This has been set for countries to be able to implement the tracker according to their own work flows as described in the “Rationale for Program Structure” chapter of this guide.
-The next stages can therefore be the “Diagnostic Laboratory Results” or the “Diagnosis and notification” stages, either in this order, or in the opposite order.
+Une fois l'inscription terminée, la **page destinée aux étapes suivantes apparaît vide**. Cela a été définit ainsi pour permettre aux pays d'implémenter le Tracker selon leurs propres flux de travail, tel que décrit dans le chapitre "Justification de la structure du programme" de ce guide.
+Les étapes suivantes peuvent donc être les étapes "Résultats d'analyses en laboratoire" ou "Diagnostic et notification", soit dans cet ordre, soit dans l'ordre inverse.
 
-#### Diagnostic Laboratory Results { #diagnostic-laboratory-results } 
+#### Résultats d'analyses en laboratoire { #diagnostic-laboratory-results } 
 
-![Diagnostic test stage](resources/images/tb_cs_004.png)
+![Étape du test de diagnostic](resources/images/tb_cs_004.png)
 
-The full list of diagnostic tests will automatically appear only if the sample is flagged as received and if the quality is good.
-The stage includes the following tests:
+La liste complète des tests de diagnostic n'apparaîtra automatiquement que si l'échantillon est marqué comme reçu et si la qualité est bonne.
+L'étape comprend les tests suivants :
 
-- Sputum smear microscopy;
-- TB-LAMP;
-- LF-LAM;
-- Xpert MTB/RIF;
-- Xpert MTB/RIF Ultra;
-- Truenat;
-- Culture in solid media (e.g. LJ);
-- Culture in liquid media (e.g. MGIT);
-- Initial phenotypic DST in solid media (e.g. LJ);
-- Initial phenotypic DST in liquid media (e.g. MGIT);
-- Subsequent phenotypic DST in solid media (e.g. LJ);
-- Subsequent phenotypic DST in liquid media (e.g. MGIT);
-- First-line LPA;
-- Second-line LPA
+- Examen microscopique du frottis d'expectoration ;
+- TB-LAMP ;
+- LF-LAM ;
+- Xpert MTB/RIF ;
+- Xpert MTB/RIF Ultra ;
+- Truenat ;
+- Culture en milieu solide (par exemple LJ) ;
+- Culture en milieu liquide (par exemple TICM) ;
+- TSM phénotypique initiale en milieu solide (p. ex. LJ) ;
+- TSM phénotypique initial en milieu liquide (par exemple TICM) ;
+- TSM phénotypique ultérieur en milieu solide (p. ex. LJ) ;
+- TSM phénotypique ultérieur en milieu liquide (p. ex. TICM) ;
+- LPA de première intention ;
+- LPA de deuxième intention
 
-As an example of the data entry for two of the tests:
+Voici un exemple de saisie de données pour deux tests :
 
-![Smear microscopy](resources/images/tb_cs_005.png)
+![Microscopie de frottis](resources/images/tb_cs_005.png)
 
 ![Xpert MTB/RIF](resources/images/tb_cs_006.png)
 
-**Date of test results** (including inoculation date for culture tests) has to be provided for each test. The purpose of this is to:
+**La date des résultats des tests** (y compris la date d'inoculation pour les tests de culture) doit être fournie pour chaque test. L'objectif est de :
 
-- assign the test event to the right period of time in analytics;
-- help monitoring the delay between reception and result dates.
+- attribuer l'événement test à la bonne période dans l'analyse ;
+- aider au suivi du délai entre la date de réception et la date des résultats.
 
-The suggested design of the diagnostic laboratory stage is to enter final valid test results only.
+La proposition de conception de l'étape de diagnostic en laboratoire consiste à ne saisir que les résultats finaux valides des tests.
 
-**Examples:**
+**Exemples :**
 
-- 1 sample - 1 microscopy test:
-Record test results for the applicable test in the data entry form.
+- 1 échantillon - 1 test microscopique :
+Enregistrer les résultats de test pour les tests correspondants dans le formulaire de saisie des données.
 
-- 1 sample - 1 microscopy and 1 Xpert MTB/RIF test:
-Record microscopy and Xpert MTB/RIF results in the data entry form.
+- 1 échantillon - 1 test microscopique et 1 test Xpert MTB/RIF :
+Enregistrer les résultats du test microscopique et du test Xpert MTB/RIF dans le formulaire de saisie des données.
 
-- 1 sample - 2 repeated microscopy tests, where test 1 is invalid and test 2 is valid:
-Record results of test 2 (valid test result) in the data entry form.
+- 1 échantillon - 2 tests microscopiques répétés, où le test 1 n'est pas valide et le test 2 est valide :
+Enregistrer les résultats du test 2 (résultat valide du test) dans le formulaire de saisie des données.
 
-This recommendation minimizes the data entry workload, and aligns with the basic requirement of not using tracker as a lab management tool.
+Cette recommandation réduit la charge de travail liée à la saisie des données et respecte le principe de base selon lequel le Tracker ne doit pas être utilisé comme un outil de gestion de laboratoire.
 
-If locally there is a need to monitor the workload of the lab outside the local lab management system, it is possible to add a data element in each test section and record the number of tests that had to be run before receiving a final result.
-If the local needs request a more detailed collection of samples tested independent of the results, the tracker could be uptaken to record multiple tests per sample and per case.
+Si, dans un contexte local, il est nécessaire de contrôler la charge de travail du laboratoire en dehors du système local de gestion des laboratoires, il est possible d'ajouter un élément de données dans chaque section de test et d'enregistrer le nombre de tests qui ont dû être effectués avant d'obtenir un résultat final.
+Si les besoins locaux exigent une collecte plus détaillée des échantillons testés indépendamment des résultats, le Tracker peut être amélioré pour enregistrer plusieurs tests par échantillon et par cas.
 
-**Implementers should therefore investigate the analytic needs of the implementing country and adjust the indicators related to the number of tests and results accordingly.**
+**Les implémenteurs doivent donc étudier les besoins du pays concerné en matière d'analyses et adapter les indicateurs relatifs au nombre de tests et aux résultats.**
 
-#### Diagnosis and Notification { #diagnosis-and-notification } 
+#### Diagnostic et notification { #diagnosis-and-notification } 
 
-According to current tracker design, the Diagnosis and Notification event may be created before or after the Diagnostic laboratory Results event.
+Selon la conception actuelle du Tracker, l'événement 'Diagnostic et notification' peut être créé avant ou après l'événement 'Résultats d'analyses en laboratoire'.
 
-**The Diagnosis and Notification event date is a placeholder** that can be utilized according to the implementation needs. It can be used as the date of initial visit, consultation or sample collection.
+**La date de l'événement 'Diagnostic et notification' est un espace réservé** qui peut être utilisé selon les besoins de l'implémentation. Elle peut être utilisée comme date de la visite initiale, de la consultation ou de la collecte d'échantillons.
 
 > **IMPORTANT**
 >
-> If data entry is happening based on paper forms or data import, and the event date is used as date of data entry in DHIS2, there is a chance that the registration event will appear after other events in the timeline, which may be misleading for users.
+> Si la saisie des données se fait sur la base de formulaires papier ou de l'importation de données, et que la date d'événement est utilisée comme date de saisie des données dans DHIS2, il est possible que l'événement d'enregistrement apparaisse après d'autres événements dans la chronologie, ce qui peut induire les utilisateurs en erreur.
 
-The registration stage provides an overview of the baseline information, the eventual risk factors, whether the suspected case is HIV(+), and, most importantly, the section on diagnostic decisions.
+L'étape d'enregistrement fournit un aperçu des informations de base, des éventuels facteurs de risque, du statut sérologique du cas suspect et, surtout, de la section relative aux décisions de diagnostic.
 
-![Baseline info](resources/images/tb_cs_007.png)
+![Informations de base](resources/images/tb_cs_007.png)
 
-The system will **automatically provide a warning message with the definition of the selected history of previous treatment**. The definitions have been set as per the WHO global guidelines and should be adapted to the local context.
-A question on whether the patient has ever received 2nd line treatment before will appear should “Relapse”, “Treatment after failure or LTFU”, or “Other previously treated” is selected as history.
+Le système **enverra automatiquement un message d'avertissement avec la définition de l'historique de traitement antérieur sélectionné**. Les définitions ont été élaborées conformément aux lignes directrices mondiales de l'OMS et doivent être adaptées au contexte local.
+Une question apparaîtra sur le fait de savoir si le patient a déjà reçu un traitement de 2ème intention si "Rechute", "Traitement après échec ou PDV", ou "Autre traitement antérieur" est sélectionné comme antécédent.
 
-![Baseline info for 2-line treatment](resources/images/tb_cs_079.png)
+![Informations de base pour le traitement de 2ème intention](resources/images/tb_cs_079.png)
 
-![Risk factors and HIV status](resources/images/tb_cs_008.png)
+![Facteurs de risque et statut sérologique](resources/images/tb_cs_008.png)
 
-In case of confirmed seropositivity of the patient the system will prompt an expansion of the HIV information and will request the date of the last test and whether the patient is enrolled in an ART cohort. If the latest HIV test date is **older than 6 months** from the date of diagnosis, a warning message will prompt the clinician to schedule another HIV test for the patient.
+Si le patient est confirmé séropositif, le système invite à développer les informations sur le VIH et demande la date du dernier test et si le patient est inscrit dans une cohorte de TAR. Si la date du dernier test VIH est **plus de 6 mois** après la date du diagnostic, un message d'avertissement invitera le clinicien à programmer un autre test VIH pour le patient.
 
-At this point, if the laboratory results are available, the clinician/data entry clerk should be able to report the diagnostic decision.
+À ce stade, si les résultats de laboratoire sont disponibles, le clinicien ou l'opérateur de saisie des données doit être en mesure de rapporter la décision de diagnostic.
 
-![Diagnosis of a presumptive case](resources/images/tb_cs_080.png)
+![Diagnostic d'un cas présumé](resources/images/tb_cs_080.png)
 
-![Diagnosis](resources/images/tb_cs_009.png)
+![Diagnostic](resources/images/tb_cs_009.png)
 
-Once **the case is notified**, the user needs to fill in the fields in the Diagnostic decision section.
+Une fois **le cas notifié**, l'utilisateur doit remplir les champs de la section 'Décision de diagnostic'.
 
-If positive laboratory test results are available and entered in the “Diagnostic Laboratory Results” stage, **bacteriological confirmation will be assigned automatically**. If the local guidelines require the clinician to enter this information manually, the PRs linked to the confirmation method can be removed.
+Si des résultats de tests en laboratoire positifs sont disponibles et saisis à l'étape "Résultats d'analyses en laboratoire", **la confirmation bactériologique sera attribuée automatiquement**. Si les directives locales exigent que le clinicien saisisse ces informations manuellement, les PR liés à la méthode de confirmation peuvent être supprimés.
 
-A **notification is sent to the patient** if the “Notify the case?” checkbox is clicked, the diagnosis, date of diagnosis, the notification date and the patient’s telephone number are recorded in the system.
+Une **notification est envoyée au patient** si la case "Notifier le cas ?" est cochée et que le diagnostic, la date du diagnostic, la date de notification et le numéro de téléphone du patient sont enregistrés dans le système.
 
-If the test results are negative but the case is **diagnosed clinically**, the patient can be notified as “clinically diagnosed”.
+Si les résultats des tests sont négatifs mais que le cas est **diagnostiqué cliniquement**, le patient peut être notifié comme "diagnostiqué cliniquement".
 
-![Clinical diagnosis](resources/images/tb_cs_010.png)
+![Diagnostic clinique](resources/images/tb_cs_010.png)
 
-If the laboratory **results are negative and no notification is necessary**, the user should tick “NO” in the “Do you want to notify the case?”. This was the case is excluded from analysis of TB cases. **An SMS is sent to the patient if the patient is not diagnosed**
+Si les **résultats de laboratoire sont négatifs et qu'aucune notification n'est nécessaire**, l'utilisateur doit cocher "NON" dans la case "Voulez-vous notifier le cas ?". Le cas est alors exclu de l'analyse des cas de tuberculose. **Un SMS est envoyé au patient s'il n'est pas diagnostiqué**.
 
-![The suspected case results as negative](resources/images/tb_cs_011.png)
+![Le cas suspecté est négatif](resources/images/tb_cs_011.png)
 
-Independently from whether the diagnosis is positive (laboratory- or clinically-derived) or negative, the tracker presents two key dates: date of diagnosis and date of notification. The former is the date when the patient was diagnosed, while the latter is teh date on which they received the notificatin of their status. Although the use of these dates might be subject to change depending on the implementation, it should be noted that the period boundary for the PIs counting notifications (e.g. All TB cases notified), is based on the fate of diagnosis as per WHO guidelines. 
-The primary purpose behind the inclusion of the date of diagnosis and the date of notification within the system is to facilitate future analysis and potential applications. For instance, these timestamps can serve as valuable metrics for evaluating service quality and ascertaining the efficiency with which healthcare facilities promptly inform patients.
+Indépendamment du fait que le diagnostic soit positif (obtenu en laboratoire ou cliniquement) ou négatif, le Tracker présente deux dates clés : la date du diagnostic et la date de notification. La première est la date à laquelle le patient a été diagnostiqué, tandis que la seconde est la date à laquelle il a reçu la notification de son statut. Bien que l'utilisation de ces dates puisse être modifiée pour les besoins de l'implémentation, il faut noter que la limite de période pour les indicateurs de programme qui comptent les notifications (par exemple, tous les cas de tuberculose notifiés) est basée sur la date du diagnostic conformément aux lignes directrices de l'OMS. 
+L'inclusion de la date du diagnostic et de la date de notification dans le système a pour principal objectif de faciliter les analyses futures et les applications potentielles. Par exemple, ces horodatages peuvent servir de paramètres précieux pour évaluer la qualité des services et vérifier l'efficacité avec laquelle les établissements de soins de santé informent rapidement les patients.
 
-Once a presumptive case is bacteriologically confirmed or clinically diagnosed, they should receive a **TB registration number**. This information is also highlighted as a **reminder in the Feedback** window on the top right corner of the data entry screen just above the enrollment information. The clinician/data entry clerk should therefore reopen the enrollment window and assign a TB registration number according to the national guidelines. Although the default configuration leaves this space blank and editable, implementers might want to consider if an automatic assignment of a number (or alphanumeric sequence) would be appropriate as per the local workflow.
+Lorsqu'un cas présumé est confirmé bactériologiquement ou diagnostiqué cliniquement, il doit recevoir un **numéro d'enregistrement de la tuberculose**. Cette information est également mise en évidence en tant que **rappel dans la fenêtre Commentaires** située dans l'angle supérieur droit de l'écran de saisie des données, juste au-dessus des informations relatives à l'inscription. Le clinicien ou l'opérateur de saisie des données doit donc rouvrir la fenêtre d'inscription et attribuer un numéro d'enregistrement de la tuberculose conformément aux directives nationales. Bien que la configuration par défaut laisse cet espace vide et modifiable, les implémenteurs pourraient envisager une attribution automatique de numéro (ou d'une séquence alphanumérique) en fonction du flux de travail local.
 
-![TB registration number assignment for clinically and bacteriologically diagnosed cases](resources/images/tb_cs_019.png)
+![Attribution du numéro d'enregistrement de la tuberculose pour les cas diagnostiqués cliniquement et bactériologiquement](resources/images/tb_cs_019.png)
 
-The same info will also appear as an **error message** under the “Date of diagnosis” as a reminder to assign a Tb registration number to the newly identified case.
+La même information apparaîtra également sous la forme d'un **message d'erreur** sous la "Date du diagnostic" pour rappeler qu'il faut attribuer un numéro d'enregistrement de la tuberculose au cas nouvellement identifié.
 
-![Error message for the TB registration number assignment for clinically and bacteriologically diagnosed cases](resources/images/tb_cs_020.png)
+![Message d'erreur pour l'attribution du numéro d'enregistrement de la tuberculose pour les cas diagnostiqués cliniquement et bactériologiquement](resources/images/tb_cs_020.png)
 
-If the case is diagnosed with a new episode of bacteriologically confirmed pulmonary TB, a section to record the number of people (excluding the index case) living in the same household will become available.
+Si le cas est diagnostiqué avec un nouvel épisode de tuberculose pulmonaire confirmée bactériologiquement, une section sera disponible pour enregistrer le nombre de personnes (à l'exclusion du cas index) vivant dans le même ménage.
 
-The user will also be prompted to register the household contacts in the TB Household Contacts Investigation module using the relationship widget.
+L'utilisateur sera également invité à enregistrer les contacts domestiques dans le module d'enquête "TB contacts domestiques" à partir du widget de relation.
 
 #### Traitement { #treatment } 
 
-![Treatment](resources/images/tb_cs_012.png)
+![Traitement](resources/images/tb_cs_012.png)
 
-In this stage the clinician/data entry clerk will report the **regimen of the patient** - 1st or 2nd line treatment. As the tests did not detect any resistance, the patient is automatically assigned the DS (drug susceptible) option. The clinician can tick the box in the section to overwrite the automatic assignment and manually assign the right classification according to their clinical opinion. The automatic classification could also be completely removed, which will in turn compel the clinician to manually assign a classification based on the laboratory results for every patient. 
-The treatment end date should be applied only if it is needed to overwrite the current treatment - e.g. the patient needs to be put on 2nd line from 1st line treatment regimen. The decision of being able to change the treatment rather than the notification and diagnosis stage was taken in odrder to have more flexibility in case of mistakes and to keep the history of the patient rather than overwriting and removing the past diagnoses.
+À cette étape, le clinicien ou l'opérateur de saisie des données indiquera le **régime du patient** - traitement de première ou de deuxième intention. Étant donné que les tests n'ont pas détecté de résistance, le patient se voit automatiquement attribuer l'option SM (sensible aux médicaments). Le clinicien peut cocher la case de la section pour remplacer l'attribution automatique et attribuer manuellement la bonne classification en fonction de son avis clinique. La classification automatique peut également être complètement supprimée, ce qui obligera le clinicien à attribuer manuellement une classification sur la base des résultats de laboratoire pour chaque patient. 
+La date de fin de traitement ne doit être appliquée que s'il faut remplacer le traitement en cours - par exemple, le patient doit passer d'un traitement de première intention à un traitement de deuxième intention. La décision de pouvoir modifier le traitement plutôt que la notification et le diagnostic a été prise afin d'avoir plus de flexibilité en cas d'erreur et de conserver l'historique du patient plutôt que de remplacer et de supprimer les diagnostics antérieurs.
 
 The date of treatment initiation (event date) is important for the calculation of the delay between diagnosis and the debut of the treatment.
 The Treatment Status section contains **automatically assigned standard calculations of treatment durations and treatment initiation delays in days**.
