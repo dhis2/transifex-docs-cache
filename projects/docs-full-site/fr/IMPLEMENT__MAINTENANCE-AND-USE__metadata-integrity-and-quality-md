@@ -1,0 +1,725 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs-implementation/blob/metadata-assessment/content/maintenance_use/metadata_quality_assessment.md"
+revision_date: "2022-04-04"
+---
+
+# Intégrité et qualité des métadonnées { #metadata-integrity-and-quality }
+
+Bien que la qualité des métadonnées puisse être quelque peu subjective, il existe un certain nombre de principes clés qui peuvent être évalués objectivement et qui devraient être universellement respectés dans toutes les implémentations du DHIS2. Pour évaluer la qualité des métadonnées, une évaluation des métadonnées peut être réalisée. Dans ce contexte, nous pouvons définir l'évaluation des métadonnées comme l'examen de la qualité de la configuration d'une implémentation spécifique. Malgré l'étendue du champ d'application, notre objectif est de décomposer le processus d'évaluation en éléments gérables qui peuvent être examinés, classés par ordre de priorité et corrigés au fil du temps. L'évaluation régulière des métadonnées et leur mise à jour permanente constituent une part importante de la configuration et de la maintenance à long terme de DHIS2. Si les tâches de configuration peuvent souvent être exécutées rapidement grâce à un certain nombre de mécanismes différents, sans une coordination adéquate, la configuration des systèmes DHIS2 peut se heurter à un certain nombre de difficultés au fil du temps. Quelques exemples des effets de ces défis de configuration comprennent :
+
+-   L'impossibilité de trouver les éléments corrects lors de la création des sorties de données
+-   L'incapacité à désagréger correctement les données lors de la création des sorties de données
+-   Une incapacité à accéder aux éléments corrects lors de la saisie ou de la création de sorties de données
+-   Les défis liés à la qualité des données (quelques exemples : inexactitudes significatives dans les tendances à long terme des données et des taux de déclaration, possibilité de stocker des valeurs de données non valides, variables multiples représentant le même concept et stockant des valeurs de données différentes).
+-   La difficulté à identifier les éléments corrects à utiliser lors de la configuration des mécanismes d'échange de données
+-   Des erreurs lors de la mise à jour des versions de DHIS2
+-   Gestion d'une quantité énorme de métadonnées non valides
+
+L'objectif de ce guide est de fournir des outils et des méthodes permettant d'identifier les problèmes liés aux métadonnées. Un guide distinct sur la maintenance des métadonnées est en cours d'élaboration ; il traite des pratiques de configuration susceptibles d'entraîner des problèmes de qualité des métadonnées et des moyens de les éviter, par exemple en évitant d'effectuer des travaux de configuration dans les systèmes de production et en établissant des SoP (procédure d'opération standardisée) pour les modifications de métadonnées. Enfin, une future section sur le travail avec les métadonnées fournira des conseils sur comment traiter les problèmes de métadonnées, tels que la suppression des objets qui ne sont plus utilisés.
+
+La maintenance et l'évaluation des métadonnées doivent être considérées comme des processus connexes qui s'alimentent mutuellement.
+
+1. Processus réactif : En raison des défis posés par la configuration, un système DHIS2 devra être révisé et nettoyé en conséquence.
+2. Processus proactif : Pour éviter les problèmes de configuration, des processus peuvent être mis en place afin que la configuration du DHIS2 reste efficace au fil du temps.
+
+![modèles_de_gestion](resources/images/models_of_management.png)
+
+## Évaluation de l'intégrité et la qualité des métadonnées { #metadata_assessment_overview }
+
+Les processus réactifs consistent à évaluer les métadonnées afin d'identifier les problèmes potentiels et de les résoudre. Il peut s'agir d'un processus exigeant qui doit être correctement planifié, avec du temps et des ressources consacrés à l'identification et à la résolution des problèmes. Bien que la planification et l'exécution d'une évaluation des métadonnées soient brièvement abordées [ci-dessous] (#metadata_assessment_planning), ce guide se focalise sur les aspects plus pratiques et techniques de l'évaluation des métadonnées et de la résolution des problèmes courants.
+
+Ce guide se focalise principalement sur deux méthodes d'évaluation des métadonnées :
+
+1. par un [examen manuel des métadonnées] (#metadata_assessment_manual)
+2. par un [outil d'évaluation des métadonnées] (#metadata_assessment_tool) qui peut être connecté directement au DHIS2, afin d'effectuer des vérifications des métadonnées
+
+Ces deux méthodes sont décrites ci-dessous.
+
+### Planifier et effectuer une évaluation des métadonnées { #metadata_assessment_planning }
+
+Pour réaliser l'évaluation, vous pouvez commencer par obtenir l'adhésion d'une grande variété de parties prenantes. Pour ce faire, il peut être utile de documenter l'étendue des questions abordées dans ce guide en produisant des statistiques récapitulatives sur les problèmes qui ont été identifiés. Ces statistiques peuvent être très utiles à présenter à un grand public et peuvent être utilisées pour soutenir l'adhésion en fournissant de brèves explications sur les problèmes qui ont été identifiés. Dans le **Guide de référence pour l'évaluation des métadonnées**, vous trouverez des outils qui vous aideront à créer des comptes récapitulatifs rapides des problèmes que vous trouvez dans votre propre implémentation, ainsi que des outils qui génèrent des rapports plus détaillés sur chaque élément spécifique qui nécessite une attention particulière. Nous recommandons que l'évaluation comporte les éléments suivants :
+
+1. Définition du champ d'application de l'évaluation et partage de celui-ci avec les parties prenantes concernées
+2. Identification de l'étendue des problèmes au sein d'une implémentation en générant et en documentant des statistiques récapitulatives de ce qui a été trouvé.
+3. Présentation de ces résultats au groupe de parties prenantes
+4. Identification des éléments individuels qui posent problème et élaboration de stratégies visant à les atténuer ou à les corriger, si nécessaire.
+5. Détails et priorités des corrections
+6. Implémentation de ces corrections sur les systèmes de développement puis de production
+
+## Examen manuel des métadonnées{ #metadata_assessment_manual }
+
+L'utilisation de l'[outil d'évaluation des métadonnées] (#metadata_assessment_tool) et des [contrôles d'intégrité des données] intégrés (#data_admin_data_integrity) est un moyen efficace d'identifier de nombreux problèmes de métadonnées dans le DHIS2, mais certains processus d'examen ne peuvent pas être automatisés. Il s'agit notamment de l'examen de :
+
+-   Convention d'appellation 
+-   Formule d'indicateurs
+-   Objets de métadonnées dupliqués
+-   Sources de données dupliquées
+-   Configuration des éléments du tableau de bord
+-   Affectation de l'unité d'organisation du programme et de l'ensemble de données
+-   Partage des programmes et des données
+
+### Problèmes de documentation{ #documenting-issues }
+
+L'examen des métadonnées en vue d'identifier les éventuels problèmes doit toujours être effectué dans le but de résoudre ces problèmes. Il est parfois possible d'y remédier immédiatement, mais dans de nombreux cas, cela est impossible. Par exemple, il peut être nécessaire de se concerter avec différentes parties prenantes pour identifier la source de données ou les définitions de métadonnées appropriées, ou bien la résolution des problèmes est techniquement compliquée et nécessite des tests et un examen appropriés. Il est donc important de mettre en place un mécanisme de recensement des problèmes identifiés, afin d'en assurer le suivi et d'élaborer un plan pour y remédier.
+
+### Règles d'attribution des noms{ #naming-conventions }
+
+Pour une analyse complète des principes qui régissent les bonnes conventions de nomenclature, veuillez consulter cette [ressource](https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/naming-conventions.html). Dans la mesure du possible, vous devriez envisager de les implémenter dans le(s) système(s) que vous êtes en train d'examiner.
+
+Pour mettre à jour les noms de vos métadonnées en vrac, envisagez d'utiliser l'[éditeur de métadonnées DHIS2] (https://workspace.google.com/marketplace/app/d2_metadata_review_tool/672531419470). Cela vous permettra de modifier toutes vos métadonnées dans une feuille Google et de synchroniser vos informations avec le serveur. Vous pouvez consulter le guide complet de l'éditeur de métadonnées [ici] (https://docs.google.com/document/d/1Y4u78llIOTb5gNPHLJks528kbz8czXH9O6yKMEaLFI0/edit?usp=sharing).
+
+### Formule d'indicateurs { #indicator-formula }
+
+Un examen manuel de la formule d'indicateurs peut être nécessaire pour déterminer si la formule d'indicateurs est correcte. L'examen de la formule d'indicateurs, bien qu'il s'agisse potentiellement d'une question de configuration, peut affecter la qualité des données et les résultats des données si des hypothèses incorrectes sont formulées au sujet de la formule. Voici quelques exemples de points à vérifier lors de l'examen de la formule d'indicateurs :
+
+1. S'assurer que les bons éléments de données font partie du numérateur et du dénominateur respectivement en comparant les éléments de données avec les descriptions du numérateur et du dénominateur.
+2. S'assurer que le bon type d'indicateur a été sélectionné pour l'indicateur examiné
+3. Dans la mesure du possible, vérifier que le dénominateur est défini correctement (toutefois, il peut s'agir plutôt d'un problème de qualité des données, qui doit faire l'objet d'un examen plus détaillé de la qualité des données)
+
+Vous pouvez utiliser l'[éditeur de métadonnées DHIS2] (https://workspace.google.com/marketplace/app/d2_metadata_review_tool/672531419470) pour passer en revue certaines formules si vous êtes familier avec sa configuration, mais une méthode plus traditionnelle de navigation dans les indicateurs à travers l'interface utilisateur peut être utilisée à l'aide de l'[application de navigation dans les métadonnées de l'OMS] (https://apps.dhis2.org/app/af9a31fb-350c-4130-964b-3a413183aa54).
+
+### Sources de données en double { #duplicate-data-sources }
+
+Les sources de données en double apparaissent lorsque plusieurs variables d'un système DHIS2 produisent des rapports sur le même concept. Il existe généralement trois types de sources de données en doublon que vous pouvez rencontrer dans DHIS2 :
+
+-   Les doublons de variables au sein d'un même formulaire de collecte de données
+-   Doublons de variables entre différents programmes (généralement sur des formulaires différents)
+-   Doublons de variables dans les programmes (sur le même formulaire ou sur des formulaires différents)
+
+#### Doublons de variables au niveau d'un même formulaire de collecte de données { #duplicate-variables-within-the-same-data-collection-form }
+
+Cela se produit lorsqu'un ou plusieurs éléments de données fournissent un total en doublon avec un ou plusieurs autres éléments de données sur le même formulaire. À titre d'exemple, nous pouvons examiner les formulaires disponibles dans la figure 1.
+
+![duplicate_vars_same_form](resources/images/duplicate_vars_same_form.png) **Figure 1**
+
+Dans ce cas, il est difficile de déterminer la valeur correcte.
+
+#### Doublons de variables entre différents programmes{ #duplicate-variables-between-different-programs }
+
+Cela se produit lorsque deux ou plusieurs programmes au sein d'un système intégré collectent les mêmes informations (figure 2). Dans certains cas, les programmes ne parviennent pas à se mettre d'accord sur la valeur et celle-ci doit être maintenue telle quelle. Cette situation devient toutefois problématique lorsqu'il s'agit de déterminer une valeur nationale convenue, car les valeurs peuvent être différentes d'un programme à l'autre et il n'est pas recommandé de les conserver intactes.
+
+![duplicate_vars_different_programs](resources/images/duplicate_vars_different_programs.png) **Figure 2**
+
+#### Doublons de variables dans les programmes (sur le même formulaire ou sur des formulaires différents){ #duplicate-variables-within-programs-either-on-the-same-or-different-forms }
+
+Cela se produit lorsque les mêmes informations sont collectées dans le cadre d'un même programme (Figure 3). Cela peut être problématique car il devrait y avoir une concordance entre les valeurs si possible (ce qui n'est pas toujours le cas lorsque ce problème est constaté).
+
+![duplicate_vars_same_programs](resources/images/duplicate_vars_same_programs.png) **Figure 3**
+
+#### Résolution des sources de données en doublon { #resolving-duplicate-data-sources }
+
+Comme pour les problèmes liés à la définition des dénominateurs, ce point devra peut-être faire l'objet d'un examen plus détaillé en matière de qualité des données. Étant donné que ces découvertes nécessiteront souvent un examen/une révision des formulaires dans les différents programmes afin de rationaliser ces sources de données en doublon, ce problème ne sera probablement pas résolu par une modification immédiate de la configuration. Il est important d'identifier ces problèmes et de travailler avec les programmes pour les résoudre sur la base des procédures locales.
+
+### Configuration des éléments du tableau de bord { #dashboard-item-configuration }
+
+Deux éléments sont à prendre en considération lors de l'examen des éléments du tableau de bord :
+
+1. L'élément du tableau de bord doit-il être partagé pour être vu par les groupes d'utilisateurs avec lesquels le tableau de bord est partagé 
+2. L'élément du tableau de bord doit-il être associé à des unités d'organisation ou à des périodes relatives afin de pouvoir être réutilisé ou mis à jour régulièrement 
+
+Dans le cas où un élément du tableau de bord doit afficher des données pour une période ou une unité d'organisation fixe, il n'est pas nécessaire d'appliquer une quelconque relativité à l'élément. Si l'élément doit être régulièrement mis à jour avec de nouvelles données, ou si les utilisateurs avec lesquels le tableau de bord est partagé n'ont pas accès aux unités d'organisation fixes sélectionnées dans l'élément, ces éléments doivent être revus et mis à jour avec des sélections correctes de périodes relatives et d'unités d'organisation, comme il convient.
+
+### Affectation des unités d'organisation des programmes et des ensembles de données{ #program-and-data-set-organisation-unit-assignment }
+
+Vérifiez que les programmes et les ensembles de données ne sont attribués qu'aux unités d'organisation qui sont censées établir des rapports à leur sujet. Pour les ensembles de données, cela peut entraîner des problèmes d'exhaustivité du taux de déclaration (le nombre de déclarations attendues peut être plus élevé qu'il ne devrait l'être) et des données peuvent être saisies là où elles ne devraient pas l'être ; tandis que dans le cas des programmes, vous pourriez avoir suivi des entités et/ou des événements enregistrés dans des unités d'organisation qui ne devraient pas l'être.
+
+<!--
+#### Déplacement de données agrégées{ #moving-aggregate-data }
+
+
+#### Déplacement des données de suivi { #moving-tracker-data }
+-->
+
+### Partage des programmes et des données{ #program-and-data-set-sharing }
+
+Vérifiez que les paramètres de partage des métadonnées et des données ont été appliqués correctement aux programmes et aux ensembles de données. En particulier, si des utilisateurs ou des groupes d'utilisateurs ne peuvent pas effectuer des opérations sur les programmes ou les ensembles de données alors qu'ils devraient pouvoir le faire, il peut être nécessaire de modifier ces paramètres de partage.
+
+Une description plus détaillée de l'application des paramètres de partage aux programmes et aux ensembles de données est disponible dans la [documentation](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/about-sharing-of-objects.html) ainsi que par un certain nombre de vidéos sur [YouTube] (https://www.youtube.com/playlist?list=PLo6Seh-066RwslDmyZkiKjejgMCKNaJTC).
+
+### Contrôles liés aux catégories{ #category-related-checks }
+
+#### Options de doublons de catégories { #duplicate-category-options }
+
+Les options de catégorie peuvent et doivent être réutilisées dans plusieurs catégories pour représenter le même concept (par exemple, un groupe d'âge). En plus de réduire l'encombrement et la confusion potentielle liés à l'existence de plusieurs options pour le même concept, cela facilite l'analyse des données puisque les éléments de données utilisant la même option de catégorie peuvent être présentés ensemble avec la même désagrégation dans les outils de visualisation.
+
+Si des options de catégorie en doublons sont identifiées et qu'elles sont incluses dans des catégories qui font partie de combinaisons de catégories déjà associées à des données, il ne faut _pas_ essayer de les dédoublonner. Toutefois, si l'une des options de catégorie n'a pas encore été utilisée, elle peut être supprimée et les autres options utilisées.
+
+#### Désagrégations par catégories{ #category-disaggregations }
+
+Les options de catégorie dans une catégorie d'élément de données doivent en général aboutir à un total significatif, comme indiqué dans la [section sur la conception du système d'agrégation] (#catégories-et-dimensions-personnalisées). C'est le total de la catégorie qui est affiché par défaut si l'on examine la valeur d'un élément de données désagrégé par cet élément de données. Un exemple de cette mauvaise pratique est la création d'une catégorie "Patients externes" avec les options "Cas" et "Décès", qui est appliquée aux éléments de données pour différents diagnostics tels que "Paludisme". Par défaut, un utilisateur consultant l'élément de données "Paludisme" obtiendra la somme des "Cas de paludisme" et des "Décès dus au paludisme", un chiffre qui n'a pas de sens.
+
+Dans certains cas, il peut être judicieux de s'écarter de cette règle générale, notamment lorsque l'utilisation d'une telle catégorie permet de réduire _substantiellement_ le nombre d'éléments de données requis. Dans ces cas, l'option "Ignorer le total de la catégorie dans les rapports" doit être activée pour la combinaison de catégories dont la catégorie fait partie.
+
+## Utilisation de l'outil d'évaluation des métadonnées { #metadata_assessment_tool }
+
+Bien que des contrôles manuels soient nécessaires pour un certain nombre de questions, un [outil d'évaluation des métadonnées] (https://github.com/dhis2/metadata-assessment) a également été développé pour automatiser un certain nombre de contrôles de la qualité des données. Cela inclut la possibilité d'obtenir les résultats sommaires (nombre de violations) des [contrôles d'intégrité des données] intégrés (#data_admin_data_integrity). L'outil d'évaluation des métadonnées n'est actuellement pas intégré au DHIS2 lui-même, mais il s'agit d'un outil autonome basé sur [R](https://www.r-project.org). Cette section explique comment interpréter et utiliser les résultats de l'outil d'évaluation, tandis que le téléchargement, l'installation et l'exécution de l'outil sont décrits sur le [dépôt GitHub](https://github.com/dhis2/metadata-assessment) de l'outil. Une liste avec des descriptions des contrôles de métadonnées inclus dans l'outil est décrite dans l'[Annexe A](#metadata_assessment_tool_annex_a).
+
+L'outil d'évaluation des métadonnées est principalement basé sur les vues SQL de DHIS2 : l'outil importe un ensemble de vues SQL dans la base de données DHIS2 évaluée (deux pour chaque mesure de la qualité des données), accède aux résultats de ces vues SQL via l'API Web et les présente aux utilisateurs. De plus, l'outil présente certains résultats basés directement sur les requêtes de l'API Web (liées aux utilisateurs), et peut également afficher les résultats des contrôles intégrés de l'[intégrité des données](#data_admin_data_integrity).
+
+> **Avertissement** L'outil ne doit pas être utilisé directement dans les bases de données de production. Bien que la seule modification apportée par l'outil à une base de données soit l'importation de vues SQL, certaines vérifications peuvent être longues et consommatrices de ressources et peuvent affecter les utilisateurs qui interagissent avec le système. Un paramètre est disponible pour désactiver les requêtes lentes.
+
+### Le rapport{ #the-report }
+
+Le rapport lui-même est organisé en quatre sections.
+
+#### Tableau récapitulatif { #summary-table }
+
+Le tableau récapitulatif "Problèmes de métadonnées" donne un aperçu de tous les différents paramètres de qualité des métadonnées et permet de les trier et de les filtrer. Cette fonction est utile pour obtenir un aperçu rapide des résultats (par exemple s'il y a des problèmes "critiques" ou "graves"), ou pour rechercher des problèmes spécifiques (par exemple s'il y a des problèmes liés à des unités d'organisation).
+
+![Tableau récapitulatif](./resources/images/metadata_assessment_tool_summary_table.png)
+
+#### Utilisateurs { #users }
+
+La section "Utilisateurs" fournit des mesures clés relatives aux utilisateurs du système. Outre les informations de base sur le nombre total d'utilisateurs et le nombre d'utilisateurs qui se connectent au cours d'une période donnée, elle comprend également des informations qui peuvent servir de base à des changements dans les pratiques de gestion des utilisateurs:
+
+-   _Utilisateurs qui ne se sont jamais connectés_ : un grand nombre de comptes d'utilisateurs qui n'ont jamais été utilisés indique des problèmes dans le processus d'invitation/création de comptes. Si ces comptes ont été créés avec un mot de passe par défaut, ils pourraient également poser un problème de sécurité.
+-   _Pourcentage d'utilisateurs désactivés_ : Associé au nombre total d'utilisateurs et à celui des utilisateurs qui se sont connectés récemment, ce chiffre peut indiquer si les comptes d'utilisateurs sont désactivés lorsque, pour différentes raisons, les utilisateurs n'ont plus besoin ou ne doivent plus avoir accès au système (par exemple, parce qu'ils quittent leur poste).
+-   _Nombre/pourcentage d'utilisateurs qui sont des superutilisateurs_ : Seule une poignée d'utilisateurs devrait au maximum avoir des droits de superutilisateur (l'autorité " TOUT ").
+
+In addition, two graphs showing the distribution over time of when users last logged in, and the distribution of users in the organisation unit hierarchy may be useful to understand if user assignment and management is handled correctly.
+
+![Utilisateurs](./resources/images/metadata_assessment_tool_users.png)
+
+#### Orientations{ #guidance }
+
+La section orientation présente les mêmes données métriques que le tableau récapitulatif (et les reprend dans [l'annexe A](#metadata_assessment_tool_annex_a)), mais accompagnées d'une explication et d'une recommandation d'action. Elle est organisée en sections par thème.
+
+![Orientatons](./resources/images/metadata_assessment_tool_guidance.png)
+
+### Interprétation des résultats{ #interpreting-the-results }
+
+Lors de l'interprétation des résultats du rapport, il est important de garder à l'esprit que tous les problèmes énumérés dans le rapport ne sont pas nécessairement des problèmes avérés. À cet égard, il est important de garder à l'esprit la _rigueur_ des différents contrôles :
+
+-   _Info_ indique que le contrôle est intégré principalement pour fournir des informations contextuelles utiles, par exemple pour indiquer le nombre total d'un certain type d'objet.
+-   _Avertissement_ s'applique aux contrôles qui signalent des points susceptibles de poser problème ou indiquent que les métadonnées ne sont pas bien gérées, mais qui n'entraîneront généralement pas de problèmes de fonctionnement du système.
+-   De _graves_ problèmes peuvent survenir, par exemple des résultats analytiques indiquant des chiffres erronés ou aucune donnée du tout.
+-   Les questions _critiques_ sont celles qui créeront presque à coup sûr divers problèmes, par exemple en provoquant potentiellement l'échec du processus de génération des tableaux analytiques.
+
+Bien que les différentes mesures de la qualité des données comportent chacune une recommandation sur la façon de traiter le problème particulier, elles n'entrent généralement pas dans le détail des mesures techniques à prendre pour résoudre le problème. Il n'est pas possible de donner des conseils clairs pour tous les problèmes, qui vont du plus élémentaire (comme le regroupement d'éléments de données) au plus complexe (par exemple, des combinaisons d'options de catégories en doublon dans une combinaison de catégories). En général, il est recommandé de résoudre les problèmes via l'interface utilisateur du DHIS2 ou l'API Web dans la mesure du possible, car cela permet de valider les modifications apportées. Ce n'est qu'en dernier recours que les problèmes doivent être correctement corrigés dans la base de données. Toutes les modifications, à l'exception des plus élémentaires (telles que le regroupement d'éléments de données), doivent être testées minutieusement dans un système de non-production.
+
+Une section distincte du guide d'implémentation est en cours d'élaboration. Elle fournira davantage d'exemples et de conseils sur le traitement des problèmes courants liés aux métadonnées, tels que les modifications par lots, la suppression d'éléments de données avec des données, etc.
+
+## ANNEXE A - Paramètres de l'outil d'évaluation des métadonnées{ #metadata_assessment_tool_annex_a }
+
+Mis à jour le 14.02.2022.
+
+<!-- TODO: ajouter une section "fixe" aux utilisateurs ? -->
+<!-- Extrait de https://github.com/dhis2/metadata-assessment/tree/main/yaml-->
+
+### Catégories { #categories }
+
+#### Catégories sans options de catégorie. { #categories-with-no-category-options }
+
+Les catégories doivent toujours avoir au moins une option de catégorie.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Toutes les catégories sans options de catégorie devraient être supprimées du système si elles ne sont pas utilisées. Dans le cas contraire, des options de catégorie appropriées devraient être ajoutées à la catégorie.
+
+#### Combinaisons supplémentaires d'options de catégorie par défaut basées sur l'option de catégorie.{ #additional-default-category-option-combos-based-on-category-option }
+
+Le système ne doit comporter qu'une seule combinaison d'options de catégorie "par défaut". L'existence de plusieurs combinaisons d'options de catégories par défaut peut entraîner des irrégularités tant au niveau de la saisie des données que des résultats analytiques.
+
+**Gravité** : Critique
+
+**Recommandation:** Toutes les références à une combinaison supplémentaire d'options de catégorie par défaut doivent être remplacées par la combinaison d'options de catégorie par défaut souhaitée.
+
+#### Options de catégories sans catégories. { #category-options-with-no-categories }
+
+Toutes les options de catégorie doivent appartenir à au moins une catégorie.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Les options de catégorie qui ne font partie d'aucune catégorie devraient être supprimées ou ajoutées à une catégorie appropriée.
+
+#### Combinaisons d'options de catégorie avec des associations distinctes.{ #category-option-combinations-with-disjoint-associations }
+
+Dans certaines circonstances, des combinaisons d'options de catégorie peuvent exister dans le système, mais n'avoir aucune association directe avec les options de catégorie qui sont associées aux combinaisons de catégorie. Cette situation se produit généralement lorsque des options de catégorie ont été ajoutées à une catégorie et que cette dernière est ensuite ajoutée à une combinaison de catégories. De nouvelles combinaisons d'options de catégorie sont alors créées dans le système. Si l'une des options de catégorie est ensuite supprimée dans l'une des catégories sous-jacentes, il peut en résulter une combinaison d'options de catégorie dite disjointe. Il s'agit d'une combinaison d'options de catégorie qui n'a pas de lien direct avec les options de catégorie d'aucune des catégories.
+
+**Gravité** : Grave
+
+**Recommandation:** Les combinaisons d'options de catégories disjointes devraient être supprimées du système si possible. Toutefois, si des données sont associées à la combinaison d'options de catégorie, il faudra déterminer comment traiter ces données.
+
+#### Combinaisons d'options de catégorie avec une cardinalité incorrecte.{ #category-option-combinations-with-incorrect-cardinality }
+
+Toutes les combinaisons d'options de catégorie doivent avoir exactement le même nombre d'associations d'options de catégorie que le nombre de catégories dans la combinaison de catégories. Si une combinaison de catégories comporte deux catégories, chaque combinaison d'options de catégorie doit comporter exactement deux options de catégorie.
+
+**Gravité** : Grave
+
+**Recommandation:** Les combinaisons d'options de catégorie dont la cardinalité est incorrecte seront ignorées par le système d'analyse DHIS2 et devraient être supprimées.
+
+#### Options de catégorie avec plus d'une affiliation pour une catégorie.{ #category-options-with-more-than-one-membership-for-a-category }
+
+Nulla vitae feugiat blandit natoque placerat elementum pharetra senectus et aenean faucibus pellentesque. Quam, donec auctor in et mi penatibus penatibus. Mauris massa mauris sem vehicula eu hac fermentum odio mattis sed. Habitant convallis, pellentesque aenean, a nunc vitae non sapien eu suspendisse. Amet nisi sed quam hac.
+
+**Gravité** : Grave
+
+**Recommandation :** Bibendum pellentesque nibh nisl vitae rutrum quis vestibulum feugiat porta et netus parturient mauris. Nec nascetur libero lacinia id vel mauris pulvinar à augue pharetra. Elementum urna eget mauris magnis proin. Risus sed sapien ante himenaeos. Hac vitae vestibulum vestibulum nulla vestibulum ut non consectetur vel lectus ultricies euismod. Suscipit sed sed orci.
+
+#### Combinaisons de catégories sans catégories.{ #category-combinations-with-no-categories }
+
+Toutes les combinaisons de catégories doivent être associées à une ou plusieurs catégories.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Les combinaisons de catégories sans catégories ne sont pas utilisables par DHIS2. Elles doivent soit être supprimées, soit les catégories correctes doivent être ajoutées à la combinaison de catégories.
+
+#### Combinaisons d'options de catégorie sans combinaison de catégorie. { #category-options-combinations-with-no-category-combination }
+
+Toutes les combinaisons d'options de catégories doivent être associées à une combinaison de catégories. Dans certains cas, lorsque des combinaisons de catégories sont supprimées, le lien entre une combinaison d'options de catégorie et une combinaison de catégories peut être corrompu.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Vérifiez si des données sont associées aux combinaisons de catégories en question. Il est probable que les données soient supprimées ou migrées vers une combinaison d'options de catégorie valide. Toute donnée associée à l'une de ces combinaisons d'options de catégorie ne sera pas disponible ni dans les modules de saisie de données, ni dans les applications analytiques.
+
+#### Doublons dans les combinaisons d'options de catégorie dans une combinaison de catégorie.{ #duplicated-category-option-combinations-within-a-category-combination }
+
+Chaque combinaison de catégories doit comporter un ensemble unique de combinaisons d'options de catégories. Dans certaines circonstances, des doublons de combinaisons d'options de catégorie peuvent exister dans le système. Cela résulte généralement de modifications apportées aux combinaisons de catégories après leur création ou d'une manipulation directe des différents tableaux de catégories dans la base de données. Il peut en résulter que certaines combinaisons d'options d'éléments de données/catégories n'apparaissent pas ou ne sont pas disponibles dans les écrans de saisie des données et/ou dans les applications d'analyse.
+
+**Gravité** : Grave
+
+**Recommandation:** Les doublons de combinaisons d'options de catégories dans une combinaison de catégories vous obligeront à fusionner les combinaisons d'options de catégories. Cette opération nécessite une manipulation directe de la base de données et doit toujours être effectuée dans un environnement de test. Ce n'est qu'après avoir testé votre procédure de manière approfondie et vous être assuré qu'elle fonctionne que vous devez l'exécuter dans votre environnement de production. L'équipe chargée de l'implémentation du DHIS2 a créé une série de fonctions SQL pour vous aider à supprimer ces COC doublonnés de votre système.
+
+#### Catégories avec les mêmes options de catégorie{ #categories-with-the-same-category-options }
+
+Les catégories ayant exactement les mêmes options doivent être considérées comme fusionnées. Les catégories ayant exactement les mêmes options de catégorie peuvent être facilement confondues par les utilisateurs lors de l'analyse.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Si des combinaisons de catégories ont déjà été créées avec des doublons de catégories, il est recommandé de ne pas prendre de mesures, mais de s'assurer que les utilisateurs comprennent qu'il peut y avoir deux doublons de catégories.
+
+Si l'une des catégories n'est utilisée dans aucune combinaison de catégories, elle devrait être supprimée du système.
+
+### Graphiques { #charts }
+
+#### Tableaux qui n'ont pas été consultés au cours des 12 derniers mois{ #charts-which-have-not-been-viewed-in-the-past-12-months }
+
+Les tableaux doivent être consultés régulièrement dans le système. Dans de nombreux cas, les utilisateurs créent des tableaux à titre temporaire et ne les suppriment jamais. Cela peut conduire à un manque d'ordre dans le système. Les tableaux peuvent alors être difficiles à trouver dans l'application de visualisation.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Les tableaux inutilisés peuvent être supprimés directement à l'aide de l'application de visualisation des données par un utilisateur disposant d'une autorité suffisante. Si les tableaux font partie d'un tableau de bord, ils devront également être supprimés du tableau de bord.
+
+### Tableaux de bord { #dashboards }
+
+#### Nombre total de tableaux de bord dans le système { #total-number-of-dashboards-in-the-system }
+
+Nombre total de tableaux de bord dans le système. **Gravité** : Info
+
+**Recommandation:** DHIS2 devrait contenir des tableaux de bord utiles pour les utilisateurs.
+
+#### Tableaux de bord ayant fait l'objet d'une ou de plusieurs visualisations au cours des trois dernières années{ #dashboards-with-1-or-fewer-views-over-the-past-three-years }
+
+Les tableaux de bord qui ne sont pas visualisés par les utilisateurs peuvent indiquer une utilisation limitée des données, que les tableaux de bord n'ont pas été conçus dans l'intention d'être réutilisés (par exemple dans le cadre d'un exercice de formation ou d'une analyse de données ponctuelle), ou que l'utilisateur propriétaire du tableau de bord n'est plus actif.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Si les tableaux de bord sont pertinents et utiles mais ne sont pas visualisés, des efforts doivent être consentis pour accroître l'utilisation des données (par exemple, revoir les paramètres de partage, communiquer avec les utilisateurs, planifier des exercices de formation, etc.) Dans d'autres cas, les utilisateurs disposant d'une autorisation de superutilisateur devraient être en mesure de supprimer des tableaux de bord en recherchant leur nom ou en procédant par lots. Il convient également de s'assurer que le tableau de bord n'est pas en cours d'utilisation dans le cadre d'une analyse poussée avant de le supprimer du système.
+
+#### Tableaux de bord non visualisés au cours de l'année écoulée. { #dashboards-not-viewed-in-the-past-one-year }
+
+Les tableaux de bord qui ne sont pas visualisés par les utilisateurs peuvent indiquer une utilisation limitée des données, que les tableaux de bord n'ont pas été conçus dans l'intention d'être réutilisés (par exemple dans le cadre d'un exercice de formation ou d'une analyse de données ponctuelle), ou que l'utilisateur propriétaire du tableau de bord n'est plus actif.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Si les tableaux de bord sont pertinents et utiles mais ne sont pas visualisés, des efforts doivent être consentis pour accroître l'utilisation des données (par exemple, revoir les paramètres de partage, communiquer avec les utilisateurs, planifier des exercices de formation, etc.) Dans d'autres cas, les utilisateurs disposant d'une autorisation de superutilisateur devraient être en mesure de supprimer des tableaux de bord en recherchant leur nom ou en procédant par lots. Il convient également de s'assurer que le tableau de bord n'est pas en cours d'utilisation dans le cadre d'une analyse poussée avant de le supprimer du système.
+
+#### Nombre total de tableaux de bord sans éléments.{ #total-number-of-dashboards-with-no-items }
+
+Tous les tableaux de bord doivent avoir un contenu. Les tableaux de bord sans contenu ne servent à rien et peuvent rendre plus difficile la recherche d'un tableau de bord pertinent avec du contenu.
+
+**Gravité** : Info
+
+**Recommandation:** Les tableaux de bord sans contenu qui n'ont pas été modifiés au cours des 14 derniers jours, par exemple, devraient être envisagés à être supprimés.
+
+### Éléments de données (agrégat){ #data-elements-aggregate }
+
+#### Nombre total d'éléments de données agrégées { #total-count-of-aggregate-data-elements }
+
+Aperçu du nombre d'éléments de données agrégées dans le système. **Gravité** : Info
+
+**Recommandation:** DHIS2 devrait contenir des éléments de données utiles pour les utilisateurs.
+
+#### Éléments de données agrégées qui ne sont utilisés dans aucun favori (directement ou à travers des indicateurs){ #aggregate-data-elements-not-used-in-any-favourites-directly-or-through-indicators }
+
+Tous les éléments de données agrégées saisis dans DHIS2 doivent être utilisés pour produire un certain type d'analyse (graphiques, cartes, tableaux). Il peut s'agir d'une utilisation directe dans un résultat ou d'une contribution au calcul d'un indicateur utilisé dans un résultat.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Les éléments de données qui ne sont pas examinés en routine dans l'analyse, que ce soit directement ou indirectement à travers les indicateurs, devraient être examinés pour déterminer s'ils doivent encore être collectés. S'ils sont destinés à être utilisés dans le cadre d'un examen de routine, des résultats associés doivent être créés à partir de ces éléments. Si ces éléments de données ne sont pas destinés à être utilisés pour un quelconque type d'examen d'informations, il convient d'envisager de les archiver ou de les supprimer.
+
+#### Éléments de données agrégés attribués à une ou plusieurs unités d'organisation ( à travers des ensembles de données).{ #aggregate-data-elements-assigned-to-1-or-less-orgunit-through-data-sets }
+
+Les éléments de données qui font partie d'un ensemble de données agrégées doivent être attribués à au moins une unité d'organisation.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Si l'ensemble de données est actif, il faut alors revoir les affectations des unités d'organisation. Si l'ensemble de données n'est pas actif, l'ensemble de données et les éléments de données associés doivent être supprimés du système.
+
+#### Éléments de données agrégés ne faisant partie d'aucun groupe d'éléments de données. { #aggregate-data-elements-not-in-any-data-element-groups }
+
+Tous les éléments de données doivent figurer dans un groupe d'éléments de données. Cela permet aux utilisateurs de trouver plus facilement les éléments de données dans les applications d'analyse et cela contribue également à avoir des ensembles de groupes d'éléments de données plus complets. Les opérations de maintenance peuvent également être plus efficaces en appliquant des paramètres de masse (par exemple, le partage) à tous les éléments de données au sein d'un groupe d'éléments de données.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Les éléments de données qui ne font pas partie d'un groupe d'éléments de données doivent être ajoutés à un groupe d'éléments de données important. Si les éléments de données ne sont pas nécessaires, ils doivent être supprimés.
+
+#### Agréger les éléments de données qui n'ont pas été modifiés au cours des 100 derniers jours et qui n'ont pas de valeurs de données.{ #aggregate-data-elements-that-have-not-been-changed-in-last-100-days-and-do-not-have-any-data-values }
+
+Éléments de données "abandonnés". Il s'agit d'éléments de données qui n'ont pas été modifiés depuis au moins 100 jours et auxquels aucune valeur n'est associée. Il s'agit souvent de configurations nouvelles ou modifiées qui ont été abandonnées à un moment donné.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Les éléments de données qui ne sont pas associés à des données et qu'il n'est pas prévu d'utiliser pour la collecte de données devraient être supprimés.
+
+#### Agréger des éléments de données SANS valeurs de données.{ #aggregate-data-elements-with-no-data-values }
+
+En règle générale, les éléments de données doivent toujours être associés à des valeurs de données. Si des éléments de données existent dans un ensemble de données actif, mais qu'aucune valeur de données ne leur est associée, ils peuvent ne pas faire partie des écrans de saisie des données.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Envisager de supprimer les éléments de données qui n'ont pas de valeurs de données.
+
+#### Agrégation des éléments de données n'ayant aucune valeur au cours des trois dernières périodes (en fonction du type de période de l'ensemble de données).{ #aggregate-data-elements-with-no-data-values-in-the-last-3-periods-based-on-data-set-period-type }
+
+Les éléments de données qui n'ont pas de valeurs de données récentes sont susceptibles d'appartenir à l'une des deux catégories suivantes : 1) ils ont été utilisés précédemment et contiennent des données utiles/importantes, 2) ils n'ont pas été utilisés de manière significative (par exemple, les valeurs des données proviennent de tests effectués lors de la configuration ou d'un petit projet pilote) et les données ne sont pas utiles/importantes.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Si les éléments de données contiennent des données historiques utiles, ils doivent être conservés. Envisagez de renommer les éléments de données et/ou les ensembles de données pour indiquer clairement qu'ils ne sont plus utilisés pour la collecte de données. Les éléments de données qui ne sont pas activement utilisés et auxquels aucune donnée utile n'est associée.
+
+### Éléments de données (tracker) { #data-elements-tracker }
+
+#### Nombre total d'éléments de données de suivi{ #total-count-of-tracker-data-elements }
+
+Aperçu du nombre d'éléments de données de suivi dans le système. **Gravité**: Info
+
+**Recommandation:** DHIS2 devrait contenir des éléments de données utiles pour les utilisateurs.
+
+#### Éléments de données de suivi ne faisant partie d'aucun groupe d'éléments de données.{ #tracker-data-elements-not-in-any-data-element-groups }
+
+Tous les éléments de données doivent figurer dans un groupe d'éléments de données. Cela permet aux utilisateurs de trouver plus facilement les éléments de données dans les applications d'analyse et cela contribue également à avoir des ensembles de groupes d'éléments de données plus complets. Les opérations de maintenance peuvent également être plus efficaces en appliquant des paramètres de masse (par exemple, le partage) à tous les éléments de données au sein d'un groupe d'éléments de données.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Les éléments de données qui ne font pas partie d'un groupe d'éléments de données doivent être ajoutés à un groupe d'éléments de données important. Si les éléments de données ne sont pas nécessaires, ils doivent être supprimés.
+
+### Ensembles de données { #datasets }
+
+#### Nombre total d'ensembles de données. { #total-number-of-data-sets }
+
+Nombre total d'ensembles de données dans le système. **Gravité** : Info
+
+**Recommandation:** DHIS2 devrait contenir des ensembles de données utiles pour la saisie des données.
+
+#### Ensembles de données qui n'ont pas été modifiés au cours des 100 derniers jours et qui sont assignés à 1 ou moins d'unités d'organisation.{ #data-sets-that-have-not-been-changed-in-last-100-days-and-are-assigned-to-1-or-less-orgunits }
+
+Les ensembles de données doivent généralement être attribués à plusieurs unités d'organisation s'ils sont utilisés, ou ont été modifiés récemment (par exemple au cours des 100 derniers jours) s'ils sont en cours de développement. Les ensembles de données inutilisés encombrent inutilement la base de données et peuvent perturber les utilisateurs et les administrateurs. Les ensembles de données associés à des données historiques, par exemple les formulaires de déclaration des années précédentes qui ne sont plus utilisés, et les ensembles de données conçus pour être utilisés dans une seule unité d'organisation (par exemple au niveau national) font exception à cette règle.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Les ensembles de données qui ne sont pas activement utilisés ou en cours de développement devraient être supprimés du système afin de réduire l'encombrement du système et la taille des métadonnées. Avant de supprimer les ensembles de données, vérifiez qu'ils ne sont pas associés à des données historiques et conservés pour cette raison.
+
+#### Ensembles de données ne contenant aucune valeur de données au cours des 3 dernières périodes (en fonction du type de période de l'ensemble de données).{ #data-sets-with-no-data-values-in-the-last-3-periods-based-on-data-set-period-type }
+
+Les ensembles de données auxquels aucune valeur récente n'est associée sont susceptibles d'appartenir à l'une des deux catégories suivantes : 1) ils ont été utilisés précédemment et contiennent des données utiles / importantes, 2) ils n'ont pas été utilisés de manière significative (par exemple, les valeurs des données proviennent de tests effectués lors de la configuration ou d'un petit projet pilote) et les données ne sont pas utiles / importantes.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Si les éléments de données contiennent des données historiques utiles, ils doivent être conservés. Envisagez de renommer les éléments de données et/ou les ensembles de données pour indiquer clairement qu'ils ne sont plus utilisés pour la collecte de données. Les éléments de données qui ne sont pas activement utilisés et auxquels aucune donnée utile n'est associée.
+
+#### Sections de l'ensemble de données avec un ordre de tri incorrect{ #data-set-sections-with-incorrect-sort-order }
+
+Les sections d'un ensemble de données sont utilisées pour regrouper certaines sections apparentées dans un formulaire de saisie de section. Elles peuvent également être ordonnées. L'ordre des sections peut être corrompu si des sections sont ajoutées ou supprimées.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Il est possible de corriger l'ordre de tri des sections des jeux de données en utilisant la fonction SQL `fixSortOrder` qui est disponible dans le dépôt Github dhis2-utils (https://github.com/dhis2/dhis2-utils/tree/master/resources/sql). En utilisant ce script, vous pouvez corriger l'ordre de tri pour chaque section de jeu de données affectée.
+
+### Général { #general }
+
+#### Noms d'objets identifiables comportant des espacements initiaux.{ #names-of-identifiable-objects-which-have-leading-spaces }
+
+Les objets identifiables portant un nom ne doivent pas contenir des espacements initiaux.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Ces objets pourraient être corrigés à travers l'interface utilisateur de DHIS2. Ils peuvent également être corrigés directement dans la base de données à l'aide du langage SQL. Vous pouvez utiliser le code SQL suivant comme modèle pour vous aider à créer la requête exacte dont vous avez besoin:
+
+```
+UPDATE chart as a  SET name = b.name_new from ( SELECT chartid,REGEXP_REPLACE(name,'^\s+','') as
+name_new from chart where name ~ '^\s+') b where a.chartid = b.chartid;
+```
+
+#### Noms d'objets identifiables comportant des espaces de fin.{ #names-of-identifiable-objects-which-have-trailing-spaces }
+
+Les objets identifiables portant un nom ne doivent pas contenir des espaces de fin.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Ces objets pourraient être corrigés à travers l'interface utilisateur de DHIS2. Ils peuvent également être corrigés directement dans la base de données à l'aide du langage SQL. Vous pouvez utiliser le code SQL suivant comme modèle pour vous aider à créer la requête exacte dont vous avez besoin:
+
+```
+UPDATE chart as a  SET name = b.name_new from ( SELECT chartid,REGEXP_REPLACE(name,'\s+$','') as name_new from chart where name ~ '\s+$') b where a.chartid = b.chartid;
+```
+
+#### Noms d'objets identifiables comportant plusieurs espaces.{ #names-of-identifiable-objects-which-have-multiple-spaces }
+
+Les objets identifiables portant un nom ne doivent pas contenir des espacements initiaux.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Ces objets pourraient être corrigés à travers l'interface utilisateur de DHIS2. Ils peuvent également être corrigés directement dans la base de données à l'aide du langage SQL. Vous pouvez utiliser le code SQL suivant comme modèle pour vous aider à créer la requête exacte dont vous avez besoin:
+
+```
+UPDATE categorycombo as a  SET name = b.name_new from ( SELECT categorycomboid,REGEXP_REPLACE(name,'\s{2,}',' ') as
+name_new from categorycombo where name ~ '\s{2,}') b where a.categorycomboid = b.categorycomboid;
+```
+
+### Indicateurs { #indicators }
+
+#### Nombre total d'indicateurs. { #total-count-of-indicators }
+
+Aperçu du nombre d'indicateurs dans le système. **Gravité** : Info
+
+**Recommandation:** DHIS2 devrait contenir des indicateurs utiles pour les utilisateurs.
+
+#### Indicateurs ne figurant dans aucun groupe.{ #indicators-not-in-any-groups }
+
+Tous les indicateurs doivent faire partie d'un groupe d'indicateurs. Cela permet aux utilisateurs de trouver plus facilement les indicateurs dans les applications d'analyse et contribue également à avoir des ensembles de groupes d'indicateurs plus complets. Les opérations de maintenance peuvent également être rendues plus efficaces en appliquant des paramètres généraux (par exemple; le partage, le filtrage) à tous les indicateurs d'un groupe d'indicateurs.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Les indicateurs qui ne font pas partie d'un groupe d'indicateurs devraient être ajoutés à un groupe d'indicateurs approprié. Si les indicateurs ne sont pas nécessaires, ils doivent être supprimés.
+
+#### Indicateurs non utilisés dans les objets analytiques OU les ensembles de données.{ #indicators-not-used-in-analytical-objects-or-data-sets }
+
+Tous les indicateurs calculés doivent être utilisés pour produire un certain type d'analyse (graphiques, cartes, tableaux) ou pour fournir un retour d'information lors de la saisie des données par leur intégration dans un ensemble de données.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Les indicateurs qui ne sont pas régulièrement examinés dans le cadre d'une analyse, que ce soit dans un résultat ou dans un ensemble de données, devraient être examinés afin de déterminer s'ils doivent encore être calculés. S'ils sont destinés à être utilisés dans le cadre d'un examen de routine, il convient de créer des résultats associés à ces indicateurs. Si ces indicateurs ne sont pas destinés à être utilisés pour un quelconque type d'examen des informations, il convient d'envisager de les archiver ou de les supprimer.
+
+#### Indicateurs non utilisés dans les objets analytiques. { #indicators-not-used-in-analytical-objects }
+
+Les indicateurs doivent être utilisés pour produire un certain type d'analyse (graphiques, cartes, tableaux). Remarque : les indicateurs utilisés dans les ensembles de données pour fournir un retour d'information pendant la saisie des données ne sont pas comptabilisés comme étant utilisés dans les objets analytiques.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Les indicateurs qui ne sont pas régulièrement examinés dans le cadre de l'analyse devraient être examinés afin de déterminer s'ils sont utiles et nécessaires. S'ils sont destinés à être utilisés dans le cadre d'un examen de routine, des résultats associés doivent être créés à partir de ces indicateurs. Si ces indicateurs ne sont pas destinés à être utilisés pour un quelconque type d'examen d'informations et ne sont pas utilisés dans les ensembles de données pour un retour d'information lors de la saisie des données, il convient d'envisager leur suppression.
+
+### Ensembles d'options{ #option-sets }
+
+#### Séries d'options inutilisées.{ #ununsed-option-sets }
+
+Les séries d'options doivent être utilisées dans un certain but, que ce soit avec des attributs, des éléments de données ou des commentaires.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Envisager la suppression des séries d'options inutilisées ou s'assurer qu'elles ont été correctement attribuées.
+
+#### Séries d'options vides{ #empty-option-sets }
+
+Toutes les séries d'options doivent généralement comprendre au moins deux éléments. Les séries d'options vides ne servent à rien.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Il faut soit ajouter des options à la série d'options, soit supprimer la série d'options.
+
+#### Séries d'options avec un ordre de tri probablement erroné. { #option-sets-with-possibly-wrong-sort-order }
+
+Les séries d'options contiennent des options qui peuvent être ordonnées. La propriété sort_order (ordre de tri) doit toujours commencer par 1 et être séquentielle. Si l'ensemble d'options contient trois options, l'ordre de tri doit être 1,2,3. Dans certaines circonstances, des options peuvent être supprimées d'une série d'options et l'ordre de tri peut être corrompu. Cela peut conduire à une situation où il devient impossible de mettre à jour la série d'options à partir de l'application de maintenance, et peut entraîner des problèmes lors de l'utilisation de la série d'options dans l'application de saisie des données.
+
+**Gravité** : Grave
+
+**Recommandation:** S'il est possible d'ouvrir la série d'options dans l'application de maintenance, vous pouvez recourir à la série d'options, ce qui devrait corriger le problème. Une autre solution possible est de mettre à jour directement la propriété sort_order (ordre de tri) de la table `optionset` (série d'options) dans la base de données, en s'assurant qu'une séquence valide est présente pour toutes les options de la série d'options.
+
+### Unités d'organisation { #organisation-units }
+
+#### Unités d'organisation ne figurant pas dans tous les groupes d'unités d'organisation obligatoires{ #orgunits-that-are-not-in-all-compulsory-orgunit-group-sets }
+
+Les groupes d'unités d'organisation marqués comme obligatoires doivent contenir toutes les unités d'organisation du système. Si certaines unités d'organisation sont omises des groupes de l'ensemble de groupes, cela peut entraîner des irrégularités dans les résultats analytiques, telles que l'omission de données.
+
+**Gravité** : Grave
+
+**Recommandation:** Ajouter toutes les unités d'organisation à un seul groupe au sein d'un groupe d'unités d'organisation obligatoire.
+
+#### Les unités d'organisation dont la date d'ouverture est postérieure à la date de fermeture.{ #organisation-units-which-have-an-opening-date-later-than-the-closed-date }
+
+Si une date de clôture a été définie pour une unité d'organisation, elle doit toujours être postérieure à la date d'ouverture (si une telle date a été définie).
+
+**Gravité** : Grave
+
+**Recommandation:** Modifier la date d'ouverture ou de fermeture de toutes les unités d'organisation concernées de sorte que la date de fermeture soit postérieure à la date d'ouverture.
+
+#### Les unités d'organisation ne devraient pas comporter d'espaces de fin.{ #organisation-units-should-not-have-trailing-spaces }
+
+Les espaces de fin dans les unités d'organisation sont superflus.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Si le nombre d'unités d'organisation affectées est faible, la solution la plus simple consiste à les corriger directement à partir de l'interface utilisateur. Une autre option possible serait de remplacer tous les espaces multiples en utilisant SQL.
+
+#### Les unités d'organisation ayant des coordonnés de point doivent être contenues par leur auteur.{ #organisation-units-with-point-coordinates-should-be-contained-by-their-parent }
+
+Les installations sont souvent représentées comme des points dans la hiérarchie DHIS2. La géométrie des unités d'organisation parentes doit contenir toutes les installations qui leur ont été associées.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Souvent, les fichiers de limites sont simplifiés lorsqu'ils sont téléchargés dans DHIS2. Ce processus peut avoir pour conséquence que des établissements situés à proximité de la frontière d'un district donné se retrouvent en dehors du district lorsque la frontière est simplifiée. Ce problème est plutôt d'ordre esthétique pour la plupart des installations DHIS2, mais il pourrait devenir problématique si une analyse géospatiale était tentée à l'aide des limites et des coordonnées de points.
+
+Dans les cas où l'installation se trouve en dehors de la limite de son parent, vous devez confirmer que les coordonnées sont correctes. Si l'emplacement est proche de la limite, vous pouvez reconsidérer la manière dont les fichiers de limites ont été simplifiés. Dans le cas contraire, si l'emplacement de l'installation est totalement incorrect, il faudra le rectifier.
+
+#### Unités d'organisation situées à moins de 100 km de Null Island (0,0).{ #organisation-units-located-within-100-km-of-null-island-00 }
+
+Un problème courant lors de l'importation de coordonnées est l'inclusion de coordonnées situées autour du point de [Null Island] (https://en.wikipedia.org/wiki/Null_Island). Il s'agit du point de la surface terrestre où le méridien d'origine et l'équateur se croisent avec une latitude de 0 et une longitude de zéro. Ce point est également situé au milieu de l'océan. Cette requête identifie tous les points situés dans un rayon de 100 km autour du point dont la latitude et la longitude sont égales à zéro.
+
+**Gravité** : Grave
+
+**Recommandation:** Mettre à jour les coordonnées de l'unité d'organisation affectée pour qu'elles correspondent à la bonne localisation.
+
+#### Les unités d'organisation ne devraient pas comporter plusieurs espaces dans leur nom.{ #organisation-units-should-not-have-multiple-spaces-in-their-names }
+
+Les noms des unités d'organisation ne devraient pas contenir plusieurs espaces. Ils sont superflus et peuvent compliquer la localisation des unités d'organisation lors d'une recherche.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Si le nombre d'unités d'organisation affectées est faible, la solution la plus simple consiste à les corriger directement à partir de l'interface utilisateur. Une autre option possible serait de remplacer tous les espaces multiples en utilisant SQL.
+
+#### Unités d'organisation dont la géométrie est invalide. { #organisation-units-with-invalid-geometry }
+
+DHIS2 utilise l'extension de base de données PostGIS pour gérer les informations géographiques associées aux unités d'organisation. Les géométries peuvent être considérées comme non valides pour diverses raisons, notamment les auto-inclusions, les auto-intersections et les polygones en pointillés. Veuillez consulter la documentation de PostGIS pour une analyse plus approfondie de ce sujet.
+
+**Gravité** : Critique
+
+**Recommandation:** Mettre à jour la géométrie des unités d'organisation affectées avec une géométrie valide. Il peut être possible d'utiliser la fonction PostGIS `ST_MakeValid` (rendre valide) pour résoudre automatiquement le problème. Cependant, dans d'autres cas, il peut être nécessaire de modifier la géométrie dans un outil SIG, puis de la mettre à jour à nouveau dans DHIS2.
+
+#### La hiérarchie de l'unité d'organisation doit avoir une racine unique. { #the-organisation-unit-hierarchy-should-have-a-single-root }
+
+Chaque système DHIS2 doit avoir une seule unité d'organisation racine. Il s'agit d'une unité d'organisation unique à partir de laquelle toutes les autres branches de la hiérarchie sont issues.
+
+**Gravité** : Critique
+
+**Recommandation:** Une fois que vous avez décidé quelle unité d'organisation doit être la véritable racine de la hiérarchie des unités d'organisation, vous devez mettre à jour l'unité d'organisation parente. Cela peut être fait en utilisant l'API DHIS2 ou en mettant à jour la valeur directement dans la table `organisationunit` (unité d'organisation).
+
+#### Unités d'organisation sans coordonnées. { #organisation-units-with-no-coordinates }
+
+Idéalement, toutes les unités d'organisation contenues dans la hiérarchie du DHIS2 devraient disposer d'un ensemble de coordonnées valides. En général, pour toutes les unités d'organisation situées au-dessus du niveau de l'établissement, ces coordonnées doivent être un polygone qui délimite l'unité d'organisation. Pour les installations, elles sont généralement représentées sous la forme de coordonnées de point.
+
+Il peut évidemment y avoir des exceptions à cette règle. Les centres de santé mobiles peuvent ne pas avoir d'emplacement fixe. Les agents de santé communautaires ou les services inférieurs au niveau de l'établissement peuvent également ne pas avoir de coordonnées définies ou définissables.
+
+Ce contrôle est censé vous permettre de passer en revue toutes les unités d'organisation qui n'ont pas de coordonnées et de déterminer si elles doivent être mises à jour.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Dans la mesure du possible, mettez à jour la géométrie de chaque unité d'organisation avec une géométrie valide. Il se peut que vous deviez contacter le bureau du gouvernement local approprié pour obtenir une copie des limites du district, communément appelées "fichiers de forme". Une autre possibilité consiste à utiliser les fichiers de limites disponibles gratuitement auprès du GADM (https://gadm.org).
+
+Si des coordonnées manquent, il peut être possible de les obtenir auprès du personnel de l'établissement en utilisant son smartphone pour obtenir les coordonnées. Les images de Google Maps peuvent aussi souvent être utilisées pour estimer la position d'une installation, à condition d'avoir une résolution suffisante et une connaissance locale de l'endroit où elle se trouve.
+
+#### Unités d'organisation orphelines { #orphaned-organisation-units }
+
+Les unités d'organisation orphelines sont celles qui n'ont ni parents ni enfants. Cela signifie qu'elles n'ont aucune relation avec la hiérarchie principale des unités d'organisation. Elles peuvent être créées par des importations de métadonnées erronées ou par une manipulation directe de la base de données.
+
+**Gravité** : Critique
+
+**Recommandation:** Les unités d'organisation orphelines doivent se voir attribuer un parent ou être supprimées du système. Il est recommandé d'utiliser l'API DHIS2 pour cette tâche si possible. Si ce n'est pas possible, il peut être nécessaire de les supprimer par SQL direct sur la base de données DHIS2.
+
+#### Unités d'organisation appartenant à plusieurs groupes dans un ensemble de groupes.{ #organisation-units-which-belong-to-multiple-groups-in-a-group-set }
+
+Les unités d'organisation doivent appartenir à un seul groupe dans chaque ensemble de groupes d'unités d'organisation dont elles sont membres. Si l'unité d'organisation appartient à plusieurs groupes, les résultats de l'analyse seront imprévisibles.
+
+**Gravité** : Grave
+
+**Recommandation:**A l'aide de l'application de gestion, assignez les unités d'organisation de la liste des détails à exactement un groupe dans chaque ensemble de groupes.
+
+### Périodes { #periods }
+
+#### Périodes ayant les mêmes dates de début et de fin{ #periods-with-the-same-start-and-end-dates }
+
+Des périodes différentes ne devraient pas avoir exactement les mêmes dates de début et de fin.
+
+**Gravité** : Critique
+
+**Recommandation:** Toutes les références aux périodes en doublon devraient être supprimées du système et réaffectées. Il est recommandé d'utiliser la période dont l'identifiant est le plus bas.
+
+#### Les périodes qui se situent à plus de trois ans dans le futur.{ #periods-which-are-more-than-three-years-in-the-future }
+
+Dans DHIS2, les périodes sont générées automatiquement par le système. Lorsque de nouvelles données sont introduites dans le système, de nouvelles périodes sont automatiquement créées. Dans certains cas, des périodes peuvent être créées par erreur lorsque des données sont envoyées à DHIS2 pour des périodes situées dans un avenir lointain. Différents clients de saisie de données peuvent ne pas valider correctement les périodes qui se situent dans le futur, et donc toute période se situant dans le futur devrait être réexaminée. Dans certains cas, les données peuvent être valables pour des dates futures, par exemple les objectifs fixés pour l'année fiscale suivante.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Si des périodes existent dans le système dans le futur, vous devriez revoir les données brutes soit directement dans le tableau des valeurs de données, soit à travers les tableaux croisés dynamiques pour vous assurer que ces données sont correctes.
+
+Dans de nombreux cas, les clients peuvent vouloir transmettre des données pour janvier 2021, mais en raison d'erreurs de saisie, c'est janvier 2031 qui est sélectionné. Par conséquent, toute donnée concernant un avenir lointain devrait être examinée afin de s'assurer qu'elle ne résulte pas d'une erreur de saisie.
+
+#### Périodes situées dans un passé lointain. { #periods-which-are-in-the-distant-past }
+
+Dans DHIS2, les périodes sont générées automatiquement par le système. Lorsque de nouvelles données sont introduites dans le système, de nouvelles périodes sont automatiquement créées. Dans certains cas, des périodes peuvent être créées par erreur lorsque des données sont envoyées à DHIS2 pour des périodes situées dans un passé lointain. Différents clients de saisie de données pourraient ne pas valider correctement les périodes situées dans un passé lointain, et ces périodes devraient donc faire l'objet d'un triage pour s'assurer que des données n'ont pas été saisies à leur sujet par erreur.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Si des périodes existent dans le système dans un passé lointain, vous devriez examiner les données brutes soit directement dans le tableau des valeurs de données, soit à travers les tableaux croisés dynamiques pour vous assurer que ces données sont correctes.
+
+Dans de nombreux cas, les clients peuvent vouloir transmettre des données pour janvier 2021, mais en raison d'erreurs de saisie, c'est janvier 2031 qui est sélectionné. Par conséquent, toute donnée concernant un avenir lointain devrait être examinée afin de s'assurer qu'elle ne résulte pas d'une erreur de saisie.
+
+### Règles de programme { #program-rules }
+
+#### Règles de programme sans action. { #program-rules-with-no-action }
+
+Toutes les règles du programme devraient comporter une action.
+
+**Gravité** : Grave
+
+**Recommandation:** En utilisant l'interface utilisateur du DHIS2, assignez une action à chacune des règles de programme qui n'en a pas. Sinon, si la règle de programme n'est pas utilisée, envisagez sa suppression.
+
+#### Règles de programme sans priorité. { #program-rules-with-no-priority }
+
+Toutes les règles du programme devraient disposer d'une priorité.
+
+**Gravité** : Grave
+
+**Recommandation:** A l'aide de l'interface utilisateur DHIS2, attribuez une priorité à chacune des règles du programme qui n'en a pas.
+
+#### Règles de programmation des actions qui devraient envoyer ou planifier un message sans utiliser de modèle de message.{ #program-rules-actions-which-should-send-or-schedule-a-message-without-a-message-template }
+
+Les actions de règles de programme du type "Envoyer un message" ou "Programmer un message" doivent être associées à un modèle de message.
+
+**Gravité** : Grave
+
+**Recommandation:** A l'aide de l'interface utilisateur DHIS2, attribuez un modèle de message à chaque action de règle de programme qui envoie ou planifie des messages mais qui n'est pas associée à un modèle de message.
+
+### Utilisateurs { #users }
+
+#### Nombre d'utilisateurs dans le système{ #number-of-users-in-the-system }
+
+Le nombre total d'utilisateurs dans le système.
+
+**Gravité** : Info
+
+**Recommandation:** Information uniquement.
+
+#### Utilisateurs qui ne se sont pas connectés au cours des 30 derniers jours{ #users-who-have-not-logged-in-during-the-past-30-days }
+
+Tous les utilisateurs doivent se connecter régulièrement, soit pour saisir des données, soit pour consulter des analyses. Cet indicateur quantifie le nombre d'utilisateurs qui sont activés, mais qui ne se sont pas connectés au cours des 30 derniers jours.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Vérifier si ces utilisateurs devraient être actifs, sinon envisager la désactivation des comptes.
+
+#### Utilisateurs non connectés au cours de l'année écoulée{ #users-who-have-not-logged-in-over-the-past-year }
+
+Seuls les utilisateurs qui accèdent régulièrement au système devraient avoir un compte d'utilisateur actif. Les utilisateurs non connectés au cours de l'année écoulée peuvent ne pas utiliser le système ou ne pas avoir besoin d'y accéder, ils peuvent avoir quitté leur poste et devraient le faire, ou le compte pourrait être le résultat d'une invitation à enregistrer un compte qui n'a pas été utilisé.
+
+**Gravité**: Avertissement
+
+**Recommandation:** Les comptes d'utilisateurs qui ne sont pas associés à des utilisateurs réels et actifs devraient au moins être désactivés, ou à défaut supprimés.
+
+### Règles de validation { #validation-rules }
+
+#### Toutes les expressions des règles de validation devraient avoir une stratégie de valeur manquante.{ #all-validation-rule-expressions-should-have-a-missing-value-strategy }
+
+Les règles de validation sont composées d'une expression de gauche et d'une expression de droite. Dans certains systèmes, la stratégie de la valeur manquante peut ne pas être définie. Cela peut entraîner une exception lors de l'analyse des règles de validation. Les règles de validation concernées doivent être corrigées en utilisant une stratégie de valeur manquante appropriée.
+
+**Gravité** : Grave
+
+**Recommandation:** En utilisant les résultats de la vue SQL détaillée, identifiez les règles de validation concernées et le volet de la règle pour lequel la stratégie de valeur manquante n'a pas été spécifiée. A l'aide de l'application de maintenance, effectuez les corrections appropriées et sauvegardez la règle.
