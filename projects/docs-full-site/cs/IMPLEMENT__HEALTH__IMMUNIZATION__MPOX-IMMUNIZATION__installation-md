@@ -1,0 +1,188 @@
+---
+edit_url: "https://github.com/dhis2-metadata/MPOX_EPI/blob/master/docs/mpox_epi-installation.md"
+revision_date: '2024-10-08'
+tags:
+- Implementace
+---
+
+# MPOX EPI Installation Guide { #mpox-epi-installation}
+
+Package Version 0.0.1
+
+Výchozí jazyk systému: angličtina
+
+## Instalace { #installation } 
+
+Instalace modulu se skládá z několika kroků:
+
+1. [Příprava](#preparation-the-metadata-file) souboru metadat.
+2. [Import](#import-metadata) souboru metadat do DHIS2.
+3. [Configuring](#configuration) the imported metadata.
+4. [Adaptace](#adapting-the-tracker-program) programu po importu
+
+Před zahájením procesu instalace a konfigurace v DHIS2 se doporučuje nejprve přečíst každou část instalační příručky. Identifikujte příslušné sekce v závislosti na typu vašeho importu:
+
+1. Import into a blank DHIS2 instance
+2. Import into a DHIS2 instance with existing metadata (No other versions of MPOX EPIention tracker imported previously).
+3. Update existing/older version of the MPOX EPIention tracker.
+
+Kroky popsané v tomto dokumentu by měly být otestovány v testovací instanci DHIS2 a teprve poté aplikovány na produkční prostředí.
+
+## Požadavky { #requirements } 
+
+K instalaci modulu je vyžadován uživatelský účet správce na DHIS2. Postup popsaný v tomto dokumentu by měl být testován v testovacím / fázovém prostředí před provedením na produkční instanci DHIS2.
+
+Je třeba věnovat velkou pozornost tomu, aby samotný server a aplikace DHIS2 byly dobře zabezpečeny, aby se omezil přístup ke shromažďovaným datům. Podrobnosti o zabezpečení systému DHIS2 jsou mimo rozsah tohoto dokumentu a odkazujeme na [dokumentaci DHIS2](http://dhis2.org/documentation).
+
+## Příprava souboru metadat { #preparing-the-metadata-file } 
+
+**POZNÁMKA:** Pokud instalujete balíček na novou instanci DHIS2, můžete přeskočit část „Příprava souboru metadat“ a okamžitě přejít do sekce [Import souboru metadat do DHIS2](#importing-metadata)
+
+I když to není vždy nutné, může být často výhodné provést určité úpravy souboru metadat před jeho importem do DHIS2.
+
+### Výchozí dimenze dat (pokud existuje) { #default-data-dimension-if-applicable } 
+
+V dřívějších verzích DHIS2 byl automaticky vygenerován UID výchozí datové dimenze. Zatímco tedy všechny instance DHIS2 mají výchozí možnost kategorie, kategorii datových prvků, kombinaci kategorií a kombinaci možností kategorie, UID těchto výchozích hodnot se mohou lišit. Novější verze DHIS2 mají pevně zakódované UID pro výchozí dimenzi a tyto UID se používají v konfiguračních balíčcích.
+
+Aby nedocházelo ke konfliktům při importu metadat, je vhodné vyhledat a nahradit celý soubor .json pro všechny výskyty těchto výchozích objektů a nahradit identifikátory UID souboru .json identifikátory UID databáze, do které bude soubor importován. Tabulka 1 ukazuje UID, která by měla být nahrazena, a také koncové body API pro identifikaci stávajících UID.
+
+| Objekt                      | UID         | Koncový bod API                                              |
+|:----------------------------|:------------|:----------------------------------------------------------|
+| Kategorie                    | GLevLNI9wkl | `../api/categories.json?filter=name:eq:default`           |
+| Možnost kategorie             | xYerKDKCefk | `../api/categoryOptions.json?filter=name:eq:default`      |
+| Kombinace kategorií        | bjDvmb4bfuf | `../api/categoryCombos.json?filter=name:eq:default`       |
+| Kombinace možností kategorie | HllvX50cXC0 | `../api/categoryOptionCombos.json?filter=name:eq:default` |
+
+Například pokud importujete konfigurační balíček do <https://play.dhis2.org/demo>, UID výchozí kombinace možností kategorie lze identifikovat prostřednictvím <https://play.dhis2.org/demo/api/categoryOptionCombos.json?filter=name:eq:default> jako bRowv6yZOF2.
+
+Poté můžete vyhledat a nahradit všechny výskyty HllvX50cXC0 s bRowv6yZOF2 v souboru .json, protože to je ID výchozího v systému, do kterého importujete. **_Upozorňujeme, že tato operace hledání a nahrazení musí být provedena pomocí editoru prostého textu_**, nikoli pomocí textového editoru, jako je Microsoft Word.
+
+### Typy indikátorů { #indicator-types } 
+
+Indicator type is another type of object that can create import conflict because certain names are used in different DHIS2 databases (.e.g "Percentage"). Since Indicator types are defined simply by their factor and whether or not they are simple numbers without a denominator, they are unambiguous and can be replaced through a search and replace of the UIDs. This avoids potential import conflicts, and avoids creating duplicate indicator types. The following table shows the UIDs which could be replaced, as well as the API endpoints to identify the existing UIDs
+
+| Objekt     | UID         | Koncový bod API                                                             |
+|:-----------|:------------|:-------------------------------------------------------------------------|
+| Procento | hmSnCXmLYwt | `../api/indicatorTypes.json?filter=number:eq:false&filter=factor:eq:100` |
+| Rate (factor=1)| k4RGC3sMTzO | `../api/indicatorTypes.json?filter=number:eq:false&filter=factor:eq:1`|
+| Per 10 000 | FWTvArgP0jt | `../api/indicatorTypes.json?filter=number:eq:false&filter=factor:eq:10000`|
+| Pouze čitatel (číslo) | kHy61PbChXr | `..api/indicatorTypes.json?filter=number:eq:true`|
+
+### TrackedEntityType { #tracked-entity-type } 
+
+Stejně jako typy indikátorů můžete mít ve své databázi DHIS2 již existující trasované typy entit. Odkazy na typ trasované entity by měly být změněny tak, aby odrážely to, co je ve vašem systému, abyste nevytvářeli duplikáty. Tabulka 3 ukazuje identifikátory UID, které lze nahradit, a také koncové body API pro identifikaci stávajících identifikátorů UID
+
+| Objekt | UID         | Koncový bod API                                           |
+|:-------|:------------|:-------------------------------------------------------|
+| Osoba | MCPQUTHX1Ze | `../api/trackedEntityTypes.json?filter=name:eq:Person` |
+
+### Visualizations using Root Organisation Unit UID { #visualizations-using-root-organisation-unit-uid } 
+
+Vizualizace, sestavy událostí, tabulky sestav a mapy, které jsou přiřazeny konkrétní úrovni organizační jednotky nebo skupině organizačních jednotek, mají odkaz na kořenovou organizační jednotku (úroveň 1). Takové objekty, pokud jsou v souboru metadat přítomny, obsahují zástupný symbol ` <OU_ROOT_UID> `. Použijte funkci vyhledávání v editoru souborů .json k případné identifikaci tohoto zástupného symbolu a jeho nahrazení UID organizační jednotky úrovně 1 v cílové instanci.
+
+Some visualizations and maps may contain references to organisation unit levels. Maps that consist of several map views may contain various Organisation unit level references based on the configuration of the map layer. Adjust the organisation unit level references in the metadata json file to match the organisation unit structure in the target instance before importing the metadata file.
+
+### Upgrading metadata package { #upgrading-metadata-package } 
+
+The process of upgrading an existing package to a newer version in a working DHIS2 instance is a complex operation that has to be taken with precaution. Such process has to be run in a staging instance first, before upgrading the configuration on the production server. As metadata objects may have been removed, added or changed, it is important to ensure that:
+
+   - the format of existing data can be mapped and adjusted to the new configuration;
+   - the discontinued metadata objects are deleted from the instance; 
+   - The existing objects are updated;
+   - the new objects are created;
+   - assignment of users to relevant user groups is reviewed.
+
+## Import metadat { #importing-metadata } 
+
+Soubor metadat .json se importuje prostřednictvím aplikace [Import / Export](https://docs.dhis2.org/master/en/user/html/import_export.html) DHIS2. Před pokusem o skutečný import metadat je vhodné použít funkci „běh nasucho“ k identifikaci problémů. Pokud „běh nasucho“ hlásí jakékoli problémy nebo konflikty, přečtěte si níže část [konflikty importu](#handling-import-conflicts).
+
+If the "dry run"/"validate" import works without error, attempt to import the metadata. If the import succeeds without any errors, you can proceed to [configure](#configuration) the module. In some cases, import conflicts or issues are not shown during the "dry run", but appear when the actual import is attempted. In this case, the import summary will list any errors that need to be resolved.
+
+### Řešení konfliktů importu { #handling-import-conflicts } 
+
+> NOTE: If you are importing into a new DHIS2 instance, you will not have to worry about import conflicts, as there is nothing in the database you are importing to conflict with. Follow the instructions to import the metadata then please proceed to the “[Configuration](#configuration)” section.
+
+Může nastat řada různých konfliktů, i když nejběžnější je, že v konfiguračním balíčku jsou objekty metadat se jménem, zkratkou a / nebo kódem, který již v cílové databázi existuje. Existuje několik alternativních řešení těchto problémů s různými výhodami a nevýhodami. Který z nich je vhodnější, bude záviset například na typu objektu, pro který dojde ke konfliktu.
+
+#### Alternativa 1 { #alternative-1 } 
+
+Přejmenujte existující objekt v databázi DHIS2, u kterého došlo ke konfliktu. Výhodou tohoto přístupu je, že není nutné upravovat soubor .json, protože změny se místo toho provádějí prostřednictvím uživatelského rozhraní DHIS2. Pravděpodobně to bude méně náchylné k chybám. To také znamená, že konfigurační balíček je ponechán tak, jak je, což může být výhodou, například když se použije školicí materiál a dokumentace založená na konfiguračním balíčku.
+
+#### Alternativa 2 { #alternative-2 } 
+
+Přejmenujte objekt, u kterého došlo ke konfliktu v souboru .json. Výhodou tohoto přístupu je, že stávající metadata DHIS2 jsou ponechána tak, jak jsou. To může být faktor, když existuje školicí materiál nebo dokumentace, jako jsou SOP datových slovníků propojených s daným objektem, a to nezahrnuje žádné riziko záměny uživatelů úpravou metadat, se kterými jsou obeznámeni.
+
+Všimněte si, že pro alternativu 1 i 2 může být modifikace stejně jednoduchá jako přidání malého pre / post-fix k názvu, aby se minimalizovalo riziko záměny.
+
+#### Alternativa 3 { #alternative-3 } 
+
+Třetím a komplikovanějším přístupem je úprava souboru .json pro opětovné použití existujících metadat. Například v případech, kdy pro určitý koncept již existuje sada možností (např. „Pohlaví“), by tato sada možností mohla být odstraněna ze souboru .json a všechny odkazy na jeho UID nahrazeny odpovídající sadou možností již v databázi. Velkou výhodou tohoto (která se neomezuje na případy přímého konfliktu importu) je vyhnout se vytváření duplicitních metadat v databázi. Při provádění tohoto typu modifikace je třeba provést několik klíčových úvah:
+
+* vyžaduje odborné znalosti podrobné struktury metadat DHIS2
+* přístup nefunguje u všech typů objektů. Zejména určité typy objektů mají závislosti, které se tímto způsobem komplikovaně řeší, například v souvislosti s rozčleněními.
+* budoucí aktualizace konfiguračního balíčku budou komplikované.
+
+## Konfigurace { #configuration } 
+
+Po úspěšném importu všech metadat existuje několik kroků, které je třeba provést, než bude modul funkční.
+
+### Sdílení { #sharing } 
+
+Nejprve budete muset pomocí funkce _Sharing_ DHIS2 nakonfigurovat, kteří uživatelé (skupiny uživatelů) by měli vidět metadata a data spojená s programem a kdo může registrovat / zadávat data do programu. Ve výchozím nastavení bylo sdílení nakonfigurováno pro následující:
+
+* Typ trasované entity
+* Program
+* Fáze programu
+* Ovládací panely
+
+Balíček metadat obvykle obsahuje několik skupin uživatelů:
+
+* MPOX EPI - Access
+* MPOX EPI - Admin
+* MPOX EPI - Data capture
+
+By default, the following is assigned to these user groups
+
+| Objekt              | Skupiny uživatelů                             | Skupiny uživatelů                                      |  Skupiny uživatelů                                        |
+|---------------------|-----------------------------------------|--------------------------------------------------|-----------------------------------------------------|
+|                     | MPOX EPI - Access                       | MPOX EPI - Admin                                 | MPOX EPI - Data capture                             |
+| Typ trasované entity | Metadata : lze zobrazit <br> Data: lze zobrazit | Metadata: lze upravovat a prohlížet <br> Data: lze zobrazit | Metadata: lze zobrazit <br> Data: lze zachytit a zobrazit |
+| Program             | Metadata : lze zobrazit <br> Data: lze zobrazit | Metadata: lze upravovat a prohlížet <br> Data: lze zobrazit | Metadata: lze zobrazit <br> Data: lze zachytit a zobrazit |
+| Fáze programu      | Metadata : lze zobrazit <br> Data: lze zobrazit | Metadata: lze upravovat a prohlížet <br> Data: lze zobrazit | Metadata: lze zobrazit <br> Data: lze zachytit a zobrazit |
+| Ovládací panely          | Metadata : lze zobrazit <br> Data: lze zobrazit | Metadata: lze upravovat a prohlížet <br> Data: lze zobrazit | Metadata : lze zobrazit <br> Data: lze zobrazit             |
+
+Budete chtít přiřadit uživatele k příslušné skupině uživatelů na základě jejich role v systému. Možná budete chtít povolit sdílení pro další objekty v balíčku v závislosti na vašem nastavení. Další informace o konfiguraci sdílení naleznete v [Dokumentaci DHIS2](https://docs.dhis2.org/master/en/dhis2_user_manual_en/about-sharing-of-objects.html).
+
+### Uživatelské role { #user-roles } 
+
+Uživatelé budou potřebovat uživatelské role, aby mohli pracovat s různými aplikacemi v rámci DHIS2. Doporučují se následující minimální role:
+
+1. Analýza dat trasovače: Může zobrazit analytiku událostí a přistupovat k ovládacím panelům, zprávám o událostech, vizualizátorům událostí, vizualizátorům dat, kontingenčním tabulkám, zprávám a mapám.
+2. Zachycování dat Trasovače: Může přidávat datové hodnoty, aktualizovat trasované entity, prohledávat trasované entity napříč organizačními jednotkami a přistupovat k zachycení trasovačů
+
+Další informace o konfiguraci uživatelských rolí naleznete v [Dokumentaci DHIS2](http://dhis2.org/documentation).
+
+### Organizační jednotky { #organisation-units } 
+
+Program musíte přiřadit organizačním jednotkám v rámci vaší vlastní hierarchie, aby bylo možné program vidět v záznamu trasovače.
+
+### Duplikovaná metadata { #duplicated-metadata } 
+
+> **NOTE**
+>
+> This section only applies if you are importing into a DHIS2 database in which there is already meta-data present. If you are working with a new DHIS2 instance, please skip this section and go to [Adapting the tracker program](#adapting-the-tracker-program).
+> If you are using any third party applications that rely on the current metadata, please take into account that this update could break them”
+
+I když byla metadata úspěšně importována bez jakýchkoli konfliktů při importu, v metadatech mohou existovat duplikáty - datové prvky, trasované atributy entit nebo sady voleb, které již existují. Jak bylo uvedeno v části výše o řešení konfliktů, je třeba mít na paměti důležitý problém, že rozhodnutí o provádění změn metadat v DHIS2 musí také zohledňovat další dokumenty a zdroje, které jsou různými způsoby spojeny s existujícími metadaty a metadata, která byla importována prostřednictvím konfiguračního balíčku. Vyřešení duplikátů tedy není jen otázkou „vyčištění databáze“, ale také zajištěním toho, aby se tak dělo například bez narušení potenciálu integrace s jinými systémy, možnosti použít školicí materiál, rozbití SOP atd. To bude velmi záviset na kontextu.
+
+## Přizpůsobení trasovacího programu { #adapting-the-tracker-program } 
+
+Po importu programu můžete provést určité úpravy programu. Mezi příklady místních úprav, které _by se mohly_ provést, patří:
+
+* Přidání dalších proměnných do formuláře.
+* Přizpůsobení názvů datových prvků / možností podle národních konvencí.
+* Přidávání překladů do proměnných nebo do formuláře pro zadávání údajů.
+* Úprava indikátorů programu na základě místních definic případů.
+
+Důrazně se však doporučuje věnovat velkou pozornost, pokud se rozhodnete změnit nebo odebrat některý ze zahrnutých formulářů / metadat. Existuje nebezpečí, že by úpravy mohly narušit funkčnost, například pravidla programu a indikátory programu.
+

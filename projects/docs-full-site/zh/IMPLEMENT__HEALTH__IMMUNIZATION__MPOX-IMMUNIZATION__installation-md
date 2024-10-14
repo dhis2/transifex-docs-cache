@@ -1,0 +1,188 @@
+---
+edit_url: "https://github.com/dhis2-metadata/MPOX_EPI/blob/master/docs/mpox_epi-installation.md"
+revision_date: '2024-10-08'
+tags:
+- Implement
+---
+
+# MPOX EPI Installation Guide { #mpox-epi-installation}
+
+Package Version 0.0.1
+
+System default language: English
+
+## 安装 { #installation } 
+
+模块的安装包括以下几个步骤：
+
+1. [Preparing](#preparing-the-metadata-file) the metadata file.
+2. 将元数据文件[导入]（＃importing-metadata）到DHIS2中。
+3. [Configuring](#configuration) the imported metadata.
+4. 导入后[Adapting]（＃adapting-the-tracker-program）程序
+
+It is recommended to first read through each section of the installation guide before starting the installation and configuration process in DHIS2. Identify applicable sections depending on the type of your import:
+
+1. Import into a blank DHIS2 instance
+2. Import into a DHIS2 instance with existing metadata (No other versions of MPOX EPIention tracker imported previously).
+3. Update existing/older version of the MPOX EPIention tracker.
+
+The steps outlined in this document should be tested in a test/staging DHIS2 instance and only then applied to a production environment.
+
+## 要求 { #requirements } 
+
+为了安装该模块，需要DHIS2上的管理员用户帐户。在DHIS2的生产实例上执行此文档中概述的过程之前，应在测试/分阶段环境中进行测试。
+
+应格外小心，以确保服务器本身和DHIS2应用程序受到良好保护，以限制对所收集数据的访问。保护DHIS2系统的详细信息不在本文档的范围之内，我们参考[DHIS2文档]（http://dhis2.org/documentation）。
+
+## 准备元数据文件 { #preparing-the-metadata-file } 
+
+**NOTE:** If you are installing the package on a new instance of DHIS2, you can skip the “Preparing the metadata file” section and move immediately to the section [Importing a metadata file into DHIS2](#importing-metadata)
+
+尽管并非总是必要，但在将元数据文件导入DHIS2之前对其进行某些修改通常可能是有利的。
+
+### Default data dimension (if applicable) { #default-data-dimension-if-applicable } 
+
+在早期版本的DHIS2中，默认数据维的UID是自动生成的。因此，尽管所有DHIS2实例都具有默认类别选项，数据元素类别，类别组合和类别选项组合，但这些默认的UID可以不同。 DHIS2的更高版本具有用于默认维度的硬编码UID，并且这些UID在配置包中使用。
+
+为避免在导入元数据时发生冲突，建议搜索并替换整个.json文件以查找所有这些默认对象，并将.json文件的UID替换为将导入文件的数据库的UID。表1显示了应替换的UID以及用于标识现有UID的API端点。
+
+| 目的                      | 用户标识         | API endpoint                                              |
+|:----------------------------|:------------|:----------------------------------------------------------|
+| 类别                    | GLevLNI9wkl | `../api/categories.json?filter=name:eq:default`           |
+| 类别选项             | xYerKDKCefk | `../api/categoryOptions.json?filter=name:eq:default`      |
+| Category combination        | bjDvmb4bfuf | `../api/categoryCombos.json?filter=name:eq:default`       |
+| Category option combination | HllvX50cXC0 | `../api/categoryOptionCombos.json?filter=name:eq:default` |
+
+For example, if importing a configuration package into <https://play.dhis2.org/demo>, the UID of the default category option combination could be identified through <https://play.dhis2.org/demo/api/categoryOptionCombos.json?filter=name:eq:default> as bRowv6yZOF2.
+
+You could then search and replace all occurrences of HllvX50cXC0 with bRowv6yZOF2 in the .json file, as that is the ID of default in the system you are importing into. **_Note that this search and replace operation must be done with a plain text editor_**, not a word processor like Microsoft Word.
+
+### 指标类型 { #indicator-types } 
+
+Indicator type is another type of object that can create import conflict because certain names are used in different DHIS2 databases (.e.g "Percentage"). Since Indicator types are defined simply by their factor and whether or not they are simple numbers without a denominator, they are unambiguous and can be replaced through a search and replace of the UIDs. This avoids potential import conflicts, and avoids creating duplicate indicator types. The following table shows the UIDs which could be replaced, as well as the API endpoints to identify the existing UIDs
+
+| 目的     | 用户标识         | API endpoint                                                             |
+|:-----------|:------------|:-------------------------------------------------------------------------|
+| 百分比 | hmSnCXmLYwt | `../api/indicatorTypes.json?filter=number:eq:false&filter=factor:eq:100` |
+| Rate (factor=1)| k4RGC3sMTzO | `../api/indicatorTypes.json?filter=number:eq:false&filter=factor:eq:1`|
+| Per 10 000 | FWTvArgP0jt | `../api/indicatorTypes.json?filter=number:eq:false&filter=factor:eq:10000`|
+| Numerator only (number) | kHy61PbChXr | `..api/indicatorTypes.json?filter=number:eq:true`|
+
+### 追踪实体类型 { #tracked-entity-type } 
+
+像指示器类型一样，您的DHIS2数据库中可能已经存在跟踪的实体类型。对跟踪实体类型的引用应该更改以反映系统中的内容，因此您不会创建重复项。表3显示了可以替换的UID以及用于标识现有UID的API端点
+
+| 目的 | 用户标识         | API endpoint                                           |
+|:-------|:------------|:-------------------------------------------------------|
+| Person | MCPQUTHX1Ze | `../api/trackedEntityTypes.json?filter=name:eq:Person` |
+
+### Visualizations using Root Organisation Unit UID { #visualizations-using-root-organisation-unit-uid } 
+
+Visualizations, event reports, report tables and maps that are assigned to a specific organisation unit level or organisation unit group, have a reference to the root (level 1) organisation unit. Such objects, if present in the metadata file, contain a placeholder `<OU_ROOT_UID>`. Use the search function in the .json file editor to possibly identify this placeholder and replace it with the UID of the level 1 organisation unit in the target instance.
+
+Some visualizations and maps may contain references to organisation unit levels. Maps that consist of several map views may contain various Organisation unit level references based on the configuration of the map layer. Adjust the organisation unit level references in the metadata json file to match the organisation unit structure in the target instance before importing the metadata file.
+
+### Upgrading metadata package { #upgrading-metadata-package } 
+
+The process of upgrading an existing package to a newer version in a working DHIS2 instance is a complex operation that has to be taken with precaution. Such process has to be run in a staging instance first, before upgrading the configuration on the production server. As metadata objects may have been removed, added or changed, it is important to ensure that:
+
+   - the format of existing data can be mapped and adjusted to the new configuration;
+   - the discontinued metadata objects are deleted from the instance; 
+   - The existing objects are updated;
+   - the new objects are created;
+   - assignment of users to relevant user groups is reviewed.
+
+## 导入元数据 { #importing-metadata } 
+
+.json元数据文件是通过DHIS2的[Import / Export]（https://docs.dhis2.org/master/en/user/html/import_export.html）应用程序导入的。建议在尝试实际导入元数据之前使用“空运行”功能来识别问题。如果“空运行”报告了任何问题或冲突，请参见下面的[导入冲突]（＃handling-import-conflicts）部分。
+
+If the "dry run"/"validate" import works without error, attempt to import the metadata. If the import succeeds without any errors, you can proceed to [configure](#configuration) the module. In some cases, import conflicts or issues are not shown during the "dry run", but appear when the actual import is attempted. In this case, the import summary will list any errors that need to be resolved.
+
+### 处理导入冲突 { #handling-import-conflicts } 
+
+> NOTE: If you are importing into a new DHIS2 instance, you will not have to worry about import conflicts, as there is nothing in the database you are importing to conflict with. Follow the instructions to import the metadata then please proceed to the “[Configuration](#configuration)” section.
+
+可能会发生许多不同的冲突，尽管最常见的是配置包中有目标数据库中已经存在名称，简称和/或代码的元数据对象。对于这些问题，有两种替代解决方案，具有不同的优缺点。哪一个更合适将取决于例如发生冲突的对象的类型。
+
+#### 备选方案1 { #alternative-1 } 
+
+重命名DHIS2数据库中存在冲突的现有对象。这种方法的优点是无需修改.json文件，因为更改是通过DHIS2的用户界面完成的。这很可能不太容易出错。这也意味着配置包将保留原样，例如在使用基于配置包的培训材料和文档时，这可能是一个优势。
+
+#### 备选方案2 { #alternative-2 } 
+
+重命名.json文件中存在冲突的对象。这种方法的优点是现有的DHIS2元数据保持不变。当存在培训材料或文档（例如链接到所讨论对象的数据字典的SOP）时，这可能是一个因素，并且不存在通过修改用户熟悉的元数据而使用户感到困惑的风险。
+
+请注意，对于备选项1和2，修改可以简单到在名称中添加一个小的前缀/后缀，以最大程度地减少混乱的风险。
+
+#### 备选3 { #alternative-3 } 
+
+第三种也是更复杂的方法是修改.json文件以重新使用现有的元数据。例如，在某个概念的某个选项集已经存在的情况下（例如“性别”），可以从.json文件中删除该选项集，并且对其UID的所有引用都将替换为数据库中已经存在的相应选项集。这样做的最大优点（不限于直接导入冲突的情况）是避免在数据库中创建重复的元数据。执行这种类型的修改时，需要考虑一些关键因素：
+
+* 它需要有关DHIS2详细元数据结构的专业知识
+* 该方法不适用于所有类型的对象。特别地，某些类型的对象具有依赖关系，这种依赖关系以这种方式难以解决，例如与分解有关。
+* 将来对配置包的更新将很复杂。
+
+## 组态 { #configuration } 
+
+成功导入所有元数据后，需要执行一些步骤，模块才能正常运行。
+
+### 分享中 { #sharing } 
+
+First, you will have to use the _Sharing_ functionality of DHIS2 to configure which users (user groups) should see the metadata and data associated with the programme as well as who can register/enter data into the program. By default, sharing has been configured for the following:
+
+* 追踪实体类型
+* 程序
+* 计划阶段
+* 仪表板
+
+A metadata package usually contains several user groups:
+
+* MPOX EPI - Access
+* MPOX EPI - Admin
+* MPOX EPI - Data capture
+
+By default, the following is assigned to these user groups
+
+| 目的              | User Groups                             | User Groups                                      |  User Groups                                        |
+|---------------------|-----------------------------------------|--------------------------------------------------|-----------------------------------------------------|
+|                     | MPOX EPI - Access                       | MPOX EPI - Admin                                 | MPOX EPI - Data capture                             |
+| 追踪实体类型 | Metadata : can view <br> Data: can view | Metadata : can edit and view <br> Data: can view | Metadata : can view <br> Data: can capture and view |
+| 程序             | Metadata : can view <br> Data: can view | Metadata : can edit and view <br> Data: can view | Metadata : can view <br> Data: can capture and view |
+| Program Stages      | Metadata : can view <br> Data: can view | Metadata : can edit and view <br> Data: can view | Metadata : can view <br> Data: can capture and view |
+| 仪表板          | Metadata : can view <br> Data: can view | Metadata : can edit and view <br> Data: can view | Metadata : can view <br> Data: can view             |
+
+您将需要根据用户在系统中的角色将其分配给适当的用户组。您可能需要根据设置来启用包中其他对象的共享。有关配置共享的更多信息，请参考[DHIS2文档]（https://docs.dhis2.org/master/zh/dhis2_user_manual_zh/about-sharing-of-objects.html）。
+
+### 用户角色 { #user-roles } 
+
+用户将需要用户角色才能参与DHIS2中的各种应用程序。建议以下最低角色：
+
+1. 跟踪器数据分析：可以查看事件分析并访问仪表板，事件报告，事件可视化器，数据可视化器，数据透视表，报告和地图。
+2. 跟踪器数据捕获：可以添加数据值，更新跟踪的实体，跨组织单位搜索跟踪的实体以及访问跟踪器捕获
+
+有关配置用户角色的更多信息，请参见[DHIS2文档]（http://dhis2.org/documentation）。
+
+### 组织单位 { #organisation-units } 
+
+您必须将程序分配给自己的层次结构中的组织单位，以便能够在跟踪器捕获中查看程序。
+
+### 重复的元数据 { #duplicated-metadata } 
+
+> **NOTE**
+>
+> This section only applies if you are importing into a DHIS2 database in which there is already meta-data present. If you are working with a new DHIS2 instance, please skip this section and go to [Adapting the tracker program](#adapting-the-tracker-program).
+> If you are using any third party applications that rely on the current metadata, please take into account that this update could break them”
+
+即使成功导入了元数据而没有任何导入冲突，元数据中也可能存在重复项-数据元素，跟踪的实体属性或已存在的选项集。正如上面有关解决冲突的部分所述，要牢记的一个重要问题是，在DHIS2中更改元数据的决定还需要考虑与现有元数据有不同关联的其他文档和资源。 ，以及通过配置包导入的元数据。因此，解决重复项不仅是“清理数据库”的问题，而且还要确保做到这一点，例如，不破坏与其他系统的集成，使用培训材料的可能性，破坏SOP等。这将非常很大程度上取决于上下文。
+
+## 调整跟踪器程序 { #adapting-the-tracker-program } 
+
+Once the programme has been imported, you might want to make certain modifications to the programme. Examples of local adaptations that _could_ be made include:
+
+* 向表单添加其他变量。
+* 根据国家惯例修改数据元素/选项名称。
+* 向变量和/或数据输入表单添加翻译。
+* Modifying program indicators based on local case definitions.
+
+但是，如果您决定更改或删除任何包含的表格/元数据，强烈建议格外小心。修改可能会破坏功能，例如程序规则和程序指示器。
+
