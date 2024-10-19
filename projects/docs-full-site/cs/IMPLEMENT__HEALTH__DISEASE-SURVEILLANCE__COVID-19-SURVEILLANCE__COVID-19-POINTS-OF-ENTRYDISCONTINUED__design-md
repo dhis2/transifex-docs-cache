@@ -1,0 +1,136 @@
+---
+edit_url: "https://github.com/dhis2-metadata/C19_POE/blob/master/docs/c19_poe-design.md"
+revision_date: '2022-07-05'
+tags:
+- Implementace
+---
+
+# COVID-19 Points of Entry Tracker Design { #c19-poe-design }
+
+Demo: [https://covid19.dhis2.org/](https://covid19.dhis2.org/demo)
+
+## Účel { #purpose } 
+
+Dokument COVID-19 Points of Entry (POE) Screening System Design poskytuje přehled koncepčního designu použitého ke konfiguraci balíčku digitálních dat COVID-19 v DHIS2. Balíček COVID-19 byl vyvinut v reakci na výslovnou potřebu zemí rychle přizpůsobit řešení pro správu dat COVID-19. Tento dokument je určen k použití implementátory DHIS2 na národní a regionální úrovni, aby mohli podporovat implementaci a lokalizaci balíčku. Balíček metadat COVID-19 lze přizpůsobit místním potřebám a národním pokynům. Při lokalizaci a přijímání programů obsažených v tomto balíčku by měly být brány v úvahu zejména místní pracovní toky a národní pokyny.
+
+## Pozadí { #background } 
+
+Points of Entry Screening Tracker je inspirován průkopnickým designem implementovaným HISP Srí Lanka na podporu ministerstva zdravotnictví Srí Lanky. V lednu 2020 provedlo MOH na Srí Lance screeningová opatření v místech vstupu, jako jsou letiště, za účelem identifikace cestujících, kteří mohli být vystaveni nCoV-19. Trasovač DHIS2 měl registrovat cestující vstupující na Srí Lanku, kteří navštívili země zasažené COVID-19. Trasovač DHIS2 umožnil sledování cestujících v terénu po dobu 14 dnů, aby se zajistilo, že se nevyvinou žádné příznaky. Pokud by se příznaky vyvinuly, cestující by byli posláni do zdravotnického zařízení ke klinickému vyšetření a testování. Trasovač POE lze použít v kombinaci s dalšími digitálními datovými balíčky COVID-19, které zahrnují sledování případů a trasování kontaktů.
+
+Světová zdravotnická organizace (WHO) zveřejnila [technické pokyny pro správu nemocných v místech vstupu](https://www.who.int/emergencies/diseases/novel-coronavirus-2019/technical-guidance/points-of-entry-and-mass-gatherings). Mezi body vstupu (POE) patří mezinárodní letiště, námořní přístavy a pozemní přechody. Opatření POE zahrnují 1) detekci nemocných cestujících; 2) rozhovor s nemocnými cestujícími pro COVID-19; 3) hlášení výstrah nemocných cestujících s podezřením na infekci COVID-19 a 4) izolace, počáteční řízení případů a doporučení nemocných cestujících s podezřením na infekci COVID-19. Tyto pokyny by měly být konzultovány, včetně národních protokolů pro místa vstupu.
+
+## Souhrn návrhu systému { #system-design-summary } 
+
+### Případ použití { #use-case } 
+
+Případ použití programu POE trasovač byl navržen tak, aby podporoval registraci cestujících vstupujících do země s historií cestování nebo pobytu v zemi / oblasti / území hlásící místní přenos COVID-19, u nichž může být nutné sledovat, aby bylo zajištěno že se nevyvíjejí žádné příznaky. Pro tento případ použití se předpokládá, že cestující může být 1) podroben detekční kontrole a okamžitému odbavení bez nutnosti následných opatření; 2) vyšetřován a sledován po dobu 14 dnů [s nebo bez izolačních opatření], aby se zajistilo, že se nevyvinou žádné příznaky; nebo 3) prověřeny a odeslány k testování a / nebo počáteční správě případů. Současný návrh navrhuje, aby cestující, který splňuje definici podezřelého případu v zemi, byl zařazen do doplňkového sledovače případu Surveillance (CBS) DHIS2 COVID-19. Například cestující zapsaný v tomto programu, který později splní definici podezřelého případu během sledování (tj. Asymptomatický cestující ze země se známým přenosem je registrován na POE a později se u něj objeví příznaky) je zapsán jako podezřelý případ do program COVID-19 CBS k zachycení všech klinických detailů, expozic a sledování případu prostřednictvím laboratorní diagnostiky a výsledku případu.
+
+Při vývoji tohoto konfiguračního balíčku bylo vyvinuto úsilí dodržovat [obecné zásady návrhu] (https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/general-design-principles-for-who-metadata-packages.html) od UiO a společnou [konvenci pojmenování] (https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/naming-conventions.html).
+
+Balíčky digitálních dat DHIS2 jsou optimalizovány pro sběr dat Android pomocí aplikace DHIS2 Capture, kterou si můžete zdarma stáhnout v [obchodu Google Play](https://play.google.com/store/apps/details?id=com.dhis2&hl=en).
+
+### Předpokládaní uživatelé { #intended-users } 
+
+* Uživatelé POE: pracovníci odpovědní za detekční kontrolu cestujících na vstupních místech, jako jsou letiště, námořní přístavy a pozemní přechody, kteří mohou provést počáteční detekční kontrolu na POE, učinit rozhodnutí o odbavení cestujícího a zaregistrovat cestujícího do programu Tracker.
+* Pracovníci veřejného zdravotnictví: pracovníci odpovědní za sledování cestujících po dobu 14 dnů, aby se informovali o nástupu příznaků a v případě potřeby poslali osobu k testování.
+* Vnitrostátní a místní zdravotní úřady: sledují a analyzují data pomocí ovládacích panelů a analytických nástrojů k provádění hodnocení rizik a plánování opatření reakce.
+
+### Pracovní postup { #workflow } 
+
+Pracovní postup programu Points of Entry je založen na následujícím scénáři
+
+![Scénář](resources/images/POE_image01.png "Scénář")
+
+V tomto návrhu se předpokládá, že cestující dokončí svůj zápis v POE v následujících scénářích:
+
+1. Cestující je během úvodního vyšetření nebo po 14denním sledování označen jako „čistý“
+2. Cestující je kdykoli během sledování odeslán do zdravotnického zařízení
+
+**A traveler that is referred to a health facility is expected to be enrolled in the COVID-19 Case-based Surveillance Tracker as a suspected case** (according to national guidelines). Details about a suspected case including clinical exam, exposures, laboratory results and case outcome would be recorded in the CBS program. 
+
+### Structure: Points of Entry Screening Tracker Program { #structure-points-of-entry-screening-tracker-program } 
+
+![Struktura](resources/images/POE_image02.png "Struktura")
+
+#### Consideration for Organisation Units & Geography { #consideration-for-organisation-units-geography } 
+
+Tento návrh programu předpokládá, že vstupní body, jako jsou letiště, námořní přístavy nebo pozemní přechody, budou vytvořeny jako organizační jednotky zahrnuté v hierarchii Organizačních jednotek. Program by byl přiřazen organizačním jednotkám POE. Primární analýza je založena na zápisu Organizačních jednotek (vstupní body).
+
+Další geografické komponenty jsou také zachyceny jako jiné dimenze:
+
+1. Souřadnice TEI: Při registraci cestovatele jako TEI je možné zachytit souřadnice TEI. Ty lze zobrazit v aplikaci Mapy. Místní protokoly mohou zvolit, jaké souřadnice zadat, například místní bydliště TEI, kde může být 14 dní v karanténě.
+2. Souřadnice události: pro screeningové a následné fáze lze souřadnice zachytit na události a zobrazit na mapě. Uživatel může například zachytit polohu cestovatele pokaždé, když je sledován (tj. V případě turistů nebo jiných, kteří nejsou v domácí karanténě).
+
+#### Program Description { #program-description } 
+
+|Fáze|Popis|
+|--|--|
+|**Registrace**|Trasovaná entita je cestovatel, který je reprezentován typem trasované entity „osoba“. TEI je nakonfigurován tak, aby během registrace shromažďoval geografický „bod“. Ty lze analyzovat na mapě.|
+|**Podrobnosti o zápisu**|Datum zápisu<br> První fáze programu je nakonfigurována tak, aby se zobrazovala na stránce Registrace, takže uživatel nemusí kliknout a přidat první událost.|
+|**Atributy**|Atributy zahrnují základní osobní údaje a jedinečných identifikátorů případu <br> - číslo pasu <br> - ID místního případu<br> - Věk <br> - Jméno <br> - Příjmení <br> - země trvalého bydliště <br> - Pohlaví <br> - Datum narození <br> - Místní adresa <br> - adresa bydliště <br> - Telefon (místní) <br> - Telefon (zahraniční) <br> - Nouzový kontakt <br> - Telefon pro nouzový kontakt <br> - E-mail|
+|**Fáze 1** <br> **Screening na POE** <br> **(neopakující se)**|Tato fáze zaznamenává: <br> - podrobnosti o cestujících (navštívené země, číslo letu, datum odletu atd.) <br> - vyšetření: zaznamenaná teplota <br> - příznaky: tento seznam obsahuje příznaky obvykle kontrolované jak na příznaky COVID-19, tak na příznaky dalších potenciálních chorob podléhajících hlášení <br> - Vyřešení případu <br> <br> Pokud je cestující označen jako „čistý“, není nutná žádná další kontrola; zápis může být uzavřen. Pokud cestující vyžaduje sledování, lze naplánovat událost pro sledování. <br> <br> Formulář pro zadávání dat je po dokončení blokován; bez povolení nelze provádět žádné další změny.|
+|**Fáze 2:**<br>**Sledování (do 14 dnů)**<br>**(opakovatelné)**|V této fázi se zadávají údaje, pokud dojde k prozatímnímu sledování před koncem 14 dnů. Je možné zachytit souřadnice události (tj. Aktuální polohu cestovatele v době, kdy bylo dokončeno sledování) a zobrazit ji na mapě. <br> - Příznaky <br> - Doporučení (uživatel může vybrat organizační jednotku v datovém prvku nakonfigurovaném jako typ Org. jednotky, například pro výběr zdravotnického zařízení, kam byl cestující odkázán po nahlášení příznaků) <br> <br> Pokud je cestující odkázán na příznaky zdravotnické zařízení pro testování, cestující by měl být zapsán do programu sledování na základě případů. Registrace může být uzavřena, pokud v tomto programu není plánováno žádné další monitorování a následná opatření. <br> <br> Formulář pro zadávání dat je po dokončení blokován; bez povolení nelze provádět žádné další změny.|
+|**Fáze 3:** <br> **Sledování (po 14 dnech)** <br> **(neopakující se)**|Data se v této fázi zadávají na konci 14 dnů. Je možné zachytit souřadnice události (tj. Aktuální polohu cestovatele v době, kdy bylo dokončeno sledování) a zobrazit ji na mapě. <br> - Příznaky <br> - Doporučení (uživatel může vybrat organizační jednotku v datovém prvku nakonfigurovaném jako typ Organizační jednotky, například pro výběr zdravotnického zařízení, kam byl cestující odkázán po nahlášení příznaků) <br> - Vymazání případu <br><br> a cestující by měl být zařazen do programu sledování na základě případů. Zápis by měla být uzavřen po dokončení 14denního sledování.  <br><br> Formulář pro zadávání dat je po dokončení blokován; bez povolení nelze provádět žádné další změny.
+
+![Zápis](resources/images/POE_image03.png "Zápis")
+
+![Programová Fáze 1 – Promítání v POE](resources/images/POE_image04.png "Programová Fáze 1 - Promítání v POE")
+
+![Programová Fáze 1 – Promítání v POE](resources/images/POE_image05.png "Programová Fáze 1 - Promítání v POE")
+
+![Programová fáze 2: Následná kontrola (do 14 dnů)](resources/images/POE_image06.png "Programová fáze 2: Následná kontrola (do 14 dnů)")
+
+![Programová fáze 3: Následná kontrola (po 14 dnech)](resources/images/POE_image07.png "Programová fáze 3: Následná kontrola (po 14 dnech)")
+
+#### How to refer the TEI to another Organisation Unit { #how-to-refer-the-tei-to-another-organisation-unit } 
+
+Primární analýza je dokončena na přijímající organizační jednotce (vstupní port). Zařízení doporučení je zachyceno jako datový prvek (typ: organizační jednotka) za účelem zobrazení cestujících podle doporučení do zdravotnického zařízení v analytických aplikacích (tj. Zpráva o události). V některých případech použití může být žádoucí odkázat TEI (cestujícího) na další organizační jednotku k následnému sledování.
+
+TEI lze ‘předat‘ jiné organizační jednotce, například zdravotnickému zařízení, pro jednu událost nebo trvale. V takovém případě musí být uživatel zdravotnického zařízení schopen vyhledávat TEI zapsané v příslušných organizačních jednotkách bodů vstupu. Pokud například po prověření cestujícího v POE může být cestující „odkázán“ na okresní zdravotní úřad poblíž místní adresy cestujícího, aby jej mohli dále sledovat okresní zdravotníci. Po dokončení zadávání údajů pro 1. fázi (screening) by uživatel doporučil TEI na okresní zdravotní středisko. Přečtěte si více o doporučeních ve trasovači v [Uživatelská dokumentace DHIS2] (https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/tracking-individual-level-data/tracker-capture.html).
+
+![alt_text](resources/images/POE_image08.png "image_tooltip")
+
+### Program Relationships { #program-relationships } 
+
+Tento program má vztah typu „Byl v kontaktu“. Uživatelé mohou vytvořit vztah mezi TEI zapsanými v programu POE a TEI v jiných trasovacích programech COVID-19 (Case-based Surveillance, Contact Registration & Follow-up). Vztah lze přidat kdykoli ve fázích programu během zadávání dat.
+
+### Pravidla programu { #program-rules } 
+
+Byla nakonfigurována následující pravidla programu.
+
+|Název pravidla programu|Popis pravidla programu|
+|--|--|
+|Vypočítejte a přiřaďte věk pacienta v letech|Vypočítejte a přiřaďte věk pacienta v letech|
+|Skrýt země, pokud nejsou navštíveny|Skrýt země, pokud nejsou navštíveny|
+|Skrýt následné fáze|Skrýt následné fáze, pokud je případ vymazán v Bodě vstupu|
+|Skrýt příznaky, pokud nejsou přítomny žádné příznaky (sledování na konci 14 dnů)|Skrýt příznaky, pokud nejsou přítomny žádné příznaky (sledování na konci 14 dnů)|
+|Skrýt příznaky, pokud nejsou přítomny žádné příznaky (sledování do 14 dnů)|Skrýt příznaky, pokud nejsou přítomny žádné příznaky (sledování do 14 dnů)|
+|Skrýt příznaky, pokud nejsou přítomny žádné příznaky (PoE)|Skrýt příznaky, pokud nejsou přítomny žádné příznaky (PoE)|
+
+You can read more about program rules here:
+[https://docs.dhis2.org/master/en/user/html/configure_program_rule.html](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/programs.html#create_program_rule)
+
+### Indicators and Program Indicators { #indicators-and-program-indicators } 
+
+|||
+|--|--|
+|Cestovatelé COVID-19 byli prověřeni|Celkový počet cestujících prověřených a zapsaných do screeningového programu z POE|
+|COVID-19 cestující, kteří byli odbaveni na POE|Počet cestujících odbavených po kontrole POE (není nutná žádná další kontrola)|
+|COVID-19 cestující s příznaky na POE|Počet cestujících s příznaky během screeningu POE|
+|COVID-19 cestující, kteří byli čistí po 14 dnech monitorování|Počet cestujících, kteří jsou vymazáni po 14denním sledování (žádný nástup příznaků během 14denního období)|
+|COVID-19 cestující, kteří se obrátili na zdravotnické zařízení|Počet cestujících, kteří byli posláni do zdravotnického zařízení kdykoli během 14denního sledování|
+|Cestující COVID-19 se zapsali na 14denní sledování|Počet cestujících, u kterých se při screeningu POE neprojevily příznaky a při screeningu POE nebyli odmazáni|
+|COVID-19 je v současné době sledován|Počet cestujících, kteří nebyli odbaveni nebo odesláni do zdravotnického zařízení|
+|COVID-19 cestující, u kterých se během sledování objevily příznaky|Počet cestujících, u kterých se během sledování vyvinuly příznaky (nezahrnujte cestující, kteří mají příznaky během screeningu POE)|
+|COVID-19 % cestujících kde se příznaky objevily během 14denního sledování|Čitatel: Počet cestujících, u kterých se během sledování vyvinuly příznaky (kromě cestujících s příznaky během screeningu POE) <br> Jmenovatel: Počet cestujících, u kterých se při screeningu POE neprojevily příznaky a při screeningu POE nebyli vyčištěni.|
+
+Uživatelé také mohou vygenerovat zprávu o události, aby viděli:
+
+1. Cestující podle státní příslušnosti a / nebo země původu
+2. Doporučení zdravotnickému zařízení
+
+## Reference { #references } 
+
+* DHIS2 COVID-19 [Průvodce instalací balíčku Tracker](covid-19-tracker-installation.html)
+* Světová zdravotnická organizace (WHO) [technické pokyny pro správu nemocných osob na vstupních místech](https://www.who.int/emergencies/diseases/novel-coronavirus-2019/technical-guidance/points-of-entry-and-mass-gatherings) (prozatímní pokyny, zveřejněné 19. března 2020)
+

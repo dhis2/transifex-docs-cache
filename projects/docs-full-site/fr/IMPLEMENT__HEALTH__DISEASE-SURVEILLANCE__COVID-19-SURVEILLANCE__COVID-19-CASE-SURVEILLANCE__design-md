@@ -1,0 +1,291 @@
+---
+edit_url: "https://github.com/dhis2-metadata/C19_CS/blob/master/docs/c19_cs-design.md"
+revision_date: '2022-09-13'
+tags:
+- Implémentation
+---
+
+# COVID-19 Case Surveillance & Contact Tracing Design { #c19-cs-design }
+
+Demo: [https://demos.dhis2.org/covid-19](https://demos.dhis2.org/covid-19)
+
+## Objectif { #purpose } 
+
+Le document "Conception du système de surveillance du COVID-19" donne un aperçu du design conceptuel utilisé dans la configuration d'un ensemble de données numériques du COVID-19 dans le DHIS2. Le paquet COVID-19 a été développé en réponse à un besoin exprimé par les pays d'adapter rapidement une solution de gestion des données du COVID-19. Ce document est destiné aux responsables de la mise en œuvre du DHIS2 au niveau national et régional pour soutenir la mise en œuvre et la localisation du progiciel. Le progiciel de métadonnées de COVID-19 peut être adapté aux besoins locaux et aux directives nationales. Les flux de travail locaux et les lignes directrices nationales doivent être en particulier pris en compte lors de la localisation et de l'adoption des programmes inclus dans ce progiciel.
+
+## Contexte { #background } 
+
+**This design has been updated to reflect new aggregate reporting requirements from the [WHO interim surveillance guidelines updated March 20, 2020][1]**. The COVID-19 digital data package was developed in response to an expressed need from countries to rapidly adapt a solution for managing COVID-19 data. UiO has developed COVID-19 surveillance packages for three types of data models (tracker, event-based aggregate) to enable countries to select the model that is most appropriate for their context given the burden of disease and available resources. These models and their relative benefits/limitations are summarized below:
+
+| Type de Package de surveillance | Case Surveillance (Tracker) | Surveillance (Événement) | Surveillance (Agrégat ) |
+|---|---|---|---|
+| ***Description*** | Permet d'enregistrer un cas et de le suivre dans le temps grâce à la confirmation en laboratoire et au résultat relatif au cas | Permet de saisir les détails relatifs à un cas critique sous forme de liste de lignes | Permet la déclaration quotidienne ou hebdomadaire des principaux points de données agrégées |
+| ***Avantages*** | La grande granularité des données et les multiples dimensions temporelles de l'analyse peuvent permettre de décentraliser le flux de travail c'est-à-dire tous les événements liés au cas. | Caractéristique plus granulaire qu'agrégée et pouvant saisir les principales dimensions temporelles (c'est-à-dire la date du rapport par rapport à l'apparition des symptômes) ; réduction de la charge de saisie des données par rapport au tracker et niveau de complexité peu élevé | Peu complexe, facile à mettre en œuvre, plus facile à gérer lorsque le nombre de cas est élevé |
+| ***Inconvénients*** | Le volume de données à saisir peut être écrasant lorsque le nombre de cas atteint le seuil ; ceci peut rendre la mise en œuvre complexe | Ne prend pas en charge le suivi des cas ou d'autres flux de travail décentralisés | Une granularité plus faible pour l'analyse détaillée (c'est-à-dire une analyse basée exclusivement sur la date de notification du cas, une désagrégation limitée) |
+
+**Ce document ne couvre que la conception de l'ensemble du programme de suivi de la surveillance** ; des documents de conception de système distincts sont disponibles pour les ensembles d'événements et d'agrégats de DHIS2.
+
+L'OMS "exhorte tous les pays à se préparer à l'arrivée éventuelle de COVID-19 en préparant des systèmes d'intervention d'urgence, en augmentant la capacité à détecter et à soigner les patients, en veillant à ce que les hôpitaux disposent de l'espace, du matériel et du personnel nécessaires et en mettant au point des interventions médicales visant à sauver des vies".
+
+Les objectifs du progiciel de surveillance du COVID-19 sont les suivants :
+
+1. surveiller les tendances de la maladie là où il y a transmission interhumaine ;
+2. détecter rapidement les nouveaux cas dans les pays où il n'y a pas de circulation du virus ;
+3. fournir des informations épidémiologiques pour effectuer des évaluations des risques aux niveaux national, régional et mondial ; et
+4. fournir des informations épidémiologiques pour orienter les mesures de préparation et d'intervention.
+
+The system design builds upon existing case disease surveillance principles and information system requirements that have been developed collaboratively between the WHO and UiO since 2017. The COVID-19 surveillance package was developed with the intent to align to [WHO technical guidance on nCoV-19 surveillance and case definitions][2], updated March 20, 2020. Note that this design may not necessarily reflect the latest available interim global guidance developed by WHO as updates may be released rapidly. National guidelines and policies may vary and it is recommended to adapt this package to local context.
+
+## Résumé de la conception du système { #system-design-summary } 
+
+The DHIS2 case surveillance tracker metadata was based on the **[WHO COVID-19 case reporting template][3]** and the mapping of data dictionaries can be accessed at: [DHIS2 CBS tracker metadata WHO line-list data dictionary][4].
+
+In the development of this configuration package, an effort has been made to follow UiO’s [general design principles][5] and a common [naming convention][6].
+
+Le package de données numériques de la COVID-19 prend en charge les flux de travail de surveillance et l'analyse automatisée des éléments clés de la surveillance de routine et active. Ce paquet comprend un système de suivi de la surveillance des cas ainsi qu'un système d'enregistrement et de suivi des contacts, installés ensemble dans le même progiciel de métadonnées. Les programmes de suivi sont optimisés pour être installés avec d'autres progiciels de surveillance de COVID-19, notamment le programme de suivi du contrôle aux points d'entrée et l'ensemble de données de surveillance quotidiennes agrégées.
+
+1. **[Use Case 1: COVID-19 Case surveillance tracker][7]**: enrols & tracks suspected cases; captures symptoms, demographics, risk factors & exposures; creates lab requests; links confirmed cases with contacts; and monitors patient outcomes. This package can be installed as a standalone COVID-19 package or can be integrated into a country’s existing integrated disease surveillance & response tracker. Metadata for the case surveillance tracker is aligned with the WHO [COVID-19 surveillance data dictionary][8]
+
+    > n.b. The COVID-19 case tracker can be implemented either as a ‘standalone’ program for COVID-19 specific disease surveillance as described here; or, COVID-19 concepts can be integrated into an existing case surveillance tracker program if one already exists in-country. Please refer to installation and implementation guidance for more details.
+
+1. **[Use Case 2: Contact registration & follow-up][9]**: strengthens active case detection through contact tracing activities, such as identification and follow-up of contacts of a suspected or confirmed COVID-19 case.
+
+Digital data packages are optimized for Android data collection with the DHIS2 Capture App, free to download on the [Google Play store][10].
+
+## Use Case 1: COVID-19 Case surveillance tracker { #use-case-1-covid-19-case-surveillance-tracker } 
+
+The COVID-19 case surveillance tracker can be adapted and used by countries to supplement existing national disease surveillance programs. The basic case surveillance program is designed to:
+
+1. Enroll suspected\* COVID-19 cases (*generally appearing at a health facility, but may be enrolled at other places*)
+2. Saisir les informations clés sur le cas suspect, y compris les données démographiques et les expositions, telles que les symptômes, les contacts avec un cas précédemment confirmé et les antécédents de voyage
+3. Générer des demandes d'analyse de laboratoire
+4. Enregistrer le diagnostic du laboratoire
+5. Enregistrer les contacts d'un cas confirmé\*\* ou probable\*\*\* pour suivi
+6. Enregistrer les résultats d'analyse de cas
+7. Faciliter la notification des cas et le signalement des cas au niveau national/régional/global
+8. Générer des tableaux de bord et des outils d'analyse pour suivre les tendances des maladies et planifier les interventions
+
+The design of the case tracker program assumes that [WHO case definitions][1] are followed in the use case; its use can be adapted to local case definitions as needed. The WHO case definitions were updated on March 20, 2020 and noted below.
+
+> \* Suspected case: A) a patient with acute respiratory illness (fever and at least one sign/symptom of respiratory disease (e.g., cough, shortness of breath), AND with no other aetiology that fully explains the clinical presentation AND a history of travel to or residence in a country/area or territory reporting local transmission of COVID-19 disease during the 14 days prior to symptom onset; **OR**, B) A patient with any acute respiratory illness AND having been in contact with a confirmed or probable COVID-19 case (see definition of contact) in the last 14 days prior to onset of symptoms; **OR,** C) A patient with severe acute respiratory infection (fever and at least one sign/symptom of respiratory disease (e.g., cough, shortness breath) AND requiring hospitalization AND with no other aetiology that fully explains the clinical presentation.
+>
+>\*\* Probable case: A) a suspect case for whom testing for COVID-19 is inconclusive (inconclusive being the result of the test reported by the laboratory) **OR,** B) a suspect case for whom testing could not be performed for any reason.
+>
+>\*\*\* Confirmed case: A person with laboratory confirmation of COVID-19 infection, irrespective of clinical signs and symptoms.
+
+### Utilisateurs cibles { #intended-users } 
+
+* Utilisateurs des établissements de santé : saisie et enregistrement des détails relatifs à un cas suspect, y compris les symptômes cliniques et les expositions ; suivi des résultats de laboratoire ; enregistrement des résultats d'analyse du cas
+* Utilisateurs de laboratoire : reçoivent les demandes d'analyses de laboratoire et enregistrent résultat d'analyses de laboratoire pour un cas suspect particulier
+* Autorités sanitaires nationales et locales : suivi et analyse des données de surveillance des maladies au moyen de tableaux de bord et d'outils d'analyse permettant de réaliser des évaluations des risques et de planifier les interventions ; production de rapports en vue des rapports régionaux et global
+
+### Workflow: COVID-19 Case Surveillance Tracker { #workflow-covid-19-case-surveillance-tracker } 
+
+![Workflow of the DHIS2 COVID-19 Case Surveillance Tracker](resources/images/sdd-tracker-v3-case1-workflow.png)
+
+### Structure : Programme de suivi de la surveillance des cas du COVID-19 { #structure-covid-19-case-surveillance-tracker-program } 
+
+![Structure of the COVID-19 Case Surveillance Tracker Program](resources/images/sdd-tracker-v3-case1-structure-v2.png)
+
+#### Description du programme : COVID-19 : test de cas, diagnostic et résultats { #program-description-covid-19-case-testing-diagnosis-outcome } 
+
+| Étape | Description |
+|---|---|
+| **Détails de l'inscription et Attributs** | The Tracked Entity is the case, which is represented by a Tracked Entity Type of ‘person.’ The *Enrollment date* is the date of registration of the case. The Related programs is *COVID-19 Contact registration &amp; follow-up*. The attributes include the following basic personal information and unique case identifiers: *System Generated Case ID*, *Local Case ID*, *Age*, *First Name*, *Surname*, *Sex*, *Case phone number*, *First Name (parent or care)*, *Surname (parent or carer)*, *Home Address*, *Workplace/school physical address*, *Country of Residence*, *Facility contact number*|
+| **Étape 1 : Examen clinique et expositions** | This stage records a suspected case’s clinical symptoms and exposures including: *Symptoms*, *Pregnancy and underlying conditions*, *Hospitalisation and Isolation*, *Exposures in 14 days prior to symptoms*, *Travel history*, *Contact with confirmed case*. After examination, you can record if the case has been hospitalised or isolated, and information surrounding this. |
+| **Étape 2 : Demande d'analyse [reproductible]** | La demande d'analyse indique la raison des tests ainsi que toute autre information dont un laboratoire a besoin pour traiter un échantillon et le tester pour la COVID19. Les informations fournies ici peuvent aider le personnel du laboratoire à établir un ordre de priorité pour les tests de laboratoire lorsque les ressources sont limitées. L'agent chargé de saisir ces données peut être la même que celui ayant enregistré le cas suspect et consigné l'examen clinique et les expositions du patient ; il peut également s'agir d'un autre membre du personnel chargé de traiter les demandes d'analyse. |
+| **Étape 3 : Résultats d'analyses de laboratoire  [reproductibles]** | L'étape consacrée aux résultats de laboratoire permet d'enregistrer le type et les résultats des tests de laboratoire. Elle peut être réalisée directement au laboratoire ou comme deuxième saisie de données. Cette étape est répétable puisque les échantillons pour un cas donné peuvent être testés plusieurs fois (c'est-à-dire que dans le cas de résultats de laboratoire non concluants, un nouveau test de laboratoire peut être effectué et les résultats enregistrés). |
+| **Étape 4 : Résultats cliniques** | Le résultat clinique indique le résultat médical final du cas : (guéri, non guéri, mort ou inconnu), y compris la date de sortie ou de décès, selon le cas. |
+
+#### Enrollment Stage { #enrollment-stage } 
+
+![Enrollment](resources/images/sdd-tracker-v3-case1-enrollment.png)
+
+#### Étape 1 du programme - Examen clinique et diagnostic { #program-stage-1-clinical-examination-diagnosis } 
+
+##### Section 1 - Signes et symptômes cliniques { #section-1-clinical-signs-and-symptoms } 
+
+En sélectionnant "oui" à l'élément de donnée 'Signes ou symptômes ?', vous découvrirez les autres options.
+
+![Section 1](resources/images/sdd-tracker-v3-case1-stage1-section1.png)
+
+##### Section 2 - Détails sur la grossesse { #section-2-pregnancy-details } 
+
+Cette section est masqée si le sexe sélectionné est "Femme".
+
+![Section 2](resources/images/sdd-tracker-v3-case1-stage1-section2.png)
+
+##### Section 3 - Conditions sous-jacentes/comorbidité { #section-3-underlying-conditionscomorbidity } 
+
+The details of this section are hidden unless “Any underlying conditions” is marked as “Yes”.  
+
+![Section 3](resources/images/sdd-tracker-v3-case1-stage1-section3.png)
+
+##### Section 4 - Hospitalisation { #section-4-hospitalisation } 
+
+The details of this section is hidden unless “Hospitalised” is marked as “Yes”.
+
+![Section 4](resources/images/sdd-tracker-v3-case1-stage1-section4.png)
+
+##### Section 5 - Risque d'exposition { #section-5-exposure-risk } 
+
+This section is used to record exposures
+
+   1. The fields ***country, city and facility*** are hidden by program rules if the case is not a health care worker;
+   2. The fields for contact IDs are hidden by program rules if the case has not had contact with a confirmed case in 14 days.
+
+A suspected case’s exposure to a *previously confirmed* case is distinct from prospective contact tracing in Program Stage 5.
+
+![Section 5](resources/images/sdd-tracker-v3-case1-stage1-section5.png)
+
+##### Section 6 - Antécédents de voyage { #section-6-travel-history } 
+
+![Section 6](resources/images/sdd-tracker-v3-case1-stage1-section6.png)
+
+#### Étape 2 du programme : Demande d'analyses de laboratoire { #program-stage-2-lab-request } 
+
+![Stage 2](resources/images/sdd-tracker-v3-case1-stage2.png)
+
+#### Étape 3 : Résultats d'analyses de laboratoire { #stage-3-lab-results } 
+
+![Stage 3](resources/images/sdd-tracker-v3-case1-stage3.png)
+
+#### Étape 4 : Résultats cliniques { #stage-4-health-outcomes } 
+
+![Stage 4](resources/images/sdd-tracker-v3-case1-stage4.png)
+
+### Règles du programme : Suivi de la surveillance des cas de COVID19 { #program-rules-covid19-case-surveillance-tracker } 
+
+The following program rules have been configured. If a country has an existing case surveillance program and wishes to incorporate elements of the COVID-19 case tracker into their existing program, special attention must be paid to the configuration of program rules.
+
+| Nom de la règle du programme | Description de la règle du programme |
+|---|---|
+| Assign Enrollment Date | This assigns the enrollment date if there is no onset date available to the variable calculated onset date (for indicators). This variable is used as a custom parameter in some of the program indicators. |
+| Assign Onset Date| This assigns the onset date to the variable calculated onset date (for indicators). This variable is used as a custom parameter in some of the program indicators.|
+| Calculer et attribuer l'âge du patient en années | Calculer et attribuer l'âge du patient en années selon la DDN |
+| Afficher l'âge du patient en années + jours | Afficher l'âge du patient en années + jours |
+| Hide Date of Death | Hide the Date of Death unless Death is the health outcome |
+| Hide Date of Discharge | Hide Date of Discharge if no outcome or if the outcome is death |
+| Hide Measured Temperature field | Hide Measured Temperature field until Fever is selected |
+| Hide confirmed case ID's if no contact with other confirmed cases| Hides any contact ID's if the case has not been in any contact with other confirmed cases |
+| Masquer les détails relatifs au personnel de santé s'il ne s'agit pas d'un professionnel des soins de santé | Masquer les détails relatifs au personnel de santé s'il ne s'agit pas d'un professionnel des soins de santé |
+| Masquer l'explication relative au résultat clinique si le résultat clinique n'est pas différent | Masquer l'explication relative au résultat clinique si le résultat clinique n'est pas différent |
+| Masquer les détails relatifs à l'hospitalisation si celle-ci est inexistante ou inconnue | Masquer les détails relatifs à l'hospitalisation si celle-ci est inexistante ou inconnue |
+| Masquer la date d'isolement si le cas n'est pas en isolement | Masquer la date d'isolement si le cas n'est pas en isolement |
+| Masquer les détails relatifs à la grossesse si la femme concernée n'est pas enceinte | Masquer les détails relatifs à la grossesse si la femme concernée n'est pas enceinte |
+| Masquer la section réservée aux détails sur la grossesse si le sexe est masculin | Masquer la section réservée aux détails sur la grossesse si le sexe est masculin |
+| Masquer les explications relatives aux tests effectués dans le cas où une option est sélectionnée | Masquer les explications relatives aux tests effectués dans le cas où une option est sélectionnée |
+| Masquer les détails relatifs aux antécédents de voyage si aucun voyage n'a été effectué 14 jours avant l'apparition des symptômes | Masquer les détails relatifs aux antécédents de voyage si aucun voyage n'a été effectué 14 jours avant l'apparition des symptômes |
+| Masquer les affections sous-jacentes si le cas n'en présente pas | Masquer les affections sous-jacentes si le cas n'en présente pas |
+| Afficher un message d'avertissement si la date de l'événement est postérieure à la date de l'enregistrement | Afficher un message d'avertissement à la fin d'un événement si la date de l'événement est antérieure à la date de l'enregistrement |
+
+You can read more about program rules here: [https://docs.dhis2.org/master/en/user/html/configure\_program\_rule.html][11]
+
+### Indicateurs de programme { #program-indicators } 
+
+À partir des données saisies dans le Programme de surveillance des cas de COVID-19, nous pouvons calculer au moins les indicateurs suivants, y compris ceux recommandés par l'OMS pour la déclaration globale quotidienne et hebdomadaire, et les présenter dans un tableau de bord :
+
+| Nom de l'indicateur | Description |
+|---|---|
+| COVID-19 - Cas traités par ventilation mécanique ou par ECMO ou admis en unité de soins intensifs (USI) | *Cases treated with mechanical ventilation or ECMO or admitted in intensive care unit (ICU)* |
+| Contacts avec des cas de COVID-19 | *Counts the number of relationships (‘has been in contact with’) created that are linked to the case TEI* |
+| COVID-19 - Décès (tous les cas suspects) | *COVID-19 related deaths (deaths recorded among all suspected cases)* |
+| COVID-19 - Décès (cas confirmés) | *COVID-19 related deaths (deaths recorded among confirmed cases)* |
+| COVID-19 - Décès (cas probables) | *COVID-19 related deaths (deaths recorded among all probable cases)* |
+| COVID-19 - Cas confirmés et hospitalisés | *Number of confirmed cases that were admitted into hospital* |
+| COVID-19 - Cas importés | *Cases where likely source of infection is recorded as another country or imported from another country.* |
+| COVID-19 - Cas confirmés en laboratoire | *Suspected cases that were confirmed through laboratory testing (multiple lab tests may be conducted; this indicator assumes that the last test result is* "Positive"*); displayed by report date* |
+| COVID-19 - Cas confirmés en laboratoire - en fonction de l'apparition des symptômes | *Suspected cases that were confirmed through laboratory testing (multiple lab tests may be conducted; this indicator assumes that the last test result is* "Positive"*); displayed by date of onset of symptoms* |
+| COVID-19 - Cas testés en laboratoires | *Number of suspected cases that received a laboratory test (includes inconclusive lab testing results)* |
+| COVID-19 - Cas de transmission locale | *Number of suspected cases where transmission is local (no travel in last 14 days* |
+| COVID-19 - Cas probables | *Suspected cases with inconclusive laboratory results or not tested for any reason, by reported date* |
+| COVID-19 - Cas probables - en fonction de l'apparition des symptômes | *Suspected cases with inconclusive laboratory results or not tested for any reason, by date of onset of symptoms* |
+| COVID-19 - Cas confirmés guéris | *Number of laboratory confirmed cases with outcome recovered*|
+| COVID-19 - Cas suspects | *Total number of cases suspected with COVID-19, by report date* |
+| COVID-19 - Cas suspects - en fonction de l'apparition des symptômes | *Total number of cases suspected with COVID-19, by date of onset of symptoms* |
+| COVID-19 - Cas suspects dont le résultat du test n'est pas positif | *Total number of suspected cases without a positive lab result* |
+| COVID-19 : Nombre total de tests de laboratoire effectués | *Total number of lab tests conducted (count of tests, not cases)* |
+| COVID-19 : Nombre total de tests positifs | *Total number of lab tests returned with positive results (count of tests, not cases* |
+| COVID-19 : Décès par sexe et par tranche d'âge | ***Male**: 0-4, 5-14, 15-24, 25-34, 35-44, 45-54, 55-64, 65-74, 75-84, 85+ &#124; **Female**: 0-4, 5-14, 15-24, 25-34, 35-44, 45-54, 55-64, 65-74, 75-84, 85+* |
+| COVID-19 : Cas confirmés par sexe et par tranche d'âge | ***Male**: 0-4, 5-14, 15-24, 25-34, 35-44, 45-54, 55-64, 65-74, 75-84, 85+ &#124; **Female**: 0-4, 5-14, 15-24, 25-34, 35-44, 45-54, 55-64, 65-74, 75-84, 85+* |
+| COVID-19 : Cas suspects par sexe et groupe d'âge | ***Male**: 0-4, 5-14, 15-24, 25-34, 35-44, 45-54, 55-64, 65-74, 75-84, 85+ &#124; **Female**: 0-4, 5-14, 15-24, 25-34, 35-44, 45-54, 55-64, 65-74, 75-84, 85+* |
+
+## Cas d'utilisation 2 : COVID-19 Enregistrement et suivi des contacts { #use-case-2-covid-19-contact-registration-follow-up } 
+
+This program can be used in addition to the case surveillance tracker to facilitate the registration and follow-up of contacts of a confirmed case. In this scenario, it is assumed that if any contacts of a confirmed case meet criteria for suspected case and are referred for testing, the case will be enrolled into the COVID-19 Case Surveillance tracker program.
+
+Le programme d'enregistrement et de suivi des contacts permet d'enregistrer chaque contact d'un cas (tel que décrit dans le cas d'utilisation de la surveillance de cas COVID-19) en tant que nouvelle instance (personne) d'entité surveillée et les relie au cas dans le programme de surveillance de cas COVID-19 via une ‘relation’. Il comporte une étape de suivi simple et reproductible où les symptômes et tout suivi entrepris peuvent être enregistrés.
+
+### Flux de travail : Enregistrement des contacts et suivi { #workflow-contact-registration-follow-up } 
+
+![Worflow of the Contact registration &amp; follow-up](resources/images/sdd-tracker-v3-case2-workflow.png)
+
+### Description du programme : Enregistrement des contacts et suivi { #program-description-contact-registration-follow-up } 
+
+| Étape | Description |
+|---|---|
+| **Détails de l'inscription et Attributs** | The Tracked Entity is represented by a Tracked Entity Type of ‘person.’ The Related program is *COVID-19 Case based surveillance*. The attributes include the following basic personal information and unique case identifiers: *System Generated Case ID*, *Local Case ID*, *First Name*, *Surname*, *Date of birth*, *Age*, *Sex*, *Phone number (local)*, *Home Address*, *Country of Residence* |
+| **Étape 1 : Suivi [non reproductible]** | This stage is meant to record information related to contact tracing follow up, given that a contact has already been identified. It is divided into two sections: *1. Relation with case*, *2. Exposure Assessment* |
+| **Étape 2: Symptômes[reproductibles]** | This stage is intended to record symptoms of the case. Follow-up to check on the symptoms of a contact can be repeated until the follow-up period is complete (for example, after 14 days or according to national guidelines). When follow-up period is complete, the enrollment can be ‘completed.’ *1. Symptoms*|
+
+Les contacts sont ajoutés au cas index en utilisant le menu des relations du programme de surveillance des cas :
+
+![Profile](resources/images/sdd-tracker-v3-case2-profile.png)
+
+Once you select “Add” from the relationships box, you are able to select the relationship and program and either select an existing person or enroll a new contact using the enrollment stage that appears. This will enroll the contact into the contact registration and follow-up
+program.
+
+![Add a relationship](resources/images/sdd-tracker-v3-case2-add-relationship.png)
+
+Contacts that are added will then be listed on the case’s tracker dashboard in the relationship
+widget
+
+![Relationships widget](resources/images/sdd-tracker-v3-case2-relationships-widget.png)
+
+Vous pouvez également les inscrire séparément au programme. Une fois inscrits, vous pourrez les retrouver pour le suivi nécessaire.
+
+#### Inscription { #enrollment } 
+
+![iEnrollment in the use case 2](resources/images/sdd-tracker-v3-case2-enrollment-case2.png)
+
+#### Étape 1 du programme : Suivi { #program-stage-1-follow-up } 
+
+![Case 2 Stage 1](resources/images/sdd-tracker-v3-case2-stage1.png)
+
+#### Étape 2 du programme : Symptômes { #program-stage-2-symptoms } 
+
+![Case 2 Stage 2](resources/images/sdd-tracker-v3-case2-stage2.png)
+
+### Indicateurs de programme : Enregistrement des contacts { #program-indicators-contact-registration } 
+
+| Nom de l'indicateur de programme | Description |
+|---|---|
+| COVID-19 : voyageurs dépistés | Nombre total de voyageurs dépistés et enregistrés au programme de dépistage au PDE |
+| COVID-19 : autorisation des voyageurs au PDE | Nombre de voyageurs autorisés après le contrôle au PDE (aucun suivi requis) |
+| COVID-19 : voyageurs présentant des symptômes au PDE | Nombre de voyageurs présentant des symptômes lors du contrôle au PDE |
+| COVID-19 : voyageurs autorisés après 14 jours de suivi | Nombre de voyageurs autorisés après 14 jours de suivi (aucun symptôme n'est apparu pendant cette période) |
+| COVID-19 : voyageurs référés à un établissement de santé | Nombre de voyageurs référés à un établissement de santé durant les 14 jours de surveillance |
+| COVID-19 : voyageurs enregistrés pour un suivi de 14 jours | Nombre de voyageurs ne présentant pas de symptômes lors du dépistage au PDE et n'ayant pas été autorisés lors du dépistage au PDE |
+| COVID-19 : voyageurs actuellement sous surveillance | Nombre de voyageurs non autorisés ou non référés à un établissement de santé |
+| COVID-19 : les voyageurs ayant développé des symptômes lors du suivi | Nombre de voyageurs ayant développé des symptômes lors du suivi (exclure les voyageurs présentant des symptômes lors du dépistage au PDE) |
+
+## Références { #references } 
+
+* Directives techniques de l'OMS sur la surveillance de la COVID-19 et les définitions de cas (dernière mise à jour le 20 mars 2020) [https://www.who.int/emergencies/diseases/novel-coronavirus-2019/technical-guidance/surveillance-and-case-definitions](https://www.who.int/emergencies/diseases/novel-coronavirus-2019/technical-guidance/surveillance-and-case-definitions)
+* Dictionnaire de données de l'OMS en ce qui concerne le formulaire de déclaration de cas COVID-19 [https://www.who.int/docs/default-source/coronaviruse/2020-02-27-data-dictionary-en.xlsx</span>](https://www.who.int/docs/default-source/coronaviruse/2020-02-27-data-dictionary-en.xlsx)
+* Dépistage en laboratoire des cas suspects d'infection humaine par le nouveau coronavirus 2019 (2019-nCoV) (dernière mise à jour le 2 mars 2020) [https://www.who.int/publications-detail/laboratory-testing-for-2019-novel-coronavirus-in-suspected-human-cases-20200117](https://www.who.int/publications-detail/laboratory-testing-for-2019-novel-coronavirus-in-suspected-human-cases-20200117)
+* Considérations de l'OMS dans l'investigation des cas et groupes de COVID-19 (dernière mise à jour le 13 mars 2020) [https://www.who.int/internal-publications-detail/considerations-in-the-investigation-of-cases-and-clusters-of-covid-19](https://www.who.int/internal-publications-detail/considerations-in-the-investigation-of-cases-and-clusters-of-covid-19)
+* Rapports de l'OMS sur la situation du coronavirus [https://www.who.int/emergencies/diseases/novel-coronavirus-2019/situation-reports](https://www.who.int/emergencies/diseases/novel-coronavirus-2019/situation-reports)
+
+[1]: https://apps.who.int/iris/bitstream/handle/10665/331506/WHO-2019-nCoV-SurveillanceGuidance-2020.6-eng.pdf
+[2]: https://www.who.int/emergencies/diseases/novel-coronavirus-2019/technical-guidance/surveillance-and-case-definitions
+[3]: https://www.who.int/docs/default-source/coronaviruse/2020-02-27-data-dictionary-en.xlsx
+[4]: https://drive.google.com/open?id=1vigXHkP7L2hJ2lrZpdf9u4csQtppMH16
+[5]: https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/general-design-principles-for-who-metadata-packages.html
+[6]: https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/naming-conventions.html
+[7]: #use-case-1-covid-19-case-surveillance-tracker
+[8]: https://www.who.int/docs/default-source/coronaviruse/data-dictionary-covid-crf-v6.xlsx?sfvrsn=a7d4ef98_2
+[9]: #use-case-2-covid-19-Contact-registration-follow-up
+[10]: https://play.google.com/store/apps/details?id=com.dhis2&hl=en
+[11]: https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/programs.html#configure_program_rule
+

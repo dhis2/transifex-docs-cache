@@ -1,0 +1,206 @@
+---
+edit_url: "https://github.com/dhis2-metadata/C19_AGG/blob/master/docs/c19_agg-design.md"
+revision_date: '2023-03-31'
+tags:
+- Implementace
+---
+
+# COVID-19 Surveillance - Aggregate System Design Guide { #c19-agg-design }
+
+## Účel { #purpose } 
+
+Dokument COVID-19 Surveillance Aggregate System Design poskytuje přehled principů návrhu a pokynů použitých k vývoji balíčku digitálních dat pro souhrnný dohled COVID-19. Tento dokument je určen k použití implementátory DHIS2 na národní a regionální úrovni, aby mohli podporovat implementaci a lokalizaci balíčku. Balíček metadat COVID-19 lze přizpůsobit místním potřebám a národním pokynům. Při lokalizaci a přijímání programů obsažených v tomto balíčku by měly být brány v úvahu zejména místní pracovní toky a národní pokyny.
+
+## Pozadí { #background } 
+
+Tento agregovaný design byl aktualizován, aby odrážel nové požadavky na souhrnné hlášení z [Global surveillance of COVID-19: WHO process for reporting aggregated data](https://www.who.int/publications/i/item/aggregated-weekly-reporting-form), naposledy aktualizováno 7. srpna 2020. Balíček digitálních dat COVID-19 byl vyvinut v reakci na výslovnou potřebu zemí rychle přizpůsobit řešení pro správu dat COVID-19. UiO vyvinula trasovací balíčky COVID-19 pro tři typy datových modelů (trasovač, agregace založené na událostech), aby umožnila zemím vybrat model, který je nejvhodnější pro jejich kontext s ohledem na zátěž nemocí a dostupné zdroje. Níže jsou shrnuty tyto modely a jejich relativní výhody / omezení:
+
+| **Typ sledovacího balíčku** | **Sledování na základě případu (Trasovač)** | **Řádkový výpis sledování událostí (událost)** | **Sledování případů (souhrn)** |
+| --- | --- | --- | --- |
+| **Popis** | Zapište případ a sleduje časem laboratorní potvrzení a výsledek případu | Zachycuje podrobnosti kritických případů ve formátu seznamu řádků | Umožňuje týdenní hlášení klíčových agregovaných datových bodů |
+| **Výhody** | Vysoce strukturovaná data a více časových dimenzí pro analýzu mohou podporovat decentralizovaný pracovní postup, všechny události spojené s případem | Podrobnější než agregované a dokáže zachytit klíčové časové dimenze (tj. Datum zprávy vs. nástup příznaků); snížená zátěž při zadávání dat ve srovnání se trasovačem a malá složitost | Nízká složitost, snadná implementace, zvládnutelnost, když je počet případů vysoký |
+| **Nevýhody** | Břemeno zadávání dat může být ohromující, když počet případů dosáhne prahové hodnoty; složitost implementace | Nepodporuje sledování případů ani jiné decentralizované pracovní postupy | Menší podrobnost pro podrobnou analýzu (tj. Analýza pouze na základě data hlášení případu, omezené členění)|
+
+**Tento dokument se týká pouze designu agregovaného balíčku**; pro balíčky DHIS2 Tracker a Line-listing (založené na událostech) jsou k dispozici samostatné dokumenty o návrhu systému. Vzhledem k rychlému nárůstu případů mohou některé země bojovat s podáváním zpráv podle jednotlivých případů, protože zátěž je příliš vysoká. Agregovaný balíček je navržen tak, aby splňoval nejkritičtější požadavky na podávání zpráv a analytické kapacity pro dohled a reakci.
+
+Cíle dozoru COVID-19 jsou:
+
+1. sledovat trendy choroby, při které dochází k přenosu z člověka na člověka;
+2. rychle odhalit nové případy v zemích, kde virus necirkuluje;
+3. a poskytovat epidemiologické informace k provádění hodnocení rizik na národní, regionální a globální úrovni; a
+4. poskytovat epidemiologické informace jako vodítko pro opatření připravenosti a reakce.
+
+Návrh systému vychází ze stávajících zásad dozoru nad chorobami a požadavků na informační systém, které byly vyvinuty ve spolupráci WHO a UiO od roku 2017. Balíček COVID-19 byl vyvinut s úmyslem sladit s [technickými pokyny WHO pro dozor a definice případů nCoV-19](https://www.who.int/emergencies/diseases/novel-coronavirus-2019/technical-guidance/surveillance-and-case-definitions), naposledy aktualizováno 7. srpna 2020. Upozorňujeme, že tento návrh nemusí nutně odrážejí nejnovější dostupné prozatímní globální pokyny vyvinuté WHO, protože aktualizace mohou být vydávány rychle. Národní směrnice a zásady se mohou lišit a doporučuje se přizpůsobit tento balíček místním kontextům.
+
+## Souhrn návrhu systému { #system-design-summary } 
+
+Při vývoji tohoto konfiguračního balíčku bylo vyvinuto úsilí dodržovat [obecné zásady návrhu](https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/general-design-principles-for-who-metadata-packages.html) UiO a společnou [konvenci pojmenování](https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/naming-conventions.html).
+
+Souhrnný balíček dozoru COVID-19 obsahuje
+
+1. Týdenní souhrnná datová sada a datové prvky pro klíčové sledovací zprávy COVID-19
+2. Kategorie pro členění dat
+3. Základní indikátory
+4. Ovládací panel a jeho položky
+
+Datová sada zachycuje minimální počet datových bodů, které splňují aktuální požadavky WHO na týdenní podávání zpráv; a vygenerovat základní sadu indikátorů a ovládacích panelů pro rozhodovací orgány na národní i nižší úrovni, aby rychle analyzovaly a reagovaly na trendy v nemoci.
+
+| **Název** | **Periodicita** | **Účel** |
+| --- | --- | --- |
+| Souhrnný týdenní dohled | Týdně| Hlášení klíčových údajů z trasování COVID-19 včetně případů, testů a úmrtí. |
+
+Doporučuje se, aby byl týdenní datový soubor přiřazen organizačním jednotkám na nejnižší úrovni zdravotnického systému, který je vhodný pro vykazování údajů, jako jsou zdravotnická zařízení.
+
+Digital data packages are optimized for Android data collection with the DHIS2 Capture App, free to download on the [GooglePlay store](https://play.google.com/store/apps/details?id=com.dhis2&amp;hl=en).
+
+### Předpokládaní uživatelé { #intended-users } 
+
+- Uživatelé zdravotnických zařízení: zachyťte a nahlaste klíčová data o případech a úmrtích COVID-19 ve zdravotnickém zařízení
+- Dozorčí úředníci: dozorčí úředníci na národní a nižší než národní úrovni mohou být odpovědní za podporu zadávání a analýzy údajů.
+- Národní a místní zdravotní úřady: monitorují a analyzují údaje o sledování nemocí prostřednictvím ovládacích panelů a analytických nástrojů k provádění hodnocení rizik a plánování opatření reakce; generovat zprávy pro regionální a globální zprávy
+
+## Datové sady { #datasets } 
+
+Tento soubor dat je určen k zachycení týdenních dat potřebných pro rychlou reakci na přenos nemoci. Pokud se zpravodajské břemeno stane příliš velkým nebo když již nebude považováno za nouzovou situaci v zemi, může být soubor dat změněn na měsíční podle zásad Ministerstva Zdravotnictví.
+
+### Daily Surveillance Data Elements { #daily-surveillance-data-elements } 
+
+V následující části jsou uvedeny datové prvky a členění (kombinace kategorií) obsažené v datové sadě:
+
+| **Datové prvky** | **Kombinace kategorií** |
+| --- | --- |
+| Nové potvrzené případy | Pohlaví (Muž / Žena / Neznámé) a Věk (0-4,5-9,10-14,15-19,20-29,30-39,40-49,50-59,60-64,65-69,70-74,75-79,80+, neznámý věk) |
+| Nové pravděpodobné případy | Pohlaví (Muž / Žena / Neznámé) a Věk (0-4,5-9,10-14,15-19,20-29,30-39,40-49,50-59,60-64,65-69,70-74,75-79,80+, neznámý věk) |
+| Nové potvrzené úmrtí | Pohlaví (Muž / Žena / Neznámé) a Věk (0-4,5-9,10-14,15-19,20-29,30-39,40-49,50-59,60-64,65-69,70-74,75-79,80+, neznámý věk) |
+| Nové pravděpodobné úmrtí | Pohlaví (Muž / Žena / Neznámé) a Věk (0-4,5-9,10-14,15-19,20-29,30-39,40-49,50-59,60-64,65-69,70-74,75-79,80+, neznámý věk) |
+| Nové hospitalizované případy | Žádný |
+| Nové propuštěné případy | Žádný |
+| Nové případy mezi zdravotníky (potvrzeny + pravděpodobné) | Žádný |
+| Nová úmrtí zdravotnických pracovníků (potvrzeno + pravděpodobné) | Žádný |
+| Počet osob testovaných na COVID-19 | Žádný |
+| Počet osob testovaných pomocí PCR testu | Žádný |
+| Klasifikace přenosu | Žádný |
+
+### Weekly Surveillance Data Entry Form { #weekly-surveillance-data-entry-form } 
+
+- **Část 1: Nové potvrzené a pravděpodobné případy**
+
+Data should be entered for all new confirmed and probable cases reported during the reporting period. Confirmed cases refer to laboratory confirmed cases per WHO guidance; probable cases are defined by WHO as cases where laboratory test result is inconclusive; however countries may apply their own case definitions. The total column is automatically summed during data entry.
+![Picture1](resources/images/AGG_Picture1.png)
+
+- **Část 2: Nová potvrzená a pravděpodobná úmrtí**
+
+Je třeba zadat údaje o nových potvrzených a pravděpodobných úmrtích hlášených během sledovaného období. Během zadávání dat se sloupec součtu automaticky sčítá.
+
+![Obrázek2](resources/images/AGG_Picture2.png)
+
+- **Část 3: Infekce a úmrtí zdravotnických pracovníků**
+
+Tato část zachycuje data pro zdravotnické pracovníky&#39; nové potvrzené a pravděpodobné případy, včetně úmrtí hlášených během sledovaného období.
+
+![Obrázek3](resources/images/AGG_Picture3.png)
+
+- **Ćást 4: Hospitalizace a propuštění**
+
+Tato část obsahuje údaje o nové hospitalizaci a propuštění během sledovaného období.
+
+![Obrázek4](resources/images/AGG_Picture4.png)
+
+- **Část 5: Provedené testy**
+
+Tato část obsahuje údaje pro testy prováděné s dalším požadavkem na hlášení testů prováděných pomocí PCR během vykazovaného období
+
+![Obrázek5](resources/images/AGG_Picture5.png)
+
+- **Část 6: Klasifikace přenosu**
+
+Tato část shrnuje hlavní formu klasifikace přenosu, se kterou se setkává nahlašovací jednotka.
+
+![Obrázek7](resources/images/AGG_Picture6.png)
+
+### Přizpůsobení formulářů pro zadávání dat { #customizing-data-entry-forms }
+
+The dataset in this package does not contain a custom form. To improve the usability of the form for data entry, implementers may design a custom form to meet their needs by following the DHIS2 User manual: [https://docs.dhis2.org/2.33/en/user/html/dhis2\_user\_manual\_en\_full.html#manage\_customform](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/metadata.html#manage_customform)
+
+## Data Validation { #data-validation } 
+
+Byly nakonfigurovány následující pravidla ověřování dat. Tato ověřovací pravidla se nespouštějí v samotném formuláři pro zadávání údajů, protože se očekává, že bude naléhavé hlášení údajů, kde k událostem dochází v různých časových rámcích (např. Za jeden týden lze zaznamenat pouze 3 nové případy, ale 5 úmrtí).
+
+| **Název** | **Operátor** | **Návod** | **Popis na levé straně** | **Popis na pravé straně** |
+| --- | --- | --- | --- | --- |
+| COVID19 - PCR testy \&lt;= testováno | less\_than\_or\_equal\_to | Testováno pomocí PCR by mělo být menší nebo rovné celkovému provedenému testu | Testováno pomocí PCR | Testováno provedeno |
+| COVID19 - Nové případy hospitalizace \&lt;= Všechny nové případy | less\_than\_or\_equal\_to | Nové hospitalizované případy by měly být menší nebo rovny všem novým případům | Nové případy hospitalizovány | Všechny nové případy |
+| COVID19 - Nové potvrzené úmrtí \&lt;= Nové potvrzené případy | less\_than\_or\_equal\_to | Nové potvrzené úmrtí by mělo být menší nebo rovno novým potvrzeným případům | Nové potvrzené úmrtí | Nové potvrzené případy |
+| COVID19 - Pravděpodobná úmrtí \&lt;= Nové pravděpodobné případy | less\_than\_or\_equal\_to | Pravděpodobná úmrtí by měla být menší nebo rovna novým pravděpodobným případům | Pravděpodobná úmrtí | Nové pravděpodobné případy |
+| COVID19 - Nová úmrtí mezi zdravotním personálem (potvrzená + pravděpodobná) \&lt;= Všechna úmrtí hlášena | less\_than\_or\_equal\_to | Nová úmrtí mezi zdravotním personálem (potvrzená + pravděpodobná) by měla být menší nebo rovna všem hlášeným úmrtím | Nové úmrtí mezi zdravotním personálem (potvrzeno + pravděpodobné) | Všechna úmrtí hlášena |
+| COVID19 - Nové případy mezi zdravotním personálem (potvrzené + pravděpodobné) \&lt;= Všechny nové případy | less\_than\_or\_equal\_to | Nové případy mezi zdravotním personálem (potvrzené + pravděpodobné) by měly být menší nebo stejné jako všechny nové případy | Nové případy mezi zdravotním personálem (potvrzeno + pravděpodobné) | Všechny nové případy |
+| COVID19 - Nové úmrtí mezi zdravotním personálem (potvrzeno + pravděpodobné) \&lt;= nové případy mezi zdravotním personálem (potvrzeno + pravděpodobné) | less\_than\_or\_equal\_to | Nová úmrtí mezi zdravotním personálem (potvrzená + pravděpodobná) by měla být menší nebo rovna novým případům mezi zdravotním personálem (potvrzená + pravděpodobná) | Nové úmrtí mezi zdravotním personálem (potvrzeno + pravděpodobné) | Nové případy mezi zdravotním personálem (potvrzeno + pravděpodobné) |
+
+## Skupiny uživatelů { #user-groups } 
+
+V balíčku metadat jsou zahrnuty následující skupiny uživatelů:
+
+1. Správce COVID19 - je určen pro správce systému, aby měli práva upravovat metadata
+2. Zachycení dat COVID19 - je určeno pro zaměstnance zadávající data, aby měli přístup ke shromažďování dat
+3. Přístup COVID19 - určený pro uživatele, jako jsou analytičtí uživatelé, kteří by měli být schopni zobrazit data, ale ne upravovat metadata.
+
+Další informace naleznete v [instalačních pokynech](covid-19-aggregate-installation.html).
+
+## Indikátory { #indicators } 
+
+Ze zachycených údajů můžeme vypočítat alespoň následující ukazatele, z nichž mnohé WHO doporučuje pro [týdenní hlášení](https://apps.who.int/iris/bitstream/handle/10665/331506/WHO-2019-nCoV-SurveillanceGuidance-2020.6-eng.pdf) a představte je na ovládacím panelu. Všechny indikátory programu COVID-19 jsou přiřazeny skupině indikátorů &#39;COVID19&#39;.
+
+| **název** | **popis** |
+| --- | --- |
+| COVID19 - Nové potvrzené úmrtí | Počet nově potvrzených úmrtí |
+| COVID19 - Nové případy mezi zdravotním personálem (potvrzeno + pravděpodobné) | Počet nových případů mezi zdravotním personálem (potvrzeno + pravděpodobné) |
+| COVID19 - podíl zdravotního personálu mezi hlášenými případy (%) | Podíl zdravotního personálu mezi hlášenými případy (%) |
+| COVID19 - Aktivní případy | Počet aktivních případů |
+| COVID19 - uzavřené případy | Počet uzavřených případů |
+| COVID19 - Nové potvrzené případy | Počet nových potvrzených případů |
+| COVID19 - Míra zotavení (%) | Míra vymáhání potvrzených případů |
+| COVID19 - Míra úmrtnosti mezi zdravotním personálem (%) | Míra úmrtnosti mezi zdravotním personálem |
+| COVID19 - Nové hospitalizované případy | Nové hospitalizované případy |
+| COVID19 - Testováno | Celkový počet provedených testů |
+| COVID19 - testováno pomocí PCR | Testováno pomocí PCR |
+| COVID19 - Míra pozitivity (%) | Míra pozitivity |
+| COVID19 - Nové pravděpodobné případy | Počet nových pravděpodobných případů |
+| COVID19 - Nové vybité případy | Počet nových propuštěných případů |
+| COVID19 - Nové úmrtí mezi zdravotním personálem (potvrzeno + pravděpodobné) | Počet nových úmrtí mezi zdravotním personálem (potvrzeno + pravděpodobné) |
+| COVID19 - podíl testů PCR (%) | Podíl provedených testů PCR |
+| COVID19 - Všechny případy (Potvrzeno + Pravděpodobné) | Počet všech případů (potvrzeno + pravděpodobné) |
+| COVID19 - Nové pravděpodobné úmrtí | Počet nových pravděpodobných úmrtí |
+| COVID19 - Míra úmrtnosti (%) | Míra úmrtnosti případů u potvrzených případů |
+
+## Ovládací panely { #dashboards } 
+
+Klíčové analytické položky byly nakonfigurovány a přidány na řídicí panel „COVID19 - Aggregate Weekly Surveillance“. Mezi tyto položky patří; kontingenční tabulky, grafy a mapa navržené tak, aby poskytovaly vizualizaci dat u některých dat zachycených na základě indikátorů. V procesu přijetí tohoto balíčku mohou uživatelé upravovat nebo vytvářet další položky, které vyhovují jejich analytickým potřebám, a stejně provádět nezbytné úpravy na ovládacím panelu.
+
+| **název**|**typ**|
+| --- | --- |
+|COVID19 - Testováno, testy s PCR a míra pozitivity podle subnárodní úrovně v letošním roce |Kontingenční tabulka|
+|COVID19 - HW mezi hlášenými případy v tomto roce |Graf|
+|COVID19 - Míra úmrtnosti mezi zdravotním personálem.|Graf|
+|COVID19 - Nové potvrzené případy a úmrtí za posledních 12 týdnů|Graf|
+|COVID19 - provedeny kumulativní testy, hlášené případy, hospitalizováni, propuštěni a úmrtí|Graf|
+|COVID19 - kumulativní potvrzené případy na subnárodní úrovni|Mapa|
+|COVID19 - Úmrtí podle věkových skupin za poslední týdny|Graf|
+|COVID19 - Potvrzené případy podle pohlaví za posledních 14 týdnů|Graf|
+|COVID19 - Uzavřené a aktivní případy na subnárodní úrovni v posledních měsících|Graf|
+|COVID19 - Míra zotavení a úmrtnost za posledních 12 týdnů|Graf|
+|COVID19 - Aktivní a uzavřené případy posledních 12 týdnů|Graf|
+
+## Reference { #references } 
+
+- Pokyny k instalaci: [https://www.dhis2.org/covid-19](covid-19-aggregate-installation.html)
+- WHO Interim guidelines on nCoV-19 surveillance & case definitions (last updated March 20, 2020)
+[https://www.who.int/emergencies/diseases/novel-coronavirus-2019/technical-guidance/surveillance-and-case-definitions>](<https://www.who.int/emergencies/diseases/novel-coronavirus-2019/technical-guidance/surveillance-and-case-definitions>)
+- WHO COVID-19 surveillance data dictionary (v6)
+[https://www.who.int/docs/default-source/coronaviruse/data-dictionary-covid-crf-v6.xlsx?sfvrsn=a7d4ef98\_2](https://www.who.int/docs/default-source/coronaviruse/data-dictionary-covid-crf-v6.xlsx?sfvrsn=a7d4ef98_2)
+- WHO Laboratory testing for 2019 novel coronavirus (2019-nCoV) in suspected human cases (last updated 2 March 2020)
+  [https://www.who.int/publications-detail/laboratory-testing-for-2019-novel-coronavirus-in-suspected-human-cases-20200117](https://www.who.int/publications-detail/laboratory-testing-for-2019-novel-coronavirus-in-suspected-human-cases-20200117)
+- Zprávy o situaci koronaviru WHO
+  [https://www.who.int/emergencies/diseases/novel-coronavirus-2019/situation-reports>](<https://www.who.int/emergencies/diseases/novel-coronavirus-2019/situation-reports>)
+- Global surveillance of COVID-19: WHO process for reporting aggregated data
+[https://www.who.int/publications/i/item/aggregated-weekly-reporting-form](https://www.who.int/publications/i/item/aggregated-weekly-reporting-form)
+

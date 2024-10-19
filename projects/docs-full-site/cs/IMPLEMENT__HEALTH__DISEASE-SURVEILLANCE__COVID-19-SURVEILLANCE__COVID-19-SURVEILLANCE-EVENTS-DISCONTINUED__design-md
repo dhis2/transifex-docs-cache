@@ -1,0 +1,164 @@
+---
+edit_url: "https://github.com/dhis2-metadata/C19_EVT/blob/master/docs/c19_evt-design.md"
+revision_date: '2022-11-08'
+tags:
+- Implementace
+---
+
+# COVID-19 Surveillance Line-list Design { #c19-evt-design }
+
+Demo: [https://covid.dhis2.org](https://covid.dhis2.org/demo)
+
+## Účel { #purpose } 
+
+Dokument Návrh programu systému sledování událostí COVID-19 poskytuje přehled principů návrhu a pokynů použitých k vývoji balíčku digitálních dat pro souhrnný dohled COVID-19. Tento dokument je určen k použití implementátory DHIS2 na národní a regionální úrovni, aby mohli podporovat implementaci a lokalizaci balíčku. Balíček metadat COVID-19 lze přizpůsobit místním potřebám a národním pokynům. Při lokalizaci a přijímání programů obsažených v tomto balíčku by měly být brány v úvahu zejména místní pracovní toky a národní pokyny.
+
+## Pozadí { #background } 
+
+Balíček digitálních dat COVID-19 byl vyvinut v reakci na výslovnou potřebu zemí rychle přizpůsobit řešení pro správu dat COVID-19. UiO vyvinula sledovací balíčky COVID-19 pro tři typy datových modelů (trasovač, agregace založené na událostech), aby umožnila zemím vybrat model, který je nejvhodnější pro jejich kontext s ohledem na zátěž nemocí a dostupné zdroje. Níže jsou shrnuty tyto modely a jejich relativní výhody / omezení:
+
+|Typ balíčku sledování|Sledování případu (Trasovač)|Sledování (událost)|Pozorování (Agregované)|
+|--|--|--|--|
+|_Popis_|Zapište případ a sleduje časem laboratorní potvrzení a výsledek případu|Zachycuje podrobnosti kritických případů ve formátu seznamu řádků|Umožňuje denní nebo týdenní hlášení klíčových agregovaných datových bodů|
+|_Výhody_|Vysoce strukturovaná data a více časových dimenzí pro analýzu mohou podporovat decentralizovaný pracovní postup, všechny události spojené s případem|Podrobnější než agregované a dokáže zachytit klíčové časové dimenze (tj. Datum zprávy vs. nástup příznaků); snížená zátěž při zadávání dat ve srovnání se trasovačem a malá složitost|Nízká složitost, snadná implementace, zvládnutelnost, když je počet případů vysoký|
+|_Nevýhody_|Břemeno zadávání dat může být ohromující, když počet případů dosáhne prahové hodnoty; složitost implementace|Nepodporuje sledování případů ani jiné decentralizované pracovní postupy|Menší podrobnost pro podrobnou analýzu (tj. Analýza pouze na základě data hlášení případu, omezené členění)
+
+**Tento dokument se vztahuje pouze na návrh programového balíčku událostí dozoru**; pro DHIS2 Trasovač a agregované balíčky jsou k dispozici samostatné dokumenty návrhu systému.
+
+WHO „žádá všechny země, aby se připravily na potenciální příchod COVID-19 tím, že připraví systémy reakce na mimořádné události; zvýšení kapacity pro odhalování a péči o pacienty; zajištění toho, aby nemocnice měly prostor, zásoby a potřebný personál; a vývoj záchranných lékařských zásahů.“
+
+Cíle dozoru COVID-19 jsou:
+
+1. sledovat trendy choroby, při které dochází k přenosu z člověka na člověka;
+2. rychle odhalit nové případy v zemích, kde virus necirkuluje;
+3. a poskytovat epidemiologické informace k provádění hodnocení rizik na národní, regionální a globální úrovni; a
+4. poskytovat epidemiologické informace jako vodítko pro opatření připravenosti a reakce.
+
+Návrh systému vychází ze stávajících zásad dozoru nad chorobami a požadavků na informační systém, které byly vyvinuty ve spolupráci WHO a UiO od roku 2017. Balíček COVID-19 byl vyvinut s úmyslem sladit s [technickými pokyny WHO pro dozor a případy nCoV-19 definice](https://www.who.int/emergencies/diseases/novel-coronavirus-2019/technical-guidance/surveillance-and-case-definitions), naposledy aktualizováno 20. března 2020. Upozorňujeme, že tento návrh nemusí nutně odrážejí nejnovější dostupné prozatímní globální pokyny vyvinuté WHO, protože aktualizace mohou být vydávány rychle. Národní směrnice a zásady se mohou lišit a doporučuje se přizpůsobit tento balíček místním kontextům.
+
+## Souhrn návrhu systému { #system-design-summary } 
+
+Tento balíček je navržen jako DHIS2 [Event Program](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/programs.html#about_event_program). **Program událostí není určen k zachycení všech proměnných údajů obsažených v [šabloně pro hlášení případů WHO](https://www.who.int/docs/default-source/coronaviruse/2020-02-27-data-dictionary-en.xlsx)**. Chcete-li zachytit kompletní soubor proměnných hlášení případů WHO, nahlédněte do DHIS2 COVID-19 Case-based Surveillance Tracker. Program událostí je spíše zjednodušený program, který zachycuje podmnožinu minimálních kritických datových bodů, aby usnadnil vysokou kvalitu údajů v případech, kdy počet případů nebo zátěž hlášení přesahuje kapacitu pro úspěšné vyplnění celého seznamu řádků pro podezření na případy COVID-19. Pro realizátory, kteří si přejí zachytit kompletní line-list WHO, je určen balíček pro sledování případů COVID-19.
+
+Datový balíček COVID-19 Surveillance Event Program obsahuje:
+
+1. Hlášení událostí a datových prvků v programu událostí
+2. Základní indikátory
+3. Ovládací panel
+
+### Use Case: Simplified line-listing of COVID-19 cases { #use-case-simplified-line-listing-of-covid-19-cases } 
+
+Vzhledem k rychlému nárůstu počtu případů mohou mít některé země s hlášením případů problémy, protože zátěž bude příliš vysoká. Balíček událostí je navržen tak, aby zachycoval nejkritičtější datové body v podobě řádkového seznamu a analytických kapacit pro dohled a reakci. Balíček událostí je navržen jako samostatný program. Země však mohou balíček událostí používat v kombinaci s dalšími balíčky (tj. hlášení o událostech a denní souhrnné hlášení); nebo mohou přecházet od sledování událostí k souhrnnému hlášení, jakmile se zvýší počet případů a zátěž hlášení. **_Země by měly pečlivě naplánovat, jak hodlají tyto balíčky v kombinaci implementovat, včetně toků hlášení, přechodu z jednoho datového modelu na druhý a způsobu zachování historických dat pro analýzu v případě přechodu mezi datovými modely. _**
+
+Návrh programu pro vypisování řádků založeného na událostech předpokládá, že [definice případů WHO](https://apps.who.int/iris/bitstream/handle/10665/331506/WHO-2019-nCoV-SurveillanceGuidance-2020.6-eng.pdf) jsou dodrženy v případě použití; země by se měly řídit vnitrostátními definicemi případů pro klasifikaci případů jako podezřelých, pravděpodobných nebo potvrzených.
+
+#### Předpokládaní uživatelé { #intended-users } 
+
+* Uživatelé zdravotnických zařízení: zachyťte a nahlaste klíčová data o případech a úmrtích COVID-19 ve zdravotnickém zařízení
+* Národní a místní zdravotní úřady: monitorují a analyzují údaje o sledování nemocí prostřednictvím ovládacích panelů a analytických nástrojů k provádění hodnocení rizik a plánování opatření reakce; generovat zprávy pro regionální a globální zprávy
+
+#### Pracovní postup { #workflow } 
+
+Na rozdíl od trasovacího programu existují omezení decentralizace pracovního postupu hlášení dat v programu událostí. Nejvýznamnějším omezením je, že výsledek případu (uzdravení nebo úmrtí) není často znám až do dnů nebo týdnů po nahlášení případu. Aktuální návrh programu umožňuje následující možnosti pracovního postupu:
+
+1. Událost se vytvoří, když je nahlášen podezřelý případ. Jsou zadány všechny známé údaje, ale událost není dokončena. Uživatel může vybrat "aktivní událost" z pracovního seznamu na základě uživatelských filtrů a kritérií. Jakmile jsou k dispozici chybějící údaje (tj. výsledek případu), může uživatel zadat zbývající datová pole a událost dokončit. Případy lze v seznamu událostí identifikovat pomocí datového prvku Case ID. Jako příklad viz obrázek níže, který je přístupný v aplikaci Capture App:
+![Capture App](resources/images/EVENT_image1.png "Capture App")
+
+2. Událost je vytvořena. Všechny údaje související s případy se zadávají zpětně, včetně výsledku. Událost je dokončena. _Omezením tohoto přístupu je včasnost vykazování údajů, protože nové podezřelé případy nemusí být zachyceny až do jejich výsledku, který je často příliš pozdě na rozhodování._
+
+### Struktura programu { #program-structure } 
+
+Tento program se nazývá „Případy (události) COVID-19“
+
+|Sekce|Popis|
+|--|--|
+|Datum zprávy|Datum události <br>_Země mohou datum události přejmenovat, aby se vztahovalo na jejich protokoly._|
+|Část 1 <br> **Základní informace**|Zaznamenává základní demografické údaje.<br>_Země mohou podle potřeby přidávat datové prvky._<br>- **ID pacienta**<br>Lze použít k filtrování událostí v pracovních seznamech, např. Aktivní události<br>- **Pohlaví** <br>- **Věk**|
+|Část 2 <br> Podrobnosti případu|Zaznamenává informace o případu včetně příznaků, závažnosti, testování atd. <br> - **Příznaky** <br> Možnosti: Ano / Ne <br> Určuje, zda má případ v době oznámení nějaké příznaky <br><br>**Datum nástupu příznaků**<br>Zobrazí se, pouze pokud jsou přítomny příznaky;<br>Datum nástupu příznaků, pokud je k dispozici, nahradí v analýze a hlášení dat „Datum hlášení“.<br><br> - **Závažnost případu (v době oznámení)**<br>Možnosti: Mírné / Střední / Těžké / Kritické<br>- **Laboratorně testováno?**<br>Možnosti: Ano / Ne / Neznámý<br>Určuje, zda byl případ laboratorně testován na COVID-19<br><br> - **Výsledek testu**<br>Zobrazí se pouze v případě, že byl případ laboratorně testován<br>Možnosti: Nejasný / Pozitivní / Negativní / Neznámý<br>Program je navržen tak, aby zachytil pouze konečný výsledek testu. Výsledky jednotlivých testů (jsou-li k dispozici) a celkový počet provedených testů se nezachycují.<br>- **Klasifikace případů**<br>Možnosti: Podezřelý případ / Pravděpodobný případ / Laboratorně potvrzený případ<br>Automaticky přiřazené hodnoty<br>Hodnoty jsou přiřazeny pravidly programu v souladu s definicemi případu WHO<br> Tato funkce může být užitečná při filtrování aktivních případů v pracovních seznamech.|
+|Část 3 <br> **Expozice**|- **Cestoval případ 14 dní před nástupem příznaků?**<br>Možnosti: Ano / Ne / Neznámý <br> Určuje historii cestování případu. <br> <br> - **Pravděpodobný zdroj infekce** <br> Možnosti: Importovaný případ* / Místní přenos / Nakažení neznámé<br>* Možnost importovaného případu se zobrazí pouze v případě, že případ vycestoval do 14 dnů před nástupem příznaků <br><br>- **Uveďte místní zdroj**<br> Zobrazí se, pouze pokud je pravděpodobným zdrojem infekce místní přenos <br> Možnosti: Komunita (pracoviště, veřejná doprava atd.) / Domácnost / Zdravotnické zařízení / Blízký kontakt s jiným infikovaným jednotlivcem / Neznámé nakažení<br><br>**Typ případu**<br>Možnosti: Nový případ indexu / Propojeno se stávajícím klastrem / Neznámý <br>Určuje, zda je případ připojen ke stávajícímu klastru nebo jde o nový případ indexu|
+|Část 4 <br> **Léčba**|- **Hospitalizován**<br>Možnosti: Ano / Ne<br><br>- **Dostal případ péči na jednotce intenzivní péče (JIP)?**<br>Zobrazí se pouze v případě, že je případ hospitalizován <br>Možnosti: Ano / Ne|
+|Část 5 <br> **Kontakty**|- **Celkový počet kontaktů sledovaných v tomto případě**<br>Zaznamenává počet kontaktů|
+|Část 6 <br> **Výsledek**|- **Výsledný zdravotní stav** <br> Možnosti: Uzdravení / Úmrtí|
+|Část 7 <br> **Přiřazeno Datum nástupu příznaků**|- **Vypočítané datum nástupu (pro indikátory)**<br>Tato část se používá pouze k výpočtu indikátorů na základě data zprávy vs. data nástupu příznaků]<br>Toto automaticky přiřazené datum se používá v indikátorech programu. Zpočátku je to datum zprávy. Pokud je k dispozici datum nástupu příznaků, je datum nahrazeno datem nástupu příznaků.|
+|**Status**|**Toto je obecné pole obsažené ve všech programech událostí**<br>**úplná událost**<br>Možnost: ano<br>Událost by měla být označena jako „úplná“, pouze pokud bylo dokončeno zadávání všech údajů. Pokud uživatel čeká na vyplnění určitých polí (například výsledek případu), událost by neměla být dokončena.<br>Události, které nejsou označeny jako „Dokončeno“, jsou udržovány jako aktivní a lze je snáze vyhledat uživatelem v pracovním seznamu|
+|Část 9 <br> **Komentáře**|- **Komentáře** <br> Nepovinné komentáře a poznámky. Tyto komentáře se v analytice nezobrazí a lze k nim přistupovat pouze prostřednictvím aplikace Capture, která slouží k zadávání údajů uvedených v řádcích.|
+
+### Skupiny uživatelů { #user-groups } 
+
+V balíčku metadat jsou zahrnuty následující skupiny uživatelů:
+
+1. Správce COVID19 - je určen pro správce systému, aby měli práva upravovat metadata
+2. Zachycení dat COVID19 - je určeno pro zaměstnance zadávající data, aby měli přístup ke shromažďování dat
+3. Přístup COVID19 - je určen pro uživatele, například analytiky, kteří by měli mít možnost prohlížet data, ale ne upravovat metadata. 
+
+V současné době mají přístup ke sběru dat v programu pouze uživatelé zařazení do skupiny pro sběr dat COVID19. Další pokyny naleznete v pokynech k instalaci.
+
+### Pravidla programu { #program-rules } 
+
+Pro program byla nakonfigurována následující pravidla programu:
+
+|Název pravidla programu|Popis pravidla programu|
+|--|--|
+|Přiřaďte prázdnou hodnotu klasifikaci třídy|Automatizace: Přiřazení prázdné hodnoty klasifikaci třídy|
+|Přiřadit datum události|Automatizace: Přiřadit datum události, pokud není k dispozici datum zahájení|
+|Přiřadit „Laboratorně potvrzený případ“ ke klasifikaci případů|Automatizace: Přiřaďte „Laboratorně potvrzený případ“ ke klasifikaci případů|
+|Přiřadit datum zahájení|Automatizace: Přiřadit datum nástupu příznaků, pokud je k dispozici|
+|Přiřadit „Pravděpodobný případ“ ke klasifikaci případů|Automatizace: Přiřadit „Pravděpodobný případ“ ke klasifikaci případů|
+|Přiřadit „Podezřelý případ“ ke klasifikaci případů|Automatizace: Přiřadit Podezřelý případ ke klasifikaci případů|
+|Skrýt pole klasifikace případů|Skrýt pole klasifikace případů, dokud nebude zodpovězena otázka laboratorního testu|
+|Skrýt pole JIP|Skrýt pole JIP, pokud nebude hospitalizován|
+|Skrýt 'Importovaný případ'|Pokud necestoval, skrýt „dovezený případ“|
+|Skrýt datum nástupu příznaků|Skrýt datum počátku příznaků, pokud se neobjeví žádné příznaky|
+|Skrýt možnosti výsledku|Skrýt irelevantní možnosti výsledku|
+|Skrýt 'Specifikujte místní zdroj infekce'|Skrýt možnost „Specifikovat místní zdroj infekce“ pokud není vybrán místní přenos.|
+|Skrýt pole výsledku testu|Skrýt pole s výsledky testu, dokud na otázku laboratorního testu neodpovíte ano|
+|Skrýt možnosti výsledku testu|Skrýt irelevantní možnosti výsledku testu|
+|Skrýt neznámé možnosti|Skrýt irelevantní neznámé možnosti|
+
+Více o pravidlech programu si můžete přečíst zde:
+
+[https://docs.dhis2.org/master/en/user/html/configure_program_rule.html](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/programs.html#configure_program_rule)
+
+### Indicators and Program Indicators { #indicators-and-program-indicators } 
+
+Z údajů zachycených v programu s řádkovým výpisem COVID-19 můžeme vypočítat následující indikátory, včetně indikátorů doporučených WHO pro denní a týdenní reportování, prezentovat je na ovládacím panelu. Všechny indikátory programu COVID-19 založené na programu událostí jsou přiřazeny skupině indikátorů programu „Události COVID-19“.
+
+|||
+|--|--|
+|COVID-19 - Případy přijaté na jednotce intenzivní péče (JIP)|COVID-19 Případy přijaté na jednotce intenzivní péče (JIP)|
+|COVID-19 - Případy nakažení prostřednictvím zdravotnického zařízení|Případy, kdy existuje podezření na infekci v prostředí zdravotní péče|
+|COVID-19 - Případy infikované komunitním přenosem|Případy, kdy existuje podezření na infekci šířením komunity|
+|COVID-19 - Případy infikované přenosem z domácnosti|Případy, kdy existuje podezření na infekci v domácnosti|
+|COVID-19 - Případy infikované místním přenosem|Případy, kdy je podezření, že k infekci došlo lokálně, nikoli v jiné zemi|
+|COVID-19 - Případy infikované jiným kontaktem s jiným infikovaným jednotlivcem|Případy, kdy existuje podezření na infekci jiným blízkým kontaktem s infikovanou osobou (kromě těch, které jsou uvedeny v seznamu: domácnost, známý klastr, HCF)|
+|COVID-19 - Případy spojené se známým klastrem|Případy, u nichž existuje podezření na infekci spojením se známým klastrem případů|
+|COVID-19 - Případy s neznámým nakažením|Případy, kdy není znám zdroj infekce nebo nakažení|
+|COVID-19 - Úmrtí|Úmrtí související s COVID-19 (úmrtí zaznamenaná u všech podezřelých případů)|
+|COVID-19 - potvrzené hospitalizované případy|Počet potvrzených případů, které byly přijaty do nemocnice|
+|COVID-19 - importované případy|Případy, kdy je pravděpodobný zdroj infekce zaznamenán jako jiná země nebo dovezený z jiné země.|
+|COVID-19 - Laboratorně potvrzené případy|Podezřelé případy, které byly potvrzeny laboratorním testováním (lze provést více laboratorních testů; tento indikátor předpokládá, že výsledek posledního testu je „pozitivní“); zobrazeno podle data zprávy|
+|COVID-19 - Laboratorně potvrzené případy - podle nástupu příznaků|Podezřelé případy, které byly potvrzeny laboratorním testováním (lze provést více laboratorních testů; tento indikátor předpokládá, že výsledek posledního testu je „pozitivní“); zobrazeno podle data nástupu příznaků|
+|COVID-19 - Laboratorně testované případy|Počet podezřelých případů, které byly podrobeny laboratornímu testu (včetně neprůkazných výsledků laboratorních testů)|
+|COVID-19 - Pravděpodobné případy|Podezřelé případy s neprůkaznými laboratorními výsledky nebo netestované z jakéhokoli důvodu k datu nahlášení|
+|COVID-19 - Pravděpodobné případy - podle nástupu příznaků|Podezřelé případy s neprůkaznými laboratorními výsledky nebo netestované z jakéhokoli důvodu podle data nástupu příznaků|
+|COVID-19 – obnovené případy|Počet uzdravených případů (podle data nástupu příznaků)|
+|COVID-19 - Podezřelé případy|Celkový počet případů s podezřením na COVID-19 podle data nahlášení|
+|COVID-19 - Podezření na případy - podle nástupu příznaků|Celkový počet případů s podezřením na COVID-19 podle data nástupu příznaků|
+|COVID-19 – Podezřelé případy nebyly testovány|Celkový počet podezřelých případů bez laboratorního výsledku|
+|Událost COVID-19 – úmrtnost případů|Úmrtí související s COVID-19 (úmrtí zaznamenaná u všech podezřelých případů)|
+|COVID-19 Úmrtí podle pohlaví a věkových skupin|Muž, 0-4, 5-14, 15-24, 25-34, 35-44, 45-54, 55-64, 65-74, 75-84, 85+ <br> Žena, 0-4, 5-14 , 15-24, 25-34, 35-44, 45-54, 55-64, 65-74, 75-84, 85+|
+|COVID-19 Potvrzené případy podle pohlaví a věkové skupiny|Muž, 0-4, 5-14, 15-24, 25-34, 35-44, 45-54, 55-64, 65-74, 75-84, 85+ <br> Žena, 0-4, 5-14 , 15-24, 25-34, 35-44, 45-54, 55-64, 65-74, 75-84, 85+|
+|COVID-19 Podezřelé případy podle pohlaví a věkové skupiny|Muž, 0-4, 5-14, 15-24, 25-34, 35-44, 45-54, 55-64, 65-74, 75-84, 85+ <br> Žena, 0-4, 5-14 , 15-24, 25-34, 35-44, 45-54, 55-64, 65-74, 75-84, 85+|
+
+## Reference { #references } 
+
+* [Sada nástrojů pro sledování, odezvu a očkování COVID-19](https://dhis2.org/covid-19)
+* WHO Technické pokyny pro dohled nad COVID-19 a definice případů (poslední aktualizace 20. března 2020)
+[https://www.who.int/emergencies/diseases/novel-coronavirus-2019/technical-guidance/surveillance-and-case-definitions](https://www.who.int/emergencies/diseases/novel-coronavirus-2019/technical-guidance/surveillance-and-case-definitions)
+* Datový slovník WHO pro formulář hlášení případů COVID-19
+[https://www.who.int/docs/default-source/coronaviruse/2020-02-27-data-dictionary-en.xlsx](https://www.who.int/docs/default-source/coronaviruse/2020-02-27-data-dictionary-en.xlsx)
+* Laboratorní testování WHO na nový koronavirus z roku 2019 (2019-nCoV) v případech podezření u člověka (poslední aktualizace 2. března 2020) [https://www.who.int/publications-detail/laboratory-testing-for-2019-novel-coronavirus-in-suspected-human-cases-20200117](https://www.who.int/publications-detail/laboratory-testing-for-2019-novel-coronavirus-in-suspected-human-cases-20200117)
+* Úvahy WHO při vyšetřování případů a klastrů COVID-19 (naposledy aktualizováno 13. března 2020)[https://www.who.int/internal-publications-detail/considerations-in-the-investigation-of-cases-and-clusters-of-covid-19](https://www.who.int/internal-publications-detail/considerations-in-the-investigation-of-cases-and-clusters-of-covid-19)
+* Zprávy o situaci koronaviru WHO
+[https://www.who.int/emergencies/diseases/novel-coronavirus-2019/situation-reports](https://www.who.int/emergencies/diseases/novel-coronavirus-2019/situation-reports)
+
