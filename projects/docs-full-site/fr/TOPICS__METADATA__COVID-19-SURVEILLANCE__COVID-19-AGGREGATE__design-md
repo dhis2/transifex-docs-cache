@@ -5,23 +5,23 @@ tags:
 - Métadonnées
 ---
 
-# COVID-19 Surveillance - Aggregate System Design Guide { #c19-agg-design }
+# Surveillance du COVID-19 - Guide de conception d'un système agrégé { #c19-agg-design }
 
 ## Objectif { #purpose } 
 
-The COVID-19 Surveillance Aggregate System Design document provides an overview of the design principles and guidance used to develop the digital data package for aggregate COVID-19 surveillance. This document is intended for use by DHIS2 implementers at country and regional level to be able to support implementation and localisation of the package. The COVID-19 metadata package can be adapted to local needs and national guidelines. In particular, local work flows and national guidelines should be considered in the localization and adoption of the programs included in this package.
+Le document sur la conception du système agrégé de surveillance du COVID-19 fournit une vue d'ensemble des principes de conception et des conseils utilisés pour développer le package de données numériques pour la surveillance agrégée du COVID-19. Ce document est destiné aux chargés de la mise en œuvre de DHIS2 au niveau national et régional, afin qu'ils puissent soutenir la mise en œuvre et la localisation de l'ensemble de données. Le package de métadonnées COVID-19 peut être adapté aux besoins locaux et aux directives nationales. En particulier, les flux de travail locaux et les directives nationales doivent être pris en compte lors de la localisation et de l'adoption des programmes inclus dans ce package.
 
 ## Contexte { #background } 
 
-This aggregate design has been updated to reflect new aggregate reporting requirements from the [Global surveillance of COVID-19: WHO process for reporting aggregated data](https://www.who.int/publications/i/item/aggregated-weekly-reporting-form), last updated on August 7, 2020. The COVID-19 digital data package was developed in response to an expressed need from countries to rapidly adapt a solution for managing COVID-19 data. UiO has developed COVID-19 surveillance packages for three types of data models (tracker, event-based aggregate) to enable countries to select the model that is most appropriate for their context given the burden of disease and available resources. These models and their relative benefits/limitations are summarized below:
+Ce modèle d'agrégat a été mis à jour pour refléter les nouvelles exigences en matière de notification d'agrégats du document [ Surveillance mondiale de la COVID-19 : Processus de l'OMS pour la notification de données agrégées ] (https://www.who.int/publications/i/item/aggregated-weekly-reporting-form), dont la dernière mise à jour date du 7 août 2020. Le package de données numériques COVID-19 a été développé en réponse au besoin exprimé par les pays d'adapter rapidement une solution pour la gestion des données de la COVID-19. L'UIO a développé des kits de surveillance de la COVID-19 pour trois types de modèles de données (tracker, agrégat basé sur les événements) afin de permettre aux pays de sélectionner le modèle le plus approprié à leur contexte en fonction de la charge de morbidité et des ressources disponibles. Ces modèles ainsi que leurs avantages/limites relatifs sont résumés ci-dessous :
 
-| **Type de Package de surveillance** | **Surveillance basée sur les cas (Tracker)** | **Case surveillance line-listing (Event)** | **Surveillance des cas (Agrégat )** |
+| **Type de Package de surveillance** | **Surveillance basée sur les cas (Tracker)** | **Liste de lignes de surveillance des cas (événement)** | **Surveillance des cas (Agrégat )** |
 | --- | --- | --- | --- |
-| **Description** | Enrolls a case and tracks over time through laboratory confirmation & case outcome | Permet de saisir les détails relatifs à un cas critique sous forme de liste de lignes | Enables weekly reporting of key aggregate data points |
+| **Description** | Permet d'enregistrer un cas et de le suivre dans le temps grâce à la confirmation en laboratoire et au résultat relatif au cas | Permet de saisir les détails relatifs à un cas critique sous forme de liste de lignes | Permet la déclaration hebdomadaire des principaux points de données agrégées |
 | **Avantages** | La grande granularité des données et les multiples dimensions temporelles de l'analyse peuvent permettre de décentraliser le flux de travail c'est-à-dire tous les événements liés au cas. | Caractéristique plus granulaire qu'agrégée et pouvant saisir les principales dimensions temporelles (c'est-à-dire la date du rapport par rapport à l'apparition des symptômes) ; réduction de la charge de saisie des données par rapport au tracker et niveau de complexité peu élevé | Peu complexe, facile à mettre en œuvre, plus facile à gérer lorsque le nombre de cas est élevé |
 | **Inconvénients** | Le volume de données à saisir peut être écrasant lorsque le nombre de cas atteint le seuil ; ceci peut rendre la mise en œuvre complexe | Ne prend pas en charge le suivi des cas ou d'autres flux de travail décentralisés | Une granularité plus faible pour l'analyse détaillée (c'est-à-dire une analyse basée exclusivement sur la date de notification du cas, une désagrégation limitée)|
 
-**This document covers only the design of the aggregate package**; separate system design documents are available for DHIS2 Tracker and Line-listing (event-based) packages. As cases increase rapidly, some countries may struggle with case-based reporting as the burden becomes too high. The aggregate package is designed to meet the most critical reporting requirements and analytical capacities for surveillance and response.
+**Ce document ne couvre que la conception de l'ensemble des données agrégées** ; des documents de conception de système distincts sont disponibles pour les ensembles Tracker et Liste de ligne (basée sur les événements) de DHIS2. Lorsque le nombre de cas augmente rapidement, certains pays peuvent avoir du mal à établir des rapports basés sur les cas, car la charge de travail devient trop importante. L'ensemble des données est conçu pour répondre aux exigences les plus critiques en matière de déclaration et de capacités d'analyse pour la surveillance et la réponse.
 
 Les objectifs du progiciel de surveillance du COVID-19 sont les suivants :
 
@@ -30,13 +30,13 @@ Les objectifs du progiciel de surveillance du COVID-19 sont les suivants :
 3. fournir des informations épidémiologiques pour effectuer des évaluations des risques aux niveaux national, régional et mondial ; et
 4. fournir des informations épidémiologiques pour orienter les mesures de préparation et d'intervention.
 
-The system design builds upon existing disease surveillance principles and information system requirements that have been developed collaboratively between the WHO and UiO since 2017. The COVID-19 package was developed with the intent to align to [WHO technical guidance on nCoV-19 surveillance and case definitions](https://www.who.int/emergencies/diseases/novel-coronavirus-2019/technical-guidance/surveillance-and-case-definitions), last updated August 7, 2020. Note that this design may not necessarily reflect the latest available interim global guidance developed by WHO as updates may be released rapidly. National guidelines and policies may vary and it is recommended to adapt this package to local context.
+La conception du système s'appuie sur les principes existants de surveillance des maladies et les exigences du système d'information élaborés conjointement par l'OMS et l'UiO depuis 2017. Le progiciel de surveillance de COVID-19 a été développé dans l'intention de s'aligner sur les [directives techniques de l'OMS en matière de surveillance du nCoV-19 et les définitions de cas] (https://www.who.int/emergencies/diseases/novel-coronavirus-2019/technical-guidance/surveillance-and-case-definitions), mises à jour le 07 août 2020. Il convient de noter que cette conception ne reflète pas nécessairement les dernières directives mondiales provisoires disponibles élaborées par l'OMS, étant donné que les mises à jour peuvent être publiées rapidement. Les directives et les politiques nationales peuvent varier et il est donc recommandé d'adapter ce progiciel au contexte local.
 
 ## Résumé de la conception du système { #system-design-summary } 
 
-In the development of this configuration package, an effort has been made to follow UiO&#39;s [general design principles](https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/general-design-principles-for-who-metadata-packages.html) and a common [naming convention](https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/naming-conventions.html).
+Lors du développement de ce package de configuration, nous avons essayé de respecter les [principes généraux de conception] de l'UiO&#39;s (https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/general-design-principles-for-who-metadata-packages.html)et une [convention d'appellation] commune(https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/naming-conventions.html).
 
-The aggregate COVID-19 surveillance package includes
+Le package global de surveillance agrégé du COVID-19 comprend
 
 1. Weekly aggregate data set and data elements for key COVID-19 surveillance reporting
 2. Categories for data disaggregation
@@ -92,31 +92,31 @@ Data should be entered for all new confirmed and probable cases reported during 
 
 Data should be entered for new confirmed and probable deaths reported during the reporting period. The total column is automatically summed during data entry.
 
-![Picture2](resources/images/AGG_Picture2.png)
+![Image2](resources/images/AGG_Picture2.png)
 
 - **Section 3: Health worker infection and death**
 
 This section captures data for health workers&#39; new confirmed and probable cases including deaths reported during the reporting period.
 
-![Picture3](resources/images/AGG_Picture3.png)
+![Image3](resources/images/AGG_Picture3.png)
 
 - **Section 4: Hospitalisation and discharges**
 
 This section captures data for new hospitalisation and discharges during the reporting period.
 
-![Picture4](resources/images/AGG_Picture4.png)
+![Image4](resources/images/AGG_Picture4.png)
 
 - **Section 5: Tests conducted**
 
 This section captures data for tests conducted with additional requirement to report tests conducted using PCR during the reporting period
 
-![Picture5](resources/images/AGG_Picture5.png)
+![Image5](resources/images/AGG_Picture5.png)
 
 - **Section 6: Transmission Classification**
 
 This section summarizes the major form of transmission classification experienced by the reporting unit.
 
-![Picture7](resources/images/AGG_Picture6.png)
+![Image7](resources/images/AGG_Picture6.png)
 
 ### Personnalisation des formulaires de saisie de données { #customizing-data-entry-forms } 
 
@@ -150,7 +150,7 @@ Please refer to the [installation guidance](covid-19-aggregate-installation.html
 
 From the data captured, we can calculate at least the following indicators, many of which are recommended by the WHO for [weekly reporting](https://apps.who.int/iris/bitstream/handle/10665/331506/WHO-2019-nCoV-SurveillanceGuidance-2020.6-eng.pdf) and present them in a dashboard. All COVID-19 program indicators are assigned to the Indicator Group &#39;COVID19&#39;.
 
-| **name** | **description** |
+| **nom** | **description** |
 | --- | --- |
 | COVID19 - New Confirmed Deaths | Number of new confirmed deaths |
 | COVID19 - New Cases Among HW (Confirmed + Probable) | Number of New Cases Among HW (Confirmed + Probable) |
@@ -176,7 +176,7 @@ From the data captured, we can calculate at least the following indicators, many
 
 Key analytic items have been configured and added onto the dashboard “COVID19 - Aggregate Weekly Surveillance”. These items include; pivot tables, charts and a map designed to provide data visualization for some of the data captured based on the indicators. In the process of adopting this package, users can modify or create additional items as suits their analytical needs and equally make the necessary adjustments to the dashboard.
 
-| **name**|**type**|
+| **nom**|**type**|
 | --- | --- |
 |COVID19 - Tested, tests with PCR and positivity rate by subnational level this year |Tableau croisé dynamique|
 |COVID19 - HW amongst reported cases this year |Chart|
