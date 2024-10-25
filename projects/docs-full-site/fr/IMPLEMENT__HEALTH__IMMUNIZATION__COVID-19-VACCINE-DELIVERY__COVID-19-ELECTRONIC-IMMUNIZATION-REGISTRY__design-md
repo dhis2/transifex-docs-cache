@@ -1,0 +1,415 @@
+---
+edit_url: "https://github.com/dhis2-metadata/CVC_EIR/blob/master/docs/cvc_eir-design.md"
+revision_date: '2022-11-11'
+tags:
+- Implémentation
+---
+
+# Covid-19 Electronic Immunization Registry Tracker System Design { #cvc-eir-design }
+
+## Introduction { #introduction } 
+
+Le document intitulé « Conception du système d’immunisation contre la COVID-19 » donne un aperçu du design conceptuel utilisé dans la configuration d’un programme de suivi DHIS2 servant de registre électronique d’immunisation contre la COVID-19. Ce document est destiné aux responsables de la mise en œuvre du DHIS2 au niveau national et régional pour soutenir la mise en œuvre et la localisation du package. Les flux de travail au plan local, les lignes directrices nationales et celles des produits vaccinaux concernés doivent être pris en compte lors de la localisation et de l’adaptation de ce package de configuration.
+
+This package was developed in response to an expressed need from countries and partners to monitor equity and uptake of COVID-19 vaccines across priority groups, track individuals through the completion of their vaccination schedule. 
+
+
+The goal of this package is to improve timeliness, accuracy of data, expand coverage, efficiency and effectiveness  delivery of the COVID-19 vaccines. It is based on the [Guidance on developing a national deployment and vaccination plan for COVID-19 vaccines](https://www.who.int/publications/i/item/WHO-2019-nCoV-Vaccine_deployment-2020.1) as well as feedback from WHO and CDC officials and general vaccination standards and guidance adapted from the DHIS2 immunization registry package
+
+
+Les directives et politiques nationales étant différentes, ce package doit être adapté au contexte national.
+
+
+## Aperçu de la conception du système { #system-design-overview } 
+
+### Cas d'utilisation { #use-case } 
+
+The tracker data model in DHIS2 enables an individual to be registered and followed  across a series of health services over time. This model can be leveraged to track individuals’ completion of vaccination schedules according to national policy and product recommendations, as well as capture robust individual level data to support analysis of vaccine distribution, uptake, and completion according to demographics, underlying conditions, and other variables.
+
+### Content { #content } 
+
+Ce package contient :
+
+* Le programme tracker qui enregistre l’individu et chaque événement de vaccination
+* Un ensemble d’indicateurs de programme qui couvre les exigences issues des orientations de l’OMS en matière de déploiement des vaccins
+* Un ensemble d’indicateurs de programme qui alimente un ensemble de données agrégées pour le suivi quotidien
+* Un ensemble de données agrégées pour le suivi quotidien
+* Un ensemble d’indicateurs basés sur l’ensemble de données agrégées
+* Un tableau de bord de suivi quotidien basé sur l’ensemble de données agrégées
+
+### Utilisateurs cibles { #intended-users } 
+
+The programme is designed to support clinical/facility-level users, empowering staff with better decision-making tools and placing the client at the center of the information system, while also eliminating their reporting redundancies. However, depending on the infrastructure and resource availability in-country, data entry can be completed at the district level based on paper registers. 
+
+* Utilisateurs cliniques : le programme de suivi du registre électronique d’immunisation est optimisé pour la saisie des données au point d’intervention.
+* Personnel des établissements : si la saisie des données dans le DHIS2 au point d’intervention n’est pas possible, la tâche peut être confiée au personnel préposé à cet effet. Les listes de travail sont conçues pour aider le personnel des établissements à surveiller les patients qui ont besoin d’un suivi ou qui sont en retard par rapport à leur schéma de vaccination.
+* Responsables d’établissements, bureaux de santé de district et personnel du programme national : les données générées par le programme alimentent des tableaux de bord standardisés qui permettent de suivre l’adoption des vaccins, les abandons et la désagrégation en fonction de l’âge, du genre et de la profession
+
+Illustration du déroulement :
+
+![Déroulement](resources/images/Covac_workflow.png)
+
+Le déroulement des opérations varie d’un pays à l’autre. La conception du programme doit être revue et adaptée en fonction du contexte. Par exemple, le déroulement illustré ci-dessus suppose que les individus sont enregistrés dans le DHIS2 lorsqu’ils se présentent sur un site de vaccination pour recevoir leur première dose. Il peut également être envisageable de pré-enregistrer les individus éligibles dans le système en tant qu’instances d’entité suivies (p. ex., à partir d’un registre existant d’agents de santé).
+
+## Configuration du programme Tracker { #tracker-program-configuration } 
+
+|Structure|Description|
+|---|---|
+|Inscription|Si une personne n’est pas encore enregistrée dans l’instance, elle est enregistrée et inscrite dans le registre d’immunisation en tant que TEI (personne de type TEI) et ses données sont saisies dans Inscription en tant qu’attributs, qui correspondent aux packages COVID-19 existants pour le DHIS2. Attributs TEI : Identifiant national, Identifiant unique, Prénom, Sexe, Date de naissance estimée, Date de naissance (âge), Numéro de téléphone portable, Adresse (actuelle), Région, Profession|
+|Étape 1 du programme : Vaccination|Il s’agit d’une étape qui peut être répétée. Les données de cette étape sont saisies chaque fois qu’une personne est vaccinée. Date de l’événement = date à laquelle la dose a été administrée \ date d’échéance = permet de programmer la dose suivante|
+|Section 1.1 — Affections sous-jacentes|Informations sur les états de santé et/ou les affections sous-jacentes préexistantes qui ont été déterminées comme exposant à un risque significativement plus élevé d’infection grave ou de décès. Ce package contient les mêmes affections préexistantes que celles utilisées dans le reste des packages COVID.|
+|Section 1.2 — Questions préalables à la vaccination|Pour la première dose, cette section demande si le client a eu la COVID-19 au cours des 90 derniers jours. Après la deuxième dose, elle demande également s’il y a|
+|Section 1.3 — Vaccination|Enregistre les détails sur le type de vaccin fourni ainsi que le numéro de lot, la date d’expiration, et suggère une date pour la prochaine vaccination.|
+
+### Data elements in the vaccination stage { #data-elements-in-the-vaccination-stage } 
+
+|Élément de données (Nom du formulaire)|Liés à des indicateurs|Liés à des certificats|Liés à des règles du programme|
+|--- |--- |--- |--- |
+|Dose administrée le (date de la vaccination) — Pas un élément de données|Oui|Oui|Oui|
+|La patiente est-elle enceinte ou allaitante ?|Non|Non|Oui|
+|Âge gestationnel (semaines)|Non|Non|Oui|
+|Des affections sous-jacentes ?|Non|Non|Oui|
+|Maladie cardiovasculaire, hypertension comprise|Non|Non|Oui|
+|Maladie pulmonaire chronique|Non|Non|Oui|
+|Diabète|Non|Non|Oui|
+|Immunodéficience|Non|Non|Oui|
+|Malignité|Non|Non|Oui|
+|Maladie neurologique ou neuromusculaire chronique|Non|Non|Oui|
+|Maladie rénale|Non|Non|Oui|
+|Autres (veuillez spécifier)|Non|Non|Oui|
+|Le patient a-t-il été infecté par la COVID-19 au cours des 90 derniers jours ?|Non|Non|Oui|
+|Le patient a-t-il eu une réaction allergique grave (anaphylaxie) ou une réaction allergique immédiate, même si elle n’était pas grave, après avoir reçu la première dose de vaccin ?|Non|Non|Oui|
+|Vaccin administré|Oui|Oui|Oui|
+|Nom du vaccin|Oui|Oui|Oui|
+|Veuillez expliquer pourquoi ce client a reçu des doses de différents produits|Non|Non|Oui|
+|Numéro de lot du vaccin|Non|Oui|Non|
+|Date d’expiration du vaccin|Non|Non|Non|
+|Numéro de doses|Oui|Oui|Oui|
+|Nombre total de doses requises pour ce vaccin|Non|Oui|Oui|
+|Est-ce la dernière dose ?|Oui|Non|Oui|
+|Date suggérée par le COVAC pour la dose suivante|Non|Non|Oui|
+|Le client a-t-il eu une réaction indésirable après l’immunisation ?|Non|Non|Oui|
+
+### Vaccine products in the program { #vaccine-products-in-the-program } 
+
+Les produits propres à la COVID-19 disponibles dans le pays et les schémas vaccinaux varient selon les pays. Ce package comprend des produits vaccinaux conformes à la documentation disponible auprès de l’OMS, qui continuera à évoluer au fur et à mesure de [l’arrivée de vaccins sur le marché.](https://extranet.who.int/pqweb/sites/default/files/documents/Status_COVID_VAX_16Feb2021.pdf)
+
+In order to better demonstrate functionality, these placeholders have been configured based on five existing vaccine products, but it is important to verify and configure the programme based on the national adoption guidelines for the product. 
+
+|NOM du vaccin|Code d’option|Fabricant du vaccin|Code d’option|Âge recommandé|Intervalle entre les doses|Nombre de doses|
+|--- |--- |--- |--- |--- |--- |--- |
+|AZD1222/AstraZeneca|astrazeneca|AstraZeneca|astrazeneca|18|10 jours (8-12)|2|
+|AZD1222/AstraZeneca|astrazeneca|SKBio Astra Zeneca|skbioastrazeneca|18|10 (8-12)|2|
+|BNT162b2 / COMIRNATY Tozinameran (INN) / BioNTech/Pfizer|biontechpfizer|BioNtech/Pfizer|biontechpfizer|16|21|2|
+|mRNA-1273 / Moderna|moderna|Moderna|moderna|18|28|2|
+|Sputnik V / Gamaleya|gamaleya|Gamaleya|gamaleya|18|21|2|
+|Vaccin contre le SARS-CoV-2 (cellule Vero), inactivé / Sinopharm|sinopharm|Sinopharm|sinopharm|18|21 jours (21-28) |2|
+
+
+### How to adapt the placeholders to the available vaccine products? { #how-to-adapt-the-placeholders-to-the-available-vaccine-products } 
+
+#### Names in the form { #names-in-the-form } 
+
+Pour que le nom dans le formulaire reflète les produits utilisés dans le pays, vous devez d’abord modifier les ensembles d’options « Fabricants de vaccins COVAC » et « Nom du vaccin COVAC » et changer les options en noms appropriés pour le pays.
+
+![Ensemble d’options](resources/images/Covac_optionset_1.png)
+
+![Ensemble d’options](resources/images/Covac_optionset_2.png)
+
+#### Auto Assigning Manufacturers and Brands to Names { #auto-assigning-manufacturers-and-brands-to-names } 
+
+Les fabricants et les marques sont attribués automatiquement lorsqu’un produit vaccinal est sélectionné par des règles du programme basées sur le vaccin choisi, à moins que le vaccin ait plus d’un fabricant disponible. Dans ce cas, une règle du programme masque les options qui ne sont pas pertinentes et l’agent doit choisir le nom correct du fabricant, comme c’est le cas pour AstraZeneca.
+
+##### Auto assign rule { #auto-assign-rule } 
+
+Par exemple, la règle du programme « Attribuer la marque et les fabricants à BioNtech/Pfizer » attribue le fabricant BioNtech/Pfizer lorsque « Comirnaty, Tozinameran » est sélectionné.
+
+It uses the expression:
+`d2:hasValue( 'Vaccine_type' )  == true && #{Vaccine_type} == 'BIONTECHPFIZER'`
+
+L’action de cette règle du programme consiste à attribuer à l’élément de données « Fabricant du vaccin » la valeur « BIONTTECHPFIZER », qui est le code d’option pour « BioNTech/Pfizer » ainsi que « BioTech/Pfizer » pour la marque.
+
+##### Hide options rule { #hide-options-rule } 
+
+Currently, the only rule like this is:
+“Assign Brand/Hide options to AstraZeneca”, as this product has two different manufacturers (AstraZeneca and SK Bio Astra Zeneca).  
+This means that instead of assigning a manufacturer, the PR will hide the irrelevant manufacturers and allow the clerk to select one of the two currently available manufacturers.
+
+#### Age alert { #age-alert } 
+
+Selon le vaccin, il peut y avoir des limites d’âge inférieures. Si un vaccinateur administre une dose à une personne n’appartenant pas à la tranche d’âge recommandée, un avertissement est émis. Pour modifier cela, veuillez corriger les règles du programme :
+
+« Si l’attribut Âge est inférieur à 18, prévenir qu’Astra Zeneca est recommandé pour les personnes âgées de 18 ans et plus »
+
+“If Age is under 16, then warn that BiontechPfizer is recommended for ages 16 and up”
+“If Age is under 18, then warn that Moderna is recommended for ages 18 and up”
+“If Age is under 18, then warn that Gamaleya is recommended for ages 18 and up”
+“If Age is under 18, then warn that Sinopharm is recommended for ages 18 and up”
+
+Les règles utilisent toutes une expression similaire :
+
+`(#{Age_Calculated}   < 18 ) && (#{Vaccine_type} =='ASTRAZENECA')`
+
+Where you would need to modify the number, 18 in this case,  to match the necessary age.
+
+The action for these program rules is to show a warning:
+“This vaccine product is recommended for people 18 and older.”  
+
+Vous devez également modifier cet avertissement pour qu’il corresponde aux directives nationales les plus appropriées.
+
+#### Assign a date for next dose { #assign-a-date-for-next-dose } 
+
+There is currently no way for a tracker to assign a date for the next event based on a data element, so what we have done is configured tracker to automatically autoschedule the next vaccination date 10 days from the first dose, assuming that the most used product would be Astra-zeneca. This must be modified to match the interval used in the country by changing the setting for the vaccination program stage in the maintenance app.  
+
+![Configuration du programme](resources/images/Covac_date_setting.png)
+
+Il existe également un élément de données qui attribue automatiquement, à l’aide de règles du programme, une date recommandée en fonction du produit vaccinal. Pour modifier cela, il faut éditer la règle du programme :
+
+ “Assign a suggested date for next dose AstraZeneca” (there is one rule for each product)
+“.../dhis-web-maintenance/#/edit/programSection/programRule/ZT3tLrXXadf”
+
+La règle du programme comporte deux actions
+
+Action one: Show warning next to data element “suggested date for next dose” with the text “Next dose should be given at 10 days”  
+
+Modifiez ce texte en fonction des besoins.
+
+Action two: Assign value to the data element “suggested date for next dose” with the expression d2:addDays( V{event_date}, 10 )  
+
+Modifiez le nombre 10 avec le nombre de jours devant être attribué au vaccin disponible.
+
+#### Last dose { #last-dose } 
+
+Il existe actuellement un élément de données oui/non appelé « Dernière dose » ; cet élément permet aux indicateurs de déterminer qu’un produit a terminé son schéma d’immunisation. Actuellement, tous les produits ont deux doses, et par conséquent, nous avons fait en sorte qu’après l’injection d’une deuxième dose, l’élément de données « Dernière dose » soit automatiquement coché comme « Oui ». Nous avons également masqué cet élément de données pour la première dose.
+
+To modify this warning, edit the program rule:
+ “If this is the second dose, mark it as "last dose" for all vaccine products”
+
+dhis-web-maintenance/#/edit/programSection/programRule/PJjKiFrvfuN
+
+The expression:
+`d2:hasValue( 'Dose_number' ) == true && #{Dose_number} == 'DOSE2'`
+
+indique que si un agent sélectionne le numéro de doses donné comme étant la deuxième dose, il déclenche une action « attribuer une valeur » qui ajoute la valeur « vrai » à l’élément de données « Dernière dose » et à la variable de la règle du programme « Last_dose »
+
+Pour modifier cela, éditez l’expression pour filtrer les vaccins non utilisés ou ayant un schéma différent.
+
+#### Total number of doses { #total-number-of-doses } 
+
+L’élément de données « Nombre total de doses requises pour ce vaccin » est un élément de données rempli automatiquement qui affiche la quantité de doses requises pour le schéma vaccinal de ce vaccin. Actuellement, tous les vaccins ont un schéma de deux doses. Cependant, il existe une règle individuelle pour chaque vaccin en cas de changement ultérieur :
+
+Pour modifier cela, éditez la règle correspondante : Attribuer un numéro de dose à NOMDUPRODUIT
+
+And the expression:
+`d2:hasValue( 'Vaccine_type' )  == true && #{Vaccine_type} == 'astrazeneca'`
+
+Si le programme correspond au filtre, l’action attribuera une valeur à l’élément de données « Nombre total de doses ». Actuellement, toutes les règles attribuent la valeur « 2 » et masquent l’option pour une troisième dose.
+
+#### Access Level { #access-level } 
+
+The program has been set up as a “protected” program, meaning that users are able to search in other org units beyond the ones they have rights to, but if they want to access records in a different facility, they must use the “breaking the glass” function and not down why they are accessing records in a different organisation unit.  
+
+
+Note that the [breaking the glass feature is not supported in Android](https://docs.dhis2.org/2.35/en/dhis2_android_capture_app/programs.html#breaking-the-glass) and android users are unable to search other organisation units when the program is set as protected. 
+
+#### Enrollment Details { #enrollment-details } 
+
+La date d’inscription est égale à la « date d’enregistrement ». Il est prévu que l’utilisateur saisisse la date d’inscription lorsque la personne s’inscrit dans le programme du registre d’immunisation. Dans la majorité des cas, la date d’inscription coïncide avec la date de la première vaccination, à moins que les clients ne soient inscrits à l’avance dans le registre de vaccination.
+
+Comme le programme utilise la date de naissance pour calculer les indicateurs du programme, elle est configurée comme obligatoire. Si une personne ne connaît pas sa date de naissance, il est possible de cocher la case « Date de naissance estimée » et d’entrer son âge approximatif ou une date de naissance approximative.
+
+Bien que les informations sur l’inscription soient censées être complétées lors de la première inscription d’un cas, les valeurs des attributs peuvent être mises à jour à tout moment au cours d’une inscription active si de nouvelles informations sont disponibles (par exemple, les coordonnées).
+
+#### Identifiers { #identifiers } 
+
+Le programme est configuré avec deux types d’identifiants uniques. Des identifiants supplémentaires peuvent être ajoutés au programme en fonction du contexte du pays.
+
+**Unique Identifier**: An automatically generated ID which is unique to the entire system (e.g. the instance of DHIS2 being used). This TEI attribute is configured to generate the attribute value based on a pattern. In the previous version of the package the unique identifier generated a number which was a prefix and a random rumber, "EPI_" + RANDOM(########)". The latest version has replaced this attribute for one with a sequential pattern which helps with performance for large implementations "EPI_" + RANDOM(########)".
+
+**Identifiant national** : cet identifiant est actuellement saisi manuellement et doit être adapté aux besoins de validation locaux.
+
+![Étape d’inscription](resources/images/Covac_enrollment.png)
+
+### Program Stage 1: Vaccination (repeatable) { #program-stage-1-vaccination-repeatable } 
+
+Section 1.1 — Affections sous-jacentes.
+
+![Affections sous-jacentes](resources/images/Covac_underlying.png)
+
+The underlying conditions listed here are based on the guidelines for the COVID case surveillance and contact tracing packages, and they also include health states such as pregnancy and lactation. The pregnancy and lactation options  only appear for females. Once one of the underlying conditions (except for pregnancy) are selected, they will remain selected in the following stage (as this is a repeatable stage) and they will be listed in the indicator box. 
+
+#### Section 1.2 Pre Immunization Questions { #section-12-pre-immunization-questions } 
+
+The Pre-Immunization Questions are intended to be completed during each ‘event’, which represents an immunization service.  Based on the answers selected, program rules are triggered to give decision support
+
+Actuellement, les deux questions sont :
+
+« Le patient a-t-il été infecté par la COVID-19 au cours des 90 derniers jours ? »
+
+Si la réponse est Oui, un avertissement s’affiche : « Le vaccin est recommandé aux personnes non infectées par la COVID-19 depuis au moins 90 jours »
+
+Et
+
+“Has the patient had a severe allergic reaction (anaphylaxis) or an immediate allergic reaction—even if it was not severe—after getting the first dose of the vaccine”, Which only is visible to patients when they are receiving their second (or potentially, third or booster) doses. If yes is selected, it triggers the warning “Please  follow the national guidelines for AEFI investigations"
+
+![Questions préalables à la vaccination](resources/images/Covac_preimmunization.png)
+
+#### Section 1.3 Vaccination information { #section-13-vaccination-information } 
+
+Cette section présente les services d’immunisation fournis. Elle enregistre les informations suivantes :
+
+Vaccine given  (using the option set “Vaccine name”)
+
+Fabricants du vaccin (à l’aide de l’ensemble d’options « Fabricants de vaccins », remplissage automatique)
+
+Marque de vaccin (à l’aide de l’ensemble d’options « Marque du vaccin »)
+
+Le numéro de lot de cette dose
+
+La date d’expiration de la dose
+
+Le numéro de dose (1ère, 2ème ou rappel)
+
+Le nombre de doses totales requises pour ce produit vaccinal (remplissage automatique)
+
+Un élément de données pour confirmer s’il s’agit de la dernière dose du traitement (remplissage automatique)
+
+Un élément de données calculé automatiquement et donnant une suggestion pour la prochaine dose (remplissage automatique)
+
+Un élément de données demandant si le client a eu une réaction indésirable à la suite de l’immunisation (utilisé lors de la surveillance d’un patient immédiatement après avoir été vacciné)
+
+Un élément de données pour compléter l’identification de l’agent de santé
+
+![Section relative à la vaccination](resources/images/Covac_vaccination.png)
+
+Si un patient reçoit un type de vaccin différent de celui enregistré lors de la première injection, un avertissement s’affiche : « Le type de vaccin que vous avez sélectionné n’est pas le même que le type de vaccin précédent que cette personne a reçu. La dernière dose administrée était "NOM DU VACCIN PRÉCÉDEMMENT ADMINISTRÉ" » Cela déclenche également un élément de données supplémentaire « Veuillez expliquer pourquoi ce client a reçu des doses de différents produits »
+
+Une fois qu’un client a reçu la première dose, l’option pour la première dose est masquée dans l’élément de données. Pour les produits à seulement deux doses dans le schéma, la troisième est masquée. Les pays peuvent effectuer une configuration en fonction des produits vaccinaux qu’ils adoptent.
+
+#### Scheduling events { #scheduling-events } 
+
+L’étape est configurée pour « Demander à l’utilisateur de créer un nouvel événement lorsqu’une étape est terminée », ce qui fait apparaître une fenêtre contextuelle pour la planification du rendez-vous de suivi. Les « jours d’intervalle standard » sont actuellement définis sur 10 afin que la date du prochain rendez-vous (événement) soit programmée par défaut à 10 jours de la date de l’événement en cours, mais cette date peut être modifiée en fonction du produit utilisé.
+
+### Groupes d'utilisateurs { #user-groups } 
+
+Le programme est fourni avec quatre groupes d’utilisateurs :
+
+* *COVAC - Covid Immunization Metadata Admin:* Has the rights to edit the metadata of the package but not to enter data into the package
+* *COVAC - Covid Immunization Data Entry:* Has the rights to enter data into tracker
+* *COVAC - Covid Immunization Data Analysis:* Has access to the dashboards, but cannot enter data.
+* *COVAC - Covid-19 Immunization data Admin:* This is an Admin group which is shared between tracker and aggregate. Members of this group can view data in both tracker and aggregate modules and capture data in the aggregate module only. This user group is set up for the users that would run the tracker to aggregate scripts as well as access the dataset through the data entry app.
+
+Ces différents groupes doivent être adaptés aux besoins nationaux.
+
+## Certificate Printing { #certificate-printing } 
+
+DHIS2 does not support printing a vaccination certificate or generating an electronic certificate as a core functionality, but several countries have succesfully adapted the platform in order to provide digital and printed certificates. 
+
+### SMS Notifications { #sms-notifications } 
+
+Le DHIS2 dispose d’un module de notifications par SMS. Toutefois, pour pouvoir utiliser les notifications, la configuration d’une passerelle SMS s’avère nécessaire. Consultez la documentation sur les passerelles SMS [ici](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/sms.html)
+
+Le programme comprend un rappel par défaut, 7 jours avant la date d’échéance prévue pour un événement de vaccination :
+
+“Dear NAME OF CLIENT, you have an appointment to receive your COVID-19 vaccine on the DUE DATE at NAME OF FACILITY  
+
+Et un message, 3 jours après la date d’échéance prévue :
+
+« Madame, Monsieur, A{TfdH5KvFmMy}, vous aviez rendez-vous pour une dose de vaccin contre la COVID-19 le V{due_date}. Si vous n’avez pas reçu votre vaccin, veuillez contacter V{org_unit_name} dès que possible. Dans le cas contraire, vous pouvez ignorer ce message »
+
+**REMARQUE :** En raison des limitations actuelles du module SMS, le message prévu trois jours après la date d’échéance sera envoyé, que l’événement ait eu lieu ou non. Jusqu’à ce que ce problème soit résolu, une solution de contournement consiste à configurer un script cronjob qui vérifie les événements en retard et planifie un message.
+
+### Working Lists { #working-lists } 
+
+Three custom working lists have been configured in the program. These lists are meant to facilitate the management of the work day of the health care workers at point of care with lists of clients depending on their vaccination schedule, and to highlight overdue appointments.  
+
+Les listes sont personnalisées selon la fonction « date d’échéance ». La date d’échéance est la date attribuée pour le prochain événement et elle est effectuée dès que le premier événement est terminé. Actuellement, le système sélectionne automatiquement un rendez-vous, 10 jours après la première vaccination, et l’agent ou le clinicien doit modifier cette date, si nécessaire. Il est donc important que la planification soit faite correctement pour l’utilisation des listes de travail.
+
+All active registered clients:
+Clients who are registered in the COVID vaccine programme, and clients whose enrollment wasn’t completed. It is assumed that clients who have received all doses of their vaccines will have completed their enrollment in the vaccination program. The incomplete enrollment will therefore be indicative of all the clients who have not received a second dose (or the last dose for vaccines with different schedules)-independently on whether they are on schedule or overdue
+
+Clients with scheduled appointments:
+Those who have a vaccination programme stage scheduled into the future or current day
+
+Clients overdue a vaccination dose:
+Those who have a scheduled appointment in the past, and are therefore overdue to get a vaccine dose.
+
+Completed clients:
+Those whose enrollment has been completed
+
+## Analyse  { #analytics } 
+
+To optimize performance for anticipated large-scale deployments and the use of high-volume campaign-style vaccine administration strategies, this package is designed to serve analytics objects and dashboards through the aggregate data model. 
+
+In addition to ensuring maximum performance for analytics users accessing the dashboards in near real-time while high-volume data entry through Tracker is likely ongoing, aggregating tracker data and serving the dashboards through the aggregate domain has the added benefit of making data dimensions available for analytics users (e.g. based on Categories for disaggregation). 
+
+In order to serve COVID-19 analytics from the COVID-19 EIR tracker program source data, the package includes the following components:
+An aggregate data set with data elements and category combos (to serve as a target for pushing tracker data to aggregate model)
+A dashboard based on aggregate domain indicators (replaces the tracker-based (program indicator-based) dashboard in previous versions)
+A group of program indicators with attributes mapped to the target aggregate DEs/COCs 
+
+### Tableaux de bord { #dashboard } 
+
+This package contains a simplified COVAC Daily Monitoring Dashboard (iBWlFCvvtkH) to facilitate daily/near real-time analysis during campaign-style vaccine delivery activities. This dashboard is designed to be as light as possible, serving a core set of metrics optimized for daily monitoring of vaccine delivery operations. The dashboard indicators were selected as a subset of the monitoring guidance included in the WHO Guidance on developing a national deployment and vaccination plan for COVID-19 vaccines. [WHO Guidance on developing a national deployment and vaccination plan for COVID-19 vaccines](https://www.who.int/publications/i/item/WHO-2019-nCoV-Vaccine_deployment-2020.1).
+The  “COVAC Daily Monitoring Dashboard” ((iBWlFCvvtkH)  is configured entirely based on indicators belonging to the indicator group COVAC - Daily (doQTIS8KJQH). This will enable countries to map dashboard indicators to their own set of underlying data elements, if the target aggregate data set and data elements are customized for local implementation. 
+
+For a complete monitoring dashboard covering additional aspects of the WHO NDVP Monitoring Guidance (such as vaccine coverage and uptake by target groups, indicators on adverse events, supply & cold chain), refer to the [COVAC Core Dashboard/Aggregate metadata package](https://docs.dhis2.org/en/topics/metadata/covid-19-vaccine-delivery/covac-aggregate/version-110/design.html). 
+
+Si votre instance dispose déjà d’un tableau de bord de la version précédente de ce package, il est recommandé de le supprimer ou d’en limiter l’accès à quelques utilisateurs. Pour obtenir des instructions sur la suppression des tableaux de bord, consultez le [guide d’installation](https://docs.dhis2.org/en/topics/metadata/covid-19-vaccine-delivery/covac-immunization-registry-tracker/installation.html)
+
+### Aggregate Data Set  { #aggregate-data-set } 
+
+Un ensemble de données agrégées « COVAC — Données tracker du REI (agrégées) » a été configuré avec une fréquence quotidienne comme cible pour pousser les valeurs de données calculées basées sur les indicateurs du programme de suivi vers le domaine agrégé. L’ensemble de données contient les éléments de données suivants :
+
+1. Personnes ayant reçu une 1ère dose
+2. Personnes ayant reçu une 2ème dose, une 3ème dose ou une dose de rappel
+3. Personnes ayant reçu la dernière dose recommandée
+4. Personnes souffrant d'affections sous-jacentes
+
+![Saisie de données agrégées](resources/images/covac_agg_data_entry.png)
+
+Dans la mesure du possible, les combinaisons de catégories, les catégories (et leurs combinaisons d’options de catégorie et options de catégorie associées) ont été réutilisées à partir du [package de métadonnées du tableau de bord principal/agrégées COVAC](https://docs.dhis2.org/en/topics/metadata/covid-19-vaccine-delivery/covac-aggregate/version-110/design.html)  existant pour faciliter l’analyse des éléments de données de ces deux packages.
+
+These data elements and COCs are expected to be populated from tracker program indicators, as described below. 
+
+### Indicateurs de programme { #program-indicators } 
+
+Un groupe d’indicateurs de programme, COVAC-Tracker, à agréger (NXBR4r6MwAO) a été configuré et mappé (via des attributs) pour faciliter le transfert des valeurs de données vers les éléments de données et les COC du domaine agrégé cible, comme décrit ci-dessus. Un exemple de ce mappage est le suivant :
+
+| Indicateur de programme (nom) | UID de l’indicateur de programme | Poussé vers les éléments de données agrégées (nom) | UID des éléments de données agrégées | Mappé à l’indicateur (nom) | UID de l’indicateur |
+|---|---|---|---|---|---|
+| Nombre de personnes recevant une première dose (femmes 0-59 ans) | RJ6pdxga9Od | COVAC — Personnes ayant reçu une 1ère dose | RjT7dmzunF4 | COVAC — Personnes ayant reçu une 1ère dose | GeAtojrj7Yy |
+| Nombre de personnes recevant une première dose (femmes 60 ans et +) | x4L0LuEBHhW | COVAC — Personnes ayant reçu une 1ère dose | RjT7dmzunF5 | COVAC — Personnes ayant reçu une 1ère dose | GeAtojrj7Yy |
+| Nombre de personnes recevant une première dose (hommes 0-59 ans) | hqm8znlAzkT | COVAC — Personnes ayant reçu une 1ère dose | RjT7dmzunF6 | COVAC — Personnes ayant reçu une 1ère dose | GeAtojrj7Yy |
+| Nombre de personnes recevant une première dose (hommes 60 ans et +) | aIIHyDy8AMW | COVAC — Personnes ayant reçu une 1ère dose | RjT7dmzunF7 | COVAC — Personnes ayant reçu une 1ère dose | GeAtojrj7Yy |
+| Nombre de personnes recevant une deuxième ou une troisième dose, ou une dose de rappel (Femmes 0-59 ans) | xY4T9hHXNji | COVAC — Personnes ayant reçu une 2ème dose, une 3ème dose ou une dose de rappel | zmKNuqgsq8N | COVAC — Personnes ayant reçu une 2ème dose, une 3ème dose ou une dose de rappel | ddZjJCwXf6k |
+| Nombre de personnes recevant une deuxième dose, une troisième dose ou une dose de rappel (Femmes 60 ans et +) | h9G7i6mQKef | COVAC — Personnes ayant reçu une 2ème dose, une 3ème dose ou une dose de rappel | zmKNuqgsq8N | COVAC — Personnes ayant reçu une 2ème dose, une 3ème dose ou une dose de rappel | ddZjJCwXf6k |
+| Nombre de personnes recevant une deuxième ou une troisième dose, ou une dose de rappel (Hommes 0-59 ans) | MGjwUUNsE60 | COVAC — Personnes ayant reçu une 2ème dose, une 3ème dose ou une dose de rappel | zmKNuqgsq8N | COVAC — Personnes ayant reçu une 2ème dose, une 3ème dose ou une dose de rappel | ddZjJCwXf6k |
+| Nombre de personnes recevant une deuxième ou une troisième dose, ou une dose de rappel (Hommes 60 ans et +) | qh0kIjHZbP8 | COVAC — Personnes ayant reçu une 2ème dose, une 3ème dose ou une dose de rappel | zmKNuqgsq8N | COVAC — Personnes ayant reçu une 2ème dose, une 3ème dose ou une dose de rappel | ddZjJCwXf6k |
+| Nombre de personnes ayant reçu la dernière dose recommandée pour le produit vaccinal concerné (femmes 0-59 ans) | Zp39TSOR8eW | COVAC — Personnes ayant reçu la dernière dose recommandée | CB46jykiEye | COVAC — Personnes ayant reçu la dernière dose recommandée | OAZXVEjEEoD |
+| Nombre de personnes qui ont reçu la dernière dose recommandée pour le produit vaccinal concerné (femmes 60 ans et +) | XFUvVgqPukT | COVAC — Personnes ayant reçu la dernière dose recommandée | CB46jykiEye | COVAC — Personnes ayant reçu la dernière dose recommandée | OAZXVEjEEoD |
+| Nombre de personnes qui ont reçu la dernière dose recommandée pour le produit vaccinal concerné (Hommes 0-59 ans) | FZNIlzPRMmL | COVAC — Personnes ayant reçu la dernière dose recommandée | CB46jykiEye | COVAC — Personnes ayant reçu la dernière dose recommandée | OAZXVEjEEoD |
+| Nombre de personnes qui ont reçu la dernière dose recommandée pour le produit vaccinal concerné (Hommes 60 ans et +) | zovL7DKBRuK | COVAC — Personnes ayant reçu la dernière dose recommandée | CB46jykiEye | COVAC — Personnes ayant reçu la dernière dose recommandée | OAZXVEjEEoD |
+| Personnes souffrant d'affections sous-jacentes | Zn0UuSRYyJw | COVAC — Personnes souffrant d'affections sous-jacentes | OUI05zSKrqk | COVAC — Personnes souffrant d'affections sous-jacentes | KIgI3EPjs2T |
+
+
+Additional program indicators have been configured to enable ad hoc analysis of the tracker data itself (e.g. coverage rates calculated based on tracker data, etc). However, these program indicators are not used in the COVAC - Daily Monitoring dashboard. 
+
+## Transferring aggregated tracker domain data to aggregate domain data values { #transferring-aggregated-tracker-domain-data-to-aggregate-domain-data-values } 
+
+In addition to the metadata provided above, implementations will require a mechanism to push the program indicator values from the tracker domain to the target aggregate data set. More information about this can be found in this chapter of the DHIS2 Implementation Guide: [Integrating Tracker and Aggregate Data](https://docs.dhis2.org/en/implement/maintenance-and-use/tracker-and-aggregate-data-integration.html#how-to-saving-aggregated-tracker-data-as-aggregate-data-values) 
+
+## Considerations for when implementing with Android devices { #considerations-for-when-implementing-with-android-devices } 
+
+### Access level ‘protected’ { #access-level-protected } 
+
+La fonctionnalité « briser la vitre » n’est pas encore prise en charge dans l’application de capture Android du DHIS2 à partir de la version 2.3. Si le programme est configuré comme « Protégé », le comportement par défaut pour Android sera le même que si le programme est configuré comme « Fermé ». Cela signifie qu’un utilisateur Android ne pourra pas lire ou modifier les inscriptions d’une TEI en dehors de son unité d'organisation. Les TEI enregistrées dans une unité d’organisation de recherche seront renvoyées par la recherche de type TE, mais si le programme est fermé ou protégé, l’utilisateur ne sera pas autorisé à voir ou à créer une nouvelle inscription. Si les utilisateurs d’Android doivent pouvoir accéder à la TEI en dehors de leur unité d'organisation de capture de données, le programme doit être configuré avec le niveau d’accès « Ouvert ». Suivez l’état de ce problème sur [Jira](https://jira.dhis2.org/browse/ANDROAPP-657)
+
+### Dose due date { #dose-due-date } 
+
+La description de la date d’échéance ne s’affiche pas correctement sur Android et au lieu de préciser « Date d’échéance de la dose », elle indique « Date d’échéance » [Lien vers jira] (https://jira.dhis2.org/browse/ANDROAPP-3620)
+
+### Reserve IDs { #reserve-ids } 
+
+L’identifiant unique de ce package est généré automatiquement et utilise le modèle "DATE_ACTUELLE(aaaa-MM-jj)-"-"-SEQUENTIEL(#####)". Avec les appareils Android, les valeurs de ces ID uniques générés par le système sont réservées à l’avance pour chaque appareil, afin de garantir que les valeurs sont uniques pour l’ensemble de l’instance. Cela signifie que la valeur de la date et du numéro de séquence ne correspondront pas nécessairement à la date du jour et à l’ordre chronologique de réception du vaccin par un patient. Vous pouvez trouver plus d’informations à ce sujet [ici] (https://docs.dhis2.org/en/implement/implementing-with-android/dhis2-configuration-for-android.html#configuration_reserved_id)
+

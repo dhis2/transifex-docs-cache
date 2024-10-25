@@ -1,0 +1,415 @@
+---
+edit_url: "https://github.com/dhis2-metadata/CVC_EIR/blob/master/docs/cvc_eir-design.md"
+revision_date: '2022-11-11'
+tags:
+- Implementace
+---
+
+# Covid-19 Electronic Immunization Registry Tracker System Design { #cvc-eir-design }
+
+## Úvod { #introduction } 
+
+Dokument Návrh imunizačního systému COVID-19 poskytuje přehled koncepčního designu použitého ke konfiguraci programu sledovače DHIS2 sloužícího jako registr elektronické imunizace vakcín COVID-19. Tento dokument je určen k použití implementátory DHIS2 na národní a regionální úrovni, aby mohli podporovat implementaci a lokalizaci balíčku. Při lokalizaci a přizpůsobení tohoto konfiguračního balíčku je třeba vzít v úvahu místní pracovní toky, národní pokyny a příslušné pokyny pro očkovací produkty.
+
+This package was developed in response to an expressed need from countries and partners to monitor equity and uptake of COVID-19 vaccines across priority groups, track individuals through the completion of their vaccination schedule. 
+
+
+The goal of this package is to improve timeliness, accuracy of data, expand coverage, efficiency and effectiveness  delivery of the COVID-19 vaccines. It is based on the [Guidance on developing a national deployment and vaccination plan for COVID-19 vaccines](https://www.who.int/publications/i/item/WHO-2019-nCoV-Vaccine_deployment-2020.1) as well as feedback from WHO and CDC officials and general vaccination standards and guidance adapted from the DHIS2 immunization registry package
+
+
+Protože národní směrnice a politiky se budou lišit, měl by být tento balíček přizpůsoben národnímu kontextu.
+
+
+## Přehled návrhu systému { #system-design-overview } 
+
+### Případ použití { #use-case } 
+
+The tracker data model in DHIS2 enables an individual to be registered and followed  across a series of health services over time. This model can be leveraged to track individuals’ completion of vaccination schedules according to national policy and product recommendations, as well as capture robust individual level data to support analysis of vaccine distribution, uptake, and completion according to demographics, underlying conditions, and other variables.
+
+### Content { #content } 
+
+Balíček obsahuje:
+
+* Trasovací program, který registruje jednotlivce a každou očkovací událost
+* Soubor indikátorů programu, který pokrývá požadavky pokynů WHO o zavádění vakcín.
+* Sada programových indikátorů, které se vkládají do souhrnné datové sady pro každodenní monitorování
+* Souhrnný soubor dat pro každodenní sledování
+* Soubor indikátorů založený na agregovaném souboru dat
+* Denní monitorovací panel založený na agregovaném souboru dat
+
+### Určení uživatelé { #intended-users } 
+
+The programme is designed to support clinical/facility-level users, empowering staff with better decision-making tools and placing the client at the center of the information system, while also eliminating their reporting redundancies. However, depending on the infrastructure and resource availability in-country, data entry can be completed at the district level based on paper registers. 
+
+* Kliničtí uživatelé: Program Immunization eRegistry tracker je optimalizován pro zadávání dat v Point of Care.
+* Zaměstnanci zařízení: Data mohou do DHIS2 zadávat také pracovníci zadávající data, pokud není možné zadávat údaje z místa péče. Pracovní seznamy jsou navrženy tak, aby podporovaly pracovníky zařízení při sledování pacientů, kteří potřebují následná opatření nebo kteří mají zpoždění podle očkovacího plánu.
+* Manažeři zařízení, okresní zdravotní úřady a pracovníci národního programu: Data generovaná prostřednictvím programu se vkládají do standardizovaných řídicích panelů, které umožňují sledovat příjem očkovacích látek, výpadky a rozčlenění podle věku / pohlaví / profese
+
+Ilustrativní pracovní postup:
+
+![pracovní postup](resources/images/Covac_workflow.png)
+
+Pracovní postupy se budou v jednotlivých zemích lišit. Návrh programu by měl být přezkoumán a lokalizován podle kontextu. Například pracovní postup na obrázku výše předpokládá, že jednotlivci budou registrováni v DHIS2, když se dostaví na místo očkování, aby dostali svou první dávku. Alternativou, kterou lze zvážit, je předběžná registrace způsobilých jednotlivců do systému jako instance trasovaných entit (např. z existujícího registru zdravotnických pracovníků).
+
+## Konfigurace trasovacího programu { #tracker-program-configuration } 
+
+|Struktura|Popis|
+|---|---|
+|Zápis|Pokud osoba v instanci ještě není zaregistrována, je zaregistrována a zapsána do registru imunizace jako TEI (typová osoba typu TEI) a její data jsou zachycena do atributů Registrace jako, které odpovídají stávajícím balíčkům COVID-19 pro DHIS2. Atributy TEI: národní ID, jedinečné ID, křestní jméno, pohlaví, datum narození se odhaduje, datum narození (věk), číslo mobilního telefonu, adresa (aktuální), oblast, povolání|
+|Program Fáze 1: Očkování|Toto je opakovatelná fáze. Data pro tuto fázi se zadávají pokaždé, když osoba dostane očkování. Datum události = Datum podání dávky \ Datum vypršení = Umožňuje naplánovat další dávku|
+|Oddíl 1.1 Základní zdravotní podmínky|Informace o zdravotním stavu a/nebo již existujících základních stavech, u nichž bylo rozhodnuto vystavit se výrazně vyššímu riziku závažné infekce nebo úmrtí. Balíček obsahuje stejné již existující podmínky používané ve zbytku balíků COVID.|
+|Oddíl 1.2 Otázky před imunizací|U první dávky se tato část ptá, zda klient prodělal COVID-19 během posledních 90 dnů. Po druhé dávce se také zeptá, zda existuje a|
+|Oddíl 1.3: Očkování|Zaregistruje podrobnosti o poskytnutém typu vakcíny, číslo šarže, datum expirace a navrhované datum dalšího očkování.|
+
+### Data elements in the vaccination stage { #data-elements-in-the-vaccination-stage } 
+
+|Datový prvek (název formuláře)|Spojeno s indikátory|Propojeno s certifikáty|Souvisí s pravidly programu|
+|--- |--- |--- |--- |
+|Dávka podaná v (datum očkování) Není datový prvek|Ano|Ano|Ano|
+|Je pacientka těhotná nebo kojící?|Ne|Ne|Ano|
+|Těhotenství (týdny)|Ne|Ne|Ano|
+|Jakékoli základní zdravotní podmínky?|Ne|Ne|Ano|
+|Kardiovaskulární onemocnění, včetně hypertenze|Ne|Ne|Ano|
+|Chronická plicní nemoc|Ne|Ne|Ano|
+|Diabetes|Ne|Ne|Ano|
+|Imunodeficience|Ne|Ne|Ano|
+|Malignity|Ne|Ne|Ano|
+|Chronické neurologické nebo neuromuskulární onemocnění|Ne|Ne|Ano|
+|Nemoc ledvin|Ne|Ne|Ano|
+|Ostatní (upřesněte)|Ne|Ne|Ano|
+|Byl pacient infikován COVID-19 za posledních 90 dnů?|Ne|Ne|Ano|
+|Měl pacient po podání první dávky vakcíny závažnou alergickou reakci (anafylaxi) nebo okamžitou alergickou reakci - i když nebyla závažná?|Ne|Ne|Ano|
+|Vakcína podána|Ano|Ano|Ano|
+|Název vakcíny|Ano|Ano|Ano|
+|Vysvětlete, proč tomuto klientovi byly podány dávky různých produktů|Ne|Ne|Ano|
+|Číslo / šarže vakcíny|Ne|Ano|Ne|
+|Datum expirace vakcíny|Ne|Ne|Ne|
+|Číslo dávky|Ano|Ano|Ano|
+|Celkové dávky potřebné pro tento očkovací přípravek|Ne|Ano|Ano|
+|Je to poslední dávka?|Ano|Ne|Ano|
+|COVAC Navrhované datum pro další dávku|Ne|Ne|Ano|
+|„Měl klient po imunizaci nějakou nežádoucí reakci?|Ne|Ne|Ano|
+
+### Vaccine products in the program { #vaccine-products-in-the-program } 
+
+Konkrétní produkty COVID-19 dostupné v dané zemi a očkovací schémata se budou v jednotlivých zemích lišit. Tento balíček obsahuje očkovací produkty podle dokumentace dostupné od WHO, která se bude nadále vyvíjet, jak [vakcíny vstoupí na trh.](https://extranet.who.int/pqweb/sites/default/files/documents/Status_COVID_VAX_16Feb2021.pdf)
+
+In order to better demonstrate functionality, these placeholders have been configured based on five existing vaccine products, but it is important to verify and configure the programme based on the national adoption guidelines for the product. 
+
+|Vakcína NÁZEV|Volitelný kód|Výrobce vakcín|Volitelný kód|Věkové doporučení|Interval dávky|Počet dávek|
+|--- |--- |--- |--- |--- |--- |--- |
+|AZD1222 / AstraZeneca|astrazeneca|AstraZeneca|astrazeneca|18|10 dní (8-12)|2|
+|AZD1222 / AstraZeneca|astrazeneca|SKBio Astra Zeneca|skbioastrazeneca|18|10 (8-12)|2|
+|BNT162b2 / COMIRNATY Tozinameran (INN) / BioNTech/Pfizer|biontechpfizer|BioNtech/Pfizer|biontechpfizer|16|21|2|
+|mRNA-1273 / Moderna|moderna|Moderna|moderna|18|28|2|
+|Sputnik V / Gamaleya|gamaleya|Gamaleya|gamaleya|18|21|2|
+|SARS-CoV-2 Vaccine (VeroCell), Inactivated / Sinopharm|sinopharm|Sinopharm|sinopharm|18|21 dní (21-28) |2|
+
+
+### How to adapt the placeholders to the available vaccine products? { #how-to-adapt-the-placeholders-to-the-available-vaccine-products } 
+
+#### Names in the form { #names-in-the-form } 
+
+Aby název ve formuláři odpovídal produktům používaným v dané zemi, musíte nejprve upravit sady možností „Výrobci vakcín COVAC“ a „Název vakcíny COVAC“ a změnit možnosti na názvy podle toho, co je pro danou zemi vhodné.
+
+![Sada možností](resources/images/Covac_optionset_1.png)
+
+![Sada možností](resources/images/Covac_optionset_2.png)
+
+#### Auto Assigning Manufacturers and Brands to Names { #auto-assigning-manufacturers-and-brands-to-names } 
+
+Výrobci a značky jsou automaticky přiřazeny, když je produkt vakcíny vybrán prostřednictvím pravidel programu na základě zvolené vakcíny, pokud vakcína nemá k dispozici více než jednoho výrobce, v takovém případě programové pravidlo skryje možnosti, které nejsou relevantní, a úředník bude nutné zvolit správný název výrobce, jako je tomu v případě AstraZeneca.
+
+##### Auto assign rule { #auto-assign-rule } 
+
+Například pravidlo programu „Přiřadit značku a výrobce k BioNtech/Pfizer“ přiřadí výrobce BioNtech/Pfizer, když je vybráno „Comirnaty, Tozinaran“.
+
+It uses the expression:
+`d2:hasValue( 'Vaccine_type' )  == true && #{Vaccine_type} == 'BIONTECHPFIZER'`
+
+A akcí tohoto programového pravidla je přiřadit hodnotu datovému prvku „Výrobce vakcíny“ jako „BIONTTECHPFIZER“, což je volitelný kód pro „BioNtech/Pfizer“ a také „BioTech/Pfizer“ pro značku.
+
+##### Hide options rule { #hide-options-rule } 
+
+Currently, the only rule like this is:
+“Assign Brand/Hide options to AstraZeneca”, as this product has two different manufacturers (AstraZeneca and SK Bio Astra Zeneca).  
+This means that instead of assigning a manufacturer, the PR will hide the irrelevant manufacturers and allow the clerk to select one of the two currently available manufacturers.
+
+#### Age alert { #age-alert } 
+
+V závislosti na vakcíně mohou existovat nižší věkové hranice. „Pokud očkovací látka podá dávku někomu mimo doporučené věkové rozmezí, vydá se varování. Chcete -li to změnit, změňte prosím pravidla programu:
+
+"Pokud je věk mladší 18 let, varujte, že Astra Zeneca se doporučuje pro osoby starší 18 let."
+
+“If Age is under 16, then warn that BiontechPfizer is recommended for ages 16 and up”
+“If Age is under 18, then warn that Moderna is recommended for ages 18 and up”
+“If Age is under 18, then warn that Gamaleya is recommended for ages 18 and up”
+“If Age is under 18, then warn that Sinopharm is recommended for ages 18 and up”
+
+Všechna pravidla používají podobný výraz:
+
+`(#{Age_Calculated}   < 18 ) && (#{Vaccine_type} =='ASTRAZENECA')`
+
+Where you would need to modify the number, 18 in this case,  to match the necessary age.
+
+The action for these program rules is to show a warning:
+“This vaccine product is recommended for people 18 and older.”  
+
+Toto varování byste měli také upravit tak, aby odpovídalo nejvhodnějším národním směrnicím.
+
+#### Assign a date for next dose { #assign-a-date-for-next-dose } 
+
+There is currently no way for a tracker to assign a date for the next event based on a data element, so what we have done is configured tracker to automatically autoschedule the next vaccination date 10 days from the first dose, assuming that the most used product would be Astra-zeneca. This must be modified to match the interval used in the country by changing the setting for the vaccination program stage in the maintenance app.  
+
+![Nastavení programu](resources/images/Covac_date_setting.png)
+
+Kromě toho existuje také datový prvek, který pomocí pravidel programu automaticky přiřadí doporučené datum v závislosti na očkovacím produktu. Abyste to mohli změnit, je třeba upravit pravidlo programu:
+
+ “Assign a suggested date for next dose AstraZeneca” (there is one rule for each product)
+“.../dhis-web-maintenance/#/edit/programSection/programRule/ZT3tLrXXadf”
+
+Pravidlo programu má dvě akce
+
+Action one: Show warning next to data element “suggested date for next dose” with the text “Next dose should be given at 10 days”  
+
+Upravte tento text tak, aby odpovídal potřebám.
+
+Action two: Assign value to the data element “suggested date for next dose” with the expression d2:addDays( V{event_date}, 10 )  
+
+Upravte číslo 10 počtem dní, které je třeba přiřadit dostupné vakcíně.
+
+#### Last dose { #last-dose } 
+
+V současné době existuje datový prvek ano/ne nazvaný „Poslední dávka“, tento prvek se používá k tomu, aby indikátory věděly, kdy produkt dokončil svůj imunizační plán. V současné době mají všechny produkty dvě dávky, a proto jsme to nastavili tak, že jakmile je člověku podána druhá dávka, DE „Poslední dávka“ se automaticky zaškrtne jako „Ano“. Toto DE jsme také schovali pro první dávku.
+
+To modify this warning, edit the program rule:
+ “If this is the second dose, mark it as "last dose" for all vaccine products”
+
+dhis-web-maintenance/#/edit/programSection/programRule/PJjKiFrvfuN
+
+The expression:
+`d2:hasValue( 'Dose_number' ) == true && #{Dose_number} == 'DOSE2'`
+
+označuje, že pokud úředník zvolí, že uvedené číslo dávek je druhou dávkou, spustí akci „přiřadit hodnotu“, která přidá hodnotu „pravda“ k datovému prvku „Poslední dávka“ a k proměnné programového pravidla „Poslední_dávka“
+
+Chcete -li to změnit, upravte výraz a odfiltrujte vakcinační produkty, které se nepoužívají/s jiným plánem.
+
+#### Total number of doses { #total-number-of-doses } 
+
+Datový prvek „Celkové dávky požadované pro tento očkovací přípravek“ je automaticky vyplněný datový prvek, který zobrazuje množství dávek požadovaných pro očkovací schéma tohoto očkovacího přípravku. V současné době mají všechny vakcíny ve svém schématu dvě dávky. Pro každou vakcínu však existuje individuální pravidlo pro případ, že by se to v budoucnu změnilo:
+
+Chcete -li upravit, upravte odpovídající pravidlo: Přiřaďte číslo dávky přípravku NAMEOFPRODUCT
+
+And the expression:
+`d2:hasValue( 'Vaccine_type' )  == true && #{Vaccine_type} == 'astrazeneca'`
+
+Pokud program odpovídá filtru, akce přiřadí hodnotu datovému prvku „Celkové dávky“. V současné době všechna pravidla přiřazují hodnotu „2“ a skrývají možnost pro třetí dávku.
+
+#### Access Level { #access-level } 
+
+The program has been set up as a “protected” program, meaning that users are able to search in other org units beyond the ones they have rights to, but if they want to access records in a different facility, they must use the “breaking the glass” function and not down why they are accessing records in a different organisation unit.  
+
+
+Note that the [breaking the glass feature is not supported in Android](https://docs.dhis2.org/2.35/en/dhis2_android_capture_app/programs.html#breaking-the-glass) and android users are unable to search other organisation units when the program is set as protected. 
+
+#### Detaily zápisu { #enrollment-details } 
+
+Datum zápisu se rovná „datu registrace“. Záměrem je, aby uživatel zadal datum zápisu, když je osoba zapsána do programu Immunization Registry. Ve většině případů se datum zápisu shoduje s datem prvního očkování, pokud klienti nejsou předem zapsáni v registru očkování.
+
+Protože program používá datum narození k výpočtu ukazatelů programu, je nakonfigurováno jako povinné. Pokud osoba nezná své datum narození, lze použít zaškrtávací políčko „Datum narození je odhadnuto“ a zadat její přibližný věk nebo přibližné datum narození.
+
+Zatímco informace o registraci mají být vyplněny při první registraci případu, hodnoty atributů lze aktualizovat kdykoli během aktivní registrace, pokud jsou k dispozici nové informace (např. kontaktní informace).
+
+#### Identifikátory { #identifiers } 
+
+Program je konfigurován se dvěma typy jedinečných identifikátorů. Do programu lze přidat další identifikátory na základě kontextu země.
+
+**Unique Identifier**: An automatically generated ID which is unique to the entire system (e.g. the instance of DHIS2 being used). This TEI attribute is configured to generate the attribute value based on a pattern. In the previous version of the package the unique identifier generated a number which was a prefix and a random rumber, "EPI_" + RANDOM(########)". The latest version has replaced this attribute for one with a sequential pattern which helps with performance for large implementations "EPI_" + RANDOM(########)".
+
+**Národní ID**: Toto ID se aktuálně zadává ručně a mělo by být přizpůsobeno místním potřebám ověření.
+
+![Fáze zápisu](resources/images/Covac_enrollment.png)
+
+### Program Stage 1: Vaccination (repeatable) { #program-stage-1-vaccination-repeatable } 
+
+Oddíl 1.1 Základní podmínky.
+
+![Základní podmínky](resources/images/Covac_underlying.png)
+
+The underlying conditions listed here are based on the guidelines for the COVID case surveillance and contact tracing packages, and they also include health states such as pregnancy and lactation. The pregnancy and lactation options  only appear for females. Once one of the underlying conditions (except for pregnancy) are selected, they will remain selected in the following stage (as this is a repeatable stage) and they will be listed in the indicator box. 
+
+#### Section 1.2 Pre Immunization Questions { #section-12-pre-immunization-questions } 
+
+The Pre-Immunization Questions are intended to be completed during each ‘event’, which represents an immunization service.  Based on the answers selected, program rules are triggered to give decision support
+
+V současné době jsou tyto dvě otázky:
+
+„Byl pacient infikován COVID-19 během posledních 90 dnů“
+
+Pokud je odpověď ano, objeví se varování: Vakcína je doporučena pro osoby, které jsou prosté infekce COVID-19 po dobu alespoň 90 dnů““
+
+A
+
+“Has the patient had a severe allergic reaction (anaphylaxis) or an immediate allergic reaction—even if it was not severe—after getting the first dose of the vaccine”, Which only is visible to patients when they are receiving their second (or potentially, third or booster) doses. If yes is selected, it triggers the warning “Please  follow the national guidelines for AEFI investigations"
+
+![Předimunizační otázky](resources/images/Covac_preimmunization.png)
+
+#### Section 1.3 Vaccination information { #section-13-vaccination-information } 
+
+Tato část zachycuje poskytované imunizační služby. Zaznamenává:
+
+Vaccine given  (using the option set “Vaccine name”)
+
+Výrobci vakcín (pomocí sady možností „Výrobci vakcín“, automaticky vyplněno)
+
+Značka vakcíny (pomocí sady možností „Značka vakcíny“
+
+Číslo šarže pro tuto dávku
+
+Datum expirace dávky
+
+Číslo dávky (1., 2. nebo posilovací dávka)
+
+Počet celkových dávek požadovaných pro tento vakcínový produkt (automaticky vyplněno)
+
+Datový prvek pro potvrzení, zda se jedná o poslední dávku v léčbě (automaticky vyplněné)
+
+Automaticky vypočítaný datový prvek poskytující návrh na další dávku (automaticky vyplněno)
+
+Datový prvek s dotazem, zda měl klient po očkování nežádoucí reakci (používá se při sledování pacienta bezprostředně po očkování)
+
+Datový prvek pro dokončení identifikace zdravotnického pracovníka
+
+![Sekce očkování](resources/images/Covac_vaccination.png)
+
+Pokud je pacientovi podán jiný typ vakcíny než ten, který byl zaznamenán při prvním očkování, zobrazí se varování: „Typ vakcíny, který jste vybrali, není stejný jako předchozí typ vakcíny, který tato osoba dostala. Poslední, co byly podány, bylo 'NÁZEV PŘEDCHOZÍ PODANÉ VAKCÍNY'“ To také spouští další datový prvek „Vysvětlete prosím, proč byly tomuto klientovi podány dávky různých produktů“
+
+Jakmile klient obdrží první dávku, možnost pro první dávku je v datovém prvku skryta. U produktů, které mají v rozpisu pouze dvě dávky, je třetí skryta. Země si to mohou nakonfigurovat v závislosti na očkovacích produktech, které budou přijímat.
+
+#### Scheduling events { #scheduling-events } 
+
+Fáze je nakonfigurována tak, aby ‚Požádejte uživatele o vytvoření nové události, když je fáze dokončena‘, což spustí vyskakovací okno pro naplánování následné schůzky. „Standardní intervalové dny“ jsou aktuálně nastaveny na 10, takže datum příští schůzky (události) je ve výchozím nastavení naplánováno 10 dní od aktuálního data události, ale lze je upravit v závislosti na použitém produktu.
+
+### Skupiny uživatelů { #user-groups } 
+
+Program je zabalen společně se čtyřmi skupinami uživatelů:
+
+* *COVAC - Covid Immunization Metadata Admin:* Has the rights to edit the metadata of the package but not to enter data into the package
+* *COVAC - Covid Immunization Data Entry:* Has the rights to enter data into tracker
+* *COVAC - Covid Immunization Data Analysis:* Has access to the dashboards, but cannot enter data.
+* *COVAC - Covid-19 Immunization data Admin:* This is an Admin group which is shared between tracker and aggregate. Members of this group can view data in both tracker and aggregate modules and capture data in the aggregate module only. This user group is set up for the users that would run the tracker to aggregate scripts as well as access the dataset through the data entry app.
+
+Ty by měly být přizpůsobeny vnitrostátním potřebám.
+
+## Certificate Printing { #certificate-printing } 
+
+DHIS2 does not support printing a vaccination certificate or generating an electronic certificate as a core functionality, but several countries have succesfully adapted the platform in order to provide digital and printed certificates. 
+
+### SMS Notifications { #sms-notifications } 
+
+DHIS2 má modul SMS upozornění, ale pro použití upozornění a SMS brány je třeba nakonfigurovat. Viz dokumentaci k sms branám [zde](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/sms.html)
+
+Program obsahuje výchozí připomenutí 7 dní před plánovaným datem pro očkovací akci:
+
+“Dear NAME OF CLIENT, you have an appointment to receive your COVID-19 vaccine on the DUE DATE at NAME OF FACILITY  
+
+A zpráva 3 dny po plánovaném termínu:
+
+„Vážený A{TfdH5KvFmMy}, vaše schůzka pro dávku vakcíny COVID-19 byla na V{due_date}, pokud jste vakcínu nedostali, kontaktujte prosím co nejdříve V{org_unit_name}. Pokud jste dostali vakcínu, ignorujte prosím tuto zprávu“
+
+**POZNÁMKA:** Vzhledem k aktuálním omezením modulu SMS bude zpráva naplánovaná tři dny po termínu odeslána bez ohledu na to, zda k události došlo či nikoliv. Dokud nebude tento problém vyřešen, řešením je nakonfigurovat skript cronjob, který zkontroluje zpožděné události a naplánuje zprávu.
+
+### Working Lists { #working-lists } 
+
+Three custom working lists have been configured in the program. These lists are meant to facilitate the management of the work day of the health care workers at point of care with lists of clients depending on their vaccination schedule, and to highlight overdue appointments.  
+
+Seznamy jsou přizpůsobeny na základě funkce „datum splatnosti“. Datum splatnosti je datum, které je přiřazeno pro další událost a je provedeno, jakmile je dokončena první událost. V současné době systém automaticky vybere termín 10 dní po prvním očkování a úředník nebo lékař by měl toto datum v případě potřeby upravit. Je proto důležité, aby bylo plánování provedeno správně, aby bylo možné používat pracovní seznamy.
+
+All active registered clients:
+Clients who are registered in the COVID vaccine programme, and clients whose enrollment wasn’t completed. It is assumed that clients who have received all doses of their vaccines will have completed their enrollment in the vaccination program. The incomplete enrollment will therefore be indicative of all the clients who have not received a second dose (or the last dose for vaccines with different schedules)-independently on whether they are on schedule or overdue
+
+Clients with scheduled appointments:
+Those who have a vaccination programme stage scheduled into the future or current day
+
+Clients overdue a vaccination dose:
+Those who have a scheduled appointment in the past, and are therefore overdue to get a vaccine dose.
+
+Completed clients:
+Those whose enrollment has been completed
+
+## Analytika { #analytics } 
+
+To optimize performance for anticipated large-scale deployments and the use of high-volume campaign-style vaccine administration strategies, this package is designed to serve analytics objects and dashboards through the aggregate data model. 
+
+In addition to ensuring maximum performance for analytics users accessing the dashboards in near real-time while high-volume data entry through Tracker is likely ongoing, aggregating tracker data and serving the dashboards through the aggregate domain has the added benefit of making data dimensions available for analytics users (e.g. based on Categories for disaggregation). 
+
+In order to serve COVID-19 analytics from the COVID-19 EIR tracker program source data, the package includes the following components:
+An aggregate data set with data elements and category combos (to serve as a target for pushing tracker data to aggregate model)
+A dashboard based on aggregate domain indicators (replaces the tracker-based (program indicator-based) dashboard in previous versions)
+A group of program indicators with attributes mapped to the target aggregate DEs/COCs 
+
+### Ovládací panel { #dashboard } 
+
+This package contains a simplified COVAC Daily Monitoring Dashboard (iBWlFCvvtkH) to facilitate daily/near real-time analysis during campaign-style vaccine delivery activities. This dashboard is designed to be as light as possible, serving a core set of metrics optimized for daily monitoring of vaccine delivery operations. The dashboard indicators were selected as a subset of the monitoring guidance included in the WHO Guidance on developing a national deployment and vaccination plan for COVID-19 vaccines. [WHO Guidance on developing a national deployment and vaccination plan for COVID-19 vaccines](https://www.who.int/publications/i/item/WHO-2019-nCoV-Vaccine_deployment-2020.1).
+The  “COVAC Daily Monitoring Dashboard” ((iBWlFCvvtkH)  is configured entirely based on indicators belonging to the indicator group COVAC - Daily (doQTIS8KJQH). This will enable countries to map dashboard indicators to their own set of underlying data elements, if the target aggregate data set and data elements are customized for local implementation. 
+
+For a complete monitoring dashboard covering additional aspects of the WHO NDVP Monitoring Guidance (such as vaccine coverage and uptake by target groups, indicators on adverse events, supply & cold chain), refer to the [COVAC Core Dashboard/Aggregate metadata package](https://docs.dhis2.org/en/topics/metadata/covid-19-vaccine-delivery/covac-aggregate/version-110/design.html). 
+
+Pokud vaše instance již má ovládací panel z předchozí verze tohoto balíčku, doporučuje se jej odstranit nebo omezit přístup k němu na několik uživatelů. Pokyny k odstranění ovládacích panelů naleznete v [instalační příručce](https://docs.dhis2.org/en/topics/metadata/covid-19-vaccine-delivery/covac-immunization-registry-tracker/installation.html)
+
+### Aggregate Data Set  { #aggregate-data-set } 
+
+Agregovaná datová sada „COVAC - EIR sledovací data (agregovaná)“ byla nakonfigurována s denní frekvencí jako cíl pro posouvání hodnot dat vypočítaných na základě indikátorů trasovacího programu do agregované domény. Datová sada obsahuje následující datové prvky:
+
+1. Lidé s 1. dávkou
+2. Lidé s 2., 3. nebo posilovací dávkou
+3. Lidé s poslední doporučenou dávkou
+4. Lidé se základními zdravotními podmínkami
+
+![Zadávání souhrnných dat](resources/images/covac_agg_data_entry.png)
+
+Kde to bylo možné, byly kombinace kategorií, kategorie (a jejich přidružené Kombinace možností kategorií a Možnosti kategorií) znovu použity ze stávajícího [COVAC Core Dashboard/Aggregate metadata package](https://docs.dhis2.org/en/topics/metadata/covid-19-vaccine-delivery/covac-aggregate/version-110/design.html) pro usnadnění analýzy napříč datovými prvky z těchto dvou balíčků.
+
+These data elements and COCs are expected to be populated from tracker program indicators, as described below. 
+
+### Programové Indikátory { #program-indicators } 
+
+Skupina programových indikátorů, COVAC-Tracker k agregaci (NXBR4r6MwAO) byla nakonfigurována a namapována (prostřednictvím atributů), aby se usnadnilo přenášení datových hodnot do přidružených cílových agregovaných datových prvků a COC, jak je popsáno výše. Příklad tohoto mapování je následující:
+
+| Indikátor programu (název) | UID indikátoru programu | Odesláno do Aggregate DE (název) | Agregát DE UID | Mapováno na indikátor (název) | UID indikátoru |
+|---|---|---|---|---|---|
+| Počet lidí, kteří dostali první dávku (ženy 0-59) | RJ6pdxga9Od | COVAC- Lidé s 1. dávkou | RjT7dmzunF4 | COVAC - Lidé s 1. dávkou | GeAtojrj7Yy |
+| Počet lidí, kteří dostali první dávku (ženy 60+) | x4L0LuEBHhW | COVAC- Lidé s 1. dávkou | RjT7dmzunF5 | COVAC - Lidé s 1. dávkou | GeAtojrj7Yy |
+| Počet lidí, kteří dostali první dávku (muži 0-59) | hqm8znlAzkT | COVAC- Lidé s 1. dávkou | RjT7dmzunF6 | COVAC - Lidé s 1. dávkou | GeAtojrj7Yy |
+| Počet lidí, kteří dostali první dávku (muži 60+) | aIIHyDy8AMW | COVAC- Lidé s 1. dávkou | RjT7dmzunF7 | COVAC - Lidé s 1. dávkou | GeAtojrj7Yy |
+| Počet lidí, kteří dostanou druhou, třetí nebo posilovací dávku (ženy 0-59) | xY4T9hHXNji | COVAC - Lidé s 2., 3. nebo posilovací dávkou | zmKNuqgsq8N | COVAC - Lidé s 2., 3. nebo posilovací dávkou | ddZjJCwXf6k |
+| Počet lidí, kteří dostanou druhou, třetí nebo posilovací dávku (ženy 60+) | h9G7i6mQKef | COVAC - Lidé s 2., 3. nebo posilovací dávkou | zmKNuqgsq8N | COVAC - Lidé s 2., 3. nebo posilovací dávkou | ddZjJCwXf6k |
+| Počet lidí, kteří dostanou druhou, třetí nebo posilovací dávku (muži 0-59) | MGjwUUNsE60 | COVAC - Lidé s 2., 3. nebo posilovací dávkou | zmKNuqgsq8N | COVAC - Lidé s 2., 3. nebo posilovací dávkou | ddZjJCwXf6k |
+| Počet lidí, kteří dostanou druhou, třetí nebo posilovací dávku (muži 60+) | qh0kIjHZbP8 | COVAC - Lidé s 2., 3. nebo posilovací dávkou | zmKNuqgsq8N | COVAC - Lidé s 2., 3. nebo posilovací dávkou | ddZjJCwXf6k |
+| Počet lidí, kteří dostali poslední doporučenou dávku příslušného vakcínového přípravku (ženy 0-59) | Zp39TSOR8eW | COVAC - Lidé s poslední doporučenou dávkou | CB46jykiEye | COVAC - Lidé s poslední doporučenou dávkou | OAZXVEjEEoD |
+| Počet lidí, kteří dostali poslední doporučenou dávku příslušného vakcínového produktu (ženy 60+) | XFUvVgqPukT | COVAC - Lidé s poslední doporučenou dávkou | CB46jykiEye | COVAC - Lidé s poslední doporučenou dávkou | OAZXVEjEEoD |
+| Počet lidí, kteří dostali poslední doporučenou dávku příslušného vakcínového produktu (muži 0-59) | FZNIlzPRMmL | COVAC - Lidé s poslední doporučenou dávkou | CB46jykiEye | COVAC - Lidé s poslední doporučenou dávkou | OAZXVEjEEoD |
+| Počet lidí, kteří dostali poslední doporučenou dávku příslušného vakcínového produktu (muži 60+) | zovL7DKBRuK | COVAC - Lidé s poslední doporučenou dávkou | CB46jykiEye | COVAC - Lidé s poslední doporučenou dávkou | OAZXVEjEEoD |
+| Lidé se základními zdravotními podmínkami | Zn0UuSRYyJw | COVAC - Lidé se základními onemocněními | OUI05zSKrqk | COVAC - Lidé se základními onemocněními | KIgI3EPjs2T |
+
+
+Additional program indicators have been configured to enable ad hoc analysis of the tracker data itself (e.g. coverage rates calculated based on tracker data, etc). However, these program indicators are not used in the COVAC - Daily Monitoring dashboard. 
+
+## Transferring aggregated tracker domain data to aggregate domain data values { #transferring-aggregated-tracker-domain-data-to-aggregate-domain-data-values } 
+
+In addition to the metadata provided above, implementations will require a mechanism to push the program indicator values from the tracker domain to the target aggregate data set. More information about this can be found in this chapter of the DHIS2 Implementation Guide: [Integrating Tracker and Aggregate Data](https://docs.dhis2.org/en/implement/maintenance-and-use/tracker-and-aggregate-data-integration.html#how-to-saving-aggregated-tracker-data-as-aggregate-data-values) 
+
+## Considerations for when implementing with Android devices { #considerations-for-when-implementing-with-android-devices } 
+
+### Access level ‘protected’ { #access-level-protected } 
+
+Funkce „rozbití skla“ zatím není v aplikaci DHIS2 Android Capture od verze 2.3 podporována. Pokud je program nakonfigurován jako „Chráněný“, výchozí chování pro Android bude stejné, jako když je program nakonfigurován jako „Uzavřený.“ To znamená, že uživatel Androidu nebude moci číst ani upravovat zápisy TEI mimo jejich organizační jednotka. TEI registrované ve vyhledávací OU budou vráceny vyhledáváním typu TE, ale pokud je program uzavřen nebo chráněn, uživatel nebude moci zobrazit nebo vytvořit novou registraci. Pokud uživatelé systému Android musí mít přístup k TEI mimo svou organizační jednotku pro sběr dat, program by měl být nakonfigurován s úrovní přístupu „Otevřený“. Sledujte stav tohoto problému na [Jira](https://jira.dhis2.org/browse/ANDROAPP-657)
+
+### Dose due date { #dose-due-date } 
+
+Popis termínu platnosti se na androidu nezobrazuje správně a místo „Datum platnosti dávky“ je uvedeno „Datum platnosti“ [Odkaz na jira](https://jira.dhis2.org/browse/ANDROAPP-3620)
+
+### Reserve IDs { #reserve-ids } 
+
+Jedinečný identifikátor pro tento balíček je vygenerován automaticky a používá vzor "CURRENT_DATE(yyyy-MM-dd)-"-"-SEQUENTIAL(#####)". U zařízení Android jsou hodnoty pro tato systémem generovaná UID rezervovány předem pro každé zařízení, aby bylo zajištěno, že hodnoty jsou jedinečné pro celou instanci. To znamená, že hodnota data a pořadového čísla nebude nutně odpovídat dnešnímu datu a chronologickému pořadí, kdy pacient vakcínu dostane. Více informací o tomto naleznete [zde](https://docs.dhis2.org/en/implement/implementing-with-android/dhis2-configuration-for-android.html#configuration_reserved_id)
+
