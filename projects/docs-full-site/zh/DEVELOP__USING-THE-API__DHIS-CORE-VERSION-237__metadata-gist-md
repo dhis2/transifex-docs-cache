@@ -2,117 +2,117 @@
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.37/src/developer/web-api/metadata-gist.md"
 revision_date: '2021-10-27'
 tags:
-- DHIS core version 2.37
+- DHIS 核心 2.37 版
 - Develop
 ---
 
-# Metadata Gist API { #gist_api } 
+# 元数据 Gist API{ #gist_api } 
 <!--DHIS2-SECTION-ID:gist_api-->
 
-The Metadata Gist API is a RESTful read-only JSON API to fetch and browse 
-metadata. Items in this API contain the gist of the same item in the Metadata API.
+元数据 Gist API 是一个 RESTful 只读 JSON API，用于获取和浏览元数据。 
+元数据。此 API 中的项目包含 Metadata API 中相同项目的要点。
 
-The API is specifically designed to avoid:
+应用程序接口是专门为避免以下情况而设计的：
 
-* Large response payloads because of the inclusion of partial nested object 
-  graphs.
-* Resource intensive in memory processing of requests 
-  (e.g. in memory filtering or object graph traversal).
-* _n + 1_ database queries as a result of object graph traversal while rendering
-  the response.
+* 由于包含部分嵌套对象，响应有效载荷较大 
+  图形。
+* 内存处理请求的资源密集型 
+  (例如内存过滤或对象图遍历）。
+* _n+1_个数据库查询，作为渲染时对象图遍历的结果
+  的回应。
 
-## Comparison with Metadata API { #gist_vs_metadata_api } 
+## 与元数据应用程序接口{ #gist_vs_metadata_api } 的比较 
 <!--DHIS2-SECTION-ID:gist_vs_metadata_api-->
 
-The standard Metadata API is a flexible and powerful API built to serve any and 
-every use case.
-The downside of this is that not all features and combinations can scale while 
-keeping good performance in the presence of huge numbers of items.
-In particular lists with items where each item itself has a property which is a 
-large collection of complex objects have proven problematic as they quickly
-reference a large part of the entire object graph.
+标准元数据应用程序接口是一个灵活而强大的应用程序接口，可为任何 
+用例。
+但这样做的缺点是，并非所有功能和组合都能在扩展的同时 
+同时保持良好的性能。
+特别是带有项目的列表，其中每个项目本身都有一个属性，而这个属性是一个复杂对象的大集合。 
+的大量复杂对象的集合，这已被证明是个问题，因为它们会很快
+引用整个对象图的很大一部分。
 
-The `/gist` API was added to provide a metadata API where scaling well is our 
-first priority. The downside of this is that there are more distinct limits to
-what features are technically reasonable, which means not all features of the 
-standard Metadata API exist for the Gist API.
+添加`/gist`应用程序接口是为了提供一个元数据应用程序接口，其中良好的扩展性是我们的 
+的首要任务。这样做的弊端是对
+技术上合理的功能，这意味着并非标准元数据 API 的所有功能都适用于 Gist API。 
+标准元数据 API 的所有功能都适用于 Gist API。
 
 The Gist API uses a divide and conquer strategy to avoid responses with large
 partial object graphs. Instead of including nested objects or lists it provides
 a `/gist` endpoint URI where this object or list can be viewed in isolation.
 
-**The `/gist` API refers to nested data using URIs rather than including it.**
-This means if a client is interested in this nested information more requests
-are required but each of them is kept reasonable small and will scale
-well in context of huge number of potential items.
+**`/gist` API 使用 URI 而不是包含嵌套数据**。
+这意味着，如果客户端对嵌套信息感兴趣，则需要更多请求
+需要更多请求，但每个请求都保持在合理的小范围内，在潜在项目数量巨大的情况下可以很好地扩展。
+这意味着如果客户端对这些嵌套信息感兴趣，则需要更多请求，但每个请求的数量都保持在合理的范围内，而且在潜在项目数量巨大的情况下也能很好地扩展。
 
-Known Differences:
+已知差异：
 
-* items only includes fields of referenced identifiable objects if these do not
-  have an endpoint on their own
-* it never includes identifiable collections of objects directly
-* items by default do not include all available fields, but a subset that depends 
-  on context and parameters
-* lists cannot be used without pager (therefore there is no `pager` parameter)
+* 项目只包括被引用的可识别对象的字段，如果这些字段没有
+  有自己的终端
+* 它从不直接包括可识别的对象集合
+* 默认情况下，项目并不包括所有可用字段，而是包括一个子集，该子集取决于 
+  关于背景和参数
+* 列表不能在没有 pager 的情况下使用（因此没有 `pager` 参数）
 * fields with collections are not paged using the `pager`-transformer but through
-  a paged API endpoint for the particular collection property
-* items in a list, a collection property size or boolean transformer result 
-  always considers object sharing (the set of considered items is always the set
-  visible to the user)
-* Gist offers `member(<id>)` and `not-member(<id>)` collection field transformers
+  特定集合属性的分页 API 端点
+* 列表中的项目、集合属性大小或布尔转换器结果 
+  总是考虑对象共享（考虑的项目集合总是
+  用户可见）
+* Gist 提供`member(<id>)`和`not-member(<id>)`集合字段转换器
 * Gist offers `canRead` and `canWrite` access check filter instead of filtering
   on the `access` property
-* Gist offers using attribute UIDs as field and filter property names to allow
-  listing or filtering based on custom attribute values
+* Gist 提供了使用属性 UID 作为字段和过滤器属性名称的方法，以便
+  根据自定义属性值进行列表或筛选
 
-Known Limitations:
+已知限制
 
-* only persisted or synthetic fields (those based on persisted fields) can be included
-* filters can only be applied to persisted fields
-* orders can only be applied to persisted fields
-* like-filters are always case-insensitive
-* token filters are not available
-* order is always case-sensitive
-* `pluck` transformer limited to text properties
-* fields which hold collections of simple (non-identifiable) items cannot always
-  be included depending on how they are stored
+* 只能包含持久字段或合成字段（基于持久字段的字段
+* 筛选器只能应用于持久化字段
+* 命令只能应用于持久化字段
+* like-filters 总是不区分大小写的
+* 令牌过滤器不可用
+* 顺序总是区分大小写
+* 仅限于文本属性的 `pluck` 转换器
+* 保存简单（不可识别）项目集合的字段不能总是
+  视其存储方式而定
 
-Where possible to use the `/gist` API should be considered the preferable way
-of fetching metadata information.
+在可能的情况下，应将使用 `/gist` API 视为获取元数据信息的首选方式。
+获取元数据信息。
 
 
-## Endpoints { #gist_endpoints } 
+## 终点{ #gist_endpoints } 
 <!--DHIS2-SECTION-ID:gist_endpoints-->
 
-The `/gist` API has 3 kinds of endpoints:
+`/gist` API 有 3 种端点：
 
 * <code>/api/&lt;object-type><b>/gist</b></code>: paged list of all known and visible objects of the type (implicit `auto=S`)
 * <code>/api/&lt;object-type&gt;/&lt;object-id&gt;<b>/gist</b></code>: view single object by ID (implicit `auto=L`)
-* <code>/api/&lt;object-type&gt;/&lt;object-id&gt;/&lt;field-name&gt;<b>/gist</b></code>: paged list of all known and visible items in the collection of owner object's field (implicit `auto=M`; in case this is a simple field just the field value)
+* <code>/api/&lt;object-type&gt;/&lt;object-id&gt;/&lt;field-name&gt;<b> /gist</b></code> : 物件所有者字段集合中所有已知和可见项目的分页列表（隐式 `auto=M`；如果是简单字段，则只显示字段值）。
 
 These endpoints correspond to the endpoints of the standard metadata API without 
 the `/gist` suffix and share the majority of parameters and their options with 
 that API.
 
 
-## Browsing Data { #gist_browse } 
+## 浏览数据{ #gist_browse } 
 <!--DHIS2-SECTION-ID:gist_browse-->
 
-Since `/gist` API avoids deeply nested data structures in the response the
-details of referenced complex objects or list of objects is instead provided
-in form of a URI to the gist endpoint that only returns the complex object or
-list of objects. These URIs are provided by the `apiEndpoints` field of an item
-which is automatically added to an item when such references exist.
-The item property itself might contain a transformation result on the object
-or collection such as its size, emptiness, non-emptiness, id(s) or plucked 
-property such as its name.
+由于 `/gist` 应用程序接口避免在响应中使用深嵌套数据结构，因此会提供被引用的复杂对象或对象列表的详细信息。
+引用的复杂对象或对象列表的详细信息会以
+gist 端点的 URI 形式提供，该端点只返回复合对象或对象列表。
+对象列表。这些 URI 由项目的 `apiEndpoints` 字段提供。
+字段提供，当存在此类引用时，它会自动添加到项目中。
+项属性本身可能包含对象或集合的转换结果
+或集合的转换结果，例如其大小、空性、非空性、id 或摘取的 
+属性（如名称）。
 
-To manually browse data it can be handy to use the `absoluteUrls=true` parameter.
-Linkage between parts of the gist can now be followed directly in browsers that
-render JSON responses.
+要手动浏览数据，使用 `absoluteUrls=true` 参数会很方便。
+现在，在可渲染 JSON 响应的浏览器中，可直接跟踪要旨各部分之间的链接。
+呈现 JSON 响应。
 
 
-## Parameters { #gist_parameters } 
+## 参数{ #gist_parameters } 
 <!--DHIS2-SECTION-ID:gist_parameters-->
 
 All endpoints of the `/gist` API accept the same set of parameters.
@@ -121,20 +121,20 @@ ignored.
 
 
 ### 总览 { #overview } 
-Parameters in alphabetical order:
+参数按字母顺序排列：
 
-| Parameter      | 选项               |  默认     | 描述          |
+| 参数      | 选项               |  默认     | 描述          |
 | -------------- | --------------------- | ------------ | ---------------------|
 | `absoluteUrls` | `true` or `false`     | `false`      | `true` use relative paths in links, `false` use absolute URLs in links |
-| `auto`         | `XS`, `S`, `M`, `L`, `XL` | (context dependent) | extent of fields selected by `*` field selector |
-| `fields`       | (depends on endpoint) | `*`          | comma separated list of fields or presets to include |
-| `filter`       | `<field>:<operator>` or `<field>:<operator>:<value>` |   | comma separated list of query field filters (can be used more than once) |
+| `auto`         | `xs`, `s`, `m`, `l`, `xl` | (视情况而定） | extent of fields selected by `*` field selector |
+| `fields`       | (取决于终端） | `*`          | 以逗号分隔的要包含的字段或预置列表 |
+| `filter`       | `<field>:<operator>` or `<field>:<operator>:<value>` |   | 以逗号分隔的查询字段筛选器列表（可多次使用） |
 | `headless`     | `true` or `false`     | `false`      | `true` skip wrapping result in a pager (ignores `total`), `false` use a pager wrapper object around the result list |
 | `inverse`      | `true` or `false`     | `false`      | `true` return items **not** in the list, `false` return items in the list |
-| `locale`       |                       | (user account configured language) | translation language override |
-| `order`        | `<field>` or  `<field>:asc` or `<field>:desc` | `:asc` | comma separated list of query order fields (can be used more than once) |
-| `page`         | 1-n                   | 1            | page number |
-| `pageSize`     | 1-1000                | 50           | number of items on a page |
+| `locale`       |                       | (用户账户配置语言） | 翻译语言覆盖 |
+| `order`        | `<field>` 或 `<field>:asc` 或 `<field>:desc` | `:asc` | 以逗号分隔的查询顺序字段列表（可多次使用） |
+| `page`         | 1-n                   | 1            | 页码 |
+| `pageSize`     | 1-1000                | 50           | 页数 |
 | `rootJunction` | `与`或`或`         | `AND`        | logical combination of `filter`s, `AND`= all must match, `OR`= at least one must match |
 | `total`        | `true` or `false`     | `false`      | `true` add total number of matches to the pager, `false` skip counting total number of matches |
 | `translate`    | `true` or `false`     | `true`       | `true` translate all translatable properties, `false` skip translation of translatable properties (no effect on synthetic display names) |
@@ -148,7 +148,7 @@ members are relative, starting with `/<object-type>/` path.
 
 可以使用 `absoluteUrls` 参数将 URI 更改为绝对 URL。
 
-For example, `/api/users/rWLrZL8rP3K/gist?fields=id,href` returns:
+例如，`/api/users/rWLrZL8rP3K/gist?fields=id,href` 返回：
 
 ```json
 {
@@ -157,8 +157,8 @@ For example, `/api/users/rWLrZL8rP3K/gist?fields=id,href` returns:
 }
 ```
 
-whereas `/api/users/rWLrZL8rP3K/gist?fields=id,href&absoluteUrls=true` 
-returns:
+其中 `/api/users/rWLrZL8rP3K/gist?fields=id,href&absoluteUrls=true` 返回 
+返回：
 
 ```json
 {
@@ -173,12 +173,12 @@ provided URLs.
 
 
 ### The `auto` Parameter { #the-auto-parameter } 
-Each endpoint implicitly sets a default for the extent of fields matched by the
-`*` / `:all` fields selector:
+每个端点都隐式地设置了由
+`*` / `:all` 字段选择器匹配的字段范围的默认值：
 
-* `/api/<object-type>/gist`: implies `auto=S`
-* `/api/<object-type>/<object-id>/gist`: implies `auto=L`
-* `/api/<object-type>/<object-id>/<field-name>/gist`: implies `auto=M`
+* `/api/<object-type>/gist`：意味着`auto=S`。
+* `/api/<object-type>/<object-id>/gist`：意味着`auto=L`。
+* `/api/<object-type>/<object-id>/<field-name>/gist`：意味着 `auto=M`。
 
 The `auto` parameter is used to manually override the default to make list items
 include more or less fields. This setting again acts as a default which can be
@@ -190,7 +190,7 @@ Possible options for `auto` are ("t-shirt sizes"):
 * `S`: excludes complex (object) properties, collection are only linked (not counted)
 * `M`: complex included as reference URL, references and collections as count and reference URL
 * `L`: like `M` but references and collections included as IDs (OBS! unbound in size)
-* `XL`: like `L` but references and collections included as ID objects: `{ "id": <id> }`
+* `XL`: 与 `L` 类似，但引用和集合作为 ID 对象包含在内：`{ "id"： <id> }`
 
 For example, `/api/users/gist` would list items with fields `id`, `surname`, 
 `firstName`, `phoneNumber`, `email`, `lastUpdated` whereas 
@@ -204,32 +204,32 @@ members in the lists/sets.
 ### The `fields` Parameter { #gist_parameters_fields } 
 <!--DHIS2-SECTION-ID:gist_parameters_fields-->
 
-Specifies the list of fields to include for each list item.
+指定每个列表项目要包含的字段列表。
 
 Fields are included in the result JSON objects for an item in the provided order.
 A preset in the list of fields is expanded to the fields it contains at the 
 position in the `fields` list it appears.
 Fields within the preset are ordered from simple to complex.
 
-If no `fields` parameter is provided `fields=*` is assumed.
-Note that the fields of the `*` preset also depend on the `auto` parameter
+如果没有提供 `fields` 参数，则假定`fields=*`。
+请注意，`*` 预置的字段也取决于 `auto` 参数
 
-To remove a field use either `!<name>` or `-<name>` in the list of fields.
-For example to remove the userGroups from a user, use:
+要删除字段，请使用字段列表中的 `!<name>` 或 `-<name>`。
+例如，要删除用户的 userGroups，请使用
 
     /api/users/gist?fields=*,!userGroups
 
-The same principle can also be used to specify the transformer to use for a 
-field. For example, to include the IDs of the user's user groups use:
+同样的原理也可用于指定一个字段使用的变压器。 
+字段的转换器。例如，要包含用户的用户组 ID，请使用
 
     /api/users/gist?fields=*,userGroups::ids
 
 The `fields` parameter does allow listing fields of nested objects. 
 For example to add `userCredentials` with `id` and `name` of a user use:
 
-    /api/users/gist?fields=*,userCredentials[id,username]
+    /api/users/gist?fields=*,userCredentials[id,username] /api/users/gist?
 
-This creates items of the form:
+这样就创建了格式为
 
 ```json
 {
@@ -241,8 +241,8 @@ This creates items of the form:
 }
 ```
 
-When including nested fields of collections the nested field must be a text
-property. 
+当包含集合的嵌套字段时，嵌套字段必须是文本属性。
+属性。 
 
 例如，通过以下方式包含用户的`userGroups`的所有`名称`：
 
@@ -264,12 +264,12 @@ This lists the `userGroups` as:
   }
 }
 ```
-The above is functional identical to:
+上述功能与
 
     /api/users/gist?fields=*,userGroups::pluck(name)~rename(userGroups.name)
 
-When requesting a single field, like `/api/users/gist?fields=surname` the
-response is a (still paged) list of simple values:
+当请求单个字段（如 `/api/users/gist?fields=surname`）时，响应是一个简单值的列表（仍然是分页的）。
+响应是一个（仍然分页的）简单值列表：
 
 ```json
 {
@@ -296,7 +296,7 @@ JSON value:
 "Wakiki"
 ```
 
-Further details on field presets can be found in section [Fields](#gist_fields).
+有关字段预设的更多详情，请参阅 [字段](#gist_fields) 部分。
 
 ### The `filter` Parameter { #gist_parameters_filter } 
 <!--DHIS2-SECTION-ID:gist_parameters_filter-->
@@ -306,38 +306,38 @@ Further details on field presets can be found in section [Fields](#gist_fields).
 Multiple filters can either be specified as comma-separated list of a single 
 `filter` parameter or as multiple `filter` parameters each with a single filter.
 
-There are two types of filters:
+过滤器有两种类型：
 
-* unary: `<field>:<operator>`
-* binary: `<field>:<operator>:<value>`
+* 一元： `<field>:<operator>`
+* 二进制： `<field>:<operator>:<value>`
 
-A field can be: 
+一个字段可以是 
 
-* a persisted field of the listed item type 
-* a persisted field of a directly referenced object (1:1 relation)
-* a UID of an attribute
+* 所列项目类型的持久字段 
+* 直接引用对象的持久字段（1:1 关系）
+* 一个属性的 UID
 
-Available unary operators are:
+可用的一元运算符有
 
-| Unary Operator | 描述                                                 |
+| 一元运算符 | 描述                                                 |
 | -------- | ----------------------------------------------------------------- |
-| `null`   | field is _null_ (undefined)                                       |
+| `null`   | 字段为_null_（未定义）                                       |
 | `!null`  | field is _not null_ (defined)                                     |
-| `empty`  | field is a _empty_ collection or string                           |
-| `!empty` | field is a _non-empty_ collection or string                       |
+| `empty`  | 字段是_空_集合或字符串                           |
+| `!empty` | 字段是一个_非空_集合或字符串                       |
 
-Available binary operators are:
+可用的二进制运算符有
 
-| Binary Operator   | 描述                                              |
+| 二进制运算符   | 描述                                              |
 | ----------------- | -------------------------------------------------------- |
-| `eq`              | field _equals_ value                                     |
+| `eq`              | 字段 _equals_ 值                                     |
 | `!eq`, `neq`, `ne`| field is _not equal_ value                               |
 | `lt`              | 字段_小于_值                               |
 | `le`, `lte`       | field is _less than or equal to_ value                   |
 | `gt`              | field is _greater than_ value                            |
 | `ge`, `gte`       | field is _greater than or equal to_ value                |
 | `in`              | field is a collection and value is an item _contained in_ the collection |
-| `!in`             | field is a collection and value is an item _not contained in_ the collection |
+| `!in`             | 字段是一个集合，而值是一个_不包含在_集合中的项目 |
 
 If the `<value>` of an `in` or `!in` filter is a list it is given in the form
 `[value1,value2,...]`, for example: `userGroups:in:[fbfJHSPpUQD,cYeuwXTCPkU]`.
@@ -346,15 +346,15 @@ Any `>`, `>=`, `<` `<=`, `==` or `!=` comparison applied to a collection field
 with a numeric value will compare the size of the collection to the value, for
 example: `userGroups:gt:0`.
 
-Available binary pattern matching operators are:
+可用的二进制模式匹配运算符有
 
-| Binary Operator                   | 描述                              |
+| 二进制运算符                   | 描述                              |
 | --------------------------------- | ---------------------------------------- |
 | `like`, `ilike`                   | field _contains_ `<value>` or field _matches_ pattern `<value>` (when wildcards `*` or `?` in value) |
 | `!like`, `!ilike`                 | field does _not contain_ `<value>` or field does _not match_ pattern `<value>` (when wildcards `*` or `?` in value) |
-| `$like`, `$ilike`, `startsWith`   | field _starts with_ `<value>`            |
+| `$like`, `$ilike`, `startsWith`   | 字段_开头为_ `<value>`            |
 | `!$like`, `!$ilike`, `!startsWith`| field does _not start with_ `<value>`    |
-| `like$`, `ilike$`, `endsWith`     | field _ends with_ `<value>`              |
+| `like$`, `ilike$`, `endsWith`     | 字段_ends with_ `<value>`              |
 | `!like$`, `!ilike$`, `!endsWith`  | field does _not end with_ `<value>`      |
 
 The `like` and `!like` operators can be used by either providing a search term
@@ -362,13 +362,13 @@ in which case a match is any value where the term occurs anywhere, or they can
 be used by providing the search pattern using `*` as _any number of characters_
 and `?` as _any single character_.
 
-Note that filters on attribute values use text based comparison which means 
-all text filters are supported.
+请注意，属性值筛选器使用基于文本的比较，这意味着 
+支持所有文本筛选器。
 
-Operators have multiple aliases to be backwards compatible with the 
-standard metadata API. For the gist API any like is always case-insensitive. 
+操作符有多个别名，以便向后兼容标准元数据应用程序接口。 
+标准元数据 API 向后兼容。对于 gist API 而言，任何同类项都不区分大小写。 
 
-For example, to only list organisations on second level use
+例如，要只列出二级机构，请使用
 
     /api/organisationUnits/gist?filter=level:eq:2
 
@@ -378,19 +378,19 @@ a program one would use:
 
     /api/organisationUnits/rZxk3S0qN63/children/gist?filter=programs:gt:0
 
-Binary operators for access (sharing) based filtering:
+基于访问（共享）过滤的二进制运算符：
 
-| Binary Operator   | 描述                                              |
+| 二进制运算符   | 描述                                              |
 | ----------------- | -------------------------------------------------------- |
-| `canRead`         | Has user `<value>` metadata read permission to the object |
-| `canWrite`        | Has user `<value>` metadata write permission to the object |
-| `canDataRead`     | Has user `<value>` data read permission to the object    |
-| `canDataWrite`    | Has user `<value>` data write permission to the object   |
-| `canAccess`       | Has user `<value0>` permission `<value1>` to the object  |
+| `canRead`         | 用户 `<value>` 是否拥有读取对象元数据的权限 |
+| `canWrite`        | 用户 `<value>` 元数据是否有写入对象的权限 |
+| `canDataRead`     | 用户 `<value>` 是否拥有读取对象数据的权限    |
+| `canDataWrite`    | 用户 `<value>` 拥有写入对象数据的权限   |
+| `canAccess`       | 用户 `<value0>` 拥有对象 `<value1>` 的权限  |
 
-When the user ID `<value>` is omitted the check is performed for the currently
-logged-in user. Similarly, if `<value0>` is ommitted for `canAccess` filter
-the check is performed for the currently logged-in user.
+当省略用户 ID `<value>` 时，将对当前登录的用户进行检查。
+登录用户进行检查。同样，如果在 `canAccess` 过滤器中省略了 `<value0>`，则会对当前登录的用户进行检查。
+则会对当前登录的用户进行检查。
 
 When applied to a simple value property, here `code`, the filter restricts the response to
 those data elements (owner object) the user can read/write:
@@ -402,16 +402,16 @@ to those data elements having a category combo that the user can read/write:
 
     /api/dataElements/gist?filter=categoryCombo:canWrite:OYLGMiazHtW
 
-When applied to a reference collection property, here `dataElementGroups`, the
-filter restricts the response to those data elements where a data element group exists in the
-collection property and which the user can read/write:
+当应用到引用集合属性（此处为 `dataElementGroups` ）时，过滤器会将响应限制为数据元素组在引用集合中存在的数据元素。
+过滤器会将响应限制在数据元素组存在于
+集合属性中存在数据元素组且用户可以读/写的数据元素：
 
     /api/dataElements/gist?filter=dataElementGroups:canWrite:OYLGMiazHtW
 
 The `canAccess` expects two arguments, 1st is user ID, 2nd the access pattern,
 for example to check metadata read and write access the pattern is `rw%`:
 
-    /api/dataElements/gist?filter=code:canAccess:[OYLGMiazHtW,rw%]
+    /api/dataElements/gist?filter=code:canAccess:[OYLGMiazHtW,rw%]。
 
 ### The `headless` Parameter { #gist_parameters_headless } 
 <!--DHIS2-SECTION-ID:gist_parameters_headless-->
@@ -419,7 +419,7 @@ for example to check metadata read and write access the pattern is `rw%`:
 Endpoints returning a list by default wrap the items with an envelope containing 
 the `pager` and the list, which is named according to the type of object listed.
 
-For example `/api/organisationUnits/gist` returns:
+例如 `/api/organisationUnits/gist` 返回：
 
 ```json
 {
@@ -444,7 +444,7 @@ The `inverse` can be used in context of a collection field gist of the form
 are contained in the member collection but all items that are **not** contained
 in the member collection.
 
-For example, while 
+例如，当 
 
     /api/organisationUnits/rZxk3S0qN63/children/gist
 
@@ -452,12 +452,12 @@ For example, while
 
     /api/organisationUnits/rZxk3S0qN63/children/gist?inverse=true
 
-would list all organisation units that are not children of `rZxk3S0qN63`. 
-This would e.g. be used to compose a list of all units that can be made a child 
-of a particular unit.
+将列出所有不是 `rZxk3S0qN63` 子单元的组织单元。 
+例如，这可用于列出所有可成为某一特定单元子单元的单元。 
+的所有单位的列表。
 
-Filters and orders do apply normally, meaning they filter or order the items
-not contained in the member collection.
+过滤和排序通常会应用，这意味着它们会过滤或排序
+不包含在成员集合中。
 
 
 ### The `locale` Parameter { #gist_parameters_locale } 
@@ -476,30 +476,30 @@ Examples:
 ### The `order` Parameter { #gist_parameters_order } 
 <!--DHIS2-SECTION-ID:gist_parameters_order-->
 
-To sort the list of items one or more order expressions can be given.
+要对项目列表进行排序，可以给出一个或多个顺序表达式。
 
-An order expression is either just a field name of a persisted field, or a field
-name followed by `:asc` (ascending order - the default) or `:desc` 
-(descending order).
+顺序表达式既可以是一个持久化字段的字段名，也可以是一个字段名后跟有
+字段名后的 `:asc`（升序，默认值）或 `:desc`（降序，默认值）。 
+(降序）。
 
-For example, to sort organisation units alphabetically by name use:
+例如，要按名称的字母顺序对组织单位进行排序，请使用
 
     /api/organisationUnits/gist?order=name
 
-Reverse alphabetical order would use:
+按字母顺序倒序排列：
 
     /api/organisationUnits/gist?order=name:desc
 
-To sort organisation units first by level, then by name use:
+要先按级别，然后按名称对组织单位进行排序，请使用
 
     /api/organisationUnits/gist?order=level,name
 
-This would start with root(s) at level 1. To start with the leaf units use:
+这将从第 1 级的根单元开始。要从叶单元开始，请使用
 
     /api/organisationUnits/gist?order=level:desc,name
 
-If no order is specified the result list will have a stable order based on 
-internal data organisation.
+如果没有指定顺序，结果列表将根据 
+内部数据组织的稳定顺序。
 
 
 ### The `page` Parameter { #gist_parameters_page } 
@@ -546,7 +546,7 @@ assume that there is a `next` page in case `pageSize` items were found. This
 could however turn out to be false when browsing to the page. Also, the `total`
 field stating the number of total matches is not included in the `pager`.
 
-For example, `/api/organisationUnits/gist` returns a `pager`:
+例如，`/api/organisationUnits/gist` 返回一个`pager`：
 
 ```json
 {
@@ -562,7 +562,7 @@ When counting the total matches (`total=true`) the response `pager` will
 contain the `total` field with the actual number of total matches at the cost
 of an additional database operation.
 
-The response to `/api/organisationUnits/gist?total=true` now returns this `pager`:
+对 `/api/organisationUnits/gist?total=true`的响应现在会返回这个 `pager`：
 
 ```json
 {
@@ -582,12 +582,12 @@ The response to `/api/organisationUnits/gist?total=true` now returns this `pager
 
 像`name`或`shortName`这样的字段可以被翻译（国际化）。
 
-By default, any translatable field that has a translation is returned translated
-given that the user requesting the gist has an interface language configured.
+默认情况下，任何有翻译的可翻译字段都会翻译后返回。
+的翻译字段。
 
 要返回普通的非翻译字段，请使用 `translate=false`。
 
-For example, `/api/organisationUnits/gist` returns items like this:
+例如，`/api/organisationUnits/gist` 会返回这样的项目：
 
 ```json
 {
@@ -596,7 +596,7 @@ For example, `/api/organisationUnits/gist` returns items like this:
 }
 ```
 
-Whereas `/api/organisationUnits/gist?translate=false` would return items like:
+而 `/api/organisationUnits/gist?translate=false`会返回类似的项目：
 
 ```json
 {
@@ -610,7 +610,7 @@ Note that synthetic fields `displayName` and `displayShortName` are always
 returning the translated value independent of the `translate` parameter.
 
 
-## Fields { #gist_fields } 
+## 字段{ #gist_fields } 
 <!--DHIS2-SECTION-ID:gist_fields-->
 
 The fields included by default (without `fields` parameter) correspond to 
@@ -622,51 +622,51 @@ Note that the `/gist` API always excludes certain fields that usually are of no
 interest to clients, like for example the `translations` or `sharing` fields. 
 These can be added explicitly.
 
-When not explicitly provided by name in the `fields` parameters the list of 
-fields is computed from a preset.
-A preset can be used in the list of fields like a field name. 
-It expands to zero, one or many fields depending on the object type, used 
-endpoint and selector.
+如果未在`字段`参数中明确提供字段名称，则字段列表将从预设值中计算得出。 
+字段列表是通过预设计算得出的。
+预设可以像字段名一样用于字段列表。 
+根据对象类型、使用的 
+端点和选择器。
 
 
-### Field Presets { #field-presets } 
+### 现场预设{ #field-presets } 
 
-* `*` / `:all`: default fields depend on the context and `auto` parameter
+* `*` / `:all`：默认字段取决于上下文和 `auto` 参数
 * `:identifiable`: all persisted fields of the `IdentifiableObject` interface
 * `:owner`: all persisted fields where the listed type is the owner
 * `:nameable`: all persisted fields of the `NameableObject` interface
-* `:persisted`: literally all persisted fields
+* `:持久化`：字面意义上的所有持久化字段
 
 
-### Field Transformers { #field-transformers } 
-A transformer or transformation can be applied to a field by appending 
-any of the indicators `::`, `~` or `@` followed by the transformer expression.
+### 现场变压器{ #field-transformers } 
+转换器或转换可以通过在转换器表达式后添加 
+指示符 `::`、`~` 或 `@`，并在变换表达式后添加这些指示符。
 
-Available transformer expressions are:
+可用的变压器表达式有
 
-| Transformer        | JSON Result Type    | 描述                       |
+| 变压器        | JSON 结果类型    | 描述                       |
 | ------------------ | ------------------- | --------------------------------- |
-| `rename(<name>)`   | --                   | renames the field in the response to `<name>` |
-| `size`             | `number`            | number of items in the collection field |
-| `isEmpty`          | `boolean`           | emptiness of a collection field   |
-| `isNotEmpty`       | `boolean`           | non-emptiness of a collection field |
-| `ids`              | `string` or `[string]` | ID of an object or IDs of collection items |
-| `id-objects`       | `[{ "id": <id> }]`  | IDs of collection items as object |
+| `rename(<name>)`   | --                   | 将响应中的字段重命名为 `<name>` |
+| `size`             | `number`            | 收藏字段中的项目数 |
+| `isEmpty`          | `boolean`           | 收集领域的空虚   |
+| `isNotEmpty`       | `boolean`           | 集合字段不完整 |
+| `ids`              | `string` or `[string]` | 对象的 ID 或集合项的 ID |
+| `id-objects`       | `[{"id":<id> }]`  | 作为对象的集合项目 ID |
 | `member(<id>)`     | `boolean`           | 具有`<id>`的成员用于集合字段 |
 | `not-member(<id>)` | `boolean`           | 集合字段中没有具有`<id>`的成员 |
-| `pluck(<field>)`   | `string` or `[string]` | extract single text property of the object or of each collection item |
+| `pluck(<field>)`"。   | `string` or `[string]` | 提取对象或每个集合项的单个文本属性 |
 
 A field can receive both the `rename` transformer and one of the other 
 transformers, for example:
 
     /api/organisationUnits/gist?fields=*,children::size~rename(child-count)
 
-The returned items now no longer have a `children` member but a `child-count`
-member instead. Note that `rename` also affects the member name of the URI
-reference given in `apiEndpoints`.
+返回的项目现在不再有 `children` 成员，而是有一个 `child-count` 成员。
+成员。请注意，`rename` 也会影响在 `apiEndpoints` 中给出的 URI
+引用的成员名称。
 
 
-## Synthetic Fields { #gist_syntheticFields } 
+## 合成球场{ #gist_syntheticFields } 
 <!--DHIS2-SECTION-ID:gist_syntheticFields-->
 
 The `/gist` API is tightly coupled to properties that exist the database.
@@ -675,8 +675,8 @@ available.
 The exception to this are the "synthetic" properties which are dynamically 
 computed on the basis of one or more database stored properties.
 
-Synthetic properties are available for all endpoints where the persisted 
-properties needed to compute the synthetic property exist.
+合成属性适用于存在计算合成属性所需的持久化属性的所有端点。 
+属性的所有端点都可使用合成属性。
 
 Except for the `apiEndpoints` property which is automatically added when needed 
 all other synthetic properties are not included by default and have to be 
@@ -684,15 +684,15 @@ requested explicitly in the list of `fields`.
 
 
 ### 总览 { #overview } 
-Synthetic fields in alphabetical order:
+合成字段按字母顺序排列：
 
 | 领域              | 描述                                             |
 | ------------------ | ------------------------------------------------------- |
-| `apiEndpoints`     | contains links to browse nested complex objects or collections |
-| `href`             | link to the list item itself (single item view)         |
+| `apiEndpoints`     | 包含浏览嵌套复杂对象或集合的链接 |
+| `href`             | 链接到列表项目本身（单个项目视图）         |
 | `displayName`      | 已翻译的`名称`（始终已翻译）                   |
-| `displayShortName` | translated `displayName` (always translated)            |
-| `access`           | summary on ability of current user to read/write/modify the entry |
+| `displayShortName` | 已翻译的 `displayName` （始终已翻译）            |
+| `access`           | 当前用户读/写/修改条目的能力摘要 |
 
 
 ### The `href` Field { #gist_syntheticFields_href } 
@@ -701,7 +701,7 @@ Synthetic fields in alphabetical order:
 Each item in a `/gist` response can link to itself. This link is given in the 
 `href` property.
 
-To add the `href` field use (for example):
+要添加 `href` 字段，请使用（例如）：
 
     /api/<object-type>/gist?fields=*,href
 
@@ -711,7 +711,7 @@ To add the `href` field use (for example):
 By definition the `displayName` is the translated `name` and the 
 `displayShortName` is the translated `shortName`. 
 
-To add `displayName` or `displayShortName` add it to the list use (for example):
+要将 `displayName` 或 `displayShortName` 添加到列表中，请使用（例如）：
 
     /api/<object-type>/gist?fields=*,displayName
     /api/<object-type>/gist?fields=*,displayShortName
@@ -731,11 +731,11 @@ value like an item count.
 The `apiEndpoints` object will have a member of the same name for every member 
 in the item that was transformed to a simple value.
 
-For example, 
+例如 
 
     /api/users/gist?fields=id,userGroups::size,organisationUnits::size 
 
-returns items in the form:
+返回表格中的项目：
 
 ```json
 {
@@ -753,11 +753,11 @@ The list of `userGroups` and `organisationUnits` are included as their `size`.
 Each has a corresponding member in `apiEndpoints` with the path to browse the 
 list.
 
-The paths can be changed to URLs by using the `absoluteUrls` parameter. 
+可以使用 `absoluteUrls` 参数将路径更改为 URL。 
 
     /api/users/gist?fields=id,userGroups::size,organisationUnits::size&absoluteUrls=true
 
-returns items in the form:
+返回表格中的项目：
 
 ```json
 {
@@ -792,21 +792,21 @@ For example, when listing data elements with `access` field
 }
 ```
 
-### Attributes as Fields { #gist_attributeFields }
-DHIS2 allows creating and adding custom attributes to metadata objects.
-Their values are contained in the `attributeValues` property of a metadata 
-object in form of a map with the attribute UID as the map's key.
+### 属性作为字段{ #gist_attributeFields }
+DHIS2 允许为元数据对象创建和添加自定义属性。
+它们的值包含在元数据对象的 `attributeValues` 属性中。 
+对象的 "attributeValues "属性中。
 
-To directly list one or more specific attribute values from this map as if they
-were usual fields of the metadata object the attribute UID can be used as if it
-was a name of a usual field.
+要直接列出该映射表中的一个或多个特定属性值，就好像它们是元数据对象的常规字段一样
+元数据对象的常规字段一样，直接列出该映射表中的一个或多个特定属性值。
+作为普通字段的名称。
 
-For example, to include the value of the attribute with UID `Y1LUDU8sWBR` as 
-the property `unit-of-measure` in the list use:
+例如，要将 UID `Y1LUDU8sWBR` 属性的值作为 
+属性 `unit-of-measure`"的值，请使用
 
     /api/dataElements/gist?fields=id,name,Y1LUDU8sWBR::rename(unit-of-measure)
 
-This results in list items of the form:
+这样，列表项的形式就变成了
 ```json
 {
   "id": "qrur9Dvnyt5",
@@ -815,51 +815,51 @@ This results in list items of the form:
 }
 ```
 
-By default, the values are fetched as JSON and extracted from the map of 
-attribute values. This means the listing will contain the proper JSON type for
-the type of attribute value. This comes at the overhead of fetching all 
-attribute values. To single out the value within the database the `PLUCK` 
-transformation can be used.
+默认情况下，属性值以 JSON 格式获取，并从 
+属性值的映射中提取。这意味着列表中将包含适合于
+属性值类型。这样做的代价是获取所有 
+属性值的开销。要在数据库中单独找出值，可以使用 `PLUCK` 转换。 
+转换。
 
     /api/dataElements/gist?fields=id,name,Y1LUDU8sWBR::rename(unit-of-measure)~pluck
 
-The result will look the same but now the value is extracted as text in the 
-database turning any JSON value to a string in the property output. 
+结果看起来是一样的，但现在值会以文本形式提取到 
+在属性输出中，数据库会将任何 JSON 值转换为字符串。 
 
 ## 例子 { #gist_examples } 
 <!--DHIS2-SECTION-ID:gist_examples-->
-A few examples starting from simple listings moving on to very specific use cases. 
+从简单的列表到非常具体的使用案例，举几个例子。 
 
 It is preferable to always supply an explicit list of `fields` so this section 
 will do so. 
 
-List organisation units with id and name:
+列出带有 ID 和名称的组织单位：
 
     /api/organisationUnits/gist?fields=id,name
 
-List organisation units with id and name and total count:
+列出组织单位的 ID、名称和总数：
 
     /api/organisationUnits/gist?fields=id,name&total=true
 
-List users with id and username:
+用 ID 和用户名列出用户：
 
     /api/users/gist?fields=id,userCredentials.username
 
-List users with id, username and last login date:
+根据 ID、用户名和最后登录日期列出用户：
 
-    /api/users/gist?fields=id,userCredentials[username,lastLogin]
+    /api/users/gist?fields=id,userCredentials[username,lastLogin] /api/users/gist?
 
-List only organisation units on second level with id, name and level:
+仅列出第二层的组织单位，并注明 ID、名称和层级：
 
     /api/organisationUnits/gist?fields=id,name,level&filter=level:eq:2
 
-List only organisation units that have more than 1 child with id, name and
-number of children:
+仅列出有 1 个以上子机构的组织单位，并注明 id、名称和
+子女数量：
 
     /api/organisationUnits/gist?fields=id,name,children::size&filter=children:gt:1
 
-List only organisation units that are not yet a children of another unit
-`zFDYIgyGmXG`:
+仅列出尚未成为另一个单元的子单元的组织单元
+`zFDYIgyGmXG`：
 
     /api/organisationUnits/zFDYIgyGmXG/children/gist?fields=id,name&inverse=true
 
@@ -868,7 +868,7 @@ List users and flag whether they are a member of a specific user group
 
     /api/users/gist?fields=id,userCredentials.username,userGroups::member(NTC8GjJ7p8P)~rename(is-member)
 
-List links to all users in pages of 10 items:
+列出所有用户的链接，每页 10 个项目：
 
     /api/users/gist?fields=href&absoluteUrls&pageSize=10
 

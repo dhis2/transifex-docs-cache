@@ -1,0 +1,505 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.36/src/developer/web-api/sms.md"
+revision_date: "2021-06-14"
+tags:
+    - Develop
+    - DHIS 核心版本 2.36
+---
+
+# 短信 { #sms }
+
+## 短消息服务（SMS） { #webapi_sms }
+
+本节介绍用于发送和接收短文本的 SMS Web API
+消息。
+
+### 出站短信服务 { #outbound-sms-service }
+
+Web API 支持使用 POST 方法发送外发 SMS。短信可以
+发送到单个或多个目的地。一个或多个网关需要
+在使用服务之前进行配置。如果出现以下情况，将不会发送短信
+没有配置网关。它需要一组接收者和
+JSON 格式的消息文本，如下所示。
+
+    / api / sms / outbound
+
+```json
+{
+    "message": "Sms Text",
+    "recipients": ["004712341234", "004712341235"]
+}
+```
+
+> **Note**
+>
+> Recipients list will be partitioned if the size exceeds `MAX_ALLOWED_RECIPIENTS` limit of 200.
+
+Web API 也支持查询参数版本，但
+参数化 API 只能用于发送短信到单个
+目的地。
+
+    / api / sms / outbound？message = text＆recipient = 004712341234
+
+可以使用GET资源提取出站邮件。
+
+    GET / api / sms / outbound
+    GET / api / sms / outbound？filter = status：eq：SENT
+    GET / api / sms / outbound？filter = status：eq：SENT＆fields = *
+
+可以使用DELETE资源删除出站邮件。
+
+    删除/ api / sms / outbound / {uid}
+    删除/ api / sms / outbound？ids = uid1，uid2
+
+#### 网关响应码 { #gateway-response-codes }
+
+网关可以使用以下响应代码进行响应。
+
+ <table>
+ <caption> 网关响应代码 </caption>
+ <colgroup>
+ <col style="width: 13%" />
+ <col style="width: 13%" />
+ <col style="width: 73%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th> 响应码 </th>
+ <th> 响应消息 </th>
+ <th> 详细说明 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> RESULT_CODE_0 </td>
+ <td> 成功 </td>
+ <td> 消息已成功发送 </td>
+ </tr>
+ <tr class="even">
+ <td> RESULT_CODE_1 </td>
+ <td> 预定 </td>
+ <td> 消息已成功调度 </td>
+ </tr>
+ <tr class="odd">
+ <td> RESULT_CODE_22 </td>
+ <td> 内部致命错误 </td>
+ <td> 内部致命错误 </td>
+ </tr>
+ <tr class="even">
+ <td> RESULT_CODE_23 </td>
+ <td> 认证失败 </td>
+ <td> 身份验证凭据不正确 </td>
+ </tr>
+ <tr class="odd">
+ <td> RESULT_CODE_24 </td>
+ <td> 数据验证失败 </td>
+ <td> 请求中提供的参数不正确 </td>
+ </tr>
+ <tr class="even">
+ <td> RESULT_CODE_25 </td>
+ <td> 积分不足 </td>
+ <td> 信用不够发送消息 </td>
+ </tr>
+ <tr class="odd">
+ <td> RESULT_CODE_26 </td>
+ <td> 上游信用不可用 </td>
+ <td> 上游信用不可用 </td>
+ </tr>
+ <tr class="even">
+ <td> RESULT_CODE_27 </td>
+ <td> 超出了您的每日配额 </td>
+ <td> 您已超出每日配额 </td>
+ </tr>
+ <tr class="odd">
+ <td> RESULT_CODE_40 </td>
+ <td> 暂时不可用 </td>
+ <td> 服务暂时关闭 </td>
+ </tr>
+ <tr class="even">
+ <td> RESULT_CODE_201 </td>
+ <td> 超过最大批量大小 </td>
+ <td> 超过最大批量大小 </td>
+ </tr>
+ <tr class="odd">
+ <td> RESULT_CODE_200 </td>
+ <td> 成功 </td>
+ <td> 请求成功完成 </td>
+ </tr>
+ <tr class="even">
+ <td> RESULT_CODE_202 </td>
+ <td> 接受 </td>
+ <td> 消息将被处理 </td>
+ </tr>
+ <tr class="odd">
+ <td> RESULT_CODE_207 </td>
+ <td> 多状态 </td>
+ <td> 向 API 提交了不止一条消息；但是，并非所有消息都具有相同的状态 </td>
+ </tr>
+ <tr class="even">
+ <td> RESULT_CODE_400 </td>
+ <td> 错误请求 </td>
+ <td> 验证失败（例如缺少/无效的参数或标头） </td>
+ </tr>
+ <tr class="odd">
+ <td> RESULT_CODE_401 </td>
+ <td> 未授权 </td>
+ <td> 认证失败。这也可能是由 IP 锁定设置引起的 </td>
+ </tr>
+ <tr class="even">
+ <td> RESULT_CODE_402 </td>
+ <td> 需要付款 </td>
+ <td> 没有足够的信用来发送消息 </td>
+ </tr>
+ <tr class="odd">
+ <td> RESULT_CODE_404 </td>
+ <td> 未找到 </td>
+ <td> 资源不存在 </td>
+ </tr>
+ <tr class="even">
+ <td> RESULT_CODE_405 </td>
+ <td> 方法不允许 </td>
+ <td> 资源 </td> 不支持 Http 方法
+ </tr>
+ <tr class="odd">
+ <td> RESULT_CODE_410 </td>
+ <td> 消失了 </td>
+ <td> 手机号码被屏蔽 </td>
+ </tr>
+ <tr class="even">
+ <td> RESULT_CODE_429 </td>
+ <td> 请求过多 </td>
+ <td> 通用速率限制错误 </td>
+ </tr>
+ <tr class="odd">
+ <td> RESULT_CODE_503 </td>
+ <td> 服务不可用 </td>
+ <td> 我们的平台出现临时错误 - 请重试 </td>
+ </tr>
+ </tbody>
+ </table>
+
+### 入站短信服务 { #inbound-sms-service }
+
+Web API 支持使用 POST 收集传入的 SMS 消息
+方法。路由到 DHIS2 Web API 的传入消息可以是
+使用此 API 接收。 API 收集入站 SMS 消息和
+根据短信内容（SMS
+命令）。下面给出了 JSON 格式的示例负载。文本，
+发起者、接收日期和发送日期是强制性参数。这
+其余是可选的，但系统将使用这些默认值
+参数。
+
+    / api / sms / inbound
+
+```json
+{
+    "text": "sample text",
+    "originator": "004712341234",
+    "gatewayid": "unknown",
+    "receiveddate": "2016-05-01",
+    "sentdate": "2016-05-01",
+    "smsencoding": "1",
+    "smsstatus": "1"
+}
+```
+
+可以使用GET resourcef获取入站消息
+
+    GET / api / sms / inbound
+    GET / api / sms / inbound？fields = *＆filter = smsstatus = INCOMING
+
+可以使用DELETE资源删除入站邮件
+
+    删除/ api / sms / inbound / {uid}
+    删除/ api / sms / inbound？ids = uid1，uid2
+
+导入所有未解析的消息
+
+    POST /api/sms/入站/导入
+
+ <table>
+ <caption> 用户查询参数 </caption>
+ <colgroup>
+ <col style="width: 13%" />
+ <col style="width: 13%" />
+ <col style="width: 73%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th> 参数 </th>
+ <th> </th>型
+ <th> 说明 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> 消息 </td>
+ <td> 字符串 </td>
+ <td> 这是携带实际文本消息的强制性参数。 </td>
+ </tr>
+ <tr class="even">
+ <td> 发起人 </td>
+ <td> 字符串 </td>
+ <td> 这是强制性参数，显示此消息实际上是由谁发送的。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 网关 </td>
+ <td> 字符串 </td>
+ <td> 这是一个可选参数，提供网关 ID。如果不存在默认文本 &quot;UNKNOWN&quot; 将存储 </td>
+ </tr>
+ <tr class="even">
+ <td> 接收时间 </td>
+ <td> 日期 </td>
+ <td> 这是一个可选参数。它是网关收到消息的时间戳。 </td>
+ </tr>
+ </tbody>
+ </table>
+
+### 网关服务管理 { #gateway-service-administration }
+
+Web API 公开资源，这些资源提供了一种配置和
+更新短信网关配置。
+
+可以使用 GET 检索配置的不同网关的列表
+方法。
+
+    获取/api/33/网关
+
+还可以使用特定网关类型检索配置
+获取方法。
+
+    GET /api/33/gateways/{uid}
+
+可以使用 POST 添加新的网关配置。 POST api 需要类型请求参数，目前其值可以是 _http、bulksms、clickatell、smpp_ 之一。第一个添加的网关将设置为默认网关。一次只允许默认一个网关。默认网关只能通过其 api 进行更改。如果删除默认网关，则列表中的下一个网关将自动成为默认网关。
+
+    POST / api / 33 / gateways
+
+可以通过提供如下所述的uid和网关配置来更新配置
+
+    PUT /api/33/gateways/{uids}
+
+可以使用 DELETE 删除特定网关类型的配置
+方法。
+
+    删除/ api / 33 / gateways / {uid}
+
+可以检索和更新默认网关。
+
+    获取 /api/33/gateways/default
+
+可以使用PUT方法设置默认网关。
+
+    PUT /api/33/gateways/default/{uid}
+
+### 网关配置 { #gateway-configuration }
+
+Web API 允许您创建和更新网关配置。对于每个
+网关类型 JSON 有效负载中有不同的参数。
+下面给出了每个网关的示例 JSON 有效负载。 POST 用于
+create 和 PUT 以更新配置。标头参数可用于
+GenericHttpGateway 将一个或多个参数作为 http 标头发送的情况。
+
+#### Clickatell { #clickatell }
+
+```json
+{
+    "type": "clickatell",
+    "name": "clickatell",
+    "username": "clickatelluser",
+    "authToken": "XXXXXXXXXXXXXXXXXXXX",
+    "urlTemplate": "https://platform.clickatell.com/messages"
+}
+```
+
+#### 散装 { #bulksms }
+
+```json
+{
+    "type": "bulksms",
+    "name": "bulkSMS",
+    "username": "bulkuser",
+    "password": "abc123"
+}
+```
+
+#### SMPP网关 { #smpp-gateway }
+
+```json
+{
+    "type": "smpp",
+    "name": "smpp gateway2",
+    "systemId": "smppclient1",
+    "host": "localhost",
+    "systemType": "cp",
+    "numberPlanIndicator": "UNKNOWN",
+    "typeOfNumber": "UNKNOWN",
+    "bindType": "BIND_TX",
+    "port": 2775,
+    "password": "password",
+    "compressed": false
+}
+```
+
+#### 通用HTTP { #generic-http }
+
+```json
+{
+    "type": "http",
+    "name": "Generic",
+    "configurationTemplate": "username=${username}&password=${password}&to=${recipients}&countrycode=880&message=${text$}&messageid=0",
+    "useGet": false,
+    "sendUrlParameters": false,
+    "contentType": "APPLICATION_JSON",
+    "urlTemplate": "https://samplegateway.com/messages",
+    "parameters": [
+        {
+            "header": true,
+            "encode": false,
+            "key": "username",
+            "value": "user_uio",
+            "confidential": true
+        },
+        {
+            "header": true,
+            "encode": false,
+            "key": "password",
+            "value": "123abcxyz",
+            "confidential": true
+        },
+        {
+            "header": false,
+            "encode": false,
+            "key": "deliveryReport",
+            "value": "yes",
+            "confidential": false
+        }
+    ],
+    "isDefault": false
+}
+```
+
+在通用的http网关中，可以添加任意数量的参数。
+
+ <table>
+ <caption>通用SMS网关参数</caption>
+ <colgroup>
+ <col style="width: 13%" />
+ <col style="width: 13%" />
+ <col style="width: 73%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>参数</th>
+ <th>类型</th>
+ <th>说明</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td>名称</td>
+ <td>字符串</td>
+ 网关名称<td> </td>
+ </tr>
+ <tr class="even">
+ <td>配置模板</td>
+ <td>字符串</td>
+ <td>配置模板，其中填充了参数值。例如，上面给出的配置模板将像这样填充{“ to”：“ +27001234567”，“ body”：“ Hello World！”} </td>
+ </tr>
+ <tr class="odd">
+ 使用<td>使用获取</td>
+ <td>布尔值</td>
+ 默认情况下将使用<td> Http POST网络。为了更改它和Http GET，用户可以将useGet标志设置为true。 </td>
+ </tr>
+ <tr class="even">
+ <td> contentType </td>
+ <td>字符串</td>
+ <td>内容类型指定要发送的数据类型。支持的类型为APPLICATION_JSON，APPLICATION_XML，FORM_URL_ENCODED，TEXT_PLAIN </td>
+ </tr>
+ <tr class="odd">
+ <td> urlTemplate </td>
+ <td>字符串</td>
+ <td>网址模板</td>
+ </tr>
+ <tr class="even">
+ <td>标头</td>
+ <td>布尔值</td>
+ <td>如果需要在Http标头中发送参数</td>
+ </tr>
+ <tr class="odd">
+ <td>编码</td>
+ <td>布尔值</td>
+ <td>如果参数需要编码</td>
+ </tr>
+ <tr class="even">
+ <td>键</td>
+ <td>字符串</td>
+ <td>参数密钥</td>
+ </tr>
+ <tr class="odd">
+ <td>值</td>
+ <td>字符串</td>
+ <td>参数值</td>
+ </tr>
+ <tr class="even">
+ <td>机密</td>
+ <td>布尔值</td>
+ <td>如果参数是机密的。此参数不会通过API </td>公开
+ </tr>
+ <tr class="odd">
+ <td> sendUrlParameters </td>
+ <td>布尔值</td>
+ <td>如果选中此标志，则urlTemplate可以附加查询参数。如果网关API仅支持HTTP GET，这将很有用。样本urlTemplate看起来像这样的“ urlTemplate”：“ https://samplegateway.com/messages?apiKey={apiKey}&to={recipients},content={text},deliveryreport={dp}” </td>
+ </tr>
+ </tbody>
+ </table>
+
+配置保存成功则返回HTTP.OK，否则_Error_
+
+## 短信命令 { #webapi_sms_commands }
+
+SMS 命令用于通过 SMS 收集数据。这些命令
+属于特定的解析器类型。每个解析器都有不同的功能。
+
+可以使用GET检索命令列表。
+
+    GET /api/sms命令
+
+可以使用GET检索一个特定的命令。
+
+    GET /api/smsCommands/uid
+
+可以使用PUT更新一个特定的命令。
+
+    PUT /api/smsCommands/uid
+
+可以使用POST创建命令。
+
+    POST / api / smsCommands
+
+可以使用DELETE删除一个特定命令。
+
+    删除/ api / smsCommands / uid
+
+#### 短信命令类型 { #sms-command-types }
+
+| 类型 | 用法 |
+| --- | --- |
+| KEY_VALUE_PARSER | 用于汇总数据收集。 |
+| ALERT_PARSER | 发送警报消息。 |
+| 未注册_解析器 | 用于疾病监测病例报告。 |
+| TRACKED_ENTITY_REGISTRATION_PARSER | 用于跟踪器实体注册。 |
+| PROGRAM_STAGE_DATAENTRY_PARSER | 程序阶段的数据收集。 （根据phoneNumner确定TEI） |
+| EVENT_REGISTRATION_PARSER | 单个事件的注册。这用于事件程序。 |
+
+#### Android的SMS命令类型 { #sms-command-types-for-android }
+
+当互联网不可用时，Android应用程序可以使用这些命令类型通过SMS提交数据。 SMS由Android应用程序组成。
+
+| 类型              | 用法                                    |
+| ----------------- | ---------------------------------------- |
+| AGGREGATE_DATASET | 用于汇总数据收集。           |
+| 注册        | 用于跟踪器实体注册。         |
+| TRACKER_EVENT     | 跟踪器程序的事件注册。 |
+| SIMPLE_EVENT      | 活动节目的活动注册。   |
+| 关系      | 建立关系。                 |
+| 删除            | 删除事件。                         |

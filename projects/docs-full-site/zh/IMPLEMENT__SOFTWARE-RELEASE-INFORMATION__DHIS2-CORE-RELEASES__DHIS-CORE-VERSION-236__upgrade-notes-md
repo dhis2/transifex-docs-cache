@@ -2,8 +2,8 @@
 edit_url: "https://github.com/dhis2/dhis2-releases/blob/master/releases/2.36/README.md"
 revision_date: '2023-08-30'
 tags:
-- DHIS core version 2.36
-- Implement
+- DHIS 核心 2.36 版
+- 实施
 ---
 
 # 2.36 升级说明{ #236-upgrade-notes }
@@ -14,12 +14,12 @@ tags:
 
 - A `shortName` column (mandatory property) has been added to the `category`, `dataelementgroupset` and `organisationunitgroupset` tables.
 - A `description` column has been added to the `dataelementgroupset` and `organisationunitgroupset` tables.
-- New index on table `trackedentityprogramowner` over columns `(trackedentityinstanceid, programid, organisationunitid)`. Improves lookup related to organisation unit scopes in the context of a program.
-- New index on table `programinstance` over columns `(programid)`. Improves general lookup for programinstances based on program in most cases.
-- New index on table `trackedentityattributevalue` over columns `(trackedentityinstanceid, trackedentityattributeid, lower(value))`. This is in addition to the previous index over the columns `(trackedentityattributeid, lower(value))`. We saw situations related to value lookup in the context of tracked entity instances where postgres would revert to a sequential scan, when using the existing index would yield a much better result. With the new index we are successfully encouraging postres to use the index also when we are matching on tracked entity instances.
-- New index on table `programstageinstance` over the columns `(status, executiondate)`. This table often grows a lot bigger than tracked entity instance and program instance tables, and we saw a bottleneck in some of our queries when including program stage instances as filters in searches. We added this index to improve the performance of the most common column we filter by, status, as well as executiondate, which is often used together with status when searching for events.
+- 为表 `trackedentityprogramowner` 的列 `(trackedentityinstanceid,programid,organisationunitid)`新建索引。改进了在程序上下文中与组织单位范围有关的查找。
+- 为表 `programinstance` 的列 `(programid)` 新建索引。改进了大多数情况下根据程序查找程序实例的一般方法。
+- 在表 `trackedentityattributevalue` 中为`(trackedentityinstanceid, trackedentityattributeid, lower(value))`列建立新索引。这是对先前的`(trackedentityattributeid, lower(value))`列索引的补充。我们看到，在跟踪实体实例的情况下，postgres 会返回到顺序扫描，而使用现有索引会得到更好的结果。有了新索引，我们就能成功地鼓励 postgres 在对跟踪实体实例进行匹配时也使用该索引。
+- 为表 `programstageinstance` 的列 `(status,executiondate)`新建索引。该表通常比跟踪的实体实例表和程序实例表大很多，当在搜索中将程序阶段实例作为过滤器时，我们发现一些查询出现了瓶颈。我们添加了这个索引，以提高我们最常用的过滤列 status 和 executiondate 的性能，后者在搜索事件时经常与 status 一起使用。
 - 注意：由于添加到可能较大的表中的新索引数量较多，因此升级过程可能会花费大量时间。
-- Sharing: a new JSONB column `sharing` is added to all metadata tables which is used to store sharing data. All of current `*useraccesses` and `*usergroupaccesses` tables are deprecated. There is a Flyway script executed at start up which migrates all sharing data from deprecated tables to the new `sharing` column. In order to update sharing data with a SQL query you can use [PostgreSQL JSON Functions](https://www.postgresql.org/docs/12/functions-json.html). The JSON format of the new `sharing` column looks like the below.
+- 共享：在所有元数据表中添加了新的 JSONB 列 `sharing`，用于存储共享数据。当前所有的 `*useraccesses` 和 `*usergroupaccesses` 表都已废弃。启动时会执行一个 Flyway 脚本，将所有共享数据从已废弃的表迁移到新的 `sharing` 列。要使用 SQL 查询更新共享数据，可以使用 [PostgreSQL JSON 函数](https://www.postgresql.org/docs/12/functions-json.html) 。新的 `sharing` 列的 JSON 格式如下。
 
 ```json
 {
@@ -42,9 +42,9 @@ tags:
 ## API { #api }
 
 - The `POST /api/dataAnalysis/stdDevOutlier` and `POST /api/dataAnalysis/minMaxOutlier` API endpoints are deprecated and will be removed in 2.37. These endpoints are superseded by the `/api/outlierDetection` API which offers higher performance and more sophisticated outlier detection.
-- The `POST /api/dataAnalysis/followup` API endpoint for reading follow-up data values is deprecated and will be removed in 2.38. This endpoint is superseded by the `GET /api/dataAnalysis/followup` API endpoint.
-- The `type` field in the `/api/analytcs` API endpoint `metadata` > `headers` response is deprecated and will be removed in 2.37. Instead use the `valueType` field.
+- 用于读取后续数据值的 `POST /api/dataAnalysis/followup` API 端点已过时，将在 2.38 中移除。该端点将被 `GET /api/dataAnalysis/followup` API 端点取代。
+- `/api/analytcs` API 端点 `metadata` > `headers` 响应中的 `type` 字段已被弃用，并将在 2.37 中移除。请使用 `valueType` 字段。
 - 作为与可视化 API (`/api/visualizations`) 更改相关的弃用过程的一部分，多个可视化属性被设为只读。您可以在 [DHIS2-10054](https://jira.dhis2.org/browse/DHIS2-10054) 中找到“新格式”和相应更改的属性。 DHIS2 文档的可视化部分介绍了新格式。为了避免破坏现有应用程序，旧格式仍将作为响应的一部分返回。对重构属性的更改仅在使用新格式时才会生效。请参阅 [DHIS2-1369](https://jira.dhis2.org/browse/DHIS2-1369)。
-- The `restrictToCaptureScope` parameter in the API endpoints `api/categoryOptions` and `api/programs`  is no longer supported. For programs alone, an alternate endpoint `/api/programs/orgUnits?programs={programUids}` for fetching organisationUnit associations can be used. 
+- 不再支持 API 端点 `api/categoryOptions` 和 `api/programs` 中的 `restrictToCaptureScope` 参数。对于单独的程序，可使用另一个端点 `/api/programs/orgUnits?programs={programUids}` 来获取 organisationUnit 关联。 
 - Sharing: the introduction of new `sharing` column only affects the backend services and database as we try to keep this change backward compatible. Means that all api and apps should be working normally as before. All sharing related api endpoints still accept old format with `userAccesses` and `userGroupAccesses`, in backend we convert them to new format and saved to database. All api endpoints will return both new and old sharing format. Please see [Sharing](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-237/sharing.html) for more details.
 

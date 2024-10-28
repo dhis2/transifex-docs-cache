@@ -1,0 +1,64 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-sdk/blob/master/docs/content/developer/error-management.md"
+revision_date: '2021-04-19'
+tags:
+- Develop
+---
+
+# 错误管理{ #android_sdk_error_management }
+
+Errors that happen in the context of the SDK are wrapped in a type of exception: `D2Error`, with the following fields:
+
+| 属性         | 类型              | 可选的  | 描述 |
+|-------------------|-------------------|-----------|-------------| 
+| 错误组件    | D2错误组件  | 真正      | 错误源：数据库，SDK或服务器。|
+| 错误代码         | D2错误代码       | 真正      | SDK定义的唯一错误代码。 |
+| 错误说明  | 串            | 真正      | 错误的英语描述（技术细节，仅用于日志和调试）。 |
+| http错误代码     | 整数           | 假     | 如果由HTTP请求引起，则为HTTP错误代码。 |
+| 原始异常 | 例外         | 假     | 导致错误的原始Java异常（如果有）。 |
+
+向 SDK 请求的任何操作都可能引发错误。
+
+- 对于返回 RxJava 对象的操作，可以提取错误
+  通过以下方式：
+
+    ```java
+    d2.userModule().logIn(username, password, url)
+        .subscribe(
+            user -> { },
+            error -> {
+                if (error instanceof D2Error) {
+                    D2Error d2Error = (D2Error) error;
+                    Log.e("LOGIN", d2Error.errorComponent() + " " + d2Error.httpErrorCode() + " " + d2Error.errorCode());
+                }
+            }
+        );
+    ```
+
+- 对于阻塞操作，也可以检索`D2Error`。
+  可以通过缓存错误来提取错误，如下所示
+  代码片段：
+
+    ```java
+    try {
+        d2.userModule().blockingLogIn(username, password, url);
+    } catch (Exception e) {
+        if (e.getCause() instanceof D2Error) {
+            D2Error d2Error = (D2Error) e.getCause();
+            Log.e("LOGIN", d2Error.errorComponent() + " " + d2Error.httpErrorCode() + " " + d2Error.errorCode());
+        }
+    }
+    ```
+
+`D2Errors` 发生时会保留在数据库中，因此可以
+事后分析并诊断可能存在的问题。他们可以被访问
+通过它自己的存储库：
+
+```java
+d2.maintenanceModule().d2Errors()
+    .byD2ErrorComponent().eq(D2ErrorComponent.Server)
+    .get();
+```
+
+现在，SDK团队正在与核心团队合作，以提供常见错误代码的完整列表，但这仍在进行中。
+

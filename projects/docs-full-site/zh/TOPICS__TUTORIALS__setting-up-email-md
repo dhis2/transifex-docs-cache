@@ -1,0 +1,53 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/tutorials/setting-up-email.md"
+revision_date: '2021-06-14'
+tags:
+- 教程
+title: 在服务器上设置电子邮件
+---
+
+# 在服务器上设置电子邮件 { #setting-up-email-on-a-server }
+
+使用 postfix 或 exim4 直接从主机发送邮件很容易设置。然而，最重要的是正确设置网络，换句话说，您必须拥有完全限定的域名并确保主机名和 /etc/hosts 正确。如果您没有此功能，则需要通过中继到其他智能主机来采取不同的方法。如果您的主机名设置正确，那么设置外发邮件的过程就足够简单了。我将概述 exim4 的过程：安装 exim4
+
+```
+sudo apt-get install exim4
+```
+然后配置：
+```
+sudo dpkg-reconfigure exim4-config
+```
+然后通过屏幕进行操作：
+
+1.  选择“互联网站点；邮件直接通过 smtp 发送”选项
+2.  系统邮件名称应该是您的 FQDN（例如 dhis2.somewhere.org）
+3.  确保 smtp 侦听器仅侦听 localhost (127.0.0.1 ; ::1) 。这真的很重要。除非您准备好发现自己处于与世界上垃圾邮件发送者的战斗中，否则您无论如何都不想打开监听器来聆听外部世界。
+4.  将“接受邮件的其他目的地”留空
+5.  将“要中继的域”留空
+6.  将“要中继的机器”留空
+
+Just accept defaults for everything else. Try sending yourself a mail by typing: `mail me@someplace.com` using your own email address of course. Finish the mail by just typing a dot on a line on its own. Beware the mail may well be sent but end up in your spam. Check `sudo tail /var/log/exim4/mainlog` to see what happened. What you will probably want to do next is to make sure that any system alerts are sent to the people who should be seeing them. The easiest way to set this up is through the /etc/aliases file. The following is an example of /etc/aliases to guide you through:
+
+
+```
+# /etc/aliases
+mailer-daemon: postmaster
+postmaster: root
+nobody: root
+hostmaster: root
+usenet: root
+news: root
+网站管理员: root
+www: root
+ftp: root
+滥用: root
+noc: root
+安全：root
+root: admins
+monit: admins
+dhiis: admins
+admins: bobj@somewhere.net,peterg@somewhere.com
+```
+
+基本上，"admins "是两个管理员电子邮件地址的别名。所有发给 root 和 dhis 用户的邮件都会重定向到 admins。如果编辑了别名文件，则需要运行 `sudo newaliases` 使其生效。您还可以在 DHIS 2 的邮件设置界面中将邮件主机设置为 "localhost"，端口设置为 "25"，从而将 DHIS 2 配置为使用本地邮件服务器。
+

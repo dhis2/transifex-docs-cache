@@ -1,0 +1,618 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-sdk/edit/master/docs/content/developer/workflow.md" 
+---
+# 工作流程
+
+ <!--DHIS2-SECTION-ID:workflow-->
+
+目前，SDK主要面向构建可在离线模式下运行的应用程序。简而言之，SDK维护一个本地数据库实例，该实例用于在本地完成工作（创建表单，管理数据等）。当客户端请求时，此本地数据库与服务器同步。
+
+典型的工作流程如下：
+
+1. **登录**
+2. **同步元数据：** SDK下载了服务器元数据的子集，因此可以随时使用。元数据同步完全取决于用户（有关更多详细信息，请参见[同步]（＃metadata-synchronization））
+3. **下载数据：**如果即使离线时仍要在设备中提供现有数据，则可以下载并保存设备中的现有跟踪器和汇总数据。
+4. **执行工作：**此时，该应用程序能够创建数据输入表单并显示一些现有数据。然后，用户可以编辑/删除/更新数据。
+5. **上传数据：**有时会在本地数据库实例中完成的工作发送到服务器。
+6. **同步元数据：**建议经常同步元数据以检测元数据配置中的更改。
+
+## 登入/登出
+
+ <!--DHIS2-SECTION-ID:login_logout-->
+
+与服务器交互之前，需要登录DHIS 2实例。目前，SDK仅同时支持一对“用户-服务器”。这意味着只能在一个服务器上同时认证一个用户。
+
+```java
+d2.userModule().logIn(username, password, serverUrl)
+
+d2.userModule().logOut()
+```
+
+注销后，SDK会跟踪上次登录的用户，以便能够区分重复用户和新用户。即使没有连接，它也保留用户凭据的哈希值以对用户进行身份验证。鉴于以上所述，登录方法将：
+
+- 如果已通过身份验证的用户已经存在：抛出错误。
+- 否则，如果*在线*：
+  - 尝试**在线登录**：SDK会将用户名和密码发送到API，这将确定它们是否正确。如果成功：
+        -如果不存在数据库：从服务器创建具有加密值的新数据库。
+        -如果存在另一个[serverUrl，user]的数据库，则将其删除并从服务器创建具有加密值的新数据库。先前登录用户的未同步数据将永久丢失。
+        -如果存在用于当前[serverUrl，user]对的数据库，请打开数据库，如果服务器中的加密状态已更改，则对数据库进行加密或解密。
+  - 如果服务器中已禁用用户帐户：删除数据库并引发错误。
+- 否则，如果*离线*：
+  - 如果[serverUrl，user]对是最后经过身份验证的：
+    - 尝试**离线登录**：SDK 将验证凭据是否与上次提供的凭据相同，这些凭据之前已由 API 验证。
+  - 如果[serverUrl，user]对不是最后经过身份验证的：抛出错误
+
+在成功登录之前或注销之后调用模块或存储库方法将导致“未创建数据库”错误。
+
+注销方法会删除用户凭据，因此在与服务器进行任何交互之前都需要重新登录。元数据和数据得以保留，因此用户可以注销/登录而不会丢失任何信息。
+
+## 元数据同步
+
+ <!--DHIS2-SECTION-ID:metadata_synchronization-->
+
+登录后，第一步通常是元数据同步。它获取并保留当前用户所需的元数据。要启动元数据同步，我们必须执行：
+
+```java
+d2.metadataModule().download();
+```
+
+为了节省带宽使用量和存储空间，SDK不同步服务器中的所有元数据，而是同步子集。此子集定义为用户执行数据输入任务所需的元数据：渲染程序和数据集，执行程序规则，评估内联程序指示器等。
+
+基于此，元数据同步包括以下元素：
+
+|   元件             |   条件或范围 |
+|-----------------------|-------------|
+| 系统信息           | 所有 |
+| 系统设置       | KeyFlag，KeyStyle |
+| 用户设置         | KeyDbLocale，KeyUiLocale |
+| 用户                  | 仅经过身份验证的用户 |
+| 用户角色              | 分配给已验证用户的角色 |
+| 权威             | 分配给已验证用户的权限 |
+| 程序               | 用户具有（至少）读取数据访问权并将其分配给用户可见的任何组织单位的程序 |
+| 关系类型     | 所有 |
+| 选项组          | 仅当服务器大于2.29 |
+| 数据集               | 用户具有（至少）读取数据访问权限并已分配给该用户可见的任何组织单位的数据集 |
+| 验证规则      | 与数据集关联的验证规则 |
+| 指标            | 分配给下载数据集的指标 |
+| 组织单位      | CAPTURE或SEARCH范围内的组织单位（包括后代） |
+| OrganisationUnitGroup | 分配给已下载组织的组 |
+| OrganisationUnitLevel | 所有 |
+| 不变              | 所有 |
+| 短信模块元数据   | 仅在启用SMS模块时 |
+
+对于程序和数据集，元数据同步包括与之相关的所有元数据：阶段，节，数据元素，选项，类别等。与任何程序或数据集无关的那些元素均不包括在内。
+
+### 配置损坏
+
+这种部分元数据同步可能会暴露服务器端配置错误问题。例如，指向不再属于程序的DataElement的ProgramRuleVariable。由于使用了数据库级别的约束，这种配置错误将显示为外键错误。
+
+SDK不会使同步失败，但是会将错误存储在表格中以进行检查。可以通过以下方式访问这些错误：
+
+```java
+d2.maintenanceModule().foreignKeyViolations()
+```
+
+## 数据状态
+
+ <!--DHIS2-SECTION-ID:data_states-->
+
+Data objects have a read-only `state` property that indicates the current state of the object in terms of synchronization with the server. This state is maintained by the SDK.
+
+可能的状态是：
+
+- **已同步**。元素已与服务器同步。此值没有本地更改。
+- **TO_POST**. Data created locally that does not exist in the server yet.
+- **TO_UPDATE**. Data modified locally that exists in the server.
+- **正在上传**。数据正在上传。如果在收到任何服务器响应之前修改了数据，其状态将变回 `TO_UPDATE`。当服务器响应到达时，其状态不会变为 `SYNCED`，但会保持在 `TO_UPDATE` 中，以表示本地有更改。
+- ** SENT_BY_SMS **。数据是通过短信发送的，尚无服务器响应。某些服务器没有发送响应的功能，因此此状态表示已经发送了数据，但是我们不知道数据是否已正确导入服务器中。
+- ** SYNCED_BY_SMS **。数据通过短信发送，服务器成功响应。
+- **错误**。上次上传后从服务器接收到错误的数据。
+- **警告**。上次上传后从服务器收到警告的数据。
+
+Additionally, in `TrackedEntityInstance` we might have:
+
+- **RELATIONSHIP**. This TrackedEntityInstance has been downloaded with the sole purpose of fulfilling a relationship to another TEI. This `RELATIONSHIP` TEI only has basic information (uid, type, etc) and the list of TrackedEntityAttributes to be able to print meaningful information about the relationship. Other data such as enrollments, events or relationships are not downloaded for this TEI. Also, this TEI cannot be modified or uploaded to the server.
+
+## 追踪器数据
+
+ <!--DHIS2-SECTION-ID:tracker_data-->
+
+### 追踪器数据下载
+
+> **重要**
+>
+>请参阅[设置应用程序]（＃settings_app）部分，以了解如何使用此应用程序控制同步参数。
+
+默认情况下，SDK仅下载TrackedEntityInstances和Events
+位于用户捕获范围内，但也可以
+在搜索范围内下载TrackedEntityInstances。
+
+跟踪实体模块包含
+`TrackedEntityInstanceDownloader`。下载器跟随构建器
+模式，允许下载跟踪的实体实例过滤
+**不同的参数**以及定义一些**限制**。相同
+可以在事件的事件模块中找到行为。
+
+下载程序会跟踪最新的成功下载，以避免
+下载未修改的数据。它尽力使用分页
+策略：如果页面无法下载或持久保存，则
+跳过，它将继续下一页。
+
+这是如何使用它的一个例子。
+
+```java
+d2.trackedEntityModule().trackedEntityInstanceDownloader()
+    .[filters]
+    .[limits]
+    .download()
+```
+
+```java
+d2.eventModule().eventDownloader()
+    .[filters]
+    .[limits]
+    .download()
+```
+
+当前，可以指定以下过滤器：
+
+- `byProgramUid（）`。按程序uid过滤并下载未同步的
+  程序中的对象。
+- `byUid（）`。按跟踪的实体实例uid过滤并下载一个
+  唯一对象。该过滤器可用于下载跟踪的实体
+  搜索范围内找到的实例。 （仅适用于跟踪的实体
+  实例）。
+
+下载器还允许限制下载对象的数量。
+这些限制也可以相互组合。
+
+- `limit（）`。限制要下载的最大对象数。
+- `limitByProgram()`。采取既定的限制并将其应用到每个
+  程序。将下载的对象数将是一个
+  通过将设置的限制乘以用户程序的数量获得。
+- `limitByOrgunit()`。采取既定的限制并将其应用于每个
+  组织单位。将要下载的对象数量
+  是通过将设置的限制乘以用户数量而获得的
+  组织单位。
+
+下一个代码段显示了一个示例
+TrackedEntityInstanceDownloader的用法。
+
+```java
+d2.trackedEntityModule().trackedEntityInstanceDownloader()
+    .byProgramUid("program-uid")
+    .limitByOrgunit(true)
+    .limitByProgram(true)
+    .limit(50)
+    .download()
+```
+
+此外，如果您希望将与`Image`数据值关联的图像下载到设备中，则必须下载它们。有关更多详细信息，请参见[*使用FileResources处理*]（＃dealing-with-fileresources）部分。
+
+### 追踪器数据搜索
+
+DHIS2具有按相关条件过滤TrackedEntityInstances的功能
+属性，例如属性，组织单位，程序或注册
+日期。 SDK提供`TrackedEntityInstanceQueryCollectionRepository`
+使用允许下载跟踪实体的方法
+搜索范围内的实例。可以在跟踪的实体实例模块中找到它。
+
+跟踪的实体实例查询是一个强大的工具，它遵循
+构建器模式，并允许下载跟踪的实体实例
+通过**不同参数**进行过滤。
+
+```java
+d2.trackedEntityModule().trackedEntityInstanceQuery()
+    .[repository mode]
+    .[filters]
+    .get()
+```
+
+检索 TEI 的来源由 **存储库模式** 定义。
+这些是可用的不同存储库模式：
+
+- `onlineOnly（）`。仅来自服务器的TrackedEntityInstances是
+  返回列表中。使用此模式需要Internet连接。
+- `offlineOnly（）`。仅来自本地的TrackedEntityInstances
+  列表中返回数据库。
+- `onlineFirst()`。来自服务器的 TrackedEntityInstances 是
+  返回第一名。在线不再有结果时，
+  继续本地数据库中的TrackedEntityInstances。互联网
+  使用此模式需要连接。
+- `offlineFirst()`。来自本地数据库的 TrackedEntityInstances
+  返回第一位。一旦没有其他结果，它将继续
+  来自服务器的TrackedEntityInstances。这种方法可能
+  加快初始负载。需要互联网连接才能使用此功能
+  模式。
+
+该存储库遵循与其他存储库相同的语法。
+此外，存储库提供了不同的策略来获取数据：
+
+- `byAttribute()`。此方法向查询添加*属性*过滤器。
+  如果多次调用此方法，则条件将附加AND
+  连接器。例如：
+
+  ```java
+  d2.trackedEntityModule().trackedEntityInstanceQuery()
+      .byAttribute("uid1").eq("value1")
+      .byAttribute("uid2").eq("value2")
+      .get()
+  ```
+
+  这意味着该实例必须有属性 `uid1` ，其值为
+  `value1` ** AND **属性`uid2`具有值`value2`。
+
+- `byFilter（）`。此方法向查询添加* filter *。如果这
+  方法被多次调用，条件附加一个AND
+  连接器。例如：
+
+  ```java
+  d2.trackedEntityModule().trackedEntityInstanceQuery()
+      .byFilter("uid1").eq("value1")
+      .byFilter("uid2").eq("value2")
+      .get()
+  ```
+
+  这意味着该实例必须有属性 `uid1` ，其值为
+  `value1` ** AND **属性`uid2`具有值`value2`。
+
+- `byQuery（）`。搜索具有** any **属性的跟踪实体实例
+  匹配查询。
+- `byProgram（）`。按注册程序过滤。只能有一个程序
+  指定。
+- `byOrgUnits（）`。按跟踪的实体实例组织单位过滤。
+  可以指定多个组织单位。
+- `byOrgUnitMode（）`。定义组织单位模式。可能的
+  模式是下一个：
+  - **已选择**。仅指定单位。
+  - **儿童**。指定单位的直系子女，包括
+    指定单位。
+  - **后裔**。指定单位的子层次结构中的所有单位，
+    包括指定单位。
+  - **无障碍**。用户可访问的所有组织单位
+    （搜索范围）。
+  - **所有**。系统中的所有单位。需要权限。
+- `byProgramStartDate()`。定义注册开始日期。它只是
+  如果已指定程序，则适用。
+- `byProgramEndDate（）`。定义注册结束日期。只适用
+  如果已指定程序。
+- `byTrackedEntityType()`。按 TrackedEntityType 过滤。只有一种类型
+  可以指定。
+- `byInincludeDeleted()`。是否包含已删除的跟踪实体
+  实例。目前，此过滤器仅适用于**离线**
+  实例。
+- `byStates（）`。按同步状态过滤。使用此滤镜力
+  **仅离线**模式。
+
+例：
+
+```java
+d2.trackedEntityModule().trackedEntityInstanceQuery()
+                .byOrgUnits().eq("orgunitUid")
+                .byOrgUnitMode().eq(OrganisationUnitMode.DESCENDANTS)
+                .byProgram().eq("programUid")
+                .byAttribute("attributeUid").like("value")
+                .offlineFirst()
+```
+
+> **Important**
+>
+> TrackedEntityInstances retrieved using this repository are not persisted in the database. It is possible
+to fully download them using the `byUid()` filter of the `TrackedEntityInstanceDownloader` within the tracked entity instance module.
+
+[//]: # (Include glass protected download)
+
+### 追踪器数据写入
+
+一般来说，管理数据创建/编辑/删除有两种不同的情况：对象可识别（即具有 `uid` 属性）和对象不可识别。
+
+**可识别对象**（TrackedEntityInstance、Enrollment、Event）。这些存储库有一个 `uid()` 方法，可让你访问单个对象的编辑方法。如果对象还不存在，则需要先创建它。创建/编辑对象的典型工作流程如下
+
+- 使用 `CreateProjection` 类在资源库中添加一个新实例。
+- 保存此方法返回的uid。
+- 使用带有前一个 uid 的 `uid()` 方法来访问版本方法。
+
+在代码中，它看起来像：
+
+```java
+String eventUid = d2.eventModule().events().add(
+    EventCreateProjection.create("enrollment", "program", "programStage", "orgUnit", "attCombo"));
+
+d2.eventModule().events().uid(eventUid).setStatus(COMPLETED);
+```
+
+**不可识别对象**（TrackedEntityAttributeValue、TrackedEntityDataValue）。这些资源库有一个 `value()` 方法，可让你访问单个对象的编辑方法。该方法接受的参数是能明确标识值的参数。
+
+例如，编写TrackedEntityDataValue就像：
+
+```java
+d2.trackedEntityModule().trackedEntityDataValues().value(eventUid, dataElementid).set(“5”);
+```
+
+Data values of type `Image` involve an additional step to create/update/read the associated file resource. More details in the [*Dealing with FileResources*](#dealing-with-fileresources) section below.
+
+### 追踪器数据上传
+
+TrackedEntityInstance和事件存储库具有`upload（）`方法来分别上传Tracker数据和Event数据（无需注册）。如果通过过滤方法缩小了存储库范围，则将仅上载经过过滤的对象。
+
+```java
+d2.( trackedEntityModule() | eventModule() )
+    .[ filters ]
+    .upload();
+```
+
+Data whose state is `ERROR` or `WARNING` cannot be uploaded. It is required to solve the conflicts before attempting a new upload: this means to do a modification in the problematic data, which forces their state back to `TO_UPDATE`.
+
+#### 追踪器冲突
+
+解析服务器响应，以确保数据已正确上传到服务器。如果服务器响应包含导入冲突，则这些冲突存储在数据库中，因此应用程序可以检查它们并采取措施解决它们。
+
+```java
+d2.importModule().trackerImportConflicts()
+```
+
+成功上传对象后，与TrackedEntityInstance，注册或事件相关联的冲突会自动消除。
+
+SDK尝试通过解析服务器响应来识别冲突dataElement或属性。如果是这样，它还会在发生冲突时存储元素的值，以便应用程序可以在尚未确定值的情况下突出显示表单中的元素。
+
+### 跟踪器数据：保留值
+
+配置为**唯一**和**自动生成**的跟踪实体属性由服务器按照用户定义的模式生成。这些值只能由服务器生成，这意味着我们需要提前保留它们，以便离线操作时使用它们。
+
+该应用负责离线之前保留生成的值。这可以通过以下方式触发：
+
+```java
+// Reserve values for all the unique and automatically generated trackedEntityAttributes.
+d2.trackedEntityModule().reservedValueManager().downloadAllReservedValues(numValuesToFillUp)
+
+// Reserve values for a particular trackedEntityAttribute.
+d2.trackedEntityModule().reservedValueManager().downloadReservedValues("attributeUid", numValuesToFillUp)
+```
+
+根据应用程序预期脱机的时间长短，它可以决定要保留的值的数量。如果属性模式取决于组织单位代码，则SDK将为所有相关orgunits保留值。有关Javadoc中逻辑的更多详细信息。
+
+保留值可以通过以下方式获得：
+
+```java
+d2.trackedEntityModule().reservedValueManager().getValue("attributeUid", "orgunitUid")
+```
+
+### 跟踪器数据：关系
+
+目前，SDK仅支持从TEI到TEI的关系。他们使用关系模块访问。
+
+查询与TEI相关的关系。
+
+```java
+d2.relationshipModule().relationships().getByItem(
+    RelationshipHelper.teiItem("trackedEntityInstanceUid")
+)
+```
+
+在同一模块中，您可以使用以下方法创建新的关系：
+
+```java
+Relationship relationship = RelationshipHelper.teiToTeiRelationship("fromTEIUid", "toTEIUid", "relationshipTypeUid");
+
+d2.relationshipModule().relationships().add(relationship);
+```
+
+If the related trackedEntityInstance does not exist yet and there are attribute values that must be inherited, you can use the following method to inherit attribute values from one TEI to another in the context of a certain program. Only those attribute marked as `inherit` will be inherited.
+
+```java
+d2.trackedEntityModule().trackedEntityInstanceService()
+    .inheritAttributes("fromTeiUid", "toTeiUid", "programUid");
+```
+
+## 汇总数据
+
+ <!--DHIS2-SECTION-ID:aggregated_data-->
+
+### 汇总数据下载
+
+> **重要**
+>
+>请参阅[设置应用程序]（＃settings_app）部分，以了解如何使用此应用程序控制同步参数。
+
+```java
+d2.aggregatedModule().data().download()
+```
+
+默认情况下，SDK 下载**聚合数据值**、**数据集
+完整的注册值**和**批准**对应于：
+
+- **数据集**：所有可用的数据集（用户至少已读取的那些）
+  数据访问）。
+- ** OrganisationUnits **：捕获范围。
+- **期间**：所有可用期间，至少意味着：
+  - 天数：过去60天。
+  - 周：过去13周（包括开始日期的变体）。
+  - 双周刊：最近13个双周刊。
+  - 每月：过去12个月。
+  - 双月刊：最近6个双月。
+  - 宿舍：最近5个季度。
+  - 六个月一次：最近5个六个月（从一月和四月开始）。
+  - 每年：最近5年（包括财务年度变体）。
+
+  此外，如果有任何数据集允许在**未来期限**内输入数据，
+  SDK会下载这些开放时间段的数据并进行存储。
+
+Sdk还会跟踪最新的成功下载，以便
+避免下载未修改的服务器数据。
+
+在下载**数据批准**中，工作流和属性选项
+除了
+组织单位和时期。数据的不同可能状态
+批准是：
+
+- `UNAPPROVABLE`. Data approval does not apply to this selection. (Data
+  既不是*已批准*也不是*未批准*）。
+- `UNAPPROVED_WAITING`。可以批准此选择的数据，但是
+  在等待下级批准之前
+  已批准。
+- `UNAPPROVED_ELSEWHERE`。数据未获批准，正在等待
+  在其他地方获得批准（此处无法批准）。
+- `UNAPPROVED_READY`。数据未获批准，随时可以批准
+  对于此选择。
+- `UNAPPROVED_ABOVE`。上面的数据未获批准。
+- `已批准_此处`。数据已获批准，并在此处获得批准（因此可以是
+  此处未批准）。
+- `APPROVED_ELSEWHERE`. Data is approved, but was not approved here (so
+  不能在这里未经批准）。
+- `已批准_以上`。数据已获得上述批准。
+- `ACCEPTED_HERE`。数据在这里被批准和接受（所以可能是
+  此处未批准）。
+- `ACCEPTED_ELSEWHERE`。数据已被批准和接受，但在其他地方。
+
+数据批准仅针对大于2.29的版本下载。
+
+### 汇总数据写入
+
+#### 期间
+
+为了写入数据值或数据集完整的注册，必须提供一个期间ID。期间存储在数据库的表中，并且
+提供的期间ID必须已经存在于该表中，否则，将引发外键错误。为了避免这种情况，`PeriodHelper`是
+暴露在`PeriodModule`内部。在添加与数据集相关的聚合数据之前，必须调用以下方法：
+
+```java
+Single<List<Period>> periods = d2.periodModule().periodHelper().getPeriodsForDataSet("dataSetUid");
+```
+
+这将确保：
+1. 该应用程序将选择给定的时段之一，以防止出现格式错误或错误的时段。
+2. The app will only be able to pick the future periods defined by the field `DataSet.openFuturePeriods`.
+3. 该应用程序将只能选择基于“汇总数据下载”部分中声明的限制定义的过去时间段。
+
+#### 资料值
+
+DataValueCollectionRepository 有一个 `value()` 方法，用于访问版本方法。该方法接受的参数是能明确标识值的参数。
+
+```java
+DataValueObjectRepository valueRepository = d2.dataValueModule().dataValues()
+    .value("periodId", "orgunitId", "dataElementId", "categoryOptionComboId", "attributeOptionComboId");
+
+valueRepository.set("value")
+```
+
+#### 数据集完成注册
+
+SDK在数据集模块内提供了一个收集存储库，用于
+数据集完整注册。该存储库包含要添加的方法
+新补全并将其删除。
+
+要添加新的数据集，可以使用`add（）`完成注册。
+方法：
+
+```java
+d2.dataSetModule().dataSetCompleteRegistrations()
+    .add(dataSetCompleteRegistration);
+```
+
+In order to remove them from the database, the repository has a `value()`
+method that gives access to deletion methods (`delete()` and
+`deleteIfExist()`). The parameters accepted by this method are the
+parameters that unambiguously identify the data set complete
+registration.
+
+```java
+d2.dataSetModule().dataSetCompleteRegistrations()
+    .value("periodId", "orgunitId", "dataSetUid","attributeOptionCombo")
+    .delete()
+```
+
+### 汇总数据上传
+
+DataValueCollectionRepository 有一个 `upload()` 方法，用于上传聚合数据值。
+
+```java
+d2.dataValueModule().dataValues().upload();
+```
+
+### 数据集实例
+
+SDK中的DataSetInstance是现有聚合数据的便捷表示。 DataSetInstance表示DataSet-Period-Orgunit-AttributeOptionCombo的唯一组合，并包含一些额外信息，例如同步状态，值计数或某些属性的displayName。
+
+```java
+d2.dataSetModule().dataSetInstances()
+    .[ filters ]
+    .get()
+
+// For example
+d2.dataSetModule().dataSetInstances()
+    .byDataSetUid().eq("datasetUid")
+    .byOrganisationUnitUid().eq("orgunitUid")
+    .byPeriod().in("201901", "201902")
+    .get();
+```
+
+If you only need a high level overview of the aggregated data status, you can use the repository `DataSetInstanceSummary`. It accepts the same filters and returns a count of `DataSetInstance` for each combination.
+
+## 处理FileResources
+
+ <!--DHIS2-SECTION-ID:file_resources-->
+
+The SDK offers a module (the `FileResourceModule`) and two helpers (the `FileResourceDirectoryHelper` and `FileResizerHelper`) that allow to work with files.
+
+### 文件资源模块
+
+该模块包含下载与下载的数据关联的文件资源和数据库的文件资源收集存储库的方法。
+
+- **文件资源下载**。
+``download（）''方法将搜索跟踪的实体属性值和跟踪的实体数据值，这些对象的跟踪实体属性类型和数据元素类型均为图像类型，并且其文件资源先前未下载过，该方法将下载关联的文件资源。
+
+  ```java
+  d2.fileResourceModule().download();
+  ```
+
+  下载文件后，您可以获得通过存储库下载的不同文件资源。
+
+- **文件资源收集库**。
+通过此存储库，可以请求文件，保存新文件并将其上传到服务器。
+
+  - **得到**。它的行为与任何其他Sdk存储库相似。如果需要，它允许通过应用不同的过滤器来获取集合。
+
+    ```java
+    d2.fileResourceModule().fileResources()
+        .[ filters ]
+        .get()
+    ```
+
+  - **添加**。要保存文件，必须使用版本库的 `add()` 方法，通过提供一个 `File` 类型的对象来添加文件。`add()` 方法将返回添加文件时生成的 uid。该 uid 应用于更新与文件资源相关联的跟踪实体属性值或跟踪实体数据值。
+
+    ```java
+    d2.fileResourceModule().fileResources()
+        .add(file); // Single<String> The fileResource uid
+    ```
+
+  - **上传**。调用`upload（）`方法将触发一系列连续的调用，其中所有非同步文件都将被发送到服务器。每次上传后，将处理服务器响应。服务器将为文件资源提供一个新的uid，而sdk将自动重命名文件并更新`FileResource`对象以及与其关联的跟踪实体属性值或跟踪实体数据值。
+
+    ```java
+    d2.fileResourceModule().fileResources()
+        .upload()
+    ```
+
+### 文件大小调整器帮助器
+
+Sdk提供了一个帮助调整图像文件大小的助手（`FileResizerHelper`）。该帮助器包含一个`resizeFile（）`方法，该方法接受要缩小的文件以及缩小尺寸。
+
+可能的尺寸在下表中。
+
+| 小 | 中 | 大  |
+|-------|--------|--------|
+| 256像素 | 512像素  | 1024像素 |
+
+助手将获取文件，测量图像的高度和宽度，确定两侧的哪一个较大，并将最大的一侧减小到给定的尺寸，另一侧按比例缩放。 **图像缩放将始终保持比例**。
+
+如果最后一张图像小于您要调整尺寸的尺寸，则将返回相同文件而无需修改。
+
+`resizeFile()` 方法将返回一个新文件，该文件位于要调整大小的文件的同一父目录中，名称为 `resized-DIMENSION-` + 未调整大小的文件名。
+
+### 文件资源目录助手
+
+`FileResourceDirectoryHelper` 帮助器类提供了两种方法。
+
+- `getFileResourceDirectory()`. This method returns a `File` object whose path points to the `sdk_resources` directory where the Sdk will save the files associated with the file resources.
+
+- `getFileCacheResourceDirectory()`. This method returns a `File` object whose path points to the `sdk_cache_resources` directory. This should be the place where volatile files are stored, such as camera photos or images to be resized. Since the directory is contained in the cache directory, Android may auto-delete the files in the cache directory once the system is about to run out of memory. Third party applications can also delete files from the cache directory. Even the user can manually clear the cache from Settings. However, the fact that the cache can be cleared in the methods explained above should not mean that the cache will automatically get cleared; therefore, the cache will need to be tidied up from time to time proactively.
+
+

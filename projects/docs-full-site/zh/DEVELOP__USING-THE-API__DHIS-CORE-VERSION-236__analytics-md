@@ -1,0 +1,3240 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.36/src/developer/web-api/analytics.md"
+revision_date: "2021-06-14"
+tags:
+    - Develop
+    - DHIS 核心版本 2.36
+---
+
+# 分析工具 { #analytics }
+
+## 分析工具 { #webapi_analytics }
+
+要访问 DHIS2 中的分析聚合数据，您可以使用 _analytics_ 资源。分析资源功能强大，因为它允许您查询和检索沿所有可用数据维度聚合的数据。例如，您可以要求分析资源提供一组数据元素、期间和组织单位的聚合数据值。此外，您还可以根据数据元素和组织单位组集检索任意数量维度组合的聚合数据。
+
+    / api / 33 / analytics
+
+### 请求查询参数 { #webapi_analytics_query_parameters }
+
+分析资源可让您指定一系列查询参数：
+
+<table>
+<caption>查询参数</caption>
+<colgroup>
+<col style="width: 17%" />
+<col style="width: 10%" />
+<col style="width: 45%" />
+<col style="width: 27%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>查询参数</th>
+<th>必填</th>
+<th>说明</th>
+<th>选项（默认为先）</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>尺寸</td>
+<td>是</td>
+<td>要检索的维度和维度项，每个维度和维度项重复。</td>
+<td>任意标注</td>
+</tr>
+<tr class="even">
+<td>过滤</td>
+<td>无</td>
+<td>应用于查询的筛选器和筛选项，每个筛选器和筛选项重复。</td>
+<td>任意维度</td>
+</tr>
+<tr class="odd">
+<td>聚合类型</td>
+<td>无</td>
+<td>聚合过程中使用的聚合类型。</td>
+<td>sum | average | average_sum_org_unit | last | last_average_org_unit | count | stddev | variance | min | max</td>
+</tr>
+<tr class="even">
+<td>测量标准</td>
+<td>无</td>
+<td>数据/度量的过滤器。</td>
+<td>eq | gt | ge | lt | le</td>
+</tr>
+<tr class="odd">
+<td>预聚合测量标准</td>
+<td>无</td>
+<td>数据/度量的过滤器，在执行聚合之前应用。</td>
+<td>eq | gt | ge | lt | le</td>
+</tr>
+<tr>
+<td>开始日期</td>
+<td>无</td>
+<td>日期范围的起始日期。将作为筛选器使用。不能与周期维度或筛选器一起使用。</td>
+<td>日期</td>
+</tr>
+<tr>
+<td>结束日期</td>
+<td>无</td>
+<td>日期范围的结束日期。将作为筛选器使用。不能与周期维度或筛选器一起使用。</td>
+<td>日期</td>
+</tr>
+<tr class="even">
+<td>skipMeta</td>
+<td>无</td>
+<td>排除响应的元数据部分（提高性能）。</td>
+<td>假 | 真</td>
+</tr>
+<tr class="odd">
+<td>跳过数据</td>
+<td>无</td>
+<td>排除响应的数据部分。</td>
+<td>假 | 真</td>
+</tr>
+<tr class="even">
+<td>skipRounding</td>
+<td>无</td>
+<td>跳过数据值的四舍五入，即提供全精度。</td>
+<td>false | true</td>
+</tr>
+<tr class="odd">
+<td>层次结构</td>
+<td>无</td>
+<td>在元数据中包含组织单位祖先的名称和组织单位的层次路径。</td>
+<td>假 | 真</td>
+</tr>
+<tr class="even">
+<td>忽略限制</td>
+<td>无</td>
+<td>忽略响应中最多 50 000 条记录的限制--谨慎使用。</td>
+<td>false | true</td>
+</tr>
+<tr class="odd">
+<td>表格布局</td>
+<td>无</td>
+<td>响应使用纯数据源或表格布局。</td>
+<td>false | true</td>
+</tr>
+<tr class="even">
+<td>隐藏空行</td>
+<td>否</td>
+<td>隐藏响应中的空行，适用于表格布局为 true 时。</td>
+<td>false | true</td>
+</tr>
+<tr class="odd">
+<td>隐藏空列</td>
+<td>否</td>
+<td>隐藏响应中的空列，适用于表格布局为 true 时。</td>
+<td>false | true</td>
+</tr>
+<tr class="even">
+<td>显示层次结构</td>
+<td>不显示</td>
+<td>显示完整的组织单位层次路径和组织单位名称。</td>
+<td>false | true</td>
+</tr>
+<tr class="odd">
+<td>includeNumDen</td>
+<td>无</td>
+<td>在响应中包含用于计算值的分子和分母。</td>
+<td>false | true</td>
+</tr>
+<tr class="even">
+<td>includeMetadataDetails</td>
+<td>不包含</td>
+<td>在原始数据响应中包含元数据详情。</td>
+<td>假 | 真</td>
+</tr>
+<tr class="odd">
+<td>displayProperty</td>
+<td>无</td>
+<td>元数据要显示的属性。</td>
+<td>名称</td>
+</tr>
+<tr class="even">
+<td>outputIdScheme</td>
+<td>无</td>
+<td>查询响应中元数据项使用的标识符方案。可接受标识符、代码或属性。</td>
+<td>uid | uuid | 代码 | 名称 | 属性：&lt;id&gt;</td>
+</tr>
+<tr class="odd">
+<td>outputOrgUnitIdScheme</td>
+<td>无</td>
+<td>查询响应中元数据项使用的标识符方案。该参数覆盖&quot;outputIdScheme&quot; 专门用于机构单位。它接受标识符、代码或属性。</td>
+<td>uuid | 代码 | 名称 | 属性：&lt;id&gt;</td>
+</tr>
+<tr class="even">
+<td>outputDataElementIdScheme</td>
+<td>无</td>
+<td>查询响应中元数据项使用的标识符方案。该参数覆盖&quot;outputIdScheme&quot; 专门用于数据元素。它接受标识符、代码或属性。</td>
+<td>uuid | 代码 | 名称 | 属性：&lt;id&gt;</td>
+</tr>
+<tr class="odd">
+<td>inputIdScheme</td>
+<td>无</td>
+<td>查询请求中元数据项使用的标识符方案，可以是标识符、代码或属性。</td>
+<td>uid | 代码 | 属性：&lt;id&gt;</td>
+</tr>
+<tr class="even">
+<td>批准级别</td>
+<td>无</td>
+<td>包括至少在给定批准级别之前已获批准的数据，指批准级别标识符。</td>
+<td>批准级别标识符</td>
+</tr>
+<tr class="odd">
+<td>相对日期</td>
+<td>无</td>
+<td>用作相对期间基础的日期。</td>
+<td>日期。</td>
+</tr>
+<tr class="even">
+<td>用户单位</td>
+<td>无</td>
+<td>明确定义要使用的用户组织单位，覆盖与当前用户相关的组织单位，多个标识符可用分号分隔。</td>
+<td>组织单位标识符。</td>
+</tr>
+<tr class="odd">
+<td>列</td>
+<td>无</td>
+<td>用作表格布局列的维度。</td>
+<td>任意维度（必须是查询维度）</td>
+</tr>
+<tr class="even">
+<td>行数</td>
+<td>无</td>
+<td>在表格布局中用作行的维度。</td>
+<td>任意维度（必须是查询维度）</td>
+</tr>
+<tr class="odd">
+<td>顺序</td>
+<td>无</td>
+<td>根据值指定行的排序。</td>
+<td>ASC | DESC</td>
+</tr>
+<tr class="even">
+<td>时间字段</td>
+<td>无</td>
+<td>事件聚合所依据的时间字段。仅适用于事件数据项。可以是预定义选项，也可以是具有基于时间的值类型的属性或数据元素的 ID。</td>
+<td>EVENT_DATE | ENROLLMENT_DATE | INCIDENT_DATE | DUE_DATE | COMPLETED_DATE | CREATED | LAST_UPDATED |&lt;属性 ID&gt; |&lt;数据元素 ID&gt;</td>
+</tr>
+<tr>
+<td>orgUnitField</td>
+<td>数据元素 ID</td>
+<td>事件聚合所依据的组织单位字段。仅适用于事件数据项。可以是具有组织单位值类型的属性或数据元素的 ID。默认选项为省略查询参数。
+<td>&lt;属性 ID&gt; |&lt;数据元素 ID&gt;</td>
+</tr>
+</tbody>
+</table>
+
+_dimension_ 查询参数定义分析查询中应包含哪些维度。可以指定任意数量的维度。应为每个维度重复维度参数以包含在查询响应中。查询响应可能包含指定维度项的所有组合的聚合值。
+
+_filter_ 参数定义应将哪些维度用作分析查询中检索的数据的过滤器。可以指定任意数量的过滤器。对于要在查询中使用的每个过滤器，应重复过滤器参数。过滤器与维度的不同之处在于，过滤器维度不会成为查询响应内容的一部分，并且响应中的聚合值将折叠在过滤器维度上。换句话说，响应中的数据将在过滤器维度上聚合，但过滤器不会作为维度包含在实际响应中。例如，要查询按期间和组织单位筛选的某些数据元素，您可以使用以下 URL：
+
+    / api / 33 / analytics？dimension = dx：fbfJHSPpUQD; cYeuwXTCPkU＆filter = pe：2014Q1; 2014Q2
+      ＆filter = ou：O6uvpzGd5pu; lc3eMKXaEfw
+
+_aggregationType_ 查询参数允许您定义查询应使用哪个聚合运算符。默认情况下，将使用为查询中包含的数据元素定义的聚合运算符。如果您的查询不包含任何数据元素，但包含数据元素组，则将使用第一组中第一个数据元素的聚合运算符。组和数据元素的顺序未定义。此查询参数允许您覆盖默认值并指定特定的聚合运算符。例如，您可以使用以下 URL 将聚合运算符设置为“count”：
+
+    / api / 33 / analytics？dimension = dx：fbfJHSPpUQD＆dimension = pe：2014Q1＆dimension = ou：O6uvpzGd5pu
+      ＆aggregationType = COUNT
+
+_measureCriteria_ 查询参数可让您筛选出要返回的数据记录范围。您可以指示系统仅返回聚合数据值等于、大于、大于或等于、小于或小于或等于某些值的记录。您可以按以下格式指定任意数量的条件，其中 _criteria_ 和 _value_ 应替换为实际值：
+
+    / api / 33 / analytics？measureCriteria =标准：值；标准：值
+
+例如，以下查询将仅返回以下记录
+数据值大于或等于 6500 且小于 33000：
+
+    / api / 33 / analytics？dimension = dx：fbfJHSPpUQD; cYeuwXTCPkU＆dimension = pe：2014
+      ＆dimension = ou：O6uvpzGd5pu; lc3eMKXaEfw＆measureCriteria = GE：6500; LT：33000
+
+与 _measureCriteria_ 类似，_preAggregationMeasureCriteria_ 查询参数允许您仅在执行聚合之前过滤掉数据。例如，以下查询仅聚合原始值在定义的条件范围内的数据：
+
+    / api / 33 / analytics？dimension = dx：fbfJHSPpUQD; cYeuwXTCPkU＆dimension = pe：2014
+      ＆dimension = ou：O6uvpzGd5pu; lc3eMKXaEfw＆preAggregationMeasureCriteria = GE：10; LT：100
+
+_startDate_ 和 _endDate_ 参数可用于指定要聚合的自定义日期范围。指定日期范围时，您不能指定相对或固定时间段作为维度或过滤器。日期范围将过滤分析响应。你可以这样使用它：
+
+    /api/33/analytics.json?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU
+      ＆dimension = ou：ImspTQPwCqd＆startDate = 2018-01-01＆endDate = 2018-06-01
+
+为了让分析资源生成现成表格形式的数据，您可以为 _tableLayout_ 参数提供 true 作为值。分析资源现在将生成表布局中的数据，而不是生成简单的标准化数据源。您可以使用 _columns_ 和 _rows_ 参数以及以分号分隔的维度标识符作为值来指示哪些用作表列和行。列和行维度必须作为查询中的数据维度（而不是筛选器）出现。这样的请求可以如下所示：
+
+    /api/33/analytics.html?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU&dimension=pe:2014Q1;2014Q2
+      ＆dimension = ou：O6uvpzGd5pu＆tableLayout = true＆columns = dx; ou＆rows = pe
+
+_order_ 参数可用于分析资源生成有序数据。数据将按值的升序（或降序）排序。按降序对值进行排序的示例请求是：
+
+    / api / 33 / analytics？dimension = dx：fbfJHSPpUQD＆dimension = pe：LAST_12_MONTHS
+      ＆dimension = ou：O6uvpzGd5pu＆order = DESC
+
+### 尺寸和项目 { #webapi_analytics_dimensions_and_items }
+
+DHIS2 具有具有多个固定和动态数据维度的多维数据模型。固定维度是数据元素、周期（时间）和组织单位维度。您可以通过类别、数据元素组集和组织单位组集动态添加维度。下表显示了 DHIS2 中的可用数据维度。每个数据维度都有一个对应的_维度标识符_，并且每个维度可以有一组_维度项_：
+
+<table>
+<caption>Dimensions and dimension items</caption>
+<colgroup>
+<col style="width: 38%" />
+<col style="width: 12%" />
+<col style="width: 49%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Dimension</th>
+<th>Dimension id</th>
+<th>Dimension items</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Data elements, indicators, data set reporting rate metrics, data element operands, program indicators, program data elements, program attributes, validation rules</td>
+<td>dx</td>
+<td>Data element, indicator, data set reporting rate metrics, data element operand, program indicator, program attribute identifiers, keyword DE_GROUP-&lt;group-id&gt;, IN_GROUP-&lt;group-id&gt;, use &lt;dataelement-id&gt;.&lt;optioncombo-id&gt; for data element operands, &lt;program-id&gt;.&lt;dataelement-id&gt; for program data elements, &lt;program-id&gt;.&lt;attribute-id&gt; for program attributes, &lt;validationrule-id&gt; for validation results.</td>
+</tr>
+<tr class="even">
+<td>Periods (time)</td>
+<td>pe</td>
+<td>ISO periods and relative periods, see &quot;date and period format&quot;</td>
+</tr>
+<tr class="odd">
+<td>Organisation unit hierarchy</td>
+<td>ou</td>
+<td>Organisation unit identifiers, and keywords USER_ORGUNIT, USER_ORGUNIT_CHILDREN, USER_ORGUNIT_GRANDCHILDREN, LEVEL-&lt;level&gt; and OU_GROUP-&lt;group-id&gt;</td>
+</tr>
+<tr class="even">
+<td>Category option combinations</td>
+<td>co</td>
+<td>Category option combo identifiers  (omit to get all items)</td>
+</tr>
+<tr class="odd">
+<td>Attribute option combinations</td>
+<td>ao</td>
+<td>Category option combo identifiers (omit to get all items)</td>
+</tr>
+<tr class="even">
+<td>Categories</td>
+<td>&lt;category id&gt;</td>
+<td>Category option identifiers (omit to get all items)</td>
+</tr>
+<tr class="odd">
+<td>Data element group sets</td>
+<td>&lt;group set id&gt;</td>
+<td>Data element group identifiers (omit to get all items)</td>
+</tr>
+<tr class="even">
+<td>Organisation unit group sets</td>
+<td>&lt;group set id&gt;</td>
+<td>Organisation unit group identifiers (omit to get all items)</td>
+</tr>
+<tr class="odd">
+<td>Category option group sets</td>
+<td>&lt;group set id&gt;</td>
+<td>Category option group identifiers (omit to get all items)</td>
+</tr>
+</tbody>
+</table>
+
+没有必要知道哪些对象用于
+设计分析查询时的各种动态维度。你可以得到
+通过访问 Web API 中的此 URL 获得动态维度的完整列表：
+
+    / api / 33 /尺寸
+
+如果您只想检索给定动态维度的维度项目，您可以
+使用下面的例子。默认情况下禁用分页。可以通过添加启用它
+URL的分页参数`paging=true`。
+
+    / api / 33 / dimensions / J5jldMd8OHv / items？paging = true
+
+分析资源的基本 URL 是`/api/analytics`。请求
+您可以在其上使用查询字符串的特定维度和维度项目
+以下格式，其中 `dim-id` 和 `dim-item` 应替换为实际值：
+
+    / api / 33 / analytics？dimension = dim-id：dim-item; dim-item＆dimension = dim-id：dim-item; dim-item
+
+如上所示，维度标识符后跟一个冒号
+而维度项之间用分号分隔。例如，一个
+查询两个数据元素，两个期间和两个组织单位可以
+使用以下 URL 完成：
+
+    / api / 33 / analytics？dimension = dx：fbfJHSPpUQD; cYeuwXTCPkU
+      ＆dimension = pe：2016Q1; 2016Q2＆dimension = ou：O6uvpzGd5pu; lc3eMKXaEfw
+
+查询按类别选项组合细分的数据，而不是
+您可以在查询中包含类别维度的数据元素总计
+字符串，例如像这样：
+
+    / api / 33 / analytics？dimension = dx：fbfJHSPpUQD; cYeuwXTCPkU
+      ＆dimension = co＆dimension = pe：201601＆dimension = ou：O6uvpzGd5pu; lc3eMKXaEfw
+
+选择数据元素时，您还可以选择一个数据元素中的所有数据元素。
+使用 DE_GROUP- <id> 语法分组为项目：
+
+    / api / 33 / analytics？dimension = dx：DE_GROUP-h9cuJOkOwY2
+      ＆dimension = pe：201601＆dimension = ou：O6uvpzGd5pu
+
+选择数据集报告率时，语法包含数据
+设置标识符后跟报告率指标：
+
+    /api/33/analytics?dimension=dx:BfMAe6Itzgt.REPORTING_RATE;BfMAe6Itzgt.ACTUAL_REPORTS
+      ＆dimension = pe：201601＆dimension = ou：O6uvpzGd5pu
+
+要查询程序数据元素（跟踪器域类型），您可以通过使用 <program-id> 为每个数据元素指定程序来获取这些数据元素。<dataelement-id> 语法：
+
+    /api/33/analytics.json?dimension=dx:eBAyeGv0exc.qrur9Dvnyt5;eBAyeGv0exc.GieVkTxp4HH
+      ＆dimension = pe：LAST_12_MONTHS＆filter = ou：ImspTQPwCqd
+
+要查询节目属性（跟踪的实体属性），您可以通过使用 <program.id> 为每个属性指定节目来获取这些属性。<attribute-id>句法：
+
+    /api/33/analytics.json?dimension=dx:IpHINAT79UW.a3kGcGDCuk6;IpHINAT79UW.UXz7xuGCEhU
+      ＆dimension = pe：LAST_4_QUARTERS＆dimension = ou：ImspTQPwCqd
+
+要查询可以使用的组织单位组集和数据元素
+以下网址。请注意如何将组集标识符用作
+维度标识符和作为维度项的组：
+
+    / api / 33 / analytics？dimension = Bpx0589u8y0：oRVt7g429ZO; MAs88nJc9nL
+      ＆dimension = pe：2016＆dimension = ou：ImspTQPwCqd
+
+要查询数据元素和类别，您可以使用此 URL。使用
+类别标识符作为维度标识符，类别选项作为
+维度项目：
+
+    / api / 33 / analytics？dimension = dx：s46m5MS0hxu; fClA2Erf6IO＆dimension = pe：2016
+      ＆dimension = YNZyaJHiHYq：btOyqprQ9e8; GEqzEKCHoGA＆filter = ou：ImspTQPwCqd
+
+使用相关期间和组织单位进行查询
+当前用户可以使用这样的 URL：
+
+    / api / 33 / analytics？dimension = dx：fbfJHSPpUQD; cYeuwXTCPkU
+      ＆dimension = pe：LAST_12_MONTHS＆dimension = ou：USER_ORGUNIT
+
+When selecting organisation units for a dimension you can select an
+entire level optionally constrained by any number of boundary
+organisation units with the `LEVEL-<level>` syntax. Boundary refers to a
+top node in a sub-hierarchy, meaning that all organisation units at the
+given level below the given boundary organisation unit in the hierarchy
+will be included in the response, and is provided as regular organisation unit 
+dimension items. The level value can either be a numerical level or refer to the identifier
+of the organisation unit level entity. A simple query for all org units at level three:
+
+    / api / 33 / analytics？dimension = dx：fbfJHSPpUQD＆dimension = pe：2016＆dimension = ou：LEVEL-3
+
+具有两个边界组织单位的三级和四级查询可以是
+指定如下：
+
+    / api / 33 / analytics？dimension = dx：fbfJHSPpUQD＆dimension = pe：2016
+      ＆dimension = ou：LEVEL-3; LEVEL-4; O6uvpzGd5pu; lc3eMKXaEf
+
+选择组织单位时也可以选择所有组织
+组织单位组中的单位作为维度项目包括在内
+使用 OU_GROUP-<id> 语法。组内的组织单位
+可以选择受任意数量的边界组织约束
+单位。级别和组项目都可以重复任意数量
+次：
+
+    / api / 33 / analytics？dimension = dx：fbfJHSPpUQD＆dimension = pe：2016
+      ＆dimension = ou：OU_GROUP-w0gFTTmsUcF; OU_GROUP-EYbopBOJWsW; O6uvpzGd5pu; lc3eMKXaEf
+
+您可以将标识符方案用于元数据部分
+具有 outputIdScheme 属性的分析响应，如下所示。你可以
+使用 ID、代码和属性作为标识符方案：
+
+    / api / 33 / analytics？dimension = dx：fbfJHSPpUQD; cYeuwXTCPkU
+      ＆dimension = pe：2017Q1; 2017Q2＆dimension = ou：O6uvpzGd5pu＆outputIdScheme = CODE
+
+列出了使用分析资源时需要注意的一些事项
+以下。
+
+-   数据元素、指标、数据集报告率、计划数据元素和计划指标是通用数据维度的一部分，标识为“dx”。这意味着您可以在查询中将任何数据元素、指标和数据集标识符与“dx”维度标识符一起使用。
+
+-   对于类别、数据元素组集和组织单位组集维度，如果不指定维度项，则查询时将使用所有维度项。
+
+-   对于周期维度，维度项是 ISO 周期标识符和/或相对周期。有关期间格式和可用的相对期间，请参阅上面的“日期和期间格式”部分。
+
+-   对于组织单位维度，您可以分别使用密钥`USER_ORGUNIT`或`USER_ORGUNIT_CHILDREN`作为项目，将项目指定为与当前针对请求进行身份验证的用户关联的组织单位或组织单位的子单位。您还可以直接指定组织单位标识符，或两者的组合。
+
+-   对于组织单位维度，您可以指定用于请求的组织层次级别和边界单位，格式为`LEVEL-<level> - <boundary-id>`；例如，`LEVEL-3-ImspTQPwCqd`意味着层次结构中第 3 层给定边界单元之下的所有组织单元。
+
+-   对于组织单位维度，维度项目是组织单位及其子层次结构 - 将为层次结构中给定组织单位下方的所有组织单位聚合数据。
+
+-   您不能为类别选项组合维度指定维度项目。相反，响应将包含链接到数据值的项目。
+
+### dx尺寸 { #webapi_analytics_dx_dimension }
+
+`dx` 维度是一个特殊的维度，它可以包含所有的
+以下数据类型。
+
+<table>
+<caption>Data dx dimension types</caption>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 23%" />
+<col style="width: 27%" />
+<col style="width: 23%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Syntax</th>
+<th>Description</th>
+<th>Data source</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Indicator</td>
+<td>&lt;indicator-id&gt;</td>
+<td>Indicator identifier.</td>
+<td>Aggregated data</td>
+</tr>
+<tr class="even">
+<td>Indicator grop</td>
+<td>IN_GROUP-&lt;indicatorgroup-id&gt;</td>
+<td>Keyword followed by an indicator group identifier. Will include all indicators in the group in the response.</td>
+<td>Aggregated data</td>
+</tr>
+<tr class="odd">
+<td>Data element</td>
+<td>&lt;dataelement-id&gt;</td>
+<td>Data element identifier.</td>
+<td>Aggregated data</td>
+</tr>
+<tr class="even">
+<td>Data element group</td>
+<td>DE_GROUP-&lt;dataelementgroup-id&gt;</td>
+<td>Keyword followed by a data element group identifier. Will include all data elements in the group in the response.</td>
+<td>Aggregated data</td>
+</tr>
+<tr class="odd">
+<td>Data element operand</td>
+<td>&lt;dataelement-id&gt;.&lt;categoryoptcombo-id&gt;.&lt;attributeoptcombo-id&gt;</td>
+<td>Data element identifier followed by one or both of category option combination and attribute option combo identifier. Wildcard &quot;*&quot; symbol can be used to indicate any option combination value. The attribute option combination identifier can be completely left out.</td>
+<td>Aggregate data</td>
+</tr>
+<tr class="even">
+<td>Data set</td>
+<td>&lt;dataset-id&gt;.&lt;reporting-rate-metric&gt;</td>
+<td>Data set identifier followed by reporting rate metric. Can be REPORTING_RATE | REPORTING_RATE_ON_TIME | ACTUAL_REPORTS | ACTUAL_REPORTS_ON_TIME | EXPECTED_REPORTS.</td>
+<td>Data set completeness registrations</td>
+</tr>
+<tr class="odd">
+<td>Program data element</td>
+<td>&lt;program-id&gt;.&lt;dataelement-id&gt;</td>
+<td>Program identifier followed by data element identifier. Reads from events within the specified program.</td>
+<td>Events from the given program</td>
+</tr>
+<tr class="even">
+<td>Program indicator</td>
+<td>&lt;programindicator-id&gt;</td>
+<td>Program indicator identifier. Reads from events from within the program associated with the program identifier.</td>
+<td>Events from the program of the program indicator</td>
+</tr>
+<tr class="odd">
+<td>Validation result</td>
+<td>&lt;validationrule-id&gt;</td>
+<td>Validation rule identifier. Will include validation rule violations for the validation rule, requires that validation results are generated and persisted.</td>
+<td>Validation results</td>
+</tr>
+</tbody>
+</table>
+
+Items from all of the various `dx` types can be combined in an analytics
+request. An example looks like this:
+
+    /api/33/analytics.json
+      ？dimension = dx：Uvn6LCg7dVU; BfMAe6Itzgt.REPORTING_RATE; IpHINAT79UW.a3kGcGDCuk6
+      ＆dimension = pe：LAST_12_MONTHS＆filter = ou：ImspTQPwCqd
+
+组语法也可以与任何其他项目一起使用。一个
+示例如下所示：
+
+    /api/33/analytics.json
+      ？dimension = dx：DE_GROUP-qfxEYY9xAl6; IN_GROUP-oehv9EO3vP7; BfMAe6Itzgt.REPORTING_RATE
+      ＆dimension = pe：LAST_12_MONTHS＆filter = ou：ImspTQPwCqd
+
+数据元素操作数可以选择性地指定属性选项
+组合并使用通配符，例如指定所有类别选项
+组合值：
+
+    /api/33/analytics.json
+      ？dimension = dx：Uvn6LCg7dVU。*。j8vBiBqGf6O; Uvn6LCg7dVU.Z4oQs46iTeR
+      ＆dimension = pe：LAST_12_MONTHS＆filter = ou：ImspTQPwCqd
+
+> **提示**
+>
+> 了解如何使用分析 API 的一个好方法是使用 DHIS2 _数据透视表_ 应用程序。您可以使用各种维度和项目来使用数据透视表，然后单击“下载”>“纯数据源”>“JSON”以在 Web 浏览器的地址栏中查看生成的分析 API 调用。
+
+### 回应格式 { #webapi_analytics_response_formats }
+
+包含聚合数据的分析响应可以在
+各种表现形式。像往常一样，您可以表示对某个项目感兴趣
+通过将文件扩展名附加到 URL，通过
+`Accept` HTTP 标头或通过 `format` 查询参数。这
+默认格式为 JSON。可用的格式和内容类型是
+下面列出。
+
+-   json（应用程序/ json）
+
+-   jsonp（应用程序/ javascript）
+
+-   xml（应用程序/ xml）
+
+-   csv（应用程序/ csv）
+
+-   html（text / html）
+
+-   html + css（text / html）
+
+-   xls（application / vnd.ms-excel）
+
+例如，要请求 XML 格式的分析响应，您可以
+使用以下网址：
+
+    /api/33/analytics.xml?dimension=dx:fbfJHSPpUQD
+      ＆dimension = pe：2016＆dimension = ou：O6uvpzGd5pu; lc3eMKXaEfw
+
+必须使用 HTTP _GET_ 方法检索分析响应。这允许直接链接到来自网页以及其他支持 HTTP 的客户端的分析响应。要进行功能测试，我们可以使用 cURL 库。通过对演示数据库执行此命令，您将获得 JSON 格式的分析响应：
+
+```bash
+curl "play.dhis2.org/demo/api/analytics.json?dimension=dx:eTDtyyaSA7f;FbKK4ofIv5R
+  &dimension=pe:2016Q1;2016Q2&filter=ou:ImspTQPwCqd" -u admin:district
+```
+
+JSON响应如下所示：
+
+```json
+{
+    "headers": [
+        {
+            "name": "dx",
+            "column": "Data",
+            "meta": true,
+            "type": "java.lang.String"
+        },
+        {
+            "name": "pe",
+            "column": "Period",
+            "meta": true,
+            "type": "java.lang.String"
+        },
+        {
+            "name": "value",
+            "column": "Value",
+            "meta": false,
+            "type": "java.lang.Double"
+        }
+    ],
+    "height": 4,
+    "metaData": {
+        "pe": ["2016Q1", "2016Q2"],
+        "ou": ["ImspTQPwCqd"],
+        "names": {
+            "2016Q1": "Jan to Mar 2016",
+            "2016Q2": "Apr to Jun 2016",
+            "FbKK4ofIv5R": "Measles Coverage <1 y",
+            "ImspTQPwCqd": "Sierra Leone",
+            "eTDtyyaSA7f": "Fully Immunized Coverage"
+        }
+    },
+    "rows": [
+        ["eTDtyyaSA7f", "2016Q2", "81.1"],
+        ["eTDtyyaSA7f", "2016Q1", "74.7"],
+        ["FbKK4ofIv5R", "2016Q2", "88.9"],
+        ["FbKK4ofIv5R", "2016Q1", "84.0"]
+    ],
+    "width": 3
+}
+```
+
+响应表示一个维度数据表。_headers_数组概述了表中包含的列以及列所包含的内容。_column_ 属性显示列的维度标识符，如果列中包含度量值，则显示 "Value"（值）字样。如果列包含维度项，则 _meta_ 属性为 _true_；如果列包含度量（聚合数据值），则 _false_。_name_ 属性与列属性类似，只是在列包含度量值的情况下显示 "值"。_type_ 属性表示列值的 Java 类类型。
+
+_height_ 和 _width_ 属性分别指示响应中包含多少数据列和行。
+
+_metaData period_ 属性包含响应中包含的周期的唯一有序数组。 _metaData ou_ 属性包含响应中包含的组织单位标识符的数组。 _metaData 名称_ 属性包含数据响应中使用的标识符与其代表的对象名称之间的映射。客户端可以使用它用名称替换数据响应中的标识符，以便提供更有意义的数据表视图。
+
+_rows_ 数组包含维度数据表。它包含具有维度项（对象或期间标识符）的列和具有聚合数据值的列。上面的示例响应有一个数据/指标列、一个周期列和一个值列。第一列包含指标标识符，第二列包含 ISO 周期标识符，第三列包含聚合数据值。
+
+### 约束与验证 { #webapi_analytics_constraints }
+
+您可以提供给分析资源的输入参数有几个限制。如果违反任何约束，API 将返回 _409 Conflict_ 响应和类似于以下内容的响应消息：
+
+```json
+{
+    "httpStatus": "Conflict",
+    "httpStatusCode": 409,
+    "status": "ERROR",
+    "message": "Only a single indicator can be specified as filter",
+    "errorCode": "E7108"
+}
+```
+
+`httpStatus` 和 `httpStatusCode` 字段表示 HTTP 状态和
+根据 HTTP 规范的状态代码。 `message` 字段提供了一个
+验证错误的人类可读描述。 `errorCode` 字段
+提供一个机器可读的代码，客户端可以使用它来处理
+验证错误。聚合分析的可能验证错误
+API 如下表所述。
+
+| 错误代码 | 信息 |
+| --- | --- |
+| E7100 | 查询参数不能为空 |
+| E7101 | 必须至少指定一个尺寸 |
+| E7102 | 必须至少指定一个数据维项目或数据元素组集合维项目 |
+| E7103 | 尺寸不能同时指定为尺寸和过滤器 |
+| E7104 | 必须至少指定一个期间作为维度或过滤器，或者开始和日期 |
+| E7105 | 不能同时指定期间，开始日期和结束日期 |
+| E7106 | 开始日期不能晚于结束日期 |
+| E7107 | 无法为报告费率指定开始日期和结束日期 |
+| E7108 | 只能将一个指标指定为过滤器 |
+| E7109 | 只能将单个报告率指定为过滤器 |
+| E7110 | 类别选项组合不能指定为过滤器 |
+| E7111 | 尺寸不能多次指定 |
+| E7112 | 只能与类型的尺寸一起指定报告率 |
+| E7113 | 未指定数据元素时无法指定分配的类别 |
+| E7114 | 指定的类别只能与数据元素一起指定，不能与指标或报告率一起指定 |
+| E7115 | 数据元素必须具有允许聚合的值和聚合类型 |
+| E7116 | 指标表达式不能包含循环引用 |
+| E7117 | 当输出格式为DATA_VALUE_SET时，必须指定数据尺寸“ dx” |
+| E7118 | 当输出格式为DATA_VALUE_SET时，必须指定期间尺寸“ pe” |
+| E7119 | 当输出格式为DATA_VALUE_SET时，必须指定组织单位维度“ ou” |
+| E7120 | 不允许用户查看组织单位 |
+| E7121 | 不允许用户读取对象的数据 |
+| E7122 | 数据批准级别不存在 |
+| E7123 | 当前用户受维度限制，但无权访问任何维度项目 |
+| E7124 | 维度存在于查询中，没有任何有效的维度选项 |
+| E7125 | 维度标识符未引用任何维度 |
+| E7126 | 列必须作为查询中的维存在 |
+| E7127 | 行必须作为查询中的维存在 |
+| E7128 | 查询结果集超出最大限制 |
+| E7129 | 程序已指定但不存在 |
+| E7130 | 已指定程序阶段，但不存在 |
+| E7131 | 查询失败，可能是因为查询超时 |
+
+### 数据值设定格式 { #webapi_analytics_data_value_set_format }
+
+Analytics _dataValueSet_ 资源允许以数据值集格式返回聚合数据。此格式表示原始数据值，而不是沿各个维度聚合的数据。当目标系统包含比目标系统存储的数据更细粒度的数据时，将聚合数据导出为常规数据值对于系统之间的数据交换非常有用。
+
+例如，可以在目标系统中指定一个指标来
+汇总多个数据元素的数据并将此数据导入
+目标系统中的单个数据元素。再举一个例子，一个
+可以汇总在目标的组织单位级别 4 收集的数据
+系统级别 2 并将该数据导入目标系统。
+
+您可以从原始数据值集格式中检索数据
+数据值集资源：
+
+    / api / 33 / analytics / dataValueSet
+
+支持以下资源表示形式：
+
+-   json（应用程序/ json）
+
+-   xml（应用程序/ xml）
+
+使用数据值集格式时，必须正好三个维度
+指定为分析维度，每个维度至少有一个维度项目：
+
+-   资料（dx）
+
+-   周期（pe）
+
+-   组织单位（ou）
+
+任何其他维度都将被忽略。过滤器将被应用
+定期分析请求。请注意，任何数据维度类型都可以
+指定，包括指示符、数据元素、数据元素操作数、
+数据集和计划指标。
+
+汇总特定指标数据的示例请求，
+期间和组织单位并将其作为常规数据值返回
+XML 看起来像这样：
+
+    api / analytics / dataValueSet.xml？dimension = dx：Uvn6LCg7dVU; OdiHJayrsKo
+      ＆dimension = pe：LAST_4_QUARTERS＆dimension = ou：lc3eMKXaEfw; PMa2VCrupOd
+
+聚合数据元素操作数的数据并使用 CODE 的请求
+因为输出标识符方案如下所示。当定义
+输出标识符方案，响应的所有元数据对象部分都是
+做作的：
+
+    api / analytics / dataValueSet.json？dimension = dx：fbfJHSPpUQD.pq2XI5kz2BY; fbfJHSPpUQD.PT59n8BQbqM
+      ＆dimension = pe：LAST_12_MONTHS＆dimension = ou：ImspTQPwCqd＆outputIdScheme = CODE
+
+使用基于属性的标识符方案进行导出时存在风险
+产生重复的数据值。布尔查询参数
+duplicatesOnly 可用于调试目的仅返回
+重复数据值。此响应可用于清理
+重复：
+
+    api / analytics / dataValueSet.xml？dimension = dx：Uvn6LCg7dVU; OdiHJayrsKo
+      ＆dimension = pe：LAST_4_QUARTERS＆dimension = ou：lc3eMKXaEfw＆duplicatesOnly = true
+
+### 原始数据格式 { #webapi_analytics_raw_data }
+
+Analytics _rawData_ 资源允许返回存储在分析数据表中的数据，而不执行任何聚合。这对于想要自行执行聚合和过滤而不必自行对可用数据维度中的数据进行非规范化的客户非常有用。
+
+    / api / analytics / rawData
+
+支持以下资源表示形式：
+
+-   json（应用程序/ json）
+
+-   csv（应用程序/ csv）
+
+该资源遵循常规分析资源的语法。仅支持查询参数的子集。此外，还可以使用 _startDate_ 和 _endDate_ 参数。下表列出了支持的参数。
+
+<table>
+<caption>查询参数</caption>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>查询参数</th>
+<th>必填/注释</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>尺寸</td>
+<td>是</td>
+</tr>
+<tr class="even">
+<td>开始日期</td>
+<td>否 / yyyy-MM-dd</td>
+</tr>
+<tr class="odd">
+<td>结束日期</td>
+<td>否 / yyyy-MM-dd</td>
+</tr>
+<tr class="even">
+<td>skipMeta</td>
+<td>否</td>
+</tr>
+<tr class="odd">
+<td>skipData</td>
+<td>否</td>
+</tr>
+<tr class="even">
+<td>hierarchyMeta</td>
+<td>否</td>
+</tr>
+<tr class="odd">
+<td>显示层次结构</td>
+<td>否</td>
+</tr>
+<tr class="even">
+<td>displayProperty</td>
+<td>否</td>
+</tr>
+<tr class="odd">
+<td>outputIdScheme</td>
+<td>否</td>
+</tr>
+<tr class="even">
+<td>outputOrgUnitIdScheme</td>
+<td>否</td>
+</tr>
+<tr class="odd">
+<td>outputDataElementIdScheme</td>
+<td>否</td>
+</tr>
+<tr class="even">
+<td>inputIdScheme</td>
+<td>否</td>
+</tr>
+<tr class="odd">
+<td>userOrgUnit</td>
+<td>否</td>
+</tr>
+</tbody>
+</table>
+
+_dimension_ 查询参数定义响应中应包含哪些维度（表列）。它可以选择性地受到项目的约束。 _filter_ 查询参数定义应将哪些项目和维度（表列）用作响应的过滤器。
+
+对于组织单位维度，响应将包含数据
+与组织单位和该组织中的所有组织单位相关联
+子层次结构（树中的孩子）。这与
+常规分析资源，其中只有明确选择的
+包括组织单位。
+
+要检索具有特定数据元素、特定时间段的响应，
+两个自定义维度的特定组织单位和所有数据
+可以发出这样的请求：
+
+    /api/analytics/rawData.json?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU;Jtf34kNZhzP
+      ＆dimension = J5jldMd8OHv＆dimension = Bpx0589u8y0
+      ＆dimension = pe：LAST_12_MONTHS
+      ＆dimension = ou：O6uvpzGd5pu; fdc6uOvgoji
+
+_startDate_ 和 _endDate_ 参数允许获取链接到这些日期之间的任何时间段的数据。这避免了在请求中明确定义所有周期的需要：
+
+    /api/analytics/rawData.json?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU;Jtf34kNZhzP
+      ＆dimension = J5jldMd8OHv＆dimension = Bpx0589u8y0
+      ＆startDate = 2015-01-01＆endDate = 2015-12-31
+      ＆dimension = ou：O6uvpzGd5pu; fdc6uOvgoji
+
+_filter_ 参数可用于过滤响应，而不包含该维度作为响应的一部分，这次是 CSV 格式：
+
+    /api/analytics/rawData.csv?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU;Jtf34kNZhzP
+      ＆filter = J5jldMd8OHv：uYxK4wmcPqA; tDZVQ1WtwpA
+      ＆startDate = 2015-01-01＆endDate = 2015-12-31
+      ＆dimension = ou：O6uvpzGd5pu
+
+如果您想要人类可读的数据响应，则 _outputIdScheme_ 参数非常有用，因为它可以设置为 _NAME_，如下所示：
+
+    /api/analytics/rawData.csv?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU
+      ＆filter = J5jldMd8OHv：uYxK4wmcPqA; tDZVQ1WtwpA
+      ＆startDate = 2017-01-01＆endDate = 2017-12-31
+      ＆dimension = ou：O6uvpzGd5pu
+      ＆outputIdScheme = NAME
+
+来自 _rawData_ 资源的响应看起来与常规分析资源相同；不同之处在于，响应包含原始的非聚合数据，适合第三方系统进一步聚合。
+
+### 调试 { #webapi_analytics_debugging }
+
+调试分析请求时，检查聚合分析响应的数据值源可能很有用。 _analytics/debug/sql_资源将提供一条SQL语句，该语句返回datavalue表的相关内容。您可以通过执行内容类型为“text/html”或“text/plain”的 GET 请求来生成此 SQL，如下所示。维度和过滤器语法与常规分析查询相同：
+
+    / api / analytics / debug / sql？dimension = dx：fbfJHSPpUQD; cYeuwXTCPkU
+      ＆filter = pe：2016Q1; 2016Q2＆filter = ou：O6uvpzGd5pu
+
+## 事件分析 { #webapi_event_analytics }
+
+事件分析 API 允许您访问聚合事件数据并查询 DHIS2 中捕获的_事件_。此资源允许您根据程序和可选的程序阶段检索事件，并允许您在任何事件维度上检索和过滤事件。
+
+    / api / 33 / analytics / events
+
+### 尺寸和项目 { #webapi_event_analytics_dimensions_items }
+
+事件维度包括数据元素、属性、组织单位
+和时期。聚合的事件分析资源将返回
+聚合信息，例如计数或平均值。查询分析
+资源将简单地返回匹配一组条件的事件，并且不会
+不执行任何聚合。您可以在表单中指定维度项
+来自选项集的选项和来自数据图例集的图例
+与此相关的元素和属性。事件
+尺寸如下表所示。
+
+<table>
+<caption>Event dimensions</caption>
+<colgroup>
+<col style="width: 27%" />
+<col style="width: 11%" />
+<col style="width: 60%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Dimension</th>
+<th>Dimension id</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Data elements</td>
+<td>&lt;id&gt;</td>
+<td>Data element identifiers</td>
+</tr>
+<tr class="even">
+<td>Attributes</td>
+<td>&lt;id&gt;</td>
+<td>Attribute identifiers</td>
+</tr>
+<tr class="odd">
+<td>Periods</td>
+<td>pe</td>
+<td>ISO periods and relative periods, see &quot;date and period format&quot;</td>
+</tr>
+<tr class="even">
+<td>Organisation units</td>
+<td>ou</td>
+<td>Organisation unit identifiers and keywords USER_ORGUNIT, USER_ORGUNIT_CHILDREN, USER_ORGUNIT_GRANDCHILDREN, LEVEL-&lt;level&gt; and OU_GROUP-&lt;group-id&gt;</td>
+</tr>
+<tr class="odd">
+<td>Organisation unit group sets</td>
+<td>&lt;org unit group set id&gt;</td>
+<td>Organisation unit group set identifiers</td>
+</tr>
+<tr class="even">
+<td>Categories</td>
+<td>&lt;category id&gt;</td>
+<td>Category identifiers (program attribute categories only)</td>
+</tr>
+</tbody>
+</table>
+
+### 请求查询参数 { #webapi_event_analytics_request_query_parameters }
+
+Analytics事件API可让您指定一系列查询参数。
+
+ <table>
+ <caption> 事件查询和聚合分析的查询参数 </caption>
+ <colgroup>
+ <col style="width: 20%" />
+ <col style="width: 11%" />
+ <col style="width: 48%" />
+ <col style="width: 19%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th> 查询参数 </th>
+ <th> 需要 </th>
+ <th> 说明 </th>
+ <th> 选项（默认第一个） </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> 程序 </td>
+ <td> 是 </td>
+ <td> 程序标识符。 </td>
+ <td> 任何程序标识符 </td>
+ </tr>
+ <tr class="even">
+ <td> 阶段 </td>
+ <td> 否 </td>
+ <td> 节目阶段标识符。 </td>
+ <td> 任何程序阶段标识符 </td>
+ </tr>
+ <tr class="odd">
+ <td> 开始日期 </td>
+ <td> 是 </td>
+ <td> 活动的开始日期。 </td>
+ <td> yyyy-MM-dd 格式的日期 </td>
+ </tr>
+ <tr class="even">
+ <td> 结束日期 </td>
+ <td> 是 </td>
+ <td> 活动的结束日期。 </td>
+ <td> yyyy-MM-dd 格式的日期 </td>
+ </tr>
+ <tr class="odd">
+ <td> 尺寸 </td>
+ <td> 是 </td>
+ <td> 维标识符，包括数据元素、属性、计划指标、期间、组织单位和组织单位组集。参数可以重复任意次数。项目过滤器可以应用于 &lt;item-id&gt;:&lt;operator&gt;:&lt;filtera001087z0.过滤器值不区分大小写。 </td>
+ <td> 算子可以EQ | GT |通用电气 | LT |乐 |东北 |喜欢 |在 </td>
+ </tr>
+ <tr class="even">
+ <td> 过滤器 </td>
+ <td> 否 </td>
+ <td> 维度标识符，包括数据元素、属性、期间、组织单位和组织单位组集。参数可以重复任意次数。项目过滤器可以应用于 &lt;item-id&gt;:&lt;operator&gt;:&lt;filtera001087z0.过滤器值不区分大小写。 </td>
+ <td> </td>
+ </tr>
+ <tr class="odd">
+ <td>hierarchyMeta </td>
+ <td> 否 </td>
+ <td> 在元数据中包含组织单元祖先的名称和组织单元的层次结构路径。 </td>
+ <td> 假 |真 </td>
+ </tr>
+ <tr class="even">
+ <td> eventStatus </td>
+ <td> 否 </td>
+ <td> 指定要包括的事件的状态。 </td>
+ <td> ACTIVE |已完成 |日程 |逾期 |跳过 </td>
+ </tr>
+ <tr class="odd">
+ <td> 程序状态 </td>
+ <td> 否 </td>
+ <td> 指定要包括的事件的注册状态。 </td>
+ <td> ACTIVE |已完成 |取消 </td>
+ </tr>
+ <tr class="even">
+ <td> relativePeriodDate </td>
+ <td> 字符串 </td>
+ <td> 否 </td>
+ <td> 日期标识符，例如：&quot;2016-01-01&quot;。覆盖相对时间段 </td> 的开始日期
+ </tr>
+ <tr class="odd">
+ <td> 列 </td>
+ <td> 否 </td>
+ <td> 用作表格布局列的尺寸。 </td>
+ <td> 任意维度（必须是查询维度） </td>
+ </tr>
+ <tr class="even">
+ <td> 行 </td>
+ <td> 否 </td>
+ <td> 用作表格布局行的尺寸。 </td>
+ <td> 任意维度（必须是查询维度） </td>
+ </tr>
+ </tbody>
+ </table>
+
+ <table>
+ <caption> 仅用于事件查询分析的查询参数 </caption>
+ <colgroup>
+ <col style="width: 20%" />
+ <col style="width: 11%" />
+ <col style="width: 48%" />
+ <col style="width: 19%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th> 查询参数 </th>
+ <th> 需要 </th>
+ <th> 说明 </th>
+ <th> 选项 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> ouMode </td>
+ <td> 否 </td>
+ <td> 选择组织单位的方式。默认值为 DESCENDANTS，表示层次结构中的所有子单元。 CHILDREN 是指层次结构中的直系孩子； SELECTED 仅指选定的组织单位。 </td>
+ <td> 后代，儿童，选定 </td>
+ </tr>
+ <tr class="even">
+ <td> 升序 </td>
+ <td> 否 </td>
+ <td> 要升序排序的维度，可以参考事件日期、组织单位名称和代码以及任何项目标识符。 </td>
+ <td> 事件日期 | OUNAME |欧码 |项目标识符 </td>
+ </tr>
+ <tr class="odd">
+ <td> 描述 </td>
+ <td> 否 </td>
+ <td> 降序排列的维度，可以参考事件日期、组织单位名称和代码以及任何项目标识符。 </td>
+ <td> 事件日期 | OUNAME |欧码 |项目标识符 </td>
+ </tr>
+ <tr class="even">
+ <td>坐标只有</td>
+ <td> 否 </td>
+ <td> 是否只返回有坐标的事件。 </td>
+ <td> 假 |真 </td>
+ </tr>
+ <tr class="odd">
+ <td> dataIdScheme </td>
+ <td> 否 </td>
+ <td> 用于数据的 Id 方案，更具体地说是具有选项集或图例集的数据元素和属性，例如在数据响应中返回选项的名称而不是代码，或图例的名称而不是图例 ID。 </td>
+ <td> 名称 |代码 | UID </td>
+ </tr>
+ <tr class="even">
+ <td> 页面 </td>
+ <td> 否 </td>
+ <td> 页码。默认页面为 1。</td>
+ <td> 数字正值 </td>
+ </tr>
+ <tr class="odd">
+ <td> 页面大小 </td>
+ <td> 否 </td>
+ <td> 页面大小。默认大小为每页 50 个项目。 </td>
+ <td> 数字零或正值 </td>
+ </tr>
+ </tbody>
+ </table>
+
+ <table>
+ <caption>仅用于汇总事件分析的查询参数</caption>
+ <colgroup>
+ <col style="width: 20%" />
+ <col style="width: 11%" />
+ <col style="width: 48%" />
+ <col style="width: 19%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>查询参数</th>
+ <th>必需</th>
+ <th>说明</th>
+ <th>选项</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td>值</td>
+ <td>否</td>
+ <td>值维度标识符。可以是数据元素或必须为数值类型的属性。 </td>
+ <td>数据元素或属性标识符</td>
+ </tr>
+ <tr class="even">
+ <td>聚合类型</td>
+ <td>否</td>
+ <td>值维的聚合类型。默认值为AVERAGE。 </td>
+ 总和| <td>平均AVERAGE_SUM_ORG_UNIT |最后| LAST_AVERAGE_ORG_UNIT | COUNT | STDDEV |差异| MIN |最大</td>
+ </tr>
+ <tr class="odd">
+ <td> showHierarchy </td>
+ <td>否</td>
+ <td>显示完整的组织单位层次结构路径以及组织单位名称。 </td>
+ 否| <td>假|真</td>
+ </tr>
+ <tr class="even">
+ <td> displayProperty </td>
+ <td>否</td>
+ <td>为元数据显示的属性。 </td>
+ 名称| <td>简称：</td>
+ </tr>
+ <tr class="odd">
+ <td> sortOrder </td>
+ <td>否</td>
+ <td>按升序或降序对value列上的记录进行排序。 </td>
+ <td> ASC | DESC </td>
+ </tr>
+ <tr class="even">
+ <td>限制</td>
+ <td>否</td>
+ <td>要返回的最大记录数。不能大于10000。</td>
+ <td>数值正值</td>
+ </tr>
+ <tr class="odd">
+ <td>输出类型</td>
+ <td>否</td>
+ <td>指定分析数据的输出类型，可以是事件，注册或跟踪的实体实例。最后两个选项仅适用于注册程序。 </td>
+ 事件| <td>事件|报名| TRACKED_ENTITY_INSTANCE </td>
+ </tr>
+ <tr class="even">
+ <td> crashDataDimensions </td>
+ <td>否</td>
+ <td>将所有数据维度（数据元素和属性）折叠为响应中的单个维度。 </td>
+ 否| <td>假|真</td>
+ </tr>
+ <tr class="odd">
+ <td> skipMeta </td>
+ <td>否</td>
+ <td>排除响应的元数据部分（提高性能）。 </td>
+ 否| <td>假|真</td>
+ </tr>
+ <tr class="even">
+ <td> skipData </td>
+ <td>否</td>
+ <td>排除响应的数据部分。 </td>
+ 否| <td>假|真</td>
+ </tr>
+ <tr class="odd">
+ <td> skipRounding </td>
+ <td>否</td>
+ <td>跳过汇总数据值的舍入。 </td>
+ 否| <td>假|真</td>
+ </tr>
+ <tr class="even">
+ <td>聚合数据</td>
+ <td>否</td>
+ <td>生成数据维度的汇总值（与维度项目相反）。 </td>
+ 否| <td>假|真</td>
+ </tr>
+ <tr class="odd">
+ <td> timeField </td>
+ <td>否</td>
+ <td>事件聚合所基于的时间字段。仅适用于事件数据项。可以是预定义的选项，也可以是具有基于时间的值类型的属性或数据元素的ID。 </td>
+ EVENT_DATE | <td> ENROLLMENT_DATE | INCIDENT_DATE | DUE_DATE | COMPLETED_DATE |属性ID&gt; | &lt; &lt;数据元素ID&gt; </td>
+ </tr>
+ <tr>
+ <td> orgUnitField </td>
+ <td>否</td>
+ <td>事件汇总所基于的组织单位字段。仅适用于事件数据项。可以是具有组织单位值类型的属性或数据元素的ID。默认选项被指定为省略查询参数。
+ 属性ID&gt; | <td> &lt; &lt;数据元素ID&gt; </td>
+ </tr>
+ </tbody>
+ </table>
+
+ <table>
+ <caption>仅用于集群事件分析的查询参数</caption>
+ <colgroup>
+ <col style="width: 20%" />
+ <col style="width: 11%" />
+ <col style="width: 49%" />
+ <col style="width: 19%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>查询参数</th>
+ <th>必需</th>
+ <th>说明</th>
+ <th>选项</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> clusterSize </td>
+ <td>是</td>
+ <td>集群的大小（以米为单位）。 </td>
+ <td>数值正值</td>
+ </tr>
+ <tr class="even">
+ <td>坐标字段</td>
+ <td>否</td>
+ <td>地理空间事件分析的基础字段。默认为事件。可以设置为属性的标识符和值类型坐标的数据元素。 </td>
+ 事件| <td>事件| &lt;attribute-id&gt; | &lt;dataelement-id&gt; </td>
+ </tr>
+ <tr class="odd">
+ <td> bbox </td>
+ <td>是</td>
+ <td>响应中要包括的边界框/事件区域，格式为&quot;min经度，最小纬度，最大经度，最大纬度&quot;。 </td>
+ <td>字符串</td>
+ </tr>
+ <tr class="even">
+ <td> includeClusterPoints </td>
+ <td>否</td>
+ <td>包括有关每个群集的基础点的信息，如果群集代表的点数量非常多，请小心。 </td>
+ 否| <td>假|真</td>
+ </tr>
+ </tbody>
+ </table>
+
+### 事件查询分析 { #webapi_event_query_analytics }
+
+_analytics/events/query_ 资源可让您查询捕获的事件。此资源不执行任何聚合，而是允许您查询和筛选有关事件的信息。
+
+    / api / 33 / analytics / events / query
+
+您可以指定任意数量的维度和任意数量的过滤器
+询问。维度项标识符可以引用任何数据元素，
+人员属性、人员标识符、固定和相对时间段以及
+组织单位。维度可以选择有一个查询运算符和
+一个过滤器。事件查询应采用所描述的格式
+    以下。
+
+    / api / 33 / analytics / events / query / <program-id>？startDate = yyyy-MM-dd＆endDate = yyyy-MM-dd
+      ＆dimension = ou：<ou-id>; <ou-id>＆dimension = <item-id>＆dimension = <item-id>：<operator>：<filter>
+
+例如，要从“住院发病率和
+2016 年 1 月至 10 月期间的死亡率”计划，其中“性别”
+和“年龄”数据元素被包括在内并且“年龄”维度被过滤
+在“18”上，您可以使用以下内容
+    询问：
+
+    / api / 33 / analytics / events / query / eBAyeGv0exc？startDate = 2016-01-01＆endDate = 2016-10-31
+      ＆dimension = ou：O6uvpzGd5pu; fdc6uOvgoji＆dimension = oZg33kd9taw＆dimension = qrur9Dvnyt5：EQ：18
+
+检索“Child”的“Birth”程序阶段的事件
+2016 年 3 月至 12 月期间的“计划”计划，其中“重量”
+数据元素，过滤大于
+    2000年：
+
+    / api / 33 / analytics / events / query / IpHINAT79UW？stage = A03MvHHogjR＆startDate = 2016-03-01
+      ＆endDate = 2016-12-31＆dimension = ou：O6uvpzGd5pu＆dimension = UXz7xuGCEhU：GT：2000
+
+排序可以应用于查询事件的事件日期和
+任何尺寸。按事件日期降序和升序排序
+您可以使用的“年龄”数据元素维度
+    用：
+
+    / api / 33 / analytics / events / query / eBAyeGv0exc？startDate = 2016-01-01＆endDate = 2016-10-31
+      ＆dimension = ou：O6uvpzGd5pu＆dimension = qrur9Dvnyt5＆desc = EVENTDATE＆asc = qrur9Dvnyt5
+
+分页可以通过指定页码和
+页面大小参数。如果指定了页码但未指定页面大小，
+将使用 50 的页面大小。如果指定了页面大小但页面
+number 不是，将使用页码 1。获取第三页
+页面大小为 20 的响应，您可以使用类似的查询
+    这：
+
+    / api / 33 / analytics / events / query / eBAyeGv0exc？startDate = 2016-01-01＆endDate = 2016-10-31
+      ＆dimension = ou：O6uvpzGd5pu＆dimension = qrur9Dvnyt5＆page = 3＆pageSize = 20
+
+#### 筛选 { #filtering }
+
+过滤器可以应用于数据元素，人员属性和人员标识符。过滤是通过以下格式的查询参数值完成的：
+
+    ＆dimension = <item-id>：<operator>：<filter-value>
+
+例如，您可以过滤“ Weight”数据元素以获取大于2000且小于4000的值，如下所示：
+
+    ＆dimension = UXz7xuGCEhU：GT：2000＆dimension = UXz7xuGCEhU：LT：4000
+
+您可以使用以下方法过滤多个特定年龄的“年龄”数据元素
+像这样的 IN 运算符：
+
+    ＆dimension = qrur9Dvnyt5：IN：18; 19; 20
+
+您可以通过重复运算符和过滤器组件为给定项目指定多个过滤器，所有组件均用分号分隔：
+
+    ＆dimension = qrur9Dvnyt5：GT：5：LT：15
+
+下面列出了可用的运算符。
+
+ <table>
+ <caption> 过滤运算符 </caption>
+ <colgroup>
+ <col style="width: 19%" />
+ <col style="width: 80%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th> 操作员 </th>
+ <th> 说明 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> EQ </td>
+ <td> 等于 </td>
+ </tr>
+ <tr class="even">
+ <td> GT </td>
+ <td> 大于 </td>
+ </tr>
+ <tr class="odd">
+ <td> GE </td>
+ <td> 大于等于</td>
+ </tr>
+ <tr class="even">
+ <td> LT </td>
+ <td> 小于</td>
+ </tr>
+ <tr class="odd">
+ <td> LE </td>
+ <td> 小于等于</td>
+ </tr>
+ <tr class="even">
+ <td> NE </td>
+ <td> 不等于 </td>
+ </tr>
+ <tr class="odd">
+ <td> LIKE </td>
+ <td> 喜欢（自由文本匹配） </td>
+ </tr>
+ <tr class="even">
+ <td> 在 </td>
+ <td> 等于由 &quot;;&quot; </td> 分隔的多个值之一
+ </tr>
+ </tbody>
+ </table>
+
+#### 回应格式 { #response-formats }
+
+默认响应表示格式为 JSON。请求必须使用 HTTP _GET_ 方法。支持以下响应格式。
+
+-   json（应用程序/ json）
+
+-   jsonp（应用程序/ javascript）
+
+-   xls（application / vnd.ms-excel）
+
+例如，要获得Excel格式的响应，可以在请求URL中使用文件扩展名，如下所示：
+
+    /api/33/analytics/events/query/eBAyeGv0exc.xls?startDate=2016-01-01&endDate=2016-10-31
+      ＆dimension = ou：O6uvpzGd5pu＆dimension = oZg33kd9taw＆dimension = qrur9Dvnyt5
+
+您可以将hierarchyMeta 查询参数设置为true，以便
+在元部分中包括所有祖先组织单位的名称
+响应：
+
+    / api / 33 / analytics / events / query / eBAyeGv0exc？startDate = 2016-01-01＆endDate = 2016-10-31
+      ＆dimension = ou：YuQRtpLP10I＆dimension = qrur9Dvnyt5：EQ：50＆hierarchyMeta = true
+
+默认响应JSON格式将类似于以下内容：
+
+```json
+{
+    "headers": [
+        {
+            "name": "psi",
+            "column": "Event",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "ps",
+            "column": "Program stage",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "eventdate",
+            "column": "Event date",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "coordinates",
+            "column": "Coordinates",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "ouname",
+            "column": "Organisation unit name",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "oucode",
+            "column": "Organisation unit code",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "ou",
+            "column": "Organisation unit",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "oZg33kd9taw",
+            "column": "Gender",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        },
+        {
+            "name": "qrur9Dvnyt5",
+            "column": "Age",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": false
+        }
+    ],
+    "metaData": {
+        "names": {
+            "qrur9Dvnyt5": "Age",
+            "eBAyeGv0exc": "Inpatient morbidity and mortality",
+            "ImspTQPwCqd": "Sierra Leone",
+            "O6uvpzGd5pu": "Bo",
+            "YuQRtpLP10I": "Badjia",
+            "oZg33kd9taw": "Gender"
+        },
+        "ouHierarchy": {
+            "YuQRtpLP10I": "/ImspTQPwCqd/O6uvpzGd5pu"
+        }
+    },
+    "width": 8,
+    "height": 4,
+    "rows": [
+        [
+            "yx9IDINf82o",
+            "Zj7UnCAulEk",
+            "2016-08-05",
+            "[5.12, 1.23]",
+            "Ngelehun",
+            "OU_559",
+            "YuQRtpLP10I",
+            "Female",
+            "50"
+        ],
+        [
+            "IPNa7AsCyFt",
+            "Zj7UnCAulEk",
+            "2016-06-12",
+            "[5.22, 1.43]",
+            "Ngelehun",
+            "OU_559",
+            "YuQRtpLP10I",
+            "Female",
+            "50"
+        ],
+        [
+            "ZY9JL9dkhD2",
+            "Zj7UnCAulEk",
+            "2016-06-15",
+            "[5.42, 1.33]",
+            "Ngelehun",
+            "OU_559",
+            "YuQRtpLP10I",
+            "Female",
+            "50"
+        ],
+        [
+            "MYvh4WAUdWt",
+            "Zj7UnCAulEk",
+            "2016-06-16",
+            "[5.32, 1.53]",
+            "Ngelehun",
+            "OU_559",
+            "YuQRtpLP10I",
+            "Female",
+            "50"
+        ]
+    ]
+}
+```
+
+响应的_headers_部分描述了查询结果的内容。事件唯一标识符、节目阶段标识符、事件日期、组织单位名称、组织单位代码和组织单位标识符显示为响应中的前六个维度，并且将始终存在。接下来是在请求中指定为维度的数据元素、人员属性和人员标识符，在本例中为“性别”和“年龄”数据元素维度。标题部分在“名称”属性中包含维度项的标识符，在“列”属性中包含可读的维度描述。
+
+_metaData_ 部分，_ou_ 对象包含响应中存在的所有组织单元的标识符，映射到表示层次结构的字符串。该层次结构字符串列出了从根开始的组织单位的祖先（父级）的标识符。 _names_ 对象包含响应中映射到其名称的所有项目的标识符。
+
+_rows_ 部分包含查询生成的事件。每一行恰好代表一个事件。
+
+为了让事件分析资源生成现成表形式的数据，您可以提供 _rows_ 和 _columns_ 参数，其中所请求的维度标识符以分号分隔作为值，以指示将哪些维度用作表列和行。事件分析资源现在将生成表布局中的数据，而不是生成普通的标准化数据源。列和行维度必须作为查询中的数据维度（而不是筛选器）出现。这样的请求可以如下所示：
+
+    /api/33/analytics.html+css?dimension=dx:cYeuwXTCPkU;fbfJHSPpUQD&dimension=pe:WEEKS_THIS_YEAR
+      ＆filter = ou：ImspTQPwCqd＆displayProperty = SHORTNAME＆columns = dx＆rows = pe
+
+### 事件汇总分析 { #webapi_event_aggregate_analytics }
+
+The `/analytics/events/aggregate` resource lets you retrieve _aggregated numbers_ of events captured in DHIS2. This resource lets you retrieve aggregate data based on a program and optionally a program stage, and lets you filter on any event dimension.
+
+    / api / 33 / analytics / events / aggregate
+
+事件聚合资源不返回事件信息
+本身，而不是与请求匹配的事件总数
+询问。事件维度包括数据元素、人员属性、人员
+标识符、期间和组织单位。聚合事件查询
+应该是下面描述的格式。
+
+    / api / 33 / analytics / events / aggregate / <program-id>？startDate = yyyy-MM-dd＆endDate = yyyy-MM-dd
+      ＆dimension = ou：<ou-id>; <ou-id>＆dimension = <item-id>＆dimension = <item-id>：<operator>：<filter>
+
+例如，要从
+1 月至 10 月期间的“住院发病率和死亡率”计划
+2016 年，其中包含“性别”和“年龄”数据元素，“年龄”
+维度项目在“18”上过滤，“性别”项目在过滤上
+“女性”，您可以使用以下查询：
+
+    / api / 33 / analytics / events / aggregate / eBAyeGv0exc？startDate = 2016-01-01＆endDate = 2016-10-31
+      ＆dimension = ou：O6uvpzGd5pu＆dimension = oZg33kd9taw：EQ：Female＆dimension = qrur9Dvnyt5：GT：50
+
+检索固定和相对时期的数据，而不是开始和结束
+日期，在本例中为 2016 年 5 月和过去 12 个月，以及组织
+与当前用户关联的单位，可以使用以下查询：
+
+    / api / 33 / analytics / events / aggregate / eBAyeGv0exc？dimension = pe：201605; LAST_12_MONTHS
+      ＆dimension = ou：USER_ORGUNIT; fdc6uOvgo7ji＆dimension = oZg33kd9taw
+
+为了将“女性”指定为数据的“性别”过滤器
+响应，意思是“性别”不会是响应的一部分，但会
+过滤其中的聚合数字，您可以使用以下语法：
+
+    / api / 33 / analytics / events / aggregate / eBAyeGv0exc？dimension = pe：2016;
+      ＆dimension = ou：O6uvpzGd5pu＆filter = oZg33kd9taw：EQ：Female
+
+要将“Bo”组织单位和期间“2016”指定为过滤器，
+和“放电方式”和“性别”作为维度，其中“性别”是
+在“男性”项目上过滤，您可以使用这样的查询：
+
+    / api / 33 / analytics / events / aggregate / eBAyeGv0exc？filter = pe：2016＆filter = ou：O6uvpzGd5pu
+      ＆dimension = fWIAEtYVEGk＆dimension = oZg33kd9taw：EQ：Male
+
+要为_出院模式_创建“前 3 名报告”，您可以使用限制
+和 sortOrder 查询参数类似：
+
+    / api / 33 / analytics / events / aggregate / eBAyeGv0exc？filter = pe：2016＆filter = ou：O6uvpzGd5pu
+      ＆dimension = fWIAEtYVEGk＆limit = 3＆sortOrder = DESC
+
+要指定具有相应聚合类型的值维度，您
+可以使用 value 和aggregationType 查询参数。指定一个
+值维度将使分析引擎返回聚合值
+对于响应中该维度的值，而不是计数
+事件。
+
+    /api/33/analytics/events/aggregate/eBAyeGv0exc.json?stage=Zj7UnCAulEk
+      &维度=ou:ImspTQPwCqd&维度=pe:LAST_12_MONTHS&维度=fWIAEtYVEGk
+      &value=qrur9Dvnyt5&aggregationType=AVERAGE
+
+基于特定数据元素或属性的事件分析聚合
+对于值类型日期或日期时间，您可以使用 `timeField` 参数：
+
+    /api/33/analytics/events/aggregate/IpHINAT79UW.json?dimension=ou:ImspTQPwCqd
+      &维度=pe:LAST_12_MONTHS&维度=cejWyOfXge6&阶段=A03MvHHogjR
+      &timeField=ENROLLMENT_DATE
+
+基于特定数据元素或属性的事件分析聚合
+对于值类型的组织单元，您可以使用 `orgUnitField` 参数：
+
+    /api/33/analytics/events/aggregate/eBAyeGv0exc.json?dimension=ou:ImspTQPwCqd
+      &dimension=pe:THIS_YEAR&dimension=oZg33kd9taw&stage=Zj7UnCAulEk
+      &orgUnitField=S33cRBsnXPo
+
+#### 范围/图例集 { #ranges-legend-sets }
+
+对于聚合查询，您可以为数值指定范围/图例集
+数据元素和属性维度。目的是将
+数值范围内。举个例子，而不是生成数据
+对于不同年份的“年龄”数据元素，您可以将
+年龄组的信息。为了实现这一点，数据元素或
+属性必须与图例集相关联。格式是
+如下面所描述的：
+
+    ？dimension = <item-id>-<legend-set-id>
+
+一个示例如下所示：
+
+    /api/33/analytics/events/aggregate/eBAyeGv0exc.json?stage=Zj7UnCAulEk
+      ＆dimension = qrur9Dvnyt5-Yf6UHoPkdS6＆dimension = ou：ImspTQPwCqd＆dimension = pe：LAST_MONTH
+
+#### 回应格式 { #response-formats }
+
+默认响应表示格式为 JSON。请求必须使用 HTTP _GET_ 方法。响应将类似于以下内容：
+
+```json
+{
+    "headers": [
+        {
+            "name": "oZg33kd9taw",
+            "column": "Gender",
+            "type": "java.lang.String",
+            "meta": false
+        },
+        {
+            "name": "qrur9Dvnyt5",
+            "column": "Age",
+            "type": "java.lang.String",
+            "meta": false
+        },
+        {
+            "name": "pe",
+            "column": "Period",
+            "type": "java.lang.String",
+            "meta": false
+        },
+        {
+            "name": "ou",
+            "column": "Organisation unit",
+            "type": "java.lang.String",
+            "meta": false
+        },
+        {
+            "name": "value",
+            "column": "Value",
+            "type": "java.lang.String",
+            "meta": false
+        }
+    ],
+    "metaData": {
+        "names": {
+            "eBAyeGv0exc": "Inpatient morbidity and mortality"
+        }
+    },
+    "width": 5,
+    "height": 39,
+    "rows": [
+        ["Female", "95", "201605", "O6uvpzGd5pu", "2"],
+        ["Female", "63", "201605", "O6uvpzGd5pu", "2"],
+        ["Female", "67", "201605", "O6uvpzGd5pu", "1"],
+        ["Female", "71", "201605", "O6uvpzGd5pu", "1"],
+        ["Female", "75", "201605", "O6uvpzGd5pu", "14"],
+        ["Female", "73", "201605", "O6uvpzGd5pu", "5"]
+    ]
+}
+```
+
+请注意，单个响应中返回的行数的最大限制为 10 000。如果查询生成的行数超过最大限制，将返回 _409 Conflict_ 状态代码。
+
+### 事件聚类分析 { #webapi_event_clustering_analytics }
+
+_analytics/events/cluster_ 资源提供集群地理空间事件数据。请求如下所示：
+
+    / api / 33 / analytics / events / cluster / eBAyeGv0exc？startDate = 2016-01-01＆endDate = 2016-10-31
+      ＆dimension = ou：LEVEL-2＆clusterSize = 100000
+      ＆bbox = -13.2682125,7.3721619，-10.4261178,9.904012＆includeClusterPoints = false
+
+集群响应提供基础点的计数，中心
+每个集群的点和范围。如果 `includeClusterPoints` 查询
+参数设置为 true，以逗号分隔的字符串与标识符
+包括基础事件。示例响应如下所示：
+
+```json
+{
+    "headers": [
+        {
+            "name": "count",
+            "column": "Count",
+            "type": "java.lang.Long",
+            "meta": false
+        },
+        {
+            "name": "center",
+            "column": "Center",
+            "type": "java.lang.String",
+            "meta": false
+        },
+        {
+            "name": "extent",
+            "column": "Extent",
+            "type": "java.lang.String",
+            "meta": false
+        },
+        {
+            "name": "points",
+            "column": "Points",
+            "type": "java.lang.String",
+            "meta": false
+        }
+    ],
+    "width": 3,
+    "height": 4,
+    "rows": [
+        [
+            "3",
+            "POINT(-13.15818 8.47567)",
+            "BOX(-13.26821 8.4St7215,-13.08711 8.47807)",
+            ""
+        ],
+        [
+            "9",
+            "POINT(-13.11184 8.66424)",
+            "BOX(-13.24982 8.51961,-13.05816 8.87696)",
+            ""
+        ],
+        [
+            "1",
+            "POINT(-12.46144 7.50597)",
+            "BOX(-12.46144 7.50597,-12.46144 7.50597)",
+            ""
+        ],
+        [
+            "7",
+            "POINT(-12.47964 8.21533)",
+            "BOX(-12.91769 7.66775,-12.21011 8.49713)",
+            ""
+        ]
+    ]
+}
+```
+
+### 事件计数和范围分析 { #webapi_event_count_extent_analytics }
+
+_analytics/events/count_ 资源适用于与几何相关的请求，用于检索特定查询的事件的计数和范围（边界框）。查询语法与 _events/query_ 资源相同。请求如下所示：
+
+    / api / 33 / analytics / events / count / eBAyeGv0exc？startDate = 2016-01-01
+      ＆endDate = 2016-10-31＆dimension = ou：O6uvpzGd5pu
+
+响应将以JSON格式提供计数和范围：
+
+```json
+{
+    "extent": "BOX(-13.2682125910096 7.38679562779441,-10.4261178860988 9.90401290212795)",
+    "count": 59
+}
+```
+
+### 约束与验证 { #webapi_event_analytics_constraints }
+
+您可以提供给事件分析资源的输入参数有几个限制。如果违反任何约束，API 将返回 _409 Conflict_ 响应和类似于以下内容的响应消息：
+
+```json
+{
+    "httpStatus": "Conflict",
+    "httpStatusCode": 409,
+    "status": "ERROR",
+    "message": "At least one organisation unit must be specified",
+    "errorCode": "E7200"
+}
+```
+
+描述了事件分析 API 的可能验证错误
+在下表中。
+
+| 错误代码 | 信息 |
+| --- | --- |
+| E7200 | 必须至少指定一个组织单位 |
+| E7201 | 尺寸不能多次指定 |
+| E7202 | 不能多次指定查询项 |
+| E7203 | 值维也不能指定为项目或项目过滤器 |
+| E7204 | 指定聚合类型时，必须指定值维或聚合数据 |
+| E7205 | 必须指定开始和结束日期或至少一个期间 |
+| E7206 | 开始日期晚于结束日期 |
+| E7207 | 页码必须为正数 |
+| E7208 | 页面大小必须为零或正数 |
+| E7209 | 限制大于最大限制 |
+| E7210 | 时间字段无效 |
+| E7211 | 组织单位字段无效 |
+| E7212 | 群集大小必须为正数 |
+| E7213 | Bbox无效，必须采用以下格式：'min-lng，min-lat，max-lng，max-lat' |
+| E7214 | 当指定bbox或集群大小时，必须指定集群字段 |
+| E7215 | 查询项目不能同时指定图例集和选项集 |
+| E7216 | 在汇总查询中使用时，查询项必须是可汇总的 |
+| E7217 | 不允许用户查看事件分析数据 |
+| E7218 | 未启用空间数据库支持 |
+| E7219 | 数据元素必须是值类型坐标才能用作坐标字段 |
+| E7220 | 属性必须是坐标值类型，才能用作坐标域 |
+| E7221 | 座标栏位无效 |
+| E7222 | 查询项目或过滤器无效 |
+| E7223 | 值不引用数字元素或程序一部分的数据元素或属性 |
+| E7224 | 项目标识符未引用程序的任何数据元素，属性或指标部分 |
+| E7225 | 计划阶段对于注册分析查询中的数据元素维度是必需的 |
+| E7226 | 维度不是有效的查询项目 |
+| E7227 | 不支持关系实体类型 |
+
+## 入学分析 { #webapi_enrollment_analytics }
+
+注册分析 API 允许您访问聚合的事件数据并查询 _enrollments 及其在 DHIS2 中捕获的事件数据_。除了跟踪的实体属性之外，此资源还允许您根据程序阶段和数据元素检索程序的数据。在每个注册中查询特定程序阶段的事件数据时，每个程序阶段的数据元素值将作为来自 api 的响应中的一行返回。如果在可重复的程序阶段查询数据元素，则最新的数据元素值将用于 api 响应中的该数据元素。
+
+### 尺寸和项目 { #webapi_enrollment_analytics_dimensions }
+
+注册维度包括数据元素，属性，组织单位和期间。查询分析资源将仅返回符合一组条件的注册，并且不执行任何汇总。
+
+<table>
+<caption>Enrollment dimensions</caption>
+<colgroup>
+<col style="width: 27%" />
+<col style="width: 11%" />
+<col style="width: 60%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Dimension</th>
+<th>Dimension id</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data elements in program stages</td>
+<td>&lt;program stage id&gt;.&lt;data element id&gt;</td>
+<td>Data element identifiers must include the program stage when querying data for enrollments.
+
+    dimension=edqlbukwRfQ.vANAXwtLwcT
+
+</td>
+</tr>
+<tr>
+<td>Attributes</td>
+<td>&lt;id&gt;</td>
+<td>Attribute identifiers</td>
+</tr>
+<tr>
+<td>Periods</td>
+<td>pe</td>
+<td>ISO periods and relative periods, see &quot;date and period format&quot;</td>
+</tr>
+<tr>
+<td>Organisation units</td>
+<td>ou</td>
+<td>Organisation unit identifiers and keywords USER_ORGUNIT, USER_ORGUNIT_CHILDREN, USER_ORGUNIT_GRANDCHILDREN, LEVEL-&lt;level&gt; and OU_GROUP-&lt;group-id&gt;</td>
+</tr>
+</tbody>
+</table>
+
+### 注册查询分析 { #webapi_enrollment_query_analytics }
+
+_analytics/enrollments/query_ 资源可让您查询捕获的注册。此资源不执行任何聚合，而是允许您查询和筛选有关注册的信息。
+
+    / api / 33 / analytics /招生/查询
+
+您可以在查询中指定任意数量的维度和任意数量的过滤器。维项目标识符可以引用程序阶段，已跟踪实体属性，固定和相对期间以及组织单位中的任何数据元素。维度可以选择具有查询运算符和过滤器。注册查询应采用以下所述的格式。
+
+    / api / 33 / analytics / enrollments / query / <program-id>？startDate = yyyy-MM-dd＆endDate = yyyy-MM-dd
+      ＆dimension = ou：<ou-id>; <ou-id>＆dimension = <item-id>＆dimension = <item-id>：<operator>：<filter>
+
+例如，要从2019年1月起从“产前护理”计划中检索入学申请，该计划从属性中提取“名字”，则在第一个计划阶段包括“慢性病”和“吸烟”数据元素，并且来自以下程序阶段的“血红蛋白值”，并且仅包括具有“疯子病”的女性，您可以使用以下查询：
+
+    /api/33/analytics/enrollments/query/WSGAb5XwJ3Y.json?dimension=ou:ImspTQPwCqd
+      ＆dimension = w75KJ2mc4zz＆dimension = WZbXY0S00lP.de0FEHSIoxh：eq：1＆dimension = w75KJ2mc4zz
+      ＆dimension = WZbXY0S00lP.sWoqcoByYmD＆dimension = edqlbukwRfQ.vANAXwtLwcT
+      ＆startDate = 2019-01-01＆endDate = 2019-01-31
+
+要从上个月（相对于执行查询的时间点）的“产前护理”程序中检索入学登记，其中“慢性病”和“吸烟”数据元素包含在第一程序阶段，而“后续计划阶段的“血红蛋白价值”，仅包括吸烟的血红蛋白少于20岁的女性：
+
+    /api/33/analytics/enrollments/query/WSGAb5XwJ3Y.json?dimension=ou:ImspTQPwCqd
+      ＆dimension = WZbXY0S00lP.de0FEHSIoxh＆dimension = w75KJ2mc4zz
+      ＆dimension = WZbXY0S00lP.sWoqcoByYmD：eq：1＆dimension = edqlbukwRfQ.vANAXwtLwcT：lt：20
+      ＆dimension = pe：LAST_MONTH
+
+可以将排序应用于注册的查询和注册的事件日期：
+
+    /api/33/analytics/enrollments/query/WSGAb5XwJ3Y.xls?dimension=ou:ImspTQPwCqd
+      ＆columns = w75KJ2mc4zz＆dimension = WZbXY0S00lP.sWoqcoByYmD＆dimension = pe：LAST_MONTH
+      ＆stage = WZbXY0S00lP＆pageSize = 10＆page = 1＆asc = ENROLLMENTDATE＆ouMode = DESCENDANTS
+
+通过指定页码和页面大小参数，可以将分页应用于查询。如果指定了页码，但未指定页码，则将使用50页码。如果指定了页面大小，但未指定页面号，则将使用页面号1。要获得页面大小为10的响应的第二页，可以使用如下查询：
+
+    /api/33/analytics/enrollments/query/WSGAb5XwJ3Y.json?dimension=ou:ImspTQPwCqd
+      ＆dimension = WZbXY0S00lP.de0FEHSIoxh＆dimension = w75KJ2mc4zz＆dimension = pe：LAST_MONTH
+      ＆dimension = WZbXY0S00lP.sWoqcoByYmD＆pageSize = 10＆page = 2
+
+#### 筛选 { #filtering }
+
+过滤器可以应用于数据元素，人员属性和人员标识符。过滤是通过以下格式的查询参数值完成的：
+
+    ＆dimension = <item-id>：<operator>：<filter-value>
+
+例如，您可以过滤“ Weight”数据元素以获取大于2000且小于4000的值，如下所示：
+
+    ＆dimension = WZbXY0S00lP.UXz7xuGCEhU：GT：2000＆dimension = WZbXY0S00lP.UXz7xuGCEhU：LT：4000
+
+您可以使用IN运算符过滤多个特定年龄的“年龄”属性，如下所示：
+
+    ＆dimension = qrur9Dvnyt5：IN：18; 19; 20
+
+您可以通过重复运算符和过滤器组件为给定项目指定多个过滤器，所有组件均用分号分隔：
+
+    ＆dimension = qrur9Dvnyt5：GT：5：LT：15
+
+下面列出了可用的运算符。
+
+ <table>
+ <caption> 过滤运算符 </caption>
+ <colgroup>
+ <col style="width: 19%" />
+ <col style="width: 80%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th> 操作员 </th>
+ <th> 说明 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr>
+ <td> EQ </td>
+ <td> 等于 </td>
+ </tr>
+ <tr>
+ <td> GT </td>
+ <td> 大于 </td>
+ </tr>
+ <tr>
+ <td> GE </td>
+ <td> 大于等于</td>
+ </tr>
+ <tr>
+ <td> LT </td>
+ <td> 小于</td>
+ </tr>
+ <tr>
+ <td> LE </td>
+ <td> 小于等于</td>
+ </tr>
+ <tr>
+ <td> NE </td>
+ <td> 不等于 </td>
+ </tr>
+ <tr>
+ <td> LIKE </td>
+ <td> 喜欢（自由文本匹配） </td>
+ </tr>
+ <tr>
+ <td> 在 </td>
+ <td> 等于由 &quot;;&quot; </td> 分隔的多个值之一
+ </tr>
+ </tbody>
+ </table>
+
+### 请求查询参数 { #webapi_enrollment_analytics_query_parameters }
+
+借助Analytics（分析）注册查询API，您可以指定一系列查询参数。
+
+ <table>
+ <caption> 注册查询端点的查询参数 </caption>
+ <colgroup>
+ <col style="width: 20%" />
+ <col style="width: 11%" />
+ <col style="width: 48%" />
+ <col style="width: 19%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th> 查询参数 </th>
+ <th> 需要 </th>
+ <th> 说明 </th>
+ <th> 选项（默认第一个） </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr>
+ <td> 程序 </td>
+ <td> 是 </td>
+ <td> 程序标识符。 </td>
+ <td> 任何程序标识符 </td>
+ </tr>
+ <tr>
+ <td> 开始日期 </td>
+ <td> 否 </td>
+ <td> 注册开始日期。 </td>
+ <td> yyyy-MM-dd 格式的日期 </td>
+ </tr>
+ <tr>
+ <td> 结束日期 </td>
+ <td> 否 </td>
+ <td> 注册的结束日期。 </td>
+ <td> yyyy-MM-dd 格式的日期 </td>
+ </tr>
+ <tr>
+ <td> 尺寸 </td>
+ <td> 是 </td>
+ <td> 维标识符，包括数据元素、属性、计划指标、期间、组织单位和组织单位组集。参数可以重复任意次数。项目过滤器可以应用于 &lt;item-id&gt;:&lt;operator&gt;:&lt;filtera001087z0.过滤器值不区分大小写。 </td>
+ <td> 算子可以EQ | GT |通用电气 | LT |乐 |东北 |喜欢 |在 </td>
+ </tr>
+ <tr>
+ <td> 过滤器 </td>
+ <td> 否 </td>
+ <td> 维度标识符，包括数据元素、属性、期间、组织单位和组织单位组集。参数可以重复任意次数。项目过滤器可以应用于 &lt;item-id&gt;:&lt;operator&gt;:&lt;filtera001087z0.过滤器值不区分大小写。 </td>
+ <td> </td>
+ </tr>
+ <tr>
+ <td> 程序状态 </td>
+ <td> 否 </td>
+ <td> 指定要包括的注册的注册状态。 </td>
+ <td> ACTIVE |已完成 |取消 </td>
+ </tr>
+ <tr>
+ <td> relativePeriodDate </td>
+ <td> 字符串 </td>
+ <td> 否 </td>
+ <td> 日期标识符，例如：&quot;2016-01-01&quot;。覆盖相对时间段 </td> 的开始日期
+ </tr>
+ <tr>
+ <td> ouMode </td>
+ <td> 否 </td>
+ <td> 选择组织单位的方式。默认值为 DESCENDANTS，表示层次结构中的所有子单元。 CHILDREN 是指层次结构中的直系孩子； SELECTED 仅指选定的组织单位。 </td>
+ <td> 后代，儿童，选定 </td>
+ </tr>
+ <tr>
+ <td> 升序 </td>
+ <td> 否 </td>
+ <td> 维度升序排列，可参考入会日期、事件日期、组织单位名称和代码。 </td>
+ <td> 注册日期 |事件日期| OUNAME | OUCODE </td>
+ </tr>
+ <tr>
+ <td> 描述 </td>
+ <td> 否 </td>
+ <td> 降序排列的维度，可参考入会日期、事件日期、组织单位名称和代码。 </td>
+ <td> 注册日期 |事件日期| OUNAME | OUCODE </td>
+ </tr>
+ <td>hierarchyMeta </td>
+ <td> 否 </td>
+ <td> 在元数据中包含组织单元祖先的名称和组织单元的层次结构路径。 </td>
+ <td> 假 |真 </td>
+ </tr>
+ <tr>
+ <td>坐标只有</td>
+ <td> 否 </td>
+ <td> 是否只返回有坐标的注册。 </td>
+ <td> 假 |真 </td>
+ </tr>
+ <tr>
+ <td> 页面 </td>
+ <td> 否 </td>
+ <td> 页码。默认页面为 1。</td>
+ <td> 数字正值 </td>
+ </tr>
+ <tr>
+ <td> 页面大小 </td>
+ <td> 否 </td>
+ <td> 页面大小。默认大小为每页 50 个项目。 </td>
+ <td> 数字零或正值 </td>
+ </tr>
+ </tbody>
+ </table>
+
+#### 回应格式 { #response-formats }
+
+默认响应表示格式为 JSON。请求必须使用 HTTP _GET_ 方法。支持以下响应格式。
+
+-   json（应用程序/ json）
+-   xml（应用程序/ xml）
+-   xls（application / vnd.ms-excel）
+-   csv（应用程序/ csv）
+-   html（text / html）
+-   html + css（text / html）
+
+例如，要获得Excel格式的响应，可以在请求URL中使用文件扩展名，如下所示：
+
+    /api/33/analytics/enrollments/query/WSGAb5XwJ3Y.xls?dimension=ou:ImspTQPwCqd
+      ＆dimension = WZbXY0S00lP.de0FEHSIoxh＆columns = w75KJ2mc4zz
+      ＆dimension = WZbXY0S00lP.sWoqcoByYmD＆dimension = pe：LAST_MONTH＆stage = WZbXY0S00lP
+      ＆pageSize = 10＆page = 1＆asc = ENROLLMENTDATE＆ouMode = DESCENDANTS
+
+默认响应JSON格式将类似于以下内容：
+
+```json
+{
+    "headers": [
+        {
+            "name": "pi",
+            "column": "Enrollment",
+            "valueType": "TEXT",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": true
+        },
+        {
+            "name": "tei",
+            "column": "Tracked entity instance",
+            "valueType": "TEXT",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": true
+        },
+        {
+            "name": "enrollmentdate",
+            "column": "Enrollment date",
+            "valueType": "DATE",
+            "type": "java.util.Date",
+            "hidden": false,
+            "meta": true
+        },
+        {
+            "name": "incidentdate",
+            "column": "Incident date",
+            "valueType": "DATE",
+            "type": "java.util.Date",
+            "hidden": false,
+            "meta": true
+        },
+        {
+            "name": "geometry",
+            "column": "Geometry",
+            "valueType": "TEXT",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": true
+        },
+        {
+            "name": "longitude",
+            "column": "Longitude",
+            "valueType": "NUMBER",
+            "type": "java.lang.Double",
+            "hidden": false,
+            "meta": true
+        },
+        {
+            "name": "latitude",
+            "column": "Latitude",
+            "valueType": "NUMBER",
+            "type": "java.lang.Double",
+            "hidden": false,
+            "meta": true
+        },
+        {
+            "name": "ouname",
+            "column": "Organisation unit name",
+            "valueType": "TEXT",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": true
+        },
+        {
+            "name": "oucode",
+            "column": "Organisation unit code",
+            "valueType": "TEXT",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": true
+        },
+        {
+            "name": "ou",
+            "column": "Organisation unit",
+            "valueType": "TEXT",
+            "type": "java.lang.String",
+            "hidden": false,
+            "meta": true
+        },
+        {
+            "name": "de0FEHSIoxh",
+            "column": "WHOMCH Chronic conditions",
+            "valueType": "BOOLEAN",
+            "type": "java.lang.Boolean",
+            "hidden": false,
+            "meta": true
+        },
+        {
+            "name": "sWoqcoByYmD",
+            "column": "WHOMCH Smoking",
+            "valueType": "BOOLEAN",
+            "type": "java.lang.Boolean",
+            "hidden": false,
+            "meta": true
+        }
+    ],
+    "metaData": {
+        "pager": {
+            "page": 2,
+            "total": 163,
+            "pageSize": 4,
+            "pageCount": 41
+        },
+        "items": {
+            "ImspTQPwCqd": {
+                "name": "Sierra Leone"
+            },
+            "PFDfvmGpsR3": {
+                "name": "Care at birth"
+            },
+            "bbKtnxRZKEP": {
+                "name": "Postpartum care visit"
+            },
+            "ou": {
+                "name": "Organisation unit"
+            },
+            "PUZaKR0Jh2k": {
+                "name": "Previous deliveries"
+            },
+            "edqlbukwRfQ": {
+                "name": "Antenatal care visit"
+            },
+            "WZbXY0S00lP": {
+                "name": "First antenatal care visit"
+            },
+            "sWoqcoByYmD": {
+                "name": "WHOMCH Smoking"
+            },
+            "WSGAb5XwJ3Y": {
+                "name": "WHO RMNCH Tracker"
+            },
+            "de0FEHSIoxh": {
+                "name": "WHOMCH Chronic conditions"
+            }
+        },
+        "dimensions": {
+            "pe": [],
+            "ou": ["ImspTQPwCqd"],
+            "sWoqcoByYmD": [],
+            "de0FEHSIoxh": []
+        }
+    },
+    "width": 12,
+    "rows": [
+        [
+            "A0cP533hIQv",
+            "to8G9jAprnx",
+            "2019-02-02 12:05:00.0",
+            "2019-02-02 12:05:00.0",
+            "",
+            "0.0",
+            "0.0",
+            "Tonkomba MCHP",
+            "OU_193264",
+            "xIMxph4NMP1",
+            "0",
+            "1"
+        ],
+        [
+            "ZqiUn2uXmBi",
+            "SJtv0WzoYki",
+            "2019-02-02 12:05:00.0",
+            "2019-02-02 12:05:00.0",
+            "",
+            "0.0",
+            "0.0",
+            "Mawoma MCHP",
+            "OU_254973",
+            "Srnpwq8jKbp",
+            "0",
+            "0"
+        ],
+        [
+            "lE747mUAtbz",
+            "PGzTv2A1xzn",
+            "2019-02-02 12:05:00.0",
+            "2019-02-02 12:05:00.0",
+            "",
+            "0.0",
+            "0.0",
+            "Kunsho CHP",
+            "OU_193254",
+            "tdhB1JXYBx2",
+            "",
+            "0"
+        ],
+        [
+            "nmcqu9QF8ow",
+            "pav3tGLjYuq",
+            "2019-02-03 12:05:00.0",
+            "2019-02-03 12:05:00.0",
+            "",
+            "0.0",
+            "0.0",
+            "Korbu MCHP",
+            "OU_678893",
+            "m73lWmo5BDG",
+            "",
+            "1"
+        ]
+    ],
+    "height": 4
+}
+```
+
+响应的_headers_部分描述了查询结果的内容。注册唯一标识符、跟踪的实体实例标识符、注册日期、事件日期、几何形状、纬度、经度、组织单位名称和组织单位代码显示为响应中的第一个维度，并将始终存在。接下来是数据元素，并跟踪在请求中指定为维度的实体属性，在本例中为“WHOMCH 慢性病”和“WHOMCH 吸烟”数据元素维度。标题部分在“名称”属性中包含维度项的标识符，在“列”属性中包含可读的维度描述。
+
+_metaData_ 部分，_ou_ 对象包含响应中存在的所有组织单元的标识符，映射到表示层次结构的字符串。该层次结构字符串列出了从根开始的组织单位的祖先（父级）的标识符。 _names_ 对象包含响应中映射到其名称的所有项目的标识符。
+
+_rows_ 部分包含查询生成的登记。每一行代表一个注册。
+
+### 使用计划指标{ #analytics-across-tei-relationships-with-program-indicators }进行TEI关系分析 { #analytics-across-tei-relationships-with-program-indicators }
+
+非汇总注册分析API还支持将程序指示器链接到关系类型，以显示应用于所列出的跟踪实体实例的相关实体的特定程序指示器的计算结果。
+
+![](resources/images/enrollments/enrollments-pi-relationship.jpg)
+
+为了使“程序指示器/关系类型”链接起作用，`/ api / 33 / analytics / enrollments / query` API需要一个附加的维，该维必须包括所选的“关系类型” UID和所选的“程序指示器” UID：
+
+    / api / 33 / analytics / enrollments / query / <program-id>
+      ？dimension = <relationshiptype-id>。 <programindicator-id>
+
+例如，要从“ WHO RMNCH Tracker”程序中检索2019年1月的注册列表，并按“与人相关的疟疾病例”类型的关系显示与该注册相关的疟疾病例数，则可以使用以下查询
+
+    /api/33/analytics/enrollments/query/WSGAb5XwJ3Y.json?dimension=mxZDvSZYxlw.nFICjJluo74
+      ＆startDate = 2019-01-01＆endDate = 2019-01-31
+
+API 支持使用与“主”程序（即在`/query/` 之后指定的程序 ID）无关的程序指示符。
+
+## 组织单位分析 { #webapi_org_unit_analytics }
+
+组织单位分析API提供有关按组织单位组集分类的组织单位的统计信息，即组织单位组集中每个组织单位组的组织单位计数。
+
+    GET /api/orgUnitAnalytics?ou=<org-unit-id>&ougs=<org-unit-group-set-id>
+
+该API需要至少一个组织单位和至少一个组织单位组集。可以提供多个组织单位和组集，以分号分隔。
+
+### 请求查询参数 { #request-query-parameters }
+
+组织单位分析资源使您可以指定一系列查询参数：
+
+ <table>
+ <caption>组织单位分析查询参数</caption>
+ <colgroup>
+ <col style="width: 20%" />
+ <col style="width: 60%" />
+ <col style="width: 20%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ 属性<th> </th>
+ <th>说明</th>
+ <th>必需</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr>
+ <td> ou </td>
+ <td>组织单位标识符，可能用分号分隔。 </td>
+ <td>是</td>
+ </tr>
+ <tr>
+ <td> ougs </td>
+ <td>组织单位组标识符，可能用分号分隔。 </td>
+ <td>是</td>
+ </tr>
+ <tr>
+ <td>列</td>
+ <td>组织单位组标识符，可能用分号分隔。定义将哪些组集呈现为表布局中的列。 </td>
+ <td>否</td>
+ </tr>
+ </tbody>
+ </table>
+
+响应将包含用于父组织单位的列，用于请求的每个组织单位组集部分的列以及用于计数的列。统计信息包括组织单位的数量，该组织单位是请求中指定的组织单位的子层次结构的一部分。该响应包含一个元数据部分，该元数据部分指定由其标识符引用的响应的每个组织单位和组织单位组部分的名称。
+
+默认响应使用单个 `count` 列进行标准化。通过使用 `columns` 查询参数指定至少一个组织单位组集，可以在表格布局中呈现响应。
+
+### 回应格式 { #response-formats }
+
+组织单位分析端点支持以下表示格式：
+
+-   json（应用程序/ json）
+-   csv（应用程序/ csv）
+-   xls（application / vnd.ms-excel）
+-   pdf（应用程序/ pdf）
+
+### 例子 { #examples }
+
+要获取组织单位和组织单位组集的组织单位分析，请执行以下操作：
+
+    GET /api/orgUnitAnalytics?ou=lc3eMKXaEfw&ougs=J5jldMd8OHv
+
+要获取两个组织单位和两个组织单位组集合的组织单位分析数据：
+
+    GET /api/orgUnitAnalytics?ou=lc3eMKXaEfw;PMa2VCrupOd&ougs=J5jldMd8OHv;Bpx0589u8y0
+
+要以表格模式获取组织单位分析数据，并将一组设置为列：
+
+    GET / api / orgUnitAnalytics？ou = fdc6uOvgoji; jUb8gELQApl; lc3eMKXaEfw; PMa2VCrupOd
+      ＆ougs = J5jldMd8OHv＆列= J5jldMd8OHv
+
+### 约束与验证 { #constraints-and-validation }
+
+下表描述了专门针对组织单位分析API的可能的验证错误。为汇总分析API指定的某些错误也相关。
+
+| 错误代码 | 信息                                                    |
+| ---------- | ---------------------------------------------------------- |
+| E7300      | 必须至少指定一个组织单位           |
+| E7301      | 必须至少指定一个组织单位组集 |
+
+## 数据集报告 { #webapi_data_set_report }
+
+可以使用 web api 生成数据集报告
+`/dataSetReport` 资源。此资源生成有关数据集的报告
+并以 HTML 表格的形式返回结果。
+
+    / api / 33 / dataSetReport
+
+### 请求查询参数 { #request-query-parameters }
+
+该请求支持以下参数：
+
+ <table>
+ <caption>数据集报告查询参数</caption>
+ <colgroup>
+ <col style="width: 15%" />
+ <col style="width: 50%" />
+ <col style="width: 17%" />
+ <col style="width: 17%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>参数</th>
+ <th>说明</th>
+ <th>类型</th>
+ <th>必需</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> ds </td>
+ <td>用于创建报告的数据集。 </td>
+ <td>数据集UID </td>
+ <td>是</td>
+ </tr>
+ <tr class="even">
+ <td> pe </td>
+ <td>创建报告所依据的期间。 </td>
+ <td> ISO字符串</td>
+ <td>是</td>
+ </tr>
+ <tr class="odd">
+ <td> ou </td>
+ <td>用于创建报告的组织单位。 </td>
+ <td>组织单位UID </td>
+ <td>是</td>
+ </tr>
+ <tr class="even">
+ <td>过滤器</td>
+ <td>用作报表过滤器的过滤器。可以重复多次。遵循分析API语法。 </td>
+ <td>一个或多个UID </td>
+ <td>否</td>
+ </tr>
+ <tr class="odd">
+ <td> selectedUnitOnly </td>
+ <td>是仅使用捕获的数据还是聚合的数据。 </td>
+ <td>布尔值</td>
+ <td>否</td>
+ </tr>
+ </tbody>
+ </table>
+
+The data set report resource accepts `GET` requests only. The response content type is `application/json` and returns data in a grid. This endpoint works for all types of data sets, including default, section and custom forms.
+
+检索2018年数据集和组织单位报告的示例请求如下所示：
+
+    GET /api/33/dataSetReport?ds=BfMAe6Itzgt&pe=201810&ou=ImspTQPwCqd&selectedUnitOnly=false
+
+要获得带有过滤器的数据集报告，可以使用`filter`参数。在这种情况下，过滤器基于一个组织单位组集和两个组织单位组：
+
+    GET / api / 33 / dataSetReport？ds = BfMAe6Itzgt＆pe = 201810＆ou = ImspTQPwCqd
+      ＆filter = J5jldMd8OHv：RXL3lPSK8oG; tDZVQ1WtwpA
+
+### 回应格式 { #response-formats }
+
+数据集报告端点支持以下格式的输出。您可以使用文件扩展名或 `Accept` HTTP 标头检索特定端点。
+
+-   json（应用程序/ json）
+-   pdf（应用程序/ pdf）
+-   xls（application / vnd.ms-excel）
+
+### 自订表格 { #custom-forms }
+
+A dedicated endpoint is available for data sets with custom HTML forms. This endpoint returns the HTML form content with content type `text/html` with data inserted into it. Note that you can use the general data set report endpoint also for data sets with custom forms; however, that will return the report in JSON format as a grid. This endpoint only works for data sets with custom HTML forms.
+
+    获取 /api/33/dataSetReport/custom
+
+否则，此端点的语法等于常规数据集报告端点。要检索自定义HTML数据集报告，您可以发出如下请求：
+
+    GET /api/33/dataSetReport/custom?ds=lyLU2wR22tC&pe=201810&ou=ImspTQPwCqd
+
+## 推送分析 { #webapi_push_analysis }
+
+推送分析 API 包括用于预览推送分析的端点
+报告登录用户并手动触发系统
+生成和发送推送分析报告，除了正常的 CRUD
+操作。使用创建和更新端点进行推送时
+分析，推送分析将根据
+推分析的性质。删除或更新一个
+禁用推送分析，作业也将停止运行
+将来。
+
+要获得现有推送分析的 HTML 预览，您可以执行 GET
+请求到以下端点：
+
+    / api / 33 / pushAnalysis / <id> / render
+
+要手动触发推送分析作业，您可以执行 POST 请求以
+这个端点：
+
+    / api / 33 / pushAnalysis / <id> / run
+
+推送分析包含以下属性，其中一些是
+自动运行推送分析作业所需：
+
+<table>
+<caption>Push analysis properties</caption>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Property</th>
+<th>Description</th>
+<th>Type</th>
+<th>Required</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>dashboard</td>
+<td>Dashboard on which reports are based</td>
+<td>Dashboard UID</td>
+<td>Yes</td>
+</tr>
+<tr class="even">
+<td>message</td>
+<td>Appears after title in reports</td>
+<td>String</td>
+<td>No</td>
+</tr>
+<tr class="odd">
+<td>recipientUserGroups</td>
+<td>A set of user groups who should receive the reports</td>
+<td>One or more user Group UID</td>
+<td>No. Scheduled jobs without any recipient will be skipped.</td>
+</tr>
+<tr class="even">
+<td>enabled</td>
+<td>Indicated whether this push analysis should be scheduled or not. False by default.</td>
+<td>Boolean</td>
+<td>Yes. Must be true to be scheduled.</td>
+</tr>
+<tr class="odd">
+<td>schedulingFrequency</td>
+<td>The frequency of which reports should be scheduled.</td>
+<td>&quot;DAILY&quot;, &quot;WEEKLY&quot;, &quot;MONTHLY&quot;</td>
+<td>No. Push analysis without a frequency will not be scheduled</td>
+</tr>
+<tr class="even">
+<td>schedulingDayOfFrequency</td>
+<td>The day in the frequency the job should be scheduled.</td>
+<td>Integer. Any value when frequency is &quot;DAILY&quot;. 0-7 when frequency is &quot;WEEKLY&quot;. 1-31 when frequency is &quot;MONTHLY&quot;</td>
+<td>No. Push analysis without a valid day of frequency for the frequency set will not be scheduled.</td>
+</tr>
+</tbody>
+</table>
+
+## 数据使用情况分析 { #webapi_usage_analytics }
+
+使用情况分析 API 可让您访问有关人们使用情况的信息
+使用基于数据分析的 DHIS2。当用户访问收藏夹时，
+事件被记录。事件由用户名、UID 组成
+最喜欢的、事件发生的时间以及事件的类型。这
+表中列出了不同类型的事件。
+
+    / api / 33 / dataStatistics
+
+使用情况分析 API 可让您检索使用情况的汇总快照
+基于时间间隔的分析。 API 捕获用户视图（对于
+例如，图表或数据透视表被用户查看的次数
+用户）和保存的分析收藏夹（例如收藏夹图表和
+数据透视表）。 DHIS2 将捕获夜间快照，然后
+应要求汇总。
+
+### 请求查询参数 { #webapi_usage_analytics_request_query_parameters }
+
+使用情况分析（数据统计）API支持两种操作：
+
+-   _POST:_ 创建一个视图事件
+
+-   _GET:_ 检索聚合统计信息
+
+### 创建视图事件（POST） { #webapi_usage_analytics_create_view_events }
+
+使用情况分析 API 可让您创建事件视图。这
+dataStatisticsEventType 参数描述了项目的类型
+看过。最喜欢的参数表示相关的标识符
+最喜欢的。
+
+创建新事件视图的 URL
+    图表：
+
+    POST / api / 33 / dataStatistics？eventType = CHART_VIEW＆favorite = LW0O27b7TdD
+
+成功的保存操作会返回 HTTP 状态代码 201。表
+下面显示了支持的事件类型。
+
+<table>
+<caption>支持的事件类型</caption>
+<colgroup>
+<col style="width: 38%" />
+<col style="width: 61%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>密钥</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>REPORT_TABLE_VIEW</td>
+<td>报表（数据透视表）视图</td>
+</tr>
+<tr class="even">
+<td>CHART_VIEW</td>
+<td>图表视图</td>
+</tr>
+<tr class="odd">
+<td>MAP_VIEW</td>
+<td>地图视图 (GIS)</td>
+</tr>
+<tr class="even">
+<td>EVENT_REPORT_VIEW</td>
+<td>事件报告视图</td>
+</tr>
+<tr class="odd">
+<td>EVENT_CHART_VIEW</td>
+<td>事件图表视图</td>
+</tr>
+<tr class="even">
+<td>DASHBOARD_VIEW</td>
+<td>仪表板视图</td>
+</tr>
+<tr class="odd">
+<td>PASSIVE_DASHBOARD_VIEW</td>
+<td>仪表板视图（未明确选择仪表板时）</td>
+</tr>
+<tr class="even">
+<td>DATA_SET_REPORT_VIEW</td>
+<td>数据集报告视图</td>
+</tr>
+</tbody>
+</table>
+
+### 检索汇总的使用情况分析报告（GET） { #webapi_aggregated_usage_analytics }
+
+使用情况分析（数据统计）API 允许您指定特定查询
+请求汇总报告时的参数。
+
+ <table>
+ <caption>查询参数以进行汇总使用情况分析（数据统计）</caption>
+ <colgroup>
+ <col style="width: 25%" />
+ <col style="width: 25%" />
+ <col style="width: 25%" />
+ <col style="width: 25%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>查询参数</th>
+ <th>必需</th>
+ <th>说明</th>
+ <th>选项</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td>开始日期</td>
+ <td>是</td>
+ <td>期间</td>的开始日期
+ <td> yyyy-MM-dd格式的日期</td>
+ </tr>
+ <tr class="even">
+ <td>结束日期</td>
+ <td>是</td>
+ <td>期间</td>的结束日期
+ <td> yyyy-MM-dd格式的日期</td>
+ </tr>
+ <tr class="odd">
+ <td>间隔</td>
+ <td>是</td>
+ <td>要汇总的间隔类型</td>
+ 年，月，月，日的星期天<td> </td>
+ </tr>
+ </tbody>
+ </table>
+
+startDate 和 endDate 参数指定期间
+将在聚合中使用快照。您必须格式化日期
+如上图所示。如果在指定时间段内没有保存快照，则
+空列表被送回。称为间隔的参数指定了什么
+将进行聚合类型。
+
+用于创建每月查询的 API 查询
+    聚合：
+
+    GET /api/33/dataStatistics?startDate=2014-01-02&endDate=2016-01-01&interval=MONTH
+
+### 检索热门收藏夹 { #webapi_usage_analytics_top_favorites }
+
+使用情况分析 API 可让您检索最常用的
+DHIS2，并由用户。
+
+ <table>
+ <caption>热门收藏夹的查询参数</caption>
+ <colgroup>
+ <col style="width: 25%" />
+ <col style="width: 25%" />
+ <col style="width: 25%" />
+ <col style="width: 25%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>查询参数</th>
+ <th>必需</th>
+ <th>说明</th>
+ <th>选项</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> eventType </td>
+ <td>是</td>
+ <td>数据统计事件类型</td>
+ <td>参见上表</td>
+ </tr>
+ <tr class="even">
+ <td>页面大小</td>
+ <td>否</td>
+ <td>返回的列表大小</td>
+ <td>例如5、10、25。默认值为25 </td>
+ </tr>
+ <tr class="odd">
+ <td> sortOrder </td>
+ <td>否</td>
+ <td>下降或上升</td>
+ <td> ASC或DESC。默认为DESC。 </td>
+ </tr>
+ <tr class="even">
+ <td>用户名</td>
+ <td>否</td>
+ <td>如果指定，则响应将仅包含此用户的收藏夹。 </td>
+ <td>例如'admin'</td>
+ </tr>
+ </tbody>
+ </table>
+
+API 查询可以不用用户名，然后会找到顶部
+系统的最爱。
+
+    / api / 33 / dataStatistics / favorites？eventType = CHART_VIEW＆pageSize = 25＆sortOrder = ASC
+
+如果指定了用户名，则响应将仅包含该用户的最爱。
+
+    /api/33/dataStatistics/favorites?eventType=CHART_VIEW&pageSize=25
+      &sortOrder=ASC&用户名=管理员
+
+### 回应格式 { #webapi_usage_analytics_response_format }
+
+您可以在使用情况分析响应中返回聚合数据
+几种表示格式。默认格式为 JSON。这
+可用的格式和内容类型有：
+
+-   json（应用程序/ json）
+
+-   xml（应用程序/ xml）
+
+-   html（text / html）
+
+请求 XML 格式的使用情况分析响应的 API 查询
+    格式：
+
+    /api/33/dataStatistics.xml?startDate=2014-01-01&endDate=2016-01-01&interval=WEEK
+
+您必须使用 HTTP 检索聚合使用情况分析响应
+获取方法。这允许您直接从网页和其他
+启用 HTTP 的客户端对使用情况分析响应。做功能性
+测试使用 cURL 库。
+
+要以 JSON 格式获取使用情况分析响应：
+
+    /api/33/dataStatistics?startDate=2016-02-01&endDate=2016-02-14&interval=WEEK
+
+JSON响应如下所示：
+
+```json
+[
+    {
+        "year": 2016,
+        "week": 5,
+        "mapViews": 2181,
+        "chartViews": 2227,
+        "reportTableViews": 5633,
+        "eventReportViews": 6757,
+        "eventChartViews": 9860,
+        "dashboardViews": 10082,
+        "passiveDashboardViews": 0,
+        "totalViews": 46346,
+        "averageViews": 468,
+        "averageMapViews": 22,
+        "averageChartViews": 22,
+        "averageReportTableViews": 56,
+        "averageEventReportViews": 68,
+        "averageEventChartViews": 99,
+        "averageDashboardViews": 101,
+        "averagePassiveDashboardViews": 0,
+        "savedMaps": 1805,
+        "savedCharts": 2205,
+        "savedReportTables": 1995,
+        "savedEventReports": 1679,
+        "savedEventCharts": 1613,
+        "savedDashboards": 0,
+        "savedIndicators": 1831,
+        "activeUsers": 99,
+        "users": 969
+    },
+    {
+        "year": 2016,
+        "week": 6,
+        "mapViews": 2018,
+        "chartViews": 2267,
+        "reportTableViews": 4714,
+        "eventReportViews": 6697,
+        "eventChartViews": 9511,
+        "dashboardViews": 12181,
+        "passiveDashboardViews": 0,
+        "totalViews": 47746,
+        "averageViews": 497,
+        "averageMapViews": 21,
+        "averageChartViews": 23,
+        "averageReportTableViews": 49,
+        "averageEventReportViews": 69,
+        "averageEventChartViews": 99,
+        "averageDashboardViews": 126,
+        "averagePassiveDashboardViews": 0,
+        "savedMaps": 1643,
+        "savedCharts": 1935,
+        "savedReportTables": 1867,
+        "savedEventReports": 1977,
+        "savedEventCharts": 1714,
+        "savedDashboards": 0,
+        "savedIndicators": 1646,
+        "activeUsers": 96,
+        "users": 953
+    }
+]
+```
+
+### 检索收藏的统计信息 { #webapi_usage_analytics_retrieve_favorite_statistics }
+
+您可以使用 _favorites_ 资源检索特定收藏夹的观看次数，其中 _{favorite-id}_ 应替换为感兴趣的收藏夹的标识符：
+
+    /api/33/dataStatistics/favorites/{favorite-id}.json
+
+响应将包含给定收藏的观看次数和
+看起来像这样：
+
+```json
+{
+    "views": 3
+}
+```
+
+## 地理空间特征 { #webapi_geospatial_features }
+
+_geoFeatures_ 资源允许您从 DHIS2 检索地理空间信息。地理空间要素与组织单位存储在一起。用于检索功能的语法与用于分析资源的组织单位维度的语法相同。建议在继续阅读本节之前先阅读分析 API 资源。必须使用 GET 请求类型，并且仅支持 JSON 响应格式。
+
+例如，在以下位置检索所有组织单位的地理特征
+组织单位层次结构中的第 3 级，您可以使用 GET 请求
+使用以下网址：
+
+    /api/33/geoFeatures.json?ou=ou:LEVEL-3
+
+检索组织单位内某个级别的地理特征
+组织单位的边界（例如在第 2 级），您可以使用以下 URL：
+
+    /api/33/geoFeatures.json?ou=ou:LEVEL-4;O6uvpzGd5pu
+
+响应属性的语义描述如下
+桌子。
+
+ <table>
+ <caption> 地理特征响应 </caption>
+ <colgroup>
+ <col style="width: 14%" />
+ <col style="width: 85%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th> 属性 </th>
+ <th> 说明 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> ID </td>
+ <td> 组织单位/地理特征标识符 </td>
+ </tr>
+ <tr class="even">
+ <td> na </td>
+ <td> 组织单位/地理要素名称 </td>
+ </tr>
+ <tr class="odd">
+ <td> hcd </td>
+ <td> 具有向下的坐标，指示是否存在一个或多个具有坐标的子组织单位（层次结构中的下方）</td>
+ </tr>
+ <tr class="even">
+ <td> hcu </td>
+ <td> 有坐标向上，表示上级组织单位是否有坐标（层级上） </td>
+ </tr>
+ <tr class="odd">
+ <td> le </td>
+ <td> 此组织单位/地理特征的级别。 </td>
+ </tr>
+ <tr class="even">
+ <td> pg </td>
+ <td> 父图，父组织单元标识符的图直到层次结构中的根 </td>
+ </tr>
+ <tr class="odd">
+ <td> pi </td>
+ <td> Parent identifier，该组织单元的父标识 </td>
+ </tr>
+ <tr class="even">
+ <td> pn </td>
+ <td> Parent name，该组织单位的父名称 </td>
+ </tr>
+ <tr class="odd">
+ <td> ty </td>
+ <td> 地理要素类型，1 = 点，2 = 多边形或多多边形 </td>
+ </tr>
+ <tr class="even">
+ <td> co </td>
+ <td> 此地理要素的坐标 </td>
+ </tr>
+ </tbody>
+ </table>
+
+### GeoJSON { #geojson }
+
+要导出 GeoJSON，您只需将 _.geosjon_ 作为扩展添加到端点 _/api/organizationUnits_，也可以使用 _Accept_ 标头 _application/json+geojson_。
+
+支持两个参数：`level`（默认为 1）和 `parent`（默认为根组织单位）。两者都可以多次包含。一些例子：
+
+获得第2级和第4级的所有功能：
+
+    /api/organizationUnits.geojson?level=2&level=4
+
+使用边界组织单位获取级别3的所有功能：
+
+    /api/organizationUnits.geojson?parent=fdc6uOvgoji&level=3
+
+## 分析表挂钩 { #webapi_analytics_table_hooks }
+
+Analytics 表挂钩提供了一种调用 SQL 脚本的机制
+在分析表生成过程的不同阶段。这
+对于自定义资源和分析表中的数据很有用，例如在
+以实现计算和聚合的特定逻辑。
+可以在以下 API 端点操作分析表挂钩：
+
+    / api / analyticsTableHooks
+
+分析表钩子 API 支持标准的 HTTP CRUD 操作
+用于创建（POST）、更新（PUT）、检索（GET）和删除
+（删除）实体。
+
+### 钩场 { #webapi_analytics_table_hook_fields }
+
+Analytics表挂钩具有以下字段：
+
+<table style="width:100%;">
+<caption>Analytics table hook fields</caption>
+<colgroup>
+<col style="width: 22%" />
+<col style="width: 30%" />
+<col style="width: 46%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Options</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>name</td>
+<td>Text</td>
+<td>Name of the hook.</td>
+</tr>
+<tr class="even">
+<td>phase</td>
+<td>RESOURCE_TABLE_POPULATED, ANALYTICS_TABLE_POPULATED</td>
+<td>The phase for when the SQL script should be invoked.</td>
+</tr>
+<tr class="odd">
+<td>resourceTableType</td>
+<td><p>See column &quot;Table type&quot; in table &quot;Phases, table types and temporary tables&quot; below</p></td>
+<td>The type of resource table for which to invoke the SQL script. Applies only for hooks defined with the RESOURCE_TABLE_POPULATED phase.</td>
+</tr>
+<tr class="even">
+<td>analyticsTableType</td>
+<td>See column &quot;Table type&quot; in table &quot;Phases, table types and temporary tables&quot; below</td>
+<td>The type of analytics table for which to invoke the SQL script. Applies only for hooks defined with the ANALYTICS_TABLE_POPULATED phase.</td>
+</tr>
+<tr class="odd">
+<td>sql</td>
+<td>Text</td>
+<td>The SQL script to invoke.</td>
+</tr>
+</tbody>
+</table>
+
+_ANALYTICS_TABLE_POPULATED_ 阶段发生在填充分析表之后、创建索引以及将临时表与主表交换之前。因此，SQL 脚本应引用分析临时表，例如_analytics_temp_、_analytics_completeness_temp_。
+
+这也适用于 _RESOURCE_TABLE_POPULATED_ 阶段，该阶段发生在填充资源表之后、创建索引以及将临时表与主表交换之前。因此，SQL 脚本应该引用资源临时表，例如_\_组织结构_临时_、_\_类别结构_临时_。
+
+您应该仅定义 _resourceTableType_ 和 _analyticsTableType_ 字段之一，具体取决于定义的 _phase_。
+
+只能引用与指定的钩子表类型匹配的临时数据库表（其他临时表将不可用）。例如，如果指定 _ORG_UNIT_STRUCTURE_ 作为资源表类型，则只能引用 _\_orgunitstruction_temp_ 临时数据库表。
+
+下表显示了阶段、表格类型的有效组合
+和临时表。
+
+ <table>
+ <caption> 阶段、表类型和临时表 </caption>
+ <colgroup>
+ <col style="width: 27%" />
+ <col style="width: 39%" />
+ <col style="width: 33%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th> 相 </th>
+ <th> 表型 </th>
+ <th> 临时表 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td rowspan="12"> RESOURCE_TABLE_POPULATED </td>
+ <td> ORG_UNIT_STRUCTURE </td>
+ <td> _orgunitstructure_temp </td>
+ </tr>
+ <tr class="even">
+ <td> DATA_SET_ORG_UNIT_CATEGORY </td>
+ <td> _datasetorgunitcategory_temp </td>
+ </tr>
+ <tr class="odd">
+ <td> CATEGORY_OPTION_COMBO_NAME </td>
+ <td> _categoryoptioncomboname_temp </td>
+ </tr>
+ <tr class="even">
+ <td> DATA_ELEMENT_GROUP_SET_STRUCTURE </td>
+ <td> _dataelementgroupsetstructure_temp </td>
+ </tr>
+ <tr class="odd">
+ <td> INDICATOR_GROUP_SET_STRUCTURE </td>
+ <td> _indicatorgroupsetstructure_temp </td>
+ </tr>
+ <tr class="even">
+ <td> ORG_UNIT_GROUP_SET_STRUCTURE </td>
+ <td> _organisationunitgroupsetstructure_temp </td>
+ </tr>
+ <tr class="odd">
+ <td> CATEGORY_STRUCTURE </td>
+ <td> _categorystructure_temp </td>
+ </tr>
+ <tr class="even">
+ <td> DATA_ELEMENT_STRUCTURE </td>
+ <td> _dataelementstructure_temp </td>
+ </tr>
+ <tr class="odd">
+ <td> PERIOD_STRUCTURE </td>
+ <td> _periodstructure_temp </td>
+ </tr>
+ <tr class="even">
+ <td> DATE_PERIOD_STRUCTURE </td>
+ <td> _dateperiodstructure_temp </td>
+ </tr>
+ <tr class="odd">
+ <td> DATA_ELEMENT_CATEGORY_OPTION_COMBO </td>
+ <td> _dataelementcategoryoptioncombo_temp </td>
+ </tr>
+ <tr class="even">
+ <td> DATA_APPROVAL_MIN_LEVEL </td>
+ <td> _dataapprovalminlevel_temp </td>
+ </tr>
+ <tr class="odd">
+ <td rowspan="7"> ANALYTICS_TABLE_POPULATED </td>
+ <td> DATA_VALUE </td>
+ <td> analytics_temp </td>
+ </tr>
+ <tr class="even">
+ <td> 完整性 </td>
+ <td> analytics_completeness_temp </td>
+ </tr>
+ <tr class="odd">
+ <td> COMPLETENESS_TARGET </td>
+ <td> analytics_completenesstarget_temp </td>
+ </tr>
+ <tr class="even">
+ <td> ORG_UNIT_TARGET </td>
+ <td> analytics_orgunittarget_temp </td>
+ </tr>
+ <tr class="odd">
+ <td> 事件 </td>
+ <td> analytics_event_temp_&lt;program-uid&gt; </td>
+ </tr>
+ <tr class="even">
+ <td> 注册 </td>
+ <td> analytics_enrollment_temp_&lt;program-uid&gt; </td>
+ </tr>
+ <tr class="odd">
+ <td> VALIDATION_RESULT </td>
+ <td> analytics_validationresult_temp </td>
+ </tr>
+ </tbody>
+ </table>
+
+### 创建钩子 { #webapi_create_analytics_table_hook }
+
+要创建一个在填充资源表后运行的挂钩，您可以使用 _JSON_ 格式执行如下的 _POST_ 请求：
+
+```bash
+curl -d @hooks.json "localhost/api/analyticsTableHooks" -H "Content-Type:application/json" -u admin:district
+```
+
+```json
+{
+    "name": "Update 'Area' in org unit group set resource table",
+    "phase": "RESOURCE_TABLE_POPULATED",
+    "resourceTableType": "ORG_UNIT_GROUP_SET_STRUCTURE",
+    "sql": "update _organisationunitgroupsetstructure_temp set \"uIuxlbV1vRT\" = 'b0EsAxm8Nge'"
+}
+```
+
+要创建一个应在填充数据值分析表后运行的挂钩，您可以使用 _JSON_ 格式执行如下的 _POST_ 请求：
+
+```json
+{
+    "name": "Update 'Currently on treatment' data in analytics table",
+    "phase": "ANALYTICS_TABLE_POPULATED",
+    "analyticsTableType": "DATA_VALUE",
+    "sql": "update analytics_temp set monthly = '200212' where \"monthly\" in ('200210', '200211')"
+}
+```
+
+## SVG转换 { #webapi_svg_conversion }
+
+Web API 提供了一种资源，可用于将 SVG 内容转换为更广泛使用的格式，例如 PNG 和 PDF。理想情况下，这种转换应该发生在客户端，但并非所有客户端技术都能够执行此任务。目前支持 PNG 和 PDF 输出格式。 SVG 内容本身应该通过 _svg_ 查询参数传递，可选的查询参数 _filename_ 可用于指定响应附件文件的文件名。请注意，应省略文件扩展名。对于 PNG，您可以向以下 URL 发送 _POST_ 请求，内容类型为`application/x-www-form-urlencoded`，与常规 HTML 表单提交相同。
+
+    api / svg.png
+
+对于 PDF，您可以向以下 URL 发送 _POST_ 请求，内容类型为`application/x-www-form-urlencoded`。
+
+    api / svg.pdf
+
+ <table>
+ <caption> 查询参数 </caption>
+ <colgroup>
+ <col style="width: 21%" />
+ <col style="width: 11%" />
+ <col style="width: 67%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th> 查询参数 </th>
+ <th> 需要 </th>
+ <th> 说明 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> svg </td>
+ <td> 是 </td>
+ <td> SVG 内容 </td>
+ </tr>
+ <tr class="even">
+ <td> 文件名 </td>
+ <td> 否 </td>
+ <td> 返回的附件的文件名，没有文件扩展名 </td>
+ </tr>
+ </tbody>
+ </table>

@@ -1,0 +1,2775 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.36/src/developer/web-api/visualizations.md"
+revision_date: "2021-06-25"
+tags:
+    - Develop
+    - DHIS 核心版本 2.36
+---
+
+# 可视化 { #visualizations }
+
+## 仪表板 { #webapi_dashboard }
+
+仪表板旨在为您提供多个分析项目的概述，例如地图、图表、数据透视表和报告，这些项目一起可以提供数据的全面概述。仪表板可通过 _dashboards_ 资源在 Web API 中使用。仪表板包含仪表板_项目_列表。项目可以代表单个资源，例如图表、地图或报告表，也可以代表分析资源的链接列表，例如报告、资源、表格报告和用户。仪表板项目最多可以包含八个链接。通常，仪表板客户端可以选择直接在用户界面中可视化单对象项目，同时将多对象项目呈现为可点击链接。
+
+    / api /仪表板
+
+### 浏览仪表板 { #webapi_browsing_dashboards }
+
+要获取包含 JSON 格式的标识符、名称和链接等基本信息的仪表板列表，您可以向以下 URL 发出 _GET_ 请求：
+
+    /api/dashboards.json
+
+仪表板资源将提供仪表板列表。请记住
+仪表板对象是共享的，因此列表将受
+当前已验证的用户。您可以检索有关一个的更多信息
+特定的仪表板，请点击其链接，类似于：
+
+    /api/dashboards/vQFhmLJU5sK.json
+
+仪表板包含名称和创建日期等信息以及
+仪表板项目数组。 JSON 格式的响应看起来类似
+对此回复（某些信息已被删除，以便
+简洁）。
+
+```json
+{
+    "lastUpdated": "2013-10-15T18:17:34.084+0000",
+    "id": "vQFhmLJU5sK",
+    "created": "2013-09-08T20:55:58.060+0000",
+    "name": "Mother and Child Health",
+    "href": "https://play.dhis2.org/demo/api/dashboards/vQFhmLJU5sK",
+    "publicAccess": "--------",
+    "restrictFilters": false,
+    "externalAccess": false,
+    "itemCount": 17,
+    "displayName": "Mother and Child Health",
+    "access": {
+        "update": true,
+        "externalize": true,
+        "delete": true,
+        "write": true,
+        "read": true,
+        "manage": true
+    },
+    "user": {
+        "id": "xE7jOejl9FI",
+        "name": "John Traore",
+        "created": "2013-04-18T15:15:08.407+0000",
+        "lastUpdated": "2014-12-05T03:50:04.148+0000",
+        "href": "https://play.dhis2.org/demo/api/users/xE7jOejl9FI"
+    },
+    "dashboardItems": [
+        {
+            "id": "bu1IAnPFa9H",
+            "created": "2013-09-09T12:12:58.095+0000",
+            "lastUpdated": "2013-09-09T12:12:58.095+0000"
+        },
+        {
+            "id": "ppFEJmWWDa1",
+            "created": "2013-09-10T13:57:02.480+0000",
+            "lastUpdated": "2013-09-10T13:57:02.480+0000"
+        }
+    ],
+    "userGroupAccesses": []
+}
+```
+
+通过指定特定字段可以获得更定制的响应
+在请求中。下面提供了一个示例，它将返回更多
+有关用户仪表板上每个对象的详细信息。
+
+    / api / dashboards / vQFhmLJU5sK /？fields =：all，dashboardItems [：all]
+
+### 搜索仪表板 { #webapi_searching_dasboards }
+
+当用户构建仪表板时，可以方便地使用 _/dashboards/q_ 资源搜索各种分析资源。此资源允许您搜索以下对象的名称属性的匹配项：图表、地图、报告表、用户、报告和资源。您可以通过对以下资源 URL 模式发出 _GET_ 请求来进行搜索，其中 my-query 应替换为首选搜索查询：
+
+    /api/dashboards/q/my-query.json
+
+例如，此查询：
+
+    / api / dashboards / q / ma？count = 6＆maxCount = 20＆max = CHART＆max = MAP
+
+将搜索以下内容：
+
+-   分析对象名称包含字符串“ ma”
+-   每种类型最多返回6
+-   对于CHART和MAP类型，最多返回20个项目
+
+ <table>
+ <caption>仪表板/ q查询参数</caption>
+ <colgroup>
+ <col style="width: 19%" />
+ <col style="width: 44%" />
+ <col style="width: 35%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>查询参数</th>
+ <th>说明</th>
+ <th>类型</th>
+ <th>默认</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td>计数</td>
+ <td>要返回的每种类型的项目数</td>
+ <td>正整数</td>
+ <td> 6 </td>
+ </tr>
+ <tr class="odd">
+ <td> maxCount </td>
+ <td>返回的最大类型的项目数</td>
+ <td>正整数</td>
+ <td> 25 </td>
+ </tr>
+ <tr class="even">
+ <td> max </td>
+ <td>返回</td>的maxCount的类型
+ <td>字符串[CHART | MAP | REPORT_TABLE | USER | REPORT |资源|可视化] </td>
+ <td>不适用</td>
+ </tr>
+ </tbody>
+ </table>
+
+支持 JSON 和 XML 响应格式。 JSON 格式的响应
+将包含对匹配资源的引用和数量
+总共找到匹配项，并为每种类型的资源找到匹配项。它会看起来
+类似于：
+
+```json
+{
+    "charts": [
+        {
+            "name": "ANC: 1-3 dropout rate Yearly",
+            "id": "LW0O27b7TdD"
+        },
+        {
+            "name": "ANC: 1 and 3 coverage Yearly",
+            "id": "UlfTKWZWV4u"
+        },
+        {
+            "name": "ANC: 1st and 3rd trends Monthly",
+            "id": "gnROK20DfAA"
+        }
+    ],
+    "visualizations": [
+        {
+            "name": "ANC: ANC 3 Visits Cumulative Numbers",
+            "id": "arf9OiyV7df",
+            "type": "LINE"
+        },
+        {
+            "name": "ANC: 1st and 2rd trends Monthly",
+            "id": "jkf6OiyV7el",
+            "type": "PIVOT_TABLE"
+        }
+    ],
+    "maps": [
+        {
+            "name": "ANC: 1st visit at facility (fixed) 2013",
+            "id": "YOEGBvxjAY0"
+        },
+        {
+            "name": "ANC: 3rd visit coverage 2014 by district",
+            "id": "ytkZY3ChM6J"
+        }
+    ],
+    "reportTables": [
+        {
+            "name": "ANC: ANC 1 Visits Cumulative Numbers",
+            "id": "tWg9OiyV7mu"
+        }
+    ],
+    "reports": [
+        {
+            "name": "ANC: 1st Visit Cumulative Chart",
+            "id": "Kvg1AhYHM8Q"
+        },
+        {
+            "name": "ANC: Coverages This Year",
+            "id": "qYVNH1wkZR0"
+        }
+    ],
+    "searchCount": 8,
+    "chartCount": 3,
+    "mapCount": 2,
+    "reportTableCount": 1,
+    "reportCount": 2,
+    "userCount": 0,
+    "patientTabularReportCount": 0,
+    "resourceCount": 0
+}
+```
+
+### 创建，更新和删除仪表板 { #webapi_creating_updating_removing_dashboards }
+
+仪表盘的创建、更新和删除遵循标准 REST 语义。要创建新的仪表盘，可以向 `/api/dashboards`资源发出_POST_请求。从用户的角度来看，首先创建一个仪表盘，然后再向其中添加项目可能会比较方便。请求有效载荷支持 JSON 和 XML 格式。要创建名称为 "My dashboard"（我的仪表盘）的仪表盘，可以使用如下 JSON 格式的有效载荷：
+
+    {
+      “名称”：“我的仪表板”
+    }
+
+更新，例如重命名仪表板时，您可以使用类似的请求负载对相同的 api/仪表板资源发出 _PUT_ 请求。
+
+要删除仪表板，您可以向特定仪表板资源发出 _DELETE_ 请求，类似于以下内容：
+
+    / api /仪表板/ vQFhmLJU5sK
+
+### 添加，移动和删除仪表板项目和内容 { #webapi_adding_moving_removing_dashboard_items }
+
+要添加仪表盘项目，用户可以使用 `/api/dashboards/<dashboard-id>/items/content` 资源，其中 \<dashboard-id\> 应替换为相关仪表盘标识符。请求必须使用 _POST_ 方法。下表详细介绍了 URL 语法和参数。
+
+ <table>
+ <caption>项目内容参数</caption>
+ <colgroup>
+ <col style="width: 19%" />
+ <col style="width: 44%" />
+ <col style="width: 35%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>查询参数</th>
+ <th>说明</th>
+ <th>选项</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td>类型</td>
+ <td>仪表板项目</td>表示的资源类型
+ <td>图表|可视化|地图| reportTable |用户|报告| reportTables |资源| PatientTabularReports |应用程式</td>
+ </tr>
+ <tr class="even">
+ <td> id </td>
+ <td>由仪表板项目</td>表示的资源的标识符
+ <td>资源标识符</td>
+ </tr>
+ </tbody>
+ </table>
+
+用于将图表添加到特定仪表板的 _POST_ 请求 URL 可能如下所示，其中最后一个 id 查询参数值是图表资源标识符：
+
+    / api /仪表板/ vQFhmLJU5sK / items / content？type = chart＆id = LW0O27b7TdD
+
+添加地图、图表、报表和应用程序类型的资源时，API
+将创建一个新项目并将其添加到仪表板。添加资源时
+类型的用户、报告、报告表和资源，API 将尝试
+将资源添加到相同类型的现有仪表板项目。如果不
+资源少于八个的相同类型的项目或没有相同类型的项目
+与它相关联的存在，API 将创建一个新的仪表板项目和
+将资源添加到其中。
+
+为了将仪表板项目移动到仪表板项目列表中的新位置，用户可以向以下资源 URL 发送 _POST_ 请求，其中 `<dashboard-id>` 应替换为仪表板的标识符， `<item-id>` 应替换为仪表板项目的标识符， `<index>` 应替换为项目在仪表板中的新位置，其中索引为零：
+
+    / api /仪表板/ <dashboard-id> / items / <item-id> / position / <index>
+
+要从特定仪表板中完全删除仪表板项目，消费者可以向以下资源 URL 发出 _DELETE_ 请求，其中`<dashboard-id>`应替换为仪表板的标识符，而`<item-id>`应替换为仪表板项目的标识符.可以通过对仪表板资源 URL 的 GET 请求检索仪表板项目标识符。
+
+    / api /仪表板/ <dashboard-id> / items / <item-id>
+
+要删除仪表板项目中的特定内容资源，消费者可以向以下资源 URL 发出 _DELETE_ 请求，其中`<content-resource-id>`应替换为与仪表板项目关联的资源标识符；例如报告或用户的标识符。例如，这可用于从报告类型的仪表板项目中删除单个报告，而不是完全删除仪表板项目：
+
+    / api /仪表板/ <dashboard-id> / items / <item-id> / content / <content-resource-id>
+
+## 可视化 { #webapi_visualization }
+
+Visualization API旨在帮助客户与图表和数据透视表/报表交互。数据可视化应用程序使用此API的端点，该应用程序允许基于客户端的定义创建，配置和管理图表和数据透视表。主要思想是使客户和用户拥有一个独特的集中式API，该API提供所有类型的图表和数据透视表以及每种可视化类型的特定参数和配置。
+
+引入这个 API 是为了统一 `charts` 和 `reportTables` API，并完全取代它们以支持 `visualizations` API（这意味着应该避免使用 `charts` 和 `reportTables` API）。总之，以下资源/API：
+
+    / api /图表，/ api / reportTables
+
+_正在被_取代
+
+    / api / visualizations
+
+> **注意**
+>
+> 新应用程序和客户端应避免使用 `charts` 和 `reportTables` API，因为它们已被弃用。改用`visualizations` API。
+
+一个可视化对象由很多属性组成（有些属性与图表相关，有些属性与数据透视表相关），但负责反映对象核心信息的最重要的属性是：_“id”、“name”、“type” ”、“dataDimensionItems”、“列”、“行”和“过滤器”。_
+
+API的根端点是`/ api / visualizations`，下表中描述了当前属性和元素的列表。
+
+<table>
+<caption>可视化属性</caption>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 75%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>领域</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>id</td>
+<td>唯一标识符。</td>
+</tr>
+<tr class="even">
+<td>代码</td>
+<td>用于标识可视化的自定义代码。</td>
+</tr>
+<tr class="odd">
+<td>名称</td>
+<td>可视化的名称</td>
+</tr>
+<tr class="even">
+<td>类型</td>
+<td>可视化的类型。有效类型包括column, stacked_column, bar, stacked_bar, line, area, pie, radar, gauge, year_over_year_line year_over_year_column, single_value, pivot_table。</td>
+</tr>
+<tr class="odd">
+<td>标题</td>
+<td>自定义标题。</td>
+</tr>
+<tr class="even">
+<td>副标题</td>
+<td>自定义副标题。</td>
+</tr>
+<tr class="odd">
+<td>描述</td>
+<td>定义可视化的自定义描述。</td>
+</tr>
+<tr class="even">
+<td>创建</td>
+<td>创建可视化的日期/时间。</td>
+</tr>
+<tr class="odd">
+<td>开始日期</td>
+<td>筛选过程中使用的开始日期。</td>
+</tr>
+<tr class="even">
+<td>结束日期</td>
+<td>筛选过程中使用的结束日期。</td>
+</tr>
+<tr class="odd">
+<td>排序顺序</td>
+<td>此可视化的排序顺序。整数值。</td>
+</tr>
+<tr class="even">
+<td>用户</td>
+<td>代表可视化创建者的对象。</td>
+</tr>
+<tr class="odd">
+<td>公共访问</td>
+<td>设置公共访问权限。</td>
+</tr>
+<tr class="even">
+<td>显示密度</td>
+<td>文本的显示密度。</td>
+</tr>
+<tr class="odd">
+<td>字体大小</td>
+<td>文本的字体大小。</td>
+</tr>
+<tr class="even">
+<td>字体样式</td>
+<td>自定义字体样式：可视化标题（visualizationTitle）、可视化副标题（visualizationSubtitle）、水平轴标题（horizontalAxisTitle）、垂直轴标题（verticalAxisTitle）、目标行标签（targetLineLabel）、基准行标签（baseLineLabel）、系列轴标签（seriesAxisLabel）、类别轴标签（categoryAxisLabel）、图例。</td>
+</tr>
+<tr class="odd">
+<td>相对周期</td>
+<td>代表分析查询中使用的相对周期的对象。</td>
+</tr>
+<tr class="even">
+<td>图例集</td>
+<td>表示图例定义的对象。</td>
+</tr>
+<tr class="odd">
+<td>图例显示样式</td>
+<td>图例的显示样式。可以是填充（FILL）或文本（TEXT）。</td>
+</tr>
+<tr class="even">
+<td>图例显示策略</td>
+<td>图例的显示样式。可以是FIXED 或 BY_DATA_ITEM。</td>
+</tr>
+<tr class="odd">
+<td>聚合类型</td>
+<td>决定如何聚合数据透视表中的值。有效选项：SUM、AVERAGE、AVERAGE_SUM_ORG_UNIT、LAST、LAST_AVERAGE_ORG_UNIT、FIRST、FIRST_AVERAGE_ORG_UNIT、COUNT、STDDEV、VARIANCE、MIN、MAX、NONE、CUSTOM 或 DEFAULT。</td>
+</tr>
+<tr class="even">
+<td>回归类型</td>
+<td>有效的回归类型：无、线性、多项式或 LOESS。</td>
+</tr>
+<tr class="odd">
+<td>targetLineValue</td>
+<td>图表目标线。接受 Double 类型。</td>
+</tr>
+<tr class="even">
+<td>targetLineLabel</td>
+<td>图表目标线标签。</td>
+</tr>
+<tr class="odd">
+<td>rangeAxisLabel</td>
+<td>图表垂直轴（y）标签/标题。</td>
+</tr>
+<tr class="even">
+<td>域坐标轴标签</td>
+<td>图表横轴（x）标签/标题。</td>
+</tr>
+<tr class="odd">
+<td>rangeAxisMaxValue</td>
+<td>图表坐标轴最大值。超出范围的值将不会显示。</td>
+</tr>
+<tr class="even">
+<td>rangeAxisMinValue</td>
+<td>图表轴最小值。不显示超出范围的值。</td>
+</tr>
+<tr class="odd">
+<td>rangeAxisSteps</td>
+<td>最小值和最大值之间的坐标轴步数。</td>
+</tr>
+<tr class="even">
+<td>rangeAxisDecimals （轴范围小数</td>
+<td>轴值的小数位数。</td>
+</tr>
+<tr class="odd">
+<td>基线值</td>
+<td>图表基线值。</td>
+</tr>
+<tr class="even">
+<td>基线标签</td>
+<td>图表基线标签。</td>
+</tr>
+<tr class="odd">
+<td>数字组分隔符</td>
+<td>数字组分隔符。有效值为逗号、空格或无。</td>
+</tr>
+<tr class="even">
+<td>上限</td>
+<td>为透视表设置的上限。</td>
+</tr>
+<tr class="odd">
+<td>衡量标准</td>
+<td>描述应用于该措施的标准。</td>
+</tr>
+<tr class="even">
+<td>堆叠值百分比</td>
+<td>是否使用堆叠值。更有可能用于图形/图表。布尔值。</td>
+</tr>
+<tr class="odd">
+<td>列间无空格</td>
+<td>显示/隐藏列间空格。布尔值。</td>
+</tr>
+<tr class="even">
+<td>回归</td>
+<td>表示可视化是否包含回归列。更有可能适用于透视/报表。布尔值。</td>
+</tr>
+<tr class="odd">
+<td>外部访问</td>
+<td>表示可视化是否可以外部只读方式使用。布尔值。</td>
+</tr>
+<tr class="even">
+<td>用户组织单位</td>
+<td>表示用户是否有组织单位。布尔值。</td>
+</tr>
+<tr class="odd">
+<td>用户组织单位子女</td>
+<td>指示用户是否有子女组织单位。布尔值。</td>
+</tr>
+<tr class="even">
+<td>userOrganisationUnitGrandChildren（大子女用户组织单元</td>
+<td>表示用户是否有孙子女组织单位。布尔值。</td>
+</tr>
+<tr class="odd">
+<td>报告参数</td>
+<td>用于定义与报告相关的布尔属性的对象。</td>
+</tr>
+<tr class="even">
+<td>行总数</td>
+<td>显示（或不显示）行总数。布尔值。</td>
+</tr>
+<tr class="odd">
+<td>列总数</td>
+<td>显示（或不显示）列总数。布尔值。</td>
+</tr>
+<tr class="even">
+<td>行小计</td>
+<td>显示（或不显示）行小计。布尔值。</td>
+</tr>
+<tr class="odd">
+<td>列次小计</td>
+<td>显示（或不显示）列的小计。布尔值。</td>
+</tr>
+<tr class="even">
+<td>累积值</td>
+<td>表示可视化是否使用累积值。布尔值。</td>
+</tr>
+<tr class="odd">
+<td>隐藏空列</td>
+<td>指示是否隐藏无数据值的列。布尔值。</td>
+</tr>
+<tr class="even">
+<td>隐藏空行</td>
+<td>指示是否隐藏无数据值的行。布尔值。</td>
+</tr>
+<tr class="odd">
+<td>仅已完成</td>
+<td>指示是否隐藏无数据值的列。布尔值。</td>
+</tr>
+<tr class="even">
+<td>跳过舍入</td>
+<td>是否舍入。布尔值。</td>
+</tr>
+<tr class="odd">
+<td>显示尺寸标注</td>
+<td>是否显示尺寸标注。布尔值。</td>
+</tr>
+<tr class="even">
+<td>隐藏标题</td>
+<td>是否隐藏标题。布尔值。</td>
+</tr>
+<tr class="odd">
+<td>隐藏副标题</td>
+<td>是否隐藏副标题。布尔值。</td>
+</tr>
+<tr class="even">
+<td>隐藏图例</td>
+<td>显示/隐藏图例。很可能用于图表。布尔值。</td>
+</tr>
+<tr class="odd">
+<td>显示层次</td>
+<td>显示（或不显示）组织单位层次结构名称。布尔值。</td>
+</tr>
+<tr class="even">
+<td>显示数据</td>
+<td>用于图表隐藏或不隐藏渲染模型中的数据/值。布尔值。</td>
+</tr>
+<tr class="odd">
+<td>最后更新者</td>
+<td>表示对可视化应用最后更改的用户的对象。</td>
+</tr>
+<tr class="even">
+<td>最后更新</td>
+<td>可视化最后一次更改的日期/时间。</td>
+</tr>
+<tr class="odd">
+<td>收藏夹</td>
+<td>将此对象标记为收藏夹的用户 ID 列表。</td>
+</tr>
+<tr class="even">
+<td>订阅者</td>
+<td>已订阅此可视化对象的用户 ID 列表。</td>
+</tr>
+<tr class="odd">
+<td>翻译</td>
+<td>可用对象翻译集，通常按地域筛选。</td>
+</tr>
+<tr class="even">
+<td>离群值分析</td>
+<td>负责保存离群值分析相关设置的对象。内部属性 "outlierMethod "支持iqr、standard_z_score、modified_z_score。归一化方法 "目前只接受 Y_RESIDUALS_LINEAR。</td>
+</tr>
+</tbody>
+</table>
+
+### 检索可视化 { #webapi_visualization_retrieving_visualizations }
+
+To retrieve a list of all existing visualizations, in JSON format, with some basic information (including identifier, name and pagination) you can make a `GET` request to the URL below. You should see a list of all public/shared visualizations plus your private ones.
+
+    获取/api/visualizations.json
+
+如果要检索特定可视化的JSON定义，可以将其各自的标识符添加到URL：
+
+    获取 /api/visualizations/hQxZGXqnLS9.json
+
+以下表示是JSON格式的响应示例（为简便起见，某些信息已被删除）。对于完整的模式，请使用`GET / api / schemas / visualization`。
+
+```json
+{
+    "lastUpdated": "2020-02-06T11:57:09.678",
+    "href": "http://my-domain/dhis/api/visualizations/hQxZGXqnLS9",
+    "id": "hQxZGXqnLS9",
+    "created": "2017-05-19T17:22:00.785",
+    "name": "ANC: ANC 1st visits last 12 months cumulative values",
+    "publicAccess": "rw------",
+    "userOrganisationUnitChildren": false,
+    "type": "LINE",
+    "access": {},
+    "reportingParams": {
+        "parentOrganisationUnit": false,
+        "reportingPeriod": false,
+        "organisationUnit": false,
+        "grandParentOrganisationUnit": false
+    },
+    "dataElementGroupSetDimensions": [],
+    "attributeDimensions": [],
+    "yearlySeries": [],
+    "filterDimensions": ["dx"],
+    "columns": [
+        {
+            "id": "ou"
+        }
+    ],
+    "dataElementDimensions": [],
+    "categoryDimensions": [],
+    "rowDimensions": ["pe"],
+    "columnDimensions": ["ou"],
+    "dataDimensionItems": [
+        {
+            "dataDimensionItemType": "DATA_ELEMENT",
+            "dataElement": {
+                "id": "fbfJHSPpUQD"
+            }
+        }
+    ],
+    "filters": [
+        {
+            "id": "dx"
+        }
+    ],
+    "rows": [
+        {
+            "id": "pe"
+        }
+    ]
+}
+```
+
+通过在URL中指定要提取的字段，可以获得更定制的响应。即：
+
+    GET /api/visualizations/hQxZGXqnLS9.json?fields=interpretations
+
+将返回
+
+```json
+{
+    "interpretations": [
+        {
+            "id": "Lfr8I2RPU0C"
+        },
+        {
+            "id": "JuwgdJlJPGb"
+        },
+        {
+            "id": "WAoU2rSpyZp"
+        }
+    ]
+}
+```
+
+As seen, the `GET` above will return only the interpretations related to the given identifier (in this case `hQxZGXqnLS9`).
+
+### 创建，更新和删除可视化 { #webapi_visualization_add_update_remove_visualizations }
+
+这些操作遵循标准的 _REST_ 语义。可以通过对带有有效 JSON 负载的`/api/visualizations`资源的`POST`请求来创建新的可视化。有效载荷的一个例子可能是：
+
+```json
+{
+    "columns": [
+        {
+            "dimension": "J5jldMd8OHv",
+            "items": [
+                {
+                    "name": "CHP",
+                    "id": "uYxK4wmcPqA",
+                    "displayName": "CHP",
+                    "displayShortName": "CHP",
+                    "dimensionItemType": "ORGANISATION_UNIT_GROUP"
+                },
+                {
+                    "name": "Hospital",
+                    "id": "tDZVQ1WtwpA",
+                    "displayName": "Hospital",
+                    "displayShortName": "Hospital",
+                    "dimensionItemType": "ORGANISATION_UNIT_GROUP"
+                }
+            ]
+        }
+    ],
+    "rows": [
+        {
+            "dimension": "SooXFOUnciJ",
+            "items": [
+                {
+                    "name": "DOD",
+                    "id": "B0bjKC0szQX",
+                    "displayName": "DOD",
+                    "displayShortName": "DOD",
+                    "dimensionItemType": "CATEGORY_OPTION_GROUP"
+                },
+                {
+                    "name": "CDC",
+                    "id": "OK2Nr4wdfrZ",
+                    "displayName": "CDC",
+                    "displayShortName": "CDC",
+                    "dimensionItemType": "CATEGORY_OPTION_GROUP"
+                }
+            ]
+        }
+    ],
+    "filters": [
+        {
+            "dimension": "ou",
+            "items": [
+                {
+                    "name": "Sierra Leone",
+                    "id": "ImspTQPwCqd",
+                    "displayName": "Sierra Leone",
+                    "displayShortName": "Sierra Leone",
+                    "dimensionItemType": "ORGANISATION_UNIT"
+                },
+                {
+                    "name": "LEVEL-1",
+                    "id": "LEVEL-H1KlN4QIauv",
+                    "displayName": "LEVEL-1"
+                }
+            ]
+        }
+    ],
+    "name": "HIV Cases Monthly",
+    "description": "Cases of HIV across the months",
+    "category": "XY1vwCQskjX",
+    "showDimensionLabels": true,
+    "hideEmptyRows": true,
+    "hideEmptyColumns": true,
+    "skipRounding": true,
+    "aggregationType": "SUM",
+    "regressionType": "LINEAR",
+    "type": "PIVOT_TABLE",
+    "numberType": "VALUE",
+    "measureCriteria": "Some criteria",
+    "showHierarchy": true,
+    "completedOnly": true,
+    "displayDensity": "NORMAL",
+    "fontSize": "NORMAL",
+    "digitGroupSeparator": "SPACE",
+    "legendDisplayStyle": "FILL",
+    "legendDisplayStrategy": "FIXED",
+    "hideEmptyRowItems": "BEFORE_FIRST_AFTER_LAST",
+    "regression": false,
+    "cumulative": true,
+    "sortOrder": 1,
+    "topLimit": 2,
+    "rowTotals": true,
+    "colTotals": true,
+    "hideTitle": true,
+    "hideSubtitle": true,
+    "hideLegend": true,
+    "showData": true,
+    "percentStackedValues": true,
+    "noSpaceBetweenColumns": true,
+    "rowSubTotals": true,
+    "colSubTotals": true,
+    "userOrgUnitType": "TEI_SEARCH",
+    "externalAccess": false,
+    "publicAccess": "--------",
+    "reportingParams": {
+        "reportingPeriod": true,
+        "organisationUnit": true,
+        "parentOrganisationUnit": true,
+        "grandParentOrganisationUnit": true
+    },
+    "parentGraphMap": {
+        "ImspTQPwCqd": ""
+    },
+    "access": {
+        "read": true,
+        "update": true,
+        "externalize": true,
+        "delete": false,
+        "write": true,
+        "manage": false
+    },
+    "optionalAxes": [
+        {
+            "dimensionalItem": "fbfJHSPpUQD",
+            "axis": 1
+        },
+        {
+            "dimensionalItem": "cYeuwXTCPkU",
+            "axis": 2
+        }
+    ],
+    "relativePeriods": {
+        "thisYear": false,
+        "quartersLastYear": true,
+        "last52Weeks": false,
+        "thisWeek": false,
+        "lastMonth": false,
+        "last14Days": false,
+        "biMonthsThisYear": false,
+        "monthsThisYear": false,
+        "last2SixMonths": false,
+        "yesterday": false,
+        "thisQuarter": false,
+        "last12Months": false,
+        "last5FinancialYears": false,
+        "thisSixMonth": false,
+        "lastQuarter": false,
+        "thisFinancialYear": false,
+        "last4Weeks": false,
+        "last3Months": false,
+        "thisDay": false,
+        "thisMonth": false,
+        "last5Years": false,
+        "last6BiMonths": false,
+        "last4BiWeeks": false,
+        "lastFinancialYear": false,
+        "lastBiWeek": false,
+        "weeksThisYear": false,
+        "last6Months": false,
+        "last3Days": false,
+        "quartersThisYear": false,
+        "monthsLastYear": false,
+        "lastWeek": false,
+        "last7Days": false,
+        "thisBimonth": false,
+        "lastBimonth": false,
+        "lastSixMonth": false,
+        "thisBiWeek": false,
+        "lastYear": false,
+        "last12Weeks": false,
+        "last4Quarters": false
+    },
+    "user": {},
+    "yearlySeries": ["THIS_YEAR"],
+    "userGroupAccesses": [
+        {
+            "access": "rwx-----",
+            "userGroupUid": "ZoHNWQajIoe",
+            "displayName": "Bo District M&E officers",
+            "id": "ZoHNWQajIoe"
+        }
+    ],
+    "userAccesses": [
+        {
+            "access": "--------",
+            "displayName": "John Barnes",
+            "id": "DXyJmlo9rge",
+            "userUid": "DXyJmlo9rge"
+        }
+    ],
+    "legendSet": {
+        "name": "Death rate up",
+        "id": "ham2eIDJ9k6",
+        "legends": [
+            {
+                "startValue": 1,
+                "endValue": 2,
+                "color": "red",
+                "image": "some-image"
+            },
+            {
+                "startValue": 2,
+                "endValue": 3,
+                "color": "blue",
+                "image": "other-image"
+            }
+        ]
+    },
+    "outlierAnalysis": {
+        "enabled": true,
+        "outlierMethod": "IQR",
+        "thresholdFactor": 1.5,
+        "normalizationMethod": "Y_RESIDUALS_LINEAR",
+        "extremeLines": {
+            "enabled": true,
+            "value": 3.5
+        }
+    },
+    "legend": {
+        "label": {
+            "fontStyle": {
+                "textColor": "#dddddd"
+            }
+        },
+        "hidden": false
+    },
+    "axes": [
+        {
+            "index": 0,
+            "type": "RANGE",
+            "label": {
+                "fontStyle": {
+                    "textColor": "#cccddd"
+                }
+            },
+            "title": {
+                "text": "Range axis title",
+                "fontStyle": {
+                    "textColor": "#000000"
+                }
+            },
+            "decimals": 1,
+            "maxValue": 100,
+            "minValue": 20,
+            "steps": 5,
+            "baseLine": {
+                "value": 50,
+                "title": {
+                    "text": "My baseline",
+                    "fontStyle": {
+                        "textColor": "#000000"
+                    }
+                }
+            },
+            "targetLine": {
+                "value": 80,
+                "title": {
+                    "text": "My targetline",
+                    "fontStyle": {
+                        "textColor": "#cccddd"
+                    }
+                }
+            }
+        },
+        {
+            "index": 1,
+            "type": "DOMAIN",
+            "label": {
+                "fontStyle": {
+                    "textColor": "#000000"
+                }
+            },
+            "title": {
+                "text": "Domain axis title",
+                "fontStyle": {
+                    "textColor": "#cccddd"
+                }
+            }
+        }
+    ],
+    "legend": {
+        "label": {
+            "fontStyle": {
+                "textColor": "#dddddd"
+            }
+        },
+        "hidden": false
+    },
+    "axes": [
+        {
+            "index": 0,
+            "type": "RANGE",
+            "label": {
+                "fontStyle": {
+                    "textColor": "#cccddd"
+                }
+            },
+            "title": {
+                "text": "Range axis title",
+                "fontStyle": {
+                    "textColor": "#000000"
+                }
+            },
+            "decimals": 1,
+            "maxValue": 100,
+            "minValue": 20,
+            "steps": 5,
+            "baseLine": {
+                "value": 50,
+                "title": {
+                    "text": "My baseline",
+                    "fontStyle": {
+                        "textColor": "#000000"
+                    }
+                }
+            },
+            "targetLine": {
+                "value": 80,
+                "title": {
+                    "text": "My targetline",
+                    "fontStyle": {
+                        "textColor": "#cccddd"
+                    }
+                }
+            }
+        },
+        {
+            "index": 1,
+            "type": "DOMAIN",
+            "label": {
+                "fontStyle": {
+                    "textColor": "#000000"
+                }
+            },
+            "title": {
+                "text": "Domain axis title",
+                "fontStyle": {
+                    "textColor": "#cccddd"
+                }
+            }
+        }
+    ]
+}
+```
+
+要更新特定的可视化，您可以向相同的 `/api/visualizations` 资源发送一个 `PUT` 请求，该资源具有类似的负载 `PLUS` 以及相应的可视化的标识符，即：
+
+    PUT /api/可视化/hQxZGXqnLS9
+
+最后，要删除现有的可视化，您可以发出一个 `DELETE` 请求，指定要删除的可视化的标识符，如下所示：
+
+    删除/ api / visualizations / hQxZGXqnLS9
+
+## 释义 { #webapi_interpretations }
+
+对于DHIS2中数据分析相关的资源，例如数据透视表，
+图表、地图、事件报告和事件图表，您可以编写和分享
+数据解释。解释可以是评论、问题、
+关于数据报告或可视化的观察或解释。
+
+    / api /解释
+
+### 阅读口译 { #webapi_reading_interpretations }
+
+为了阅读解释，我们将与
+`/api/interpretations` 资源。使用字段的典型 GET 请求
+过滤可以是这样的：
+
+    GET /api/interpretations?fields=*,comments[id,text,user,mentions]
+
+JSON 响应格式的输出可能如下所示（附加
+为简洁起见省略了字段）：
+
+```json
+{
+    "interpretations": [
+        {
+            "id": "XSHiFlHAhhh",
+            "created": "2013-05-30T10:24:06.181+0000",
+            "text": "Data looks suspicious, could be a data entry mistake.",
+            "type": "REPORT_TABLE",
+            "likes": 2,
+            "user": {
+                "id": "uk7diLujYif"
+            },
+            "reportTable": {
+                "id": "LcSxnfeBxyi"
+            },
+            "visualization": {
+                "id": "LcSxnfeBxyi"
+            }
+        },
+        {
+            "id": "kr4AnZmYL43",
+            "created": "2013-05-29T14:47:13.081+0000",
+            "text": "Delivery rates in Bo looks high.",
+            "type": "CHART",
+            "likes": 3,
+            "user": {
+                "id": "uk7diLujYif"
+            },
+            "chart": {
+                "id": "HDEDqV3yv3H"
+            },
+            "visualization": {
+                "id": "HDEDqV3yv3H"
+            },
+            "mentions": [
+                {
+                    "created": "2018-06-25T10:25:54.498",
+                    "username": "boateng"
+                }
+            ],
+            "comments": [
+                {
+                    "id": "iB4Etq8yTE6",
+                    "text": "This report indicates a surge.",
+                    "user": {
+                        "id": "B4XIfwOcGyI"
+                    }
+                },
+                {
+                    "id": "iB4Etq8yTE6",
+                    "text": "Likely caused by heavy rainfall.",
+                    "user": {
+                        "id": "B4XIfwOcGyI"
+                    }
+                },
+                {
+                    "id": "SIjkdENan8p",
+                    "text": "Have a look at this @boateng.",
+                    "user": {
+                        "id": "xE7jOejl9FI"
+                    },
+                    "mentions": [
+                        {
+                            "created": "2018-06-25T10:03:52.316",
+                            "username": "boateng"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
+```
+
+ <table>
+ <caption>解释字段</caption>
+ <colgroup>
+ <col style="width: 25%" />
+ <col style="width: 75%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>字段</th>
+ <th>说明</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> id </td>
+ <td>解释标识符。 </td>
+ </tr>
+ <tr class="even">
+ <td>创建了</td>
+ <td>创建解释的时间。 </td>
+ </tr>
+ <tr class="odd">
+ <td>类型</td>
+ <td>解释的分析对象的类型。有效选项：REPORT_TABLE，CHART，MAP，EVENT_REPORT，EVENT_CHART，DATASET_REPORT。
+ </tr>
+ <tr class="even">
+ <td>用户</td>
+ <td>与创建解释的用户的关联。 </td>
+ </tr>
+ <tr class="odd">
+ <td>报告表</td>
+ <td>如果类型为REPORT_TABLE，则与报表表关联。 </td>
+ </tr>
+ <tr class="even">
+ <td>图表</td>
+ <td>如果类型为CHART，则与图表关联。 </td>
+ </tr>
+ <tr class="odd">
+ <td>可视化</td>
+ <td>如果类型为CHART或REPORT_TABLE，则与可视化相关联（**这两种类型均处于弃用过程中，而有利于VISUALIZATION **）。 </td>
+ </tr>
+ <tr class="even">
+ <td>地图</td>
+ <td>如果类型为MAP，则与地图关联。 </td>
+ </tr>
+ <tr class="odd">
+ <td>事件报告</td>
+ <td>与事件报告的关联类型为EVENT_REPORT。 </td>
+ </tr>
+ <tr class="even">
+ <td>事件图表</td>
+ <td>如果类型为EVENT_CHART，则与事件图表关联。 </td>
+ </tr>
+ <tr class="odd">
+ <td>数据集</td>
+ <td>如果类型为DATASET_REPORT，则与数据集关联。 </td>
+ </tr>
+ <tr class="even">
+ <td>评论</td>
+ <td>解释的注释数组。文本字段包含实际注释。 </td>
+ </tr>
+ <tr class="odd">
+ <td>提到</td>
+ <td>提及的解释数组。用户标识符列表。 </td>
+ </tr>
+ </tbody>
+ </table>
+
+对于所有分析对象，您可以将 _/data_ 附加到 URL 以检索与资源关联的数据（而不是元数据）。例如，通过点击地图链接并附加 /data，可以通过以下 URL 检索专题地图的 PNG（图像）表示形式：
+
+    https://play.dhis2.org/demo/api/maps/bhmHJ4ZCdCd/data
+
+对于所有分析对象，您可以按_提及_进行过滤。要检索提到用户的所有解释/评论，您有三个选项。您可以按解释提及（解释描述中的提及）进行过滤：
+
+    GET /api/interpretations?fields=*,comments[*]&filter=mentions.username:in:[boateng]
+
+您可以通过解释评论提及（在任何
+评论）：
+
+    GET / api / interpretations？fields = *，评论[*]
+      ＆filter = comments.mentions.username：in：[boateng]
+
+您可以按包含提及的解释进行过滤
+在解释或任何评论中（或结点）：
+
+    GET /api/interpretations?fields=*,comments[*]&filter=mentions:in:[boateng]
+
+### 写作解释 { #webapi_writing_interpretations }
+
+在编写解释时，您将提供解释文本作为
+使用内容类型为“text/plain”的 POST 请求的请求正文。
+URL 模式如下所示，其中 {object-type} 指的是
+被解释的对象的类型，{object-id} 指的是
+被解释对象的标识符。
+
+    / api / interpretations / {object-type} / {object-id}
+
+对象类型的有效选项包括 _reportTable_、_chart_、_map_、_eventReport_、_eventChart_ 和 _dataSetReport_。
+
+下面列出了一些有效的解释示例。
+
+> **注意**
+>
+> 不推荐使用 `charts` 和 `reportTables` API。我们建议改用`visualizations` API。
+
+    / api / interpretations / reportTable / yC86zJxU1i1
+    / api / interpretations / chart / ZMuYVhtIceD
+    / api /解释/可视化/ hQxZGXqnLS9
+    / api / interpretations / map / FwLHSMCejFu
+    / api / interpretations / eventReport / xJmPLGP3Cde
+    / api / interpretations / eventChart / nEzXB2M9YBz
+    / api / interpretations / dataSetReport / tL7eCjmDIgM
+
+例如，我们将首先为标识符为 _EbRN2VIbPdV_ 的图表编写解释。要编写图表解释，我们将与 `/api/interpretations/chart/{chartId}` 资源交互。解释将是请求正文。在此基础上，我们可以使用 cURL 创建以下请求：
+
+```bash
+curl -d "This chart shows a significant ANC 1-3 dropout" -X POST
+  "https://play.dhis2.org/demo/api/interpretations/chart/EbRN2VIbPdV"
+  -H "Content-Type:text/plain" -u admin:district
+```
+
+请注意，响应提供了一个带有值的 Location 标头
+指示创建的解释的位置。这很有用
+从客户的角度来看，当您想向
+解释。
+
+### 更新和删除解释 { #webapi_updating_removing_interpretations }
+
+要更新现有解释，您可以使用 PUT 请求，其中
+解释文本是使用以下 URL 模式的请求正文，
+其中 {id} 指的是解释标识符：
+
+    / api / interpretations / {id}
+
+基于此，我们可以使用curl来更新解释：
+
+```bash
+curl -d "This charts shows a high dropout" -X PUT
+  "https://play.dhis2.org/demo/api/interpretations/chart/EV08iI1cJRA"
+  -H "Content-Type:text/plain" -u admin:district
+```
+
+您可以使用与上面相同的 URL 模式使用 DELETE 请求来
+删除解释。
+
+### 创建解释注释 { #webapi_creating_interpretation_comments }
+
+在为解释撰写评论时，您将提供评论
+text 作为使用内容类型的 POST 请求的请求正文
+“文本/纯文本”。 URL 模式如下所示，其中
+{interpretation-id} 指的是解释标识符。
+
+    / api / interpretations / {interpretation-id} /评论
+
+其次，我们将为我们在上面的示例中编写的解释写一个注释。通过查看解释响应，您将看到返回了 _Location_ 标头。该标头告诉我们新创建的解释的 URL，从中我们可以读取其标识符。该标识符是随机生成的，因此您必须将下面命令中的标识符替换为您自己的标识符。要编写评论，我们可以与 `/api/interpretations/{id}/comments` 资源进行交互，如下所示：
+
+```bash
+curl -d "An intervention is needed" -X POST
+  "https://play.dhis2.org/demo/api/interpretations/j8sjHLkK8uY/comments"
+  -H "Content-Type:text/plain" -u admin:district
+```
+
+### 更新和删除解释注释 { #webapi_updating_removing_interpretation_comments }
+
+要更新解释注释，您可以使用 PUT 请求，其中
+评论文本是使用以下 URL 模式的请求正文：
+
+    / api / interpretations / {interpretation-id} / comments / {comment-id}
+
+基于此，我们可以使用curl来更新注释：
+
+```bash
+curl "https://play.dhis2.org/demo/api/interpretations/j8sjHLkK8uY/comments/idAzzhVWvh2"
+  -d "I agree with that." -X PUT -H "Content-Type:text/plain" -u admin:district
+```
+
+您可以使用与上面相同的 URL 模式，使用 DELETE 请求到
+删除解释注释。
+
+### 喜欢的解释 { #webapi_liking_interpretations }
+
+要喜欢某个解释，您可以对 _like_ 资源使用空 POST 请求：
+
+    POST / api / interpretations / {id} / like
+
+将为当前经过身份验证的用户添加一个赞。一个用户可以
+只喜欢解释一次。
+
+要删除解释的赞，您可以使用 DELETE 请求
+与类似操作相同的资源。
+
+可以通过查看解释的类似状态来查看
+常规 Web API 表示：
+
+    GET /api/interpretations/{id}
+
+点赞信息位于 _likes_ 字段（表示点赞数）和 _likedBy_ 数组中，该数组枚举点赞过该解释的用户。
+
+```json
+{
+    "id": "XSHiFlHAhhh",
+    "text": "Data looks suspicious, could be a data entry mistake.",
+    "type": "REPORT_TABLE",
+    "likes": 2,
+    "likedBy": [
+        {
+            "id": "k7Hg12fJ2f1"
+        },
+        {
+            "id": "gYhf26fFkjFS"
+        }
+    ]
+}
+```
+
+## SQL视图 { #webapi_sql_views }
+
+SQL 视图资源允许您创建和检索结果集
+SQL 视图。 SQL 视图可以直接针对
+数据库并通过 Web API 资源呈现结果集。
+
+    / api / sqlViews
+
+SQL 视图对于创建可能更容易的数据视图很有用
+用SQL构造比较结合Web的多个对象
+应用程序接口。举个例子，假设我们被要求提供一个视图
+所有组织单位及其名称、父名称、组织单位
+级别和名称，以及数据库中列出的坐标。风景
+可能看起来像这样：
+
+```sql
+SELECT ou.name as orgunit, par.name as parent, ou.coordinates, ous.level, oul.name from organisationunit ou
+INNER JOIN _orgunitstructure ous ON ou.organisationunitid = ous.organisationunitid
+INNER JOIN organisationunit par ON ou.parentid = par.organisationunitid
+INNER JOIN orgunitlevel oul ON ous.level = oul.level
+WHERE ou.coordinates is not null
+ORDER BY oul.level, par.name, ou.name
+```
+
+我们将使用 _curl_ 首先在 DHIS2 服务器上执行视图。这本质上是一个具体化过程，并确保我们在从服务器检索数据时可以通过 SQL 视图获得最新的数据。您可以首先从 api/sqlViews 资源查找 SQL 视图，然后使用以下命令进行 POST：
+
+```bash
+curl "https://play.dhis2.org/demo/api/sqlViews/dI68mLkP1wN/execute" -X POST -u admin:district
+```
+
+该过程的下一步是检索数据。基本
+URL的结构如下
+
+    http：// {server} / api / sqlViews / {id} / data（.csv）
+
+`{server}` 参数应替换为您自己的服务器。这
+URL `/api/sqlViews/` 的下一部分应该附加
+特定的 SQL 视图标识符。为 XML 数据附加 `data` 或
+`data.csv` 用于逗号分隔值。支持响应格式是
+json、xml、csv、xls、html 和 html+css。例如，以下
+命令将为上面定义的 SQL 视图检索 XML 数据。
+
+```bash
+curl "https://play.dhis2.org/demo/api/sqlViews/dI68mLkP1wN/data.csv" -u admin:district
+```
+
+SQL视图有三种类型：
+
+-   _SQL 视图：_ 标准 SQL 视图。
+
+-   _物化 SQL 视图：_ 物化 SQL 视图，即写入磁盘。需要更新以反映基础表中的更改。支持过滤结果集的条件。
+
+-   _SQL 查询：_ 普通 SQL 查询。支持自定义查询的内联变量。
+
+### 标准 { #webapi_sql_view_criteria }
+
+您可以通过将 _criteria_ 查询参数附加到 URL，使用由列分隔的列名称和过滤器值作为参数值，对结果集中的列进行简单过滤，格式如下：
+
+    / api / sqlViews / {id} / data？criteria = col1：value1＆criteria = col2：value2
+
+举个例子，过滤上面设置的SQL视图结果只返回
+在第 4 级的组织单位，您可以使用以下内容
+    网址：
+
+    https://play.dhis2.org/demo/api/sqlViews/dI68mLkP1wN/data.csv?criteria=level:4
+
+### 变数 { #webapi_sql_view_variables }
+
+SQL 视图支持变量替换。变量替换仅适用于 _query_ 类型的 SQL 视图，这意味着 SQL 视图不是在数据库中创建，而是简单地作为常规 SQL 查询执行。变量可以直接插入到 SQL 查询中，并且必须采用以下格式：
+
+    $ {variable-key}
+
+例如，检索给定的所有数据元素的 SQL 查询
+通过变量定义值类型的值类型可以看
+像这样：
+
+    从dataelement中选择*，其中valuetype ='$ {valueType}';
+
+然后，当通过 _sqlViews_ Web API 资源请求时，可以将这些变量作为 URL 的一部分提供。可以按以下格式提供变量：
+
+    / api / sqlViews / {id} / data？var = key1：value1＆var = key2：value2
+
+与上面的示例相对应的示例查询如下所示：
+
+    /api/sqlViews/dI68mLkP1wN/data.json?var=valueType:int
+
+_valueType_ 变量将替换为 _int_ 值，查询将返回 int 值类型的数据元素。
+
+变量参数必须仅包含字母数字字符。这
+变量必须包含字母数字、破折号、下划线和空格
+仅字符。
+
+_query_ 类型的 SQL 视图还支持两个系统定义的变量，这些变量允许查询访问有关执行视图的用户的信息：
+
+| 变量              | 手段                  |
+| --------------------- | ---------------------- |
+| ${\_current_user_id}  | 用户的数据库ID |
+| ${\_current_username} | 用户的用户名    |
+
+这些变量的值不能作为URL的一部分提供。它们始终充满有关用户的信息。
+
+例如，以下 _query_ 类型的 SQL 视图显示分配给用户的所有组织单位：
+
+```sql
+    select ou.path, ou.name
+    from organisationunit ou_user
+    join organisationunit ou on ou.path like ou_user.path || '%'
+    join usermembership um on um.organisationunitid = ou_user.organisationunitid
+    where um.userinfoid = ${_current_user_id}
+    order by ou.path
+```
+
+### 筛选 { #webapi_sql_view_filtering }
+
+SQL视图api支持数据过滤，相当于[元数据对象
+过滤器](#webapi_metadata_object_filter)。过滤器的完整列表
+运算符，您可以查看 [元数据对象
+过滤器](#webapi_metadata_object_filter)。
+
+要使用过滤器，只需在请求末尾添加它们作为参数
+您的 SQL 视图的 url，例如
+    这：
+
+    /api/sqlViews/w3UxFykyHFy/data.json?filter=orgunit_level:eq:2&filter=orgunit_name:ilike:bo
+
+此请求将返回一个结果，其中包括在
+名称且组织单位级别为 2。
+
+以下示例将返回所有带有 `orgunit_level` 2 或
+4：
+
+    /api/sqlViews/w3UxFykyHFy/data.json?filter=orgunit_level:in:[2,4]
+
+最后，返回所有不以开头的组织单位的示例
+“博”
+
+    /api/sqlViews/w3UxFykyHFy/data.json?filter=orgunit_name:!like:Bo
+
+## 数据项 { #webapi_data_items }
+
+This endpoint allows the user to query data related to a few different dimensional items. These items are: `INDICATOR`, `DATA_ELEMENT`, `DATA_SET`, `PROGRAM_INDICATOR`, `PROGRAM_DATA_ELEMENT`, `PROGRAM_ATTRIBUTE`. The endpoint supports only `GET` requests and, as other endpoints, can return responses in JSON or XML format.
+
+该URL是`/ api / dataItems`，并且可以想象，它能够在同一`GET`请求中通过同一端点检索不同的对象。因此，某些可用的可查询属性将根据要查询的维项目而有所不同。
+
+为了理解上面的陈述，让我们看一下以下请求示例：
+
+1. `GET /api/dataItems?filter=dimensionItemType:eq:DATA_ELEMENT&filter=valueType:eq:TEXT` 在此示例中，项目类型 `DATA_ELEMENT` 具有可在查询中使用的 `valueType` 属性。
+
+2. `GET /api/dataItems?pageSize=50&order=displayName:asc&filter=dimensionItemType:eq:PROGRAM_INDICATOR&filter=displayName:ilike:someName&filter=programId:eq:WSGAb5XwJ3Y`
+
+Here, the `PROGRAM_INDICATOR` allows filtering by `programId`.
+
+So, based on the examples `1)` and `2)` if you try filtering a `DATA_ELEMENT` by `programId` or filter a `PROGRAM_INDICATOR` by `valueType`, you should get no results. In other words, the filter will be applied only when the attribute actually exists for the respective data item.
+
+需要强调的另一个重要方面是，此端点不遵循与其他现有端点相同的查询标准，例如[元数据对象过滤器](#webapi_metadata_object_filter)。因此，它支持较小的功能和查询集。其主要原因是需要查询具有不同关系的多个不同项目，这是使用现有的过滤组件（由其他端点使用）不可能实现的。
+
+### 可能的终点反应 { #webapi_data_items_possible_responses }
+
+基于`GET` 请求/查询，可能有几种不同的响应。下面我们总结了每种可能性。
+
+#### 找到结果（HTTP 状态代码 200）{ #results-found-http-status-code-200 }
+
+```
+{
+  "pager": {
+    "page": 1,
+    "pageCount": 27,
+    "total": 1339,
+    "pageSize": 50,
+    "nextPage": "https://play.dhis2.org/dev/api/36/dataItems?page=2&filter=displayName:ilike:a&filter=id:eq:nomatch&rootJunction=OR&displayName:asc=&paging=true"
+  },
+  "dataItems": [
+    {
+      "simplifiedValueType": "TEXT",
+      "displayName": "TB program Gender",
+      "displayShortName": "TB prog. Gen.",
+      "valueType": "TEXT",
+      "name": "TB program Gender",
+      "shortName": ""TB prog. Gen.",
+      "id": "ur1Edk5Oe2n.cejWyOfXge6",
+      "programId": "ur1Edk5Oe2n",
+      "dimensionItemType": "PROGRAM_ATTRIBUTE"
+    },
+    ...
+  ]
+}
+```
+
+#### 未找到结果（HTTP 状态代码 200）{ #results-not-found-http-status-code-200 }
+
+```
+{
+  "pager": {
+    "page": 1,
+    "pageCount": 1,
+    "total": 0,
+    "pageSize": 50
+  },
+  "dataItems": []
+}
+```
+
+#### 无效的查询（HTTP状态码409） { #invalid-query-http-status-code-409 }
+
+```
+{
+  “ httpStatus”：“冲突”，
+  “ httpStatusCode”：409，
+  “ status”：“ ERROR”，
+  “ message”：“无法解析过滤器`dimensionItemType`上的元素`INVALID_TYPE`。可用的值为：[INDICATOR，DATA_ELEMENT，DATA_ELEMENT_OPERAND，DATA_SET，PROGRAM_INDICATOR，PROGRAM_DATA_ELEMENT，PROGRAM_ATTRIBUTE]”
+  “错误代码”：“ E2016”
+}
+```
+
+#### 未处理的错误（HTTP状态码500） { #unhandled-error-http-status-code-500 }
+
+```
+{
+  “ httpStatus”：“内部服务器错误”，
+  “ httpStatusCode”：500，
+  “状态”：“错误”
+}
+```
+
+### 分页 { #webapi_data_items_pagination }
+
+此端点还支持分页作为默认选项。如果需要，您可以通过向 `GET` 请求添加 `paging=false` 来禁用分页。
+即：`/api/dataItems?filter=dimensionItemType:in:[INDICATOR]&paging=false`。
+
+这是启用分页时的有效负载示例。请记住，分页是默认选项，不需要显式设置。
+
+```
+{
+  "pager": {
+    "page": 1,
+    "pageCount": 20,
+    "total": 969,
+    "pageSize": 50,
+    "nextPage": "https://play.dhis2.org/dev/api/dataItems?page=2&filter=dimensionItemType:in:[INDICATOR]"
+  },
+  "dataItems": [...]
+}
+```
+
+> **Note**
+>
+> For elements where there is an associated Program, the program name should also be returned as part of the element name (as a prefix). The only exception is `Program Indicators`. We will not prefix the element name in this case, in order to keep the same behavior as existing endpoints.
+>
+> The /dataItems endpoint will bring only data items that are defined as aggregatable type. The current list of valid aggregatable types is: `TEXT, LONG_TEXT`, `LETTER`, `BOOLEAN`, `TRUE_ONLY`, `NUMBER`, `UNIT_INTERVAL`, `PERCENTAGE`, `INTEGER`, `INTEGER_POSITIVE`, `INTEGER_NEGATIVE`, `INTEGER_ZERO_OR_POSITIVE`, `COORDINATE`.
+>
+> Even though the response returns several different attributes, the filtering can only be applied to specific ones: `displayName`, `name`, `valueType`, `id`, `dimensionItemType`, `programId`.
+>
+> The `order` will be considered invalid if it is set on top of `name` (ie.: order=_name:asc_) and a `filter` is set to `displayName` (ie.: filter=_displayName:ilike:aName_), and vice-versa.
+
+### 响应属性 { #webapi_data_items_response_attributes }
+
+现在，我们已经了解了此端点的主要功能和用法，让我们看一下响应中返回的属性列表。
+
+<table>
+<caption>Data items attributes</caption>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 75%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>id</td>
+<td>The unique identifier.</td>
+</tr>
+<tr class="even">
+<td>code</td>
+<td>A custom code to identify the dimensional item.</td>
+</tr>
+<tr class="odd">
+<td>name</td>
+<td>The name given for the item.</td>
+</tr>
+<tr class="even">
+<td>displayName</td>
+<td>The display name defined.</td>
+</tr>
+<tr class="odd">
+<td>shortName</td>
+<td>The short name given for the item.</td>
+</tr>
+<tr class="even">
+<td>displayShortName</td>
+<td>The display short name defined.</td>
+</tr>
+<tr class="odd">
+<td>dimensionItemType</td>
+<td>The dimension type. Possible types: INDICATOR, DATA_ELEMENT, REPORTING_RATE, PROGRAM_INDICATOR, PROGRAM_DATA_ELEMENT, PROGRAM_ATTRIBUTE.</td>
+</tr>
+<tr class="even">
+<td>valueType</td>
+<td>The item value type (more specific definition). Possible types: TEXT, LONG_TEXT, LETTER, BOOLEAN, TRUE_ONLY, UNIT_INTERVAL, PERCENTAGE, INTEGER, INTEGER_POSITIVE, INTEGER_NEGATIVE, INTEGER_ZERO_OR_POSITIVE, COORDINATE</td>
+</tr>
+<tr class="odd">
+<td>simplifiedValueType</td>
+<td>The general representation of a value type. Valid values: NUMBER, BOOLEAN, DATE, FILE_RESOURCE, COORDINATE, TEXT</td>
+</tr>
+<tr class="even">
+<td>programId</td>
+<td>The associated programId.</td>
+</tr>
+</tbody>
+</table>
+## Viewing analytical resource representations { #webapi_viewing_analytical_resource_representations }
+
+DHIS2 has several resources for data analysis. These resources include _charts_, _maps_, _reportTables_, _reports_ and _documents_. By visiting these resources you will retrieve information about the resource. For instance, by navigating to `/api/charts/R0DVGvXDUNP` the response will contain the name, last date of modification and so on for the chart. To retrieve the analytical representation, for instance, a PNG representation of the chart, you can append _/data_ to all these resources. For instance, by visiting `/api/charts/R0DVGvXDUNP/data` the system will return a PNG image of the chart.
+
+<table>
+<caption>Analytical resources</caption>
+<colgroup>
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 32%" />
+<col style="width: 32%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Resource</th>
+<th>Description</th>
+<th>Data URL</th>
+<th>Resource representations</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>charts</td>
+<td>Charts</td>
+<td>/api/charts/&lt;identifier&gt;/data</td>
+<td>png</td>
+</tr>
+<tr class="even">
+<td>eventCharts</td>
+<td>Event charts</td>
+<td>/api/eventCharts/&lt;identifier&gt;/data</td>
+<td>png</td>
+</tr>
+<tr class="odd">
+<td>maps</td>
+<td>Maps</td>
+<td>/api/maps/&lt;identifier&gt;/data</td>
+<td>png</td>
+</tr>
+<tr class="even">
+<td>reportTables</td>
+<td>Pivot tables</td>
+<td>/api/reportTables/&lt;identifier&gt;/data</td>
+<td>json | jsonp | html | xml | pdf | xls | csv</td>
+</tr>
+<tr class="odd">
+<td>reports</td>
+<td>Standard reports</td>
+<td>/api/reports/&lt;identifier&gt;/data</td>
+<td>pdf | xls | html</td>
+</tr>
+<tr class="even">
+<td>documents</td>
+<td>Resources</td>
+<td>/api/documents/&lt;identifier&gt;/data</td>
+<td>&lt;follows document&gt;</td>
+</tr>
+</tbody>
+</table>
+
+可以通过提供_date_查询参数来修改分析表示的数据内容。这要求为周期维度的相对周期设置分析资源。
+
+ <table>
+ <caption>数据查询参数</caption>
+ <colgroup>
+ <col style="width: 21%" />
+ <col style="width: 28%" />
+ <col style="width: 50%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>查询参数</th>
+ <th>值</th>
+ <th>说明</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td>日期</td>
+ <td> yyyy-MM-dd格式的日期</td>
+ <td>报告中相对期间的依据（需要相对期间）</td>
+ </tr>
+ </tbody>
+ </table>
+
+ <table>
+ <caption> png /图像类型（图表，地图）的查询参数</caption>
+ <colgroup>
+ <col style="width: 21%" />
+ <col style="width: 78%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>查询参数</th>
+ <th>说明</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td>宽度</td>
+ <td>图像的宽度（以像素为单位）</td>
+ </tr>
+ <tr class="even">
+ <td>高度</td>
+ <td>以像素为单位的图像高度</td>
+ </tr>
+ </tbody>
+ </table>
+
+用于检索各种分析的有效 URL 的一些示例
+代表如下。
+
+    / api / charts / R0DVGvXDUNP / data
+    / api / charts / R0DVGvXDUNP / data？date = 2013-06-01
+
+    /api/reportTables/jIISuEWxmoI/data.html
+    /api/reportTables/jIISuEWxmoI/data.html?date=2013-01-01
+    /api/reportTables/FPmvWs7bn2P/data.xls
+    /api/reportTables/FPmvWs7bn2P/data.pdf
+
+    / api / maps / DHE98Gsynpr / data
+    / api / maps / DHE98Gsynpr / data？date = 2013-07-01
+
+    /api/reports/OeJsA6K1Otx/data.pdf
+    /api/reports/OeJsA6K1Otx/data.pdf?date=2014-01-01
+
+## 外挂程式 { #webapi_plugins }
+
+DHIS2 带有插件，使您能够将实时数据直接嵌入到
+您的门户网站或网站。目前，存在图表、地图插件
+和数据透视表。
+
+请注意，本节中的所有代码示例均适用于
+仅用于演示目的。它们不应该按原样使用
+生产系统。为简单起见，凭据
+(admin/district) 已嵌入到脚本中。在真实场景中，
+您永远不应该在 javascript 中公开凭据，因为它会打开一个
+应用程序的漏洞。此外，您将创建一个用户
+使用更多的最小权限而不是使用超级用户
+为您的门户获取资源。
+
+可以通过使用反向来解决公开凭据
+nginx 或 apache2 等代理。代理可以配置为注入
+仅您希望的端点所需的授权标头
+公开。有一些文档可以帮助您入门
+实施者手册中描述 [反向
+代理](https://docs.dhis2.org/master/en/implementer/html/install_reverse_proxy_configuration.html#install_making_resources_available_with_nginx)
+配置。
+
+### 使用数据透视表插件嵌入数据透视表 { #webapi_pivot_table_plugin }
+
+在这个例子中，我们将看到如何嵌入好看的、轻量级的
+带有从 DHIS2 后端提供到 Web 的数据的 html 数据透视表
+页。为此，我们将使用数据透视表插件。这
+插件是用 Javascript 编写的，仅依赖于 jQuery 库。
+可以在以下位置找到完整的工作示例
+ <http://play.dhis2.org/portal/table.html> 。在网络中打开页面
+浏览器并查看源代码以了解它是如何设置的。
+
+我们首先看看完整的 html 文件会是什么样子
+喜欢。此设置在我们的网页中放置了两个表。第一个是
+引用现有表。第二个是内联配置的。
+
+``html
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="https://dhis2-cdn.org/v227/plugin/jquery-2.2.4.min.js"></script>
+        <script src="https://dhis2-cdn.org/v227/plugin/reporttable.js"></script>
+
+        <script>
+            reportTablePlugin.url = "https://play.dhis2.org/demo";
+            reportTablePlugin.username = "admin";
+            reportTablePlugin.password = "地区";
+            reportTablePlugin.loadingIndicator = true;
+
+            // 通过id参数引用已有的表，渲染到“report1”div
+
+            var r1 = { el: "report1", id: "R0DVGvXDUNP" };
+
+            // 表配置，渲染到“report2”div
+
+            变量 r2 = {
+                el: "报告2",
+                列： [
+                    {
+                        尺寸：“dx”，
+                        项目：[{ id: "YtbsuPPo010" }, { id: "l6byfWFUGaP" }],
+                    },
+                ],
+                行：[{维度：“pe”，项目：[{id：“LAST_12_MONTHS”}]}]，
+                过滤器：[{维度：“ou”，项目：[{id：“USER_ORGUNIT”}]}]，
+
+                // 以下所有属性都是可选的
+                title: "我的自定义标题",
+                showColTotals：假，
+                显示行总计：假，
+                showColSubTotals：假，
+                showRowSubTotals：假，
+                显示维度标签：假，
+                隐藏空行：true，
+                跳过舍入：真，
+                聚合类型：“平均”，
+                显示层次结构：正确，
+                仅完成：真实，
+                显示密度：“舒适”，
+                字体大小：“小”，
+                数字组分隔符：“逗号”，
+                legendSet: { id: "fqs276KXCXi" },
+            };
+
+            reportTablePlugin.load([r1, r2]);
+        </script>
+    </head>
+
+    <body>
+        <div id="report1"></div>
+        <div id="report2"></div>
+    </body>
+</html>
+````
+
+HTML 文档的标题部分包含两个文件。这
+第一个文件是 jQuery JavaScript 库（我们使用 DHIS2 内容
+在这种情况下，交付网络）。第二个文件是数据透视表
+插入。确保路径指向您的 DHIS2 服务器
+安装。
+
+现在让我们看看数据透视表的各种选项。需要一个属性：_el_（请参阅下表）。现在，如果您想引用 DHIS2 内已创建的预定义表，提供附加 _id_ 参数就足够了。如果您想动态配置数据透视表，则应省略 id 参数并在 _columns_ 数组、_rows_ 数组和可选的 _filters_ 数组内提供数据维度。
+
+数据维度定义为具有名为 _dimension_ 的文本属性的对象。该属性接受以下值：_dx_（指示符、数据元素、数据元素操作数、数据集、事件数据项和程序指示符）、_pe_（周期）、_ou_（组织单位）或任何组织单位组集或数据的 ID元素组集（可以在 Web api 中找到）。数据维度还有一个名为 _items_ 的数组属性，它接受具有 _id_ 属性的对象。
+
+总而言之，如果您想拥有例如表中列的“ANC 1 Coverage”、“ANC 2 Coverage”和“ANC 3 Coverage”您可以进行以下_columns_配置：
+
+```json
+columns: [{
+  dimension: "dx",
+  items: [
+    {id: "Uvn6LCg7dVU"}, // the id of ANC 1 Coverage
+    {id: "OdiHJayrsKo"}, // the id of ANC 2 Coverage
+    {id: "sB79w2hiLp8"}  // the id of ANC 3 Coverage
+  ]
+}]
+```
+
+ <table>
+ <caption> 数据透视表插件配置 </caption>
+ <thead>
+ <tr class="header">
+ <th> 参数 </th>
+ <th> </th>型
+ <th> 需要 </th>
+ <th> 选项（默认第一个） </th>
+ <th> 说明 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> 网址 </td>
+ <td> 字符串 </td>
+ <td> 是 </td>
+ <td> </td>
+ <td> DHIS2 服务器的基本 URL </td>
+ </tr>
+ <tr class="even">
+ <td> 用户名 </td>
+ <td> 字符串 </td>
+ <td> 是（如果跨域） </td>
+ <td> </td>
+ <td> 如果服务器在不同的域上运行，则用于身份验证 </td>
+ </tr>
+ <tr class="odd">
+ <td> 密码 </td>
+ <td> 字符串 </td>
+ <td> 是（如果跨域） </td>
+ <td> </td>
+ <td> 如果服务器在不同的域上运行，则用于身份验证 </td>
+ </tr>
+ <tr class="even">
+ <td> loadingIndicator </td>
+ <td> 布尔值 </td>
+ <td> 否 </td>
+ <td> </td>
+ <td> 是否在表格出现前显示加载指示器 </td>
+ </tr>
+ </tbody>
+ </table>
+
+<table>
+<caption>Pivot table configuration</caption>
+<thead>
+<tr class="header">
+<th>Param</th>
+<th>Type</th>
+<th>Required</th>
+<th>Options (default first)</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>el</td>
+<td>string</td>
+<td>Yes</td>
+<td></td>
+<td>Identifier of the HTML element to render the table in your web page</td>
+</tr>
+<tr class="even">
+<td>id</td>
+<td>string</td>
+<td>No</td>
+<td></td>
+<td>Identifier of a pre-defined table (favorite) in DHIS2</td>
+</tr>
+<tr class="odd">
+<td>columns</td>
+<td>array</td>
+<td>Yes (if no id provided)</td>
+<td></td>
+<td>Data dimensions to include in table as columns</td>
+</tr>
+<tr class="even">
+<td>rows</td>
+<td>array</td>
+<td>Yes (if no id provided)</td>
+<td></td>
+<td>Data dimensions to include in table as rows</td>
+</tr>
+<tr class="odd">
+<td>filter</td>
+<td>array</td>
+<td>No</td>
+<td></td>
+<td>Data dimensions to include in table as filters</td>
+</tr>
+<tr class="even">
+<td>title</td>
+<td>string</td>
+<td>No</td>
+<td></td>
+<td>Show a custom title above the table</td>
+</tr>
+<tr class="odd">
+<td>showColTotals</td>
+<td>boolean</td>
+<td>No</td>
+<td>true | false</td>
+<td>Whether to display totals for columns</td>
+</tr>
+<tr class="even">
+<td>showRowTotals</td>
+<td>boolean</td>
+<td>No</td>
+<td>true | false</td>
+<td>Whether to display totals for rows</td>
+</tr>
+<tr class="odd">
+<td>showColSubTotals</td>
+<td>boolean</td>
+<td>No</td>
+<td>true | false</td>
+<td>Whether to display sub-totals for columns</td>
+</tr>
+<tr class="even">
+<td>showRowSubTotals</td>
+<td>boolean</td>
+<td>No</td>
+<td>true | false</td>
+<td>Whether to display sub-totals for rows</td>
+</tr>
+<tr class="odd">
+<td>showDimensionLabels</td>
+<td>boolean</td>
+<td>No</td>
+<td>true | false</td>
+<td>Whether to display the name of the dimension top-left in the table</td>
+</tr>
+<tr class="even">
+<td>hideEmptyRows</td>
+<td>boolean</td>
+<td>No</td>
+<td>false | true</td>
+<td>Whether to hide rows with no data</td>
+</tr>
+<tr class="odd">
+<td>skipRounding</td>
+<td>boolean</td>
+<td>No</td>
+<td>false | true</td>
+<td>Whether to skip rounding of data values</td>
+</tr>
+<tr class="even">
+<td>completedOnly</td>
+<td>boolean</td>
+<td>No</td>
+<td>false | true</td>
+<td>Whether to only show completed events</td>
+</tr>
+<tr class="odd">
+<td>showHierarchy</td>
+<td>boolean</td>
+<td>No</td>
+<td>false | true</td>
+<td>Whether to extend orgunit names with the name of all anchestors</td>
+</tr>
+<tr class="even">
+<td>aggregationType</td>
+<td>string</td>
+<td>No</td>
+<td>&quot;SUM&quot; |&quot;AVERAGE&quot; | &quot;AVERAGE_SUM_ORG_UNIT&quot;|&quot;LAST&quot;|&quot;LAST_AVERAGE_ORG_UNIT&quot;| &quot;COUNT&quot; | &quot;STDDEV&quot; | &quot;VARIANCE&quot; | &quot;MIN&quot; | &quot;MAX&quot;</td>
+<td>Override the data element's default aggregation type</td>
+</tr>
+<tr class="odd">
+<td>displayDensity</td>
+<td>string</td>
+<td>No</td>
+<td>&quot;NORMAL&quot; | &quot;COMFORTABLE&quot; | &quot;COMPACT&quot;</td>
+<td>The amount of space inside table cells</td>
+</tr>
+<tr class="even">
+<td>fontSize</td>
+<td>string</td>
+<td>No</td>
+<td>&quot;NORMAL&quot; | &quot;LARGE&quot; | &quot;SMALL&quot;</td>
+<td>Table font size</td>
+</tr>
+<tr class="odd">
+<td>digitGroupSeparator</td>
+<td>string</td>
+<td>No</td>
+<td>&quot;SPACE&quot; | &quot;COMMA&quot; | &quot;NONE&quot;</td>
+<td>How values are formatted: 1 000 | 1,000 | 1000</td>
+</tr>
+<tr class="even">
+<td>legendSet</td>
+<td>object</td>
+<td>No</td>
+<td></td>
+<td>Color the values in the table according to the legend set</td>
+</tr>
+<tr class="odd">
+<td>userOrgUnit</td>
+<td>string / array</td>
+<td>No</td>
+<td></td>
+<td>Organisation unit identifiers, overrides organisation units associated with curretn user, single or array</td>
+</tr>
+<tr class="even">
+<td>relativePeriodDate</td>
+<td>string</td>
+<td>No</td>
+<td></td>
+<td>Date identifier e.g: &quot;2016-01-01&quot;. Overrides the start date of the relative period</td>
+</tr>
+</tbody>
+</table>
+
+### 使用Visualizer图表插件嵌入图表 { #webapi_chart_plugin }
+
+在这个例子中，我们将看到如何嵌入好看的 Highcharts
+图表 (<http://www.highcharts.com>) 数据来自 DHIS2
+后端变成网页。为此，我们将使用 DHIS2
+可视化插件。该插件是用 JavaScript 编写的，依赖于
+jQuery 库。可以在以下位置找到完整的工作示例
+ <http://play.dhis2.org/portal/chart.html> 。在网络中打开页面
+浏览器并查看源代码以了解它是如何设置的。
+
+我们首先看看完整的 html 文件会是什么样子
+喜欢。此设置在我们的网页上放置了两个图表。第一个是
+参考现有图表。第二个是内联配置的。
+
+``html
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="https://dhis2-cdn.org/v227/plugin/jquery-2.2.4.min.js"></script>
+        <script src="https://dhis2-cdn.org/v227/plugin/chart.js"></script>
+
+        <script>
+            ChartPlugin.url = "https://play.dhis2.org/demo";
+            ChartPlugin.用户名 = "管理员";
+            ChartPlugin.password = "地区";
+            ChartPlugin.loadingIndicator = true;
+
+            // 通过id参数引用现有图表，渲染到“report1”div
+
+            var r1 = { el: "report1", id: "R0DVGvXDUNP" };
+
+            // 图表配置，渲染到“report2”div
+
+            变量 r2 = {
+                el: "报告2",
+                列： [
+                    {
+                        尺寸：“dx”，
+                        项目：[{ id: "YtbsuPPo010" }, { id: "l6byfWFUGaP" }],
+                    },
+                ],
+                行：[{维度：“pe”，项目：[{id：“LAST_12_MONTHS”}]}]，
+                过滤器：[{维度：“ou”，项目：[{id：“USER_ORGUNIT”}]}]，
+
+                // 以下所有属性都是可选的
+                title: "自定义标题",
+                类型：“线”，
+                显示值：假，
+                隐藏空行：true，
+                回归类型：“线性”，
+                仅完成：真实，
+                目标线值：100，
+                targetLineTitle: "我的目标行标题",
+                基线值：20，
+                baseLineTitle: "我的基线标题",
+                聚合类型：“平均”，
+                范围轴最大值：100，
+                范围轴最小值：20，
+                范围轴步数：5，
+                范围轴小数：2，
+                rangeAxisTitle: "我的范围轴标题",
+                domainAxisTitle: "我的域轴标题",
+                隐藏图例：真实，
+            };
+
+            // 渲染图表
+
+            ChartPlugin.load(r1, r2);
+        </script>
+    </head>
+
+    <body>
+        <div id="report1"></div>
+        <div id="report2"></div>
+    </body>
+</html>
+````
+
+HTML 文档的标题部分包含两个文件。这
+第一个文件是 jQuery JavaScript 库（我们使用 DHIS2 内容
+在这种情况下，交付网络）。第二个文件是 Visualizer 图表
+插入。确保路径指向您的 DHIS2 服务器
+安装。
+
+现在让我们看看图表的各种选项。需要一个属性：_el_（请参阅下表）。现在，如果您想引用 DHIS2 内已制作的预定义图表，提供额外的 _id_ 参数就足够了。如果您想动态配置图表，则应省略 id 参数并在 _columns_ 数组、_rows_ 数组和可选的 _filters_ 数组内提供数据维度。
+
+数据维度定义为具有名为 _dimension_ 的文本属性的对象。该属性接受以下值：_dx_（指示符、数据元素、数据元素操作数、数据集、事件数据项和程序指示符）、_pe_（周期）、_ou_（组织单位）或任何组织单位组集或数据的 ID元素组集（可以在 Web api 中找到）。数据维度还有一个名为 _items_ 的数组属性，它接受具有 _id_ 属性的对象。
+
+总而言之，如果您想拥有例如图表中列上的“ANC 1 Coverage”、“ANC 2 Coverage”和“ANC 3 Coverage”您可以进行以下_columns_配置：
+
+```json
+columns: [{
+  dimension: "dx",
+  items: [
+    {id: "Uvn6LCg7dVU"}, // the id of ANC 1 Coverage
+    {id: "OdiHJayrsKo"}, // the id of ANC 2 Coverage
+    {id: "sB79w2hiLp8"}  // the id of ANC 3 Coverage
+  ]
+}]
+```
+
+ <table>
+ <caption> 图表插件配置 </caption>
+ <thead>
+ <tr class="header">
+ <th> 参数 </th>
+ <th> </th>型
+ <th> 需要 </th>
+ <th> 选项（默认第一个） </th>
+ <th> 说明 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> 网址 </td>
+ <td> 字符串 </td>
+ <td> 是 </td>
+ <td> </td>
+ <td> DHIS2 服务器的基本 URL </td>
+ </tr>
+ <tr class="even">
+ <td> 用户名 </td>
+ <td> 字符串 </td>
+ <td> 是（如果跨域） </td>
+ <td> </td>
+ <td> 如果服务器在不同的域上运行，则用于身份验证 </td>
+ </tr>
+ <tr class="odd">
+ <td> 密码 </td>
+ <td> 字符串 </td>
+ <td> 是（如果跨域） </td>
+ <td> </td>
+ <td> 如果服务器在不同的域上运行，则用于身份验证 </td>
+ </tr>
+ <tr class="even">
+ <td> loadingIndicator </td>
+ <td> 布尔值 </td>
+ <td> 否 </td>
+ <td> </td>
+ <td> 是否在图表出现前显示加载指标 </td>
+ </tr>
+ </tbody>
+ </table>
+
+<table>
+<caption>Chart configuration</caption>
+<thead>
+<tr class="header">
+<th>Param</th>
+<th>Type</th>
+<th>Required</th>
+<th>Options (default first)</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>el</td>
+<td>string</td>
+<td>Yes</td>
+<td></td>
+<td>Identifier of the HTML element to render the chart in your web page</td>
+</tr>
+<tr class="even">
+<td>id</td>
+<td>string</td>
+<td>No</td>
+<td></td>
+<td>Identifier of a pre-defined chart (favorite) in DHIS</td>
+</tr>
+<tr class="odd">
+<td>type</td>
+<td>string</td>
+<td>No</td>
+<td>column | stackedcolumn | bar | stackedbar | line | area | pie | radar | gauge</td>
+<td>Chart type</td>
+</tr>
+<tr class="even">
+<td>columns</td>
+<td>array</td>
+<td>Yes (if no id provided)</td>
+<td></td>
+<td>Data dimensions to include in chart as series</td>
+</tr>
+<tr class="odd">
+<td>rows</td>
+<td>array</td>
+<td>Yes (if no id provided)</td>
+<td></td>
+<td>Data dimensions to include in chart as category</td>
+</tr>
+<tr class="even">
+<td>filter</td>
+<td>array</td>
+<td>No</td>
+<td></td>
+<td>Data dimensions to include in chart as filters</td>
+</tr>
+<tr class="odd">
+<td>title</td>
+<td>string</td>
+<td>No</td>
+<td></td>
+<td>Show a custom title above the chart</td>
+</tr>
+<tr class="even">
+<td>showValues</td>
+<td>boolean</td>
+<td>No</td>
+<td>false | true</td>
+<td>Whether to display data values on the chart</td>
+</tr>
+<tr class="odd">
+<td>hideEmptyRows</td>
+<td>boolean</td>
+<td>No</td>
+<td>false | true</td>
+<td>Whether to hide empty categories</td>
+</tr>
+<tr class="even">
+<td>completedOnly</td>
+<td>boolean</td>
+<td>No</td>
+<td>false | true</td>
+<td>Whether to only show completed events</td>
+</tr>
+<tr class="odd">
+<td>regressionType</td>
+<td>string</td>
+<td>No</td>
+<td>&quot;NONE&quot; | &quot;LINEAR&quot;</td>
+<td>Show trend lines</td>
+</tr>
+<tr class="even">
+<td>targetLineValue</td>
+<td>number</td>
+<td>No</td>
+<td></td>
+<td>Display a target line with this value</td>
+</tr>
+<tr class="odd">
+<td>targetLineTitle</td>
+<td>string</td>
+<td>No</td>
+<td></td>
+<td>Display a title on the target line (does not apply without a target line value)</td>
+</tr>
+<tr class="even">
+<td>baseLineValue</td>
+<td>number</td>
+<td>No</td>
+<td></td>
+<td>Display a base line with this value</td>
+</tr>
+<tr class="odd">
+<td>baseLineTitle</td>
+<td>string</td>
+<td>No</td>
+<td></td>
+<td>Display a title on the base line (does not apply without a base line value)</td>
+</tr>
+<tr class="even">
+<td>rangeAxisTitle</td>
+<td>number</td>
+<td>No</td>
+<td></td>
+<td>Title to be displayed along the range axis</td>
+</tr>
+<tr class="odd">
+<td>rangeAxisMaxValue</td>
+<td>number</td>
+<td>No</td>
+<td></td>
+<td>Max value for the range axis to display</td>
+</tr>
+<tr class="even">
+<td>rangeAxisMinValue</td>
+<td>number</td>
+<td>No</td>
+<td></td>
+<td>Min value for the range axis to display</td>
+</tr>
+<tr class="odd">
+<td>rangeAxisSteps</td>
+<td>number</td>
+<td>No</td>
+<td></td>
+<td>Number of steps for the range axis to display</td>
+</tr>
+<tr class="even">
+<td>rangeAxisDecimals</td>
+<td>number</td>
+<td>No</td>
+<td></td>
+<td>Bumber of decimals for the range axis to display</td>
+</tr>
+<tr class="odd">
+<td>domainAxisTitle</td>
+<td>number</td>
+<td>No</td>
+<td></td>
+<td>Title to be displayed along the domain axis</td>
+</tr>
+<tr class="even">
+<td>aggregationType</td>
+<td>string</td>
+<td>No</td>
+<td>&quot;SUM&quot; |&quot;AVERAGE&quot; | &quot;AVERAGE_SUM_ORG_UNIT&quot;|&quot;LAST&quot;|&quot;LAST_AVERAGE_ORG_UNIT&quot;| &quot;COUNT&quot; | &quot;STDDEV&quot; | &quot;VARIANCE&quot; | &quot;MIN&quot; | &quot;MAX&quot;</td>
+<td>Override the data element's default aggregation type</td>
+</tr>
+<tr class="odd">
+<td>hideLegend</td>
+<td>boolean</td>
+<td>No</td>
+<td>false | true</td>
+<td>Whether to hide the series legend</td>
+</tr>
+<tr class="even">
+<td>hideTitle</td>
+<td>boolean</td>
+<td>No</td>
+<td>false | true</td>
+<td>Whether to hide the chart title</td>
+</tr>
+<tr class="odd">
+<td>userOrgUnit</td>
+<td>string / array</td>
+<td>No</td>
+<td></td>
+<td>Organisation unit identifiers, overrides organisation units associated with curretn user, single or array</td>
+</tr>
+<tr class="even">
+<td>relativePeriodDate</td>
+<td>string</td>
+<td>No</td>
+<td></td>
+<td>Date identifier e.g: &quot;2016-01-01&quot;. Overrides the start date of the relative period</td>
+</tr>
+</tbody>
+</table>
+
+### 使用GIS地图插件嵌入地图 { #webapi_map_plugin }
+
+在这个例子中，我们将看到如何将地图与来自
+DHIS2 后端转换成网页。为此，我们将使用 GIS
+地图插件。插件是用 JavaScript 编写的，依赖于 Ext
+仅限 JS 库。可以在以下位置找到完整的工作示例
+ <http://play.dhis2.org/portal/map.html> 。在网络浏览器中打开页面
+并查看源代码以了解它是如何设置的。
+
+我们首先看看完整的 html 文件会是什么样子
+喜欢。此设置在我们的网页上放置了两张地图。第一个是
+参考现有地图。第二个是内联配置的。
+
+``html
+<!DOCTYPE html>
+<html>
+    <head>
+        <链接
+            rel =“样式表”
+            类型=“文本/CSS”
+            href="http://dhis2-cdn.org/v215/ext/resources/css/ext-plugin-gray.css"
+        />
+        <script src="http://dhis2-cdn.org/v215/ext/ext-all.js"></script>
+        <script src="https://maps.google.com/maps/api/js?sensor=false"></script>
+        <script src="http://dhis2-cdn.org/v215/openlayers/OpenLayers.js"></script>
+        <script src="http://dhis2-cdn.org/v215/plugin/map.js"></script>
+
+        <script>
+            var base = "https://play.dhis2.org/demo";
+
+            // 登录 - 如果正常，调用 setLinks 函数
+
+            Ext.onReady(函数() {
+                Ext.Ajax.请求({
+                    url: 基础 + "dhis-web-commons-security/login.action",
+                    方法：“POST”，
+                    params: { j_username: "portal", j_password: "Portal123" },
+                    成功：设置链接，
+                });
+            });
+
+            函数 setLinks() {
+                DHIS.getMap({ url: base, el: "map1", id: "ytkZY3ChM6J" });
+
+                DHIS.getMap({
+                    网址： 基地，
+                    el: "地图2",
+                    地图视图：[
+                        {
+                            列： [
+                                {
+                                    尺寸：“英寸”，
+                                    项目：[{id：“Uvn6LCg7dVU”}]，
+                                },
+                            ]， // 数据
+                            行：[
+                                {
+                                    维度：“ou”，
+                                    项目： [
+                                        { id: "LEVEL-3" },
+                                        { id: "ImspTQPwCqd" },
+                                    ],
+                                },
+                            ], // 组织单位,
+                            过滤器：[
+                                {
+                                    尺寸：“pe”，
+                                    项目：[{ id：“LAST_3_MONTHS”}]，
+                                },
+                            ]， // 时期
+                            // 以下所有选项都是可选的
+                            班级: 7,
+                            颜色低：“02079c”，
+                            颜色高：“e5ecff”，
+                            不透明度：0.9，
+                            legendSet: { id: "fqs276KXCXi" },
+                        },
+                    ],
+                });
+            }
+        </script>
+    </head>
+
+    <body>
+        <div id="map1"></div>
+        <div id="map2"></div>
+    </body>
+</html>
+````
+
+四个文件和谷歌地图包含在标题部分
+HTML 文档。前两个文件是 Ext JS JavaScript 库（我们
+在这种情况下使用 DHIS2 内容交付网络）及其样式表。
+第三个文件是 OpenLayers JavaScript 映射框架
+( <http://openlayers.org> ) 最后我们包含了 GIS 地图插件。
+确保路径指向您的 DHIS2 服务器
+    安装。
+
+     <link rel="stylesheet" type="text/css" href="http://dhis2-cdn.org/v215/ext/resources/css/ext-plugin-gray.css" />
+     <script src="http://dhis2-cdn.org/v215/ext/ext-all.js"> </script>
+     <script src="https://maps.google.com/maps/api/js?sensor=false"> </script>
+     <script src="http://dhis2-cdn.org/v215/openlayers/OpenLayers.js"> </script>
+     <script src="http://dhis2-cdn.org/v215/plugin/map.js"> </script>
+
+为了使用 DHIS2 服务器进行身份验证，我们使用与上一节相同的方法。在 HTML 文档的标头中，我们在 script 元素中包含以下 Javascript。 _setLinks_方法将在稍后实现。确保 _base_ 变量指向您的 DHIS2 安装。
+
+    Ext.onReady（function（）{
+      Ext.Ajax.request（{
+        网址：基本+“ dhis-web-commons-security / login.action”，
+        方法：“ POST”，
+        参数：{j_username：“门户”，j_password：“ Portal123”}，
+        成功：setLinks
+      }）;
+    }）;
+
+现在让我们看看 GIS 插件的各种选项。需要两个属性：_el_ 和 _url_（请参阅下表）。现在，如果您想引用 DHIS2 GIS 中已制作的预定义地图，提供附加 _id_ 参数就足够了。如果您想动态配置地图，您应该省略 id 参数并提供 _mapViews_ （图层）。它们应该在 _columns_ 数组、_rows_ 数组和可选的 _filters_ 数组中配置数据维度。
+
+数据维度定义为具有名为 _dimension_ 的文本属性的对象。此属性接受以下值：_in_（指示符）、_de_（数据元素）、_ds_（数据集）、_dc_（数据元素操作数）、_pe_（周期）、_ou_（组织单位）或任何组织单位组集的 ID或数据元素组集（可以在 Web api 中找到）。数据维度还有一个名为 _items_ 的数组属性，它接受具有 _id_ 属性的对象。
+
+总而言之，如果你想有一个层，例如在地图中的“ANC 1 Coverage”，您可以进行以下_columns_配置：
+
+```json
+columns: [{
+  dimension: "in", // could be "in", "de", "ds", "dc", "pe", "ou" or any dimension id
+  items: [{id: "Uvn6LCg7dVU"}], // the id of ANC 1 Coverage
+}]
+```
+
+ <table>
+ <caption> GIS地图插件配置</caption>
+ <thead>
+ <tr class="header">
+ <th> 参数 </th>
+ <th> </th>型
+ <th> 需要 </th>
+ <th> 选项（默认第一个） </th>
+ <th> 说明 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> el </td>
+ <td> 字符串 </td>
+ <td> 是 </td>
+ <td> </td>
+ <td> 用于在网页中呈现地图的 HTML 元素的标识符 </td>
+ </tr>
+ <tr class="even">
+ <td> 网址 </td>
+ <td> 字符串 </td>
+ <td> 是 </td>
+ <td> </td>
+ <td> DHIS2 服务器的基本 URL </td>
+ </tr>
+ <tr class="odd">
+ <td> ID </td>
+ <td> 字符串 </td>
+ <td> 否 </td>
+ <td> </td>
+ <td> DHIS 中预定义地图（收藏夹）的标识符 </td>
+ </tr>
+ <tr class="even">
+ <td> baseLayer </td>
+ <td> 字符串/布尔值 </td>
+ <td> 否 </td>
+ <td> 'gs', 'googlestreets' | 'gh', 'googlehybrid' | 'osm', 'openstreetmap' |假，空，“无”，“关”</td>
+ <td> 显示背景图 </td>
+ </tr>
+ <tr class="odd">
+ <td> hideLegend </td>
+ <td> 布尔值 </td>
+ <td> 否 </td>
+ <td> 假 |真 </td>
+ <td> 隐藏图例面板 </td>
+ </tr>
+ <tr class="even">
+ <td> 地图视图 </td>
+ <td> 阵列 </td>
+ <td> 是（如果未提供 ID） </td>
+ <td> </td>
+ <td> 层数组 </td>
+ </tr>
+ </tbody>
+ </table>
+
+如果未提供 id，则必须添加具有以下内容的地图视图对象
+配置选项：
+
+ <table>
+ <caption> 地图插件配置 </caption>
+ <tbody>
+ <tr class="odd">
+ <td> 层 </td>
+ <td> 字符串 </td>
+ <td> 否 </td>
+ <td> &quot;thematic1&quot; | &quot;thematic2&quot; | &quot;thematic3&quot; | &quot;thematic4&quot; | &quot;boundary&quot; | &quot;facility&quot; | </td>
+ <td> 应添加地图视图内容的图层 </td>
+ </tr>
+ <tr class="even">
+ <td> 列 </td>
+ <td> 阵列 </td>
+ <td> 是 </td>
+ <td> </td>
+ <td> 指标、数据元素、数据操作数或数据集（仅使用一个） </td>
+ </tr>
+ <tr class="odd">
+ <td> 行 </td>
+ <td> 阵列 </td>
+ <td> 是 </td>
+ <td> </td>
+ <td> 组织单位（允许多个） </td>
+ </tr>
+ <tr class="even">
+ <td> 过滤器 </td>
+ <td> 阵列 </td>
+ <td> 是 </td>
+ <td> </td>
+ <td> 句号（只用一个） </td>
+ </tr>
+ <tr class="odd">
+ <td> 类 </td>
+ <td> 整数 </td>
+ <td> 否 </td>
+ <td> 5 | 1-7 </td>
+ <td> 自动图例类的数量 </td>
+ </tr>
+ <tr class="even">
+ <td> 方法 </td>
+ <td> 整数 </td>
+ <td> 否 </td>
+ <td> 2 | 3 </td>
+ <td> 图例计算方法，其中 2 = 等间隔和 3 = 等计数 </td>
+ </tr>
+ <tr class="odd">
+ <td> 颜色低 </td>
+ <td> 字符串 </td>
+ <td> 否 </td>
+ <td> &quot;ff0000&quot;（红色）|任何十六进制颜色 </td>
+ <td> 代表第一个自动图例类的颜色 </td>
+ </tr>
+ <tr class="even">
+ <td> 颜色高 </td>
+ <td> 字符串 </td>
+ <td> 否 </td>
+ <td> &quot;00ff00&quot;（绿色） |任何十六进制颜色 </td>
+ <td> 代表最后一个自动图例类的颜色 </td>
+ </tr>
+ <tr class="odd">
+ <td> 半径低 </td>
+ <td> 整数 </td>
+ <td> 否 </td>
+ <td> 5 |任何整数 </td>
+ <td> 仅适用于设施点（点） - 具有最小值的点的半径 </td>
+ </tr>
+ <tr class="even">
+ <td> 半径高 </td>
+ <td> 整数 </td>
+ <td> 否 </td>
+ <td> 15 |任何整数 </td>
+ <td> 仅适用于设施点（点） - 具有最大值的点的半径 </td>
+ </tr>
+ <tr class="odd">
+ <td> 不透明度 </td>
+ <td> 双 </td>
+ <td> 否 </td>
+ <td> 0.8 | 0 - 1 </td>
+ <td> 图层内容的不透明度/透明度 </td>
+ </tr>
+ <tr class="even">
+ <td> legendSet </td>
+ <td> 对象 </td>
+ <td> 否 </td>
+ <td> </td>
+ <td> 预定义的图例集。将覆盖自动图例集。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 标签 </td>
+ <td> 布尔值/对象 </td>
+ <td> 否 </td>
+ <td> 假 |真实|对象属性：fontSize（整数）、color（十六进制字符串）、strong（布尔值）、斜体（布尔值）</td>
+ <td> 在地图上显示标签 </td>
+ </tr>
+ <tr class="even">
+ <td> 宽度 </td>
+ <td> 整数 </td>
+ <td> 否 </td>
+ <td> </td>
+ <td> 地图宽度 </td>
+ </tr>
+ <tr class="odd">
+ <td> 高度 </td>
+ <td> 整数 </td>
+ <td> 否 </td>
+ <td> </td>
+ <td> 地图高度 </td>
+ </tr>
+ <tr class="even">
+ <td> userOrgUnit </td>
+ <td> 字符串/数组 </td>
+ <td> 否 </td>
+ <td> </td>
+ <td> 组织单位标识符，覆盖与当前用户、单个或阵列关联的组织单位 </td>
+ </tr>
+ </tbody>
+ </table>
+
+我们继续添加一张预定义的地图和一张动态配置的地图
+到我们的 HTML 文档。您可以使用浏览可用地图的列表
+此处的 Web API： <http://play.dhis2.org/demo/api/33/maps> 。
+
+```javascript
+function setLinks() {
+  DHIS.getMap({ url: base, el: "map1", id: "ytkZY3ChM6J" });
+
+  DHIS.getMap({
+ url: base,
+ el: "map2",
+ mapViews: [
+   columns: [ // Chart series
+  columns: [{dimension: "in", items: [{id: "Uvn6LCg7dVU"}]}], // data
+   ],
+   rows: [ // Chart categories
+  rows: [{dimension: "ou", items: [{id: "LEVEL-3"}, {id: "ImspTQPwCqd"}]}], // organisation units
+   ],
+   filters: [
+  filters: [{dimension: "pe", items: [{id: "LAST_3_MONTHS"}]}], // period
+   ],
+   // All following options are optional
+   classes: 7,
+   colorLow: "02079c",
+   colorHigh: "e5ecff",
+   opacity: 0.9,
+   legendSet: {id: "fqs276KXCXi"}
+ ]
+  });
+}
+```
+
+最后，我们在 HTML 文档的正文部分中包含一些 _div_ 元素，并使用插件 JavaScript 中引用的标识符。
+
+```html
+<div id="map1"></div>
+<div id="map2"></div>
+```
+
+要查看完整的工作示例，请访问
+ <http://play.dhis2.org/portal/map.html> 。

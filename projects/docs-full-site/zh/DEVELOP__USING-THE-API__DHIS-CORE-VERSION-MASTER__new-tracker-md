@@ -1,0 +1,2175 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/new-tracker.md"
+revision_date: "2023-04-04"
+tags:
+    - DHIS核心 主版
+    - Develop
+---
+
+# 新跟踪器{ #new-tracker }
+
+DHIS2 的 2.36 版引入了一组新的跟踪器端点，专门用于导入和查询跟踪器对象（包括被跟踪的实体、注册、事件和关系）。这些新的端点与以前的实施不连贯。端点的重新设计使开发人员能够改进、重新设计和规范应用程序接口的行为，从而改进跟踪器服务。
+
+新引入的终端包括
+
+-   `POST /api/tracker`
+-   `GET /api/tracker/enrollments`
+-   `GET /api/tracker/events`
+-   `GET /api/tracker/trackedEntities`
+-   `GET /api/tracker/relationships`
+
+> **注意**
+>
+> - 旧的端点已被标记为过时，但仍能正常工作。
+> - 新端点的某些功能尚未准备就绪，但它们支持主要用例。
+
+## 应用程序接口的变化{ #changes-in-the-api }
+
+API 中使用的属性名称已更改，以便在所有新端点中使用一致的命名。
+
+### Tracker Import changelog (`POST`) { #tracker-import-changelog-post }
+
+下表重点说明了以前的跟踪器导入端点（/api/trackedEntityInstance、/api/enrollments、/api/events 和 /api/relatiosnhips）与新端点（/api/tracker）之间的区别。目前，所有端点仍然可用。
+
+| 跟踪对象 | Previously | Now |
+| --- | --- | --- |
+| **属性** | `created`<br>`lastUpdated` | `createdAt`<br>`updatedAt` |
+| **数据值** | `create`<br>`lastUpdated`<br>`createByUserInfo`<br>`lastUpdatedByUserInfo` | `createdAt`<br>`updatedAt`<br>`createdBy`<br>`updatedBy` |
+| **注册** | `created`<br>`createdAtClient`<br>`lastUpdated`<br>`lastUpdatedAtClient`<br>`trackedEntityInstance`<br>`enrollmentDate`<br>`incidentDate`<br>`completedDate`<br>`createByUserInfo`<br>`lastUpdatedByUserInfo` | `createdAt`<br>`createdAtClient`<br>`updatedAt`<br>`updatedAtClient`<br>`trackedEntity`<br>`enrolledAt`<br>`occurredAt`<br>`completedAt`<br>`createdBy`<br>`updatedBy` |
+| **活动** | `trackedEntityInstance`<br>`eventDate`<br>`dueDate`<br>`created`<br>`createdAtClient`<br>`lastUpdated`<br>`lastUpdatedAtClient`<br>`completedDate`<br>`createByUserInfo`<br>`lastUpdatedByUserInfo`<br>`assignedUser`\* | `trackedEntity`<br>`occurredAt`<br>`scheduledAt`<br>`createdAt`<br>`createdAtClient`<br>`updatedAt`<br>`updatedAtClient`<br>`completedAt`<br>`createdBy`<br>`updatedBy`<br>`assignedUser`\* |
+| **注** | `storedDate`<br>`lastUpdatedBy` | `storedAt`<br>`createdBy` |
+| **ProgramOwner** | `ownerOrgUnit`<br>`trackedEntityInstance` | `orgUnit`<br>`trackedEntity` |
+| **RelationshipItem** | `trackedEntityInstance.trackedEntityInstance`<br>`enrollment.enrollment`<br>`event.event` | `trackedEntity`<br>`enrollment`<br>`event` |
+| **Relationship** | `created`<br>`lastUpdated` | `createdAt`<br>`updatedAt` |
+| **TrackedEntity** | `trackedEntityInstance`<br>`created`<br>`createdAtClient`<br>`lastUpdated`<br>`lastUpdatedAtClient`<br>`createByUserInfo`<br>`lastUpdatedByUserInfo` | `trackedEntity`<br>`createdAt`<br>`createdAtClient`<br>`updatedAt`<br>`updatedAtClient`<br>`createdBy`<br>`updatedBy` |
+
+> **Note**
+>
+> Field `assignedUser` was a String before, now it is of type User:
+>
+> ```json
+> {
+>     "assignedUser": {
+>         "uid": "ABCDEF12345",
+>         "username": "username",
+>         "firstName": "John",
+>         "surname": "Doe"
+>     }
+> }
+> ```
+
+### Tracker Export changelog (`GET`) { #tracker-export-changelog-get }
+
+The `GET` endpoints all conform to the same naming conventions reported in the previous paragraph. Additionally, we made some changes regarding the request parameters to respect the same naming conventions here as well.
+
+这些表格强调了旧端点与新端点在 `GET` 端点的请求参数方面的差异。
+
+#### Request parameter changes for `GET /api/tracker/enrollments` { #request-parameter-changes-for-get-apitrackerenrollments }
+
+| Previously                             | Now                                 |
+| -------------------------------------- | ----------------------------------- |
+| `ou`                                   | `orgUnit`                           |
+| `lastUpdated`<br>`lastUpdateDuration`  | `updatedAfter`<br>`updatedWithin`   |
+| `programStartDate`<br>`programEndDate` | `enrolledAfter`<br>`enrolledBefore` |
+| `trackedEntityInstance`                | `trackedEntity`                     |
+
+#### Request parameter changes for `GET /api/tracker/events` { #request-parameter-changes-for-get-apitrackerevents }
+
+| Previously | Now |
+| --- | --- |
+| `trackedEntityInstance` | `trackedEntity` |
+| `startDate`<br>`endDate` | `occurredAfter`<br>`occurredBefore` |
+| `dueDateStart`<br>`dueDateEnd` | `scheduledAfter`<br>`scheduledBefore` |
+| `lastUpdated` | Removed - obsolete, see: <br><ul><li>`updatedAfter`</li><li>`updatedBefore`</li></ul> |
+| `lastUpdatedStartDate`<br>`lastUpdateEndDate`<br>`lastUpdateDuration` | `updatedAfter`<br>`updatedBefore`<br>`updatedWithin` |
+
+#### Request parameter changes for `GET /api/tracker/trackedEntities` { #request-parameter-changes-for-get-apitrackertrackedentities }
+
+| Previously | Now |
+| --- | --- |
+| `trackedEntityInstance` | `trackedEntity` |
+| `ou` | `orgUnit` |
+| `programStartDate`<br>`programEndDate` | Removed - obsolete, see <br><ul><li>`enrollmentEnrolledAfter`</li><li>`enrollmentEnrolledBefore`</li></ul> |
+| `programEnrollmentStartDate`<br>`programEnrollmentEndDate` | `enrollmentEnrolledAfter`<br>`enrollmentEnrolledBefore` |
+| `programIncidentStartDate`<br>`programIncidentEndDate` | `enrollmentOccurredAfter`<br>`enrollmentOccurredBefore` |
+| `eventStartDate`<br>`eventEndDate` | `eventOccurredAfter`<br>`eventOccurredBefore` |
+| `lastUpdatedStartDate`<br>`lastUpdateEndDate`<br>`lastUpdateDuration` | `updatedAfter`<br>`updatedBefore`<br>`updatedWithin` |
+
+## 跟踪对象{ #webapi_nti_tracker_objects }
+
+Tracker 由几种不同类型的对象组成，这些对象嵌套在一起以表示数据。在本节中，我们将展示和描述 Tracker API 中使用的每个对象。
+
+### 跟踪实体{ #tracked-entity }
+
+`跟踪实体`是跟踪器模型的根对象。
+
+| 物业 | 描述 | 需要 | 不可改变 | 类型 | 例 |
+| --- | --- | --- | --- | --- | --- |
+| 跟踪实体 | 被跟踪实体的标识符。如果未提供，则生成 | 不 | 是的 | String:Uid | ABCDEF12345 |
+| trackedEntityType | 被跟踪实体的类型。 | 是的 | 是的 | String:Uid | ABCDEF12345 |
+| createdAt | 用户创建跟踪实体的时间戳。在服务器上设置。 | 不 | 不 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| createdAtClient | 用户在客户端创建被跟踪实体的时间戳。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| updatedAt | 对象最后一次更新的时间戳。在服务器上设置。 | 不 | 不 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| updatedAtClient | 对象最后一次在客户端更新的时间戳。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| orgUnit | 用户创建跟踪实体的组织单位。 | 是的 | 是的 | String:Uid | ABCDEF12345 |
+| inactive | 表示被跟踪实体是否处于非活动状态。 | 不 | 是的 | Boolean | Default: False, True |
+| deleted | 表示跟踪的实体是否已被删除。它只能在删除时更改。 | 不 | 不 | Boolean | 删除前为假 |
+| geometry | 被跟踪实体的地理表示。基于 TrackedEntityType 的 "featureType"。 | 不 | 是的 | GeoJson | {<br>"type": "POINT",<br>"coordinates": [123.0, 123.0]<br>} |
+| 存储方式 | 存储/创建被跟踪实体的客户端引用。 | 不 | 是的 | 字符串：任意 | 无名氏 |
+| 创建人 | 仅用于读取数据。创建对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid"："ABCDEF12345",<br>"username"："username",<br>"firstName"："John",<br>"surname"："Doe"<br>} |
+| 更新日期 | 仅用于读取数据。最后更新对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid"："ABCDEF12345",<br>"username"："username",<br>"firstName"："John",<br>"surname"："Doe"<br>} |
+| 属性 | 被跟踪实体拥有的被跟踪实体属性值列表。 | 不 | 是的 | TrackedEntityAttributeValue 列表 | 参见属性 |
+| 注册人数 | 被跟踪实体拥有的注册列表。 | 不 | 是的 | 入学名单 | 查看注册情况 |
+| 关系 | 与被跟踪实体相连的关系列表。 | 不 | 是的 | 关系清单 | 查看关系 |
+| 程序所有者 | 可通过特定程序访问此被跟踪实体的组织单位列表。更多信息，请参阅 "程序所有权"。 | 不 | 是的 | 程序所有者列表 | 参见 "计划所有权 "部分 |
+
+> **注意**
+>
+> `被跟踪实体`"拥有"所有`被跟踪实体属性值`（或上表中所述的"属性"）。然而，`被跟踪实体属性`要么通过`被跟踪实体类型`或`程序`连接到`被跟踪实体`。我们经常将这种分离称为`跟踪实体类型属性`和`跟踪实体程序属性`。这种分离的重要性与访问控制和限制用户可以看到的信息有关。
+>
+> `被跟踪实体`中提到的"属性"是`被跟踪实体类型属性`。
+
+### 注册 { #enrollment }
+
+`被跟踪实体`可以注册其符合资格的`项目`。只要程序配置了与被跟踪实体相同的`被跟踪实体类型`，被跟踪实体就符合资格。我们用`Enrollment`对象来表示注册，我们将在本节中对此进行描述。
+
+| 物业 | 描述 | 需要 | 不可改变 | 类型 | 例 |
+| --- | --- | --- | --- | --- | --- |
+| 注册 | 注册的标识符。如果未提供，则生成 | 不 | 是的 | String:Uid | ABCDEF12345 |
+| 程序 | 注册所代表的计划。 | 是的 | 不 | String:Uid | ABCDEF12345 |
+| 跟踪实体 | 对注册的被跟踪实体的引用。 | 是的 | 是的 | String:Uid | ABCDEF12345 |
+| trackedEntityType | 仅用于读取数据。注册的被跟踪实体类型 | 不 | 是的 | String:Uid | ABCDEF12345 |
+| 地位 | 注册状态。如果未提供，则为 ACTIVE。 | 不 | 不 | 枚举 | 激活、完成、取消 |
+| orgUnit | 用户注册被跟踪实体的组织单位。 | 是的 | 不 | String:Uid | ABCDEF12345 |
+| 组织单位名称 | 仅用于读取数据。进行注册的组织单位名称。 | 不 | 不 | 字符串：任意 | 塞拉利昂 |
+| createdAt | 用户创建对象的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| createdAtClient | 用户在客户端创建对象的时间戳 | 不 | 不 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| updatedAt | 对象最后一次更新的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| updatedAtClient | 对象最后一次在客户端更新的时间戳 | 不 | 不 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| 入学人数 | 用户注册被跟踪实体时的时间戳。 | 是的 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| occurredAt | 注册发生的时间戳。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| completedAt | 用户完成注册的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| 完成人 | 参考谁完成了注册 | 不 | 不 | 字符串：任意 | 无名氏 |
+| 跟进 | 表示注册是否需要跟进。如果未提供，则为假 | 不 | 不 | 布依兰 | Default: False, True |
+| deleted | 表示注册是否已被删除。它只能在删除时更改。 | 不 | 是的 | Boolean | 删除前为假 |
+| geometry | 注册的地理表示。基于计划的 "特征类型 | 不 | 不 | GeoJson | {<br>"type": "POINT",<br>"coordinates": [123.0, 123.0]<br>} |
+| 存储方式 | 存储/创建注册的客户编号。 | 不 | 不 | 字符串：任意 | 无名氏 |
+| 创建人 | 仅用于读取数据。创建对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid"："ABCDEF12345",<br>"username"："username",<br>"firstName"："John",<br>"surname"："Doe"<br>} |
+| 更新日期 | 仅用于读取数据。最后更新对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid"："ABCDEF12345",<br>"username"："username",<br>"firstName"："John",<br>"surname"："Doe"<br>} |
+| 属性 | 与注册相关的被跟踪实体属性值列表。 | 不 | 不 | TrackedEntityAttributeValue 列表 | 参见属性 |
+| 活动 | 注册所拥有的事件列表。 | 不 | 不 | 活动列表 | 查看活动 |
+| 关系 | 与注册有关的关系列表。 | 不 | 不 | 关系清单 | 查看关系 |
+| 说明 | 连接到注册的备注。只能创建。 | 不 | 是的 | 注释清单 | 参见注释 |
+
+> **Note**
+>
+> `Tracked Entities` "owns" all `Tracked Entity Attribute Values` (Or "attributes" as described in the previous table). However, `Tracked Entity Attributes` are either connected to a `Tracked Entity` through its `Tracked Entity Type` or a `Program`. We often refer to this separation as `Tracked Entity Type Attributes` and `Tracked Entity Program Attributes`. The importance of this separation is related to access control and limiting what information the user can see.
+>
+> The "attributes" referred to in the `Enrollment` are `Tracked Entity Program Attributes`.
+
+### 大事记 { #events }
+
+`Events` are either part of an `EVENT PROGRAM` or `TRACKER PROGRAM`. For `TRACKER PROGRAM`, events belong to an `Enrollment`, which again belongs to a `Tracked Entity`. On the other hand, `EVENT PROGRAM` is `Events` not connected to a specific `Enrollment` or `Tracked Entity`. The difference is related to whether we track a specific `Tracked Entity` or not. We sometimes refer to `EVENT PROGRAM` events as "anonymous events" or "single events" since they only represent themselves and not another `Tracked Entity`.
+
+In the API, the significant difference is that all events are either connected to the same enrollment (`EVENT PROGRAM`) or different enrollments (`TRACKER PROGRAM`). The table below will point out any exceptional cases between these two.
+
+| 物业 | 描述 | 需要 | 不可改变 | 类型 | 例 |
+| --- | --- | --- | --- | --- | --- |
+| 事件 | 事件的标识符。如果未提供，则生成 | 不 | 是的 | String:Uid | ABCDEF12345 |
+| 程序阶段 | 事件所代表的计划阶段。 | 是的 | 不 | String:Uid | ABCDEF12345 |
+| 注册 | 对拥有该事件的注册的引用。**_不适用于 `EVENT PROGRAM`_** | 是的 | 是的 | String:Uid | ABCDEF12345 |
+| 程序 | 仅用于读取数据。拥有该事件的注册程序类型。 | 不 | 是的 | String:Uid | ABCDEF12345 |
+| 跟踪实体 | 仅用于读取数据。拥有事件的被跟踪实体。**_不适用于 `EVENT PROGRAM`_** | 不 | 不 | String:Uid | ABCDEF12345 |
+| 地位 | 事件的状态。如果没有提供，则为 ACTIVE。 | 不 | 不 | 枚举 | 活动、已完成、已访问、计划、逾期、跳过 |
+| 注册状态 | 仅用于读取数据。拥有事件的注册状态。**_不适用于 `EVENT PROGRAM`_** | 不 | 不 | 枚举 | 激活、完成、取消 |
+| orgUnit | 用户注册事件的组织单位。 | 是的 | 不 | String:Uid | ABCDEF12345 |
+| 组织单位名称 | 仅用于读取数据。用户登记事件的组织单位名称。 | 不 | 不 | 字符串：任意 | 塞拉利昂 |
+| createdAt | 用户创建事件的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| createdAtClient | 用户在客户端创建事件的时间戳 | 不 | 不 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| updatedAt | 事件最后更新的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| updatedAtClient | 客户端最后一次更新事件的时间戳 | 不 | 不 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| 预定日期 | 事件计划发生的时间戳。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| occurredAt | 事情发生的时间戳。 | 是的 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| completedAt | 用户完成事件的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| 完成人 | 关于完成活动者的参考信息 | 不 | 不 | 字符串：任意 | 无名氏 |
+| 跟进 | 表示事件是否被标记为需要跟进。如果未提供，则为假 | 不 | 不 | 布依兰 | Default: False, True |
+| deleted | 表示事件是否已被删除。它只能在删除时更改。 | 不 | 是的 | Boolean | 删除前为假 |
+| geometry | 事件的地理表示。基于节目阶段的 "特征类型 | 不 | 不 | GeoJson | {<br>"type": "POINT",<br>"coordinates": [123.0, 123.0]<br>} |
+| 存储方式 | 存储/创建事件的客户编号。 | 不 | 不 | 字符串：任意 | 无名氏 |
+| 创建人 | 仅用于读取数据。创建对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid"："ABCDEF12345",<br>"username"："username",<br>"firstName"："John",<br>"surname"："Doe"<br>} |
+| 更新日期 | 仅用于读取数据。最后更新对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid"："ABCDEF12345",<br>"username"："username",<br>"firstName"："John",<br>"surname"："Doe"<br>} |
+| 属性选项组合 | 事件的属性选项组合。如果没有提供或配置，则为默认值。 | 不 | 不 | String:Uid | ABCDEF12345 |
+| 属性类别选项 | 事件的属性类别选项。如果没有提供或配置，则为默认值。 | 不 | 不 | String:Uid | ABCDEF12345 |
+| 指定用户 | 指向已被分配给该事件的用户的引用。 | 不 | 不 | 用户 | {<br>"uid"："ABCDEF12345",<br>"username"："username",<br>"firstName"："John",<br>"surname"："Doe"<br>} |
+| 数据值 | 与事件相关的数据值列表。 | 不 | 不 | TrackedEntityAttributeValue 列表 | 参见属性 |
+| 关系 | 与事件相关的关系列表。 | 不 | 不 | 关系清单 | 查看关系 |
+| 说明 | 与事件相关的备注。只能创建。 | 不 | 是的 | 注释清单 | 参见注释 |
+
+### 关系{ #relationship }
+
+`Relationships` are objects that link together two other tracker objects. The constraints each side of the relationship must conform to are based on the `Relationship Type` of the `Relationship`.
+
+| 物业 | 描述 | 需要 | 不可改变 | 类型 | 例 |
+| --- | --- | --- | --- | --- | --- |
+| 关系 | 关系的标识符。如果未提供，则生成。 | 不 | 是的 | String:Uid | ABCDEF12345 |
+| 关系类型 | 关系类型。决定关系中可以链接的对象。 | 是的 | 是的 | String:Uid | ABCDEF12345 |
+| 关系名 | 仅用于读取数据。此关系的关系类型名称 | 不 | 不 | 字符串：任意 | 兄弟姐妹 |
+| createdAt | 用户创建关系的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| updatedAt | 关系最后一次更新的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| 双向 | 仅用于读取数据。表示关系类型是否双向。 | 不 | 不 | Boolean | 真或假 |
+| 从 | 关系中每一方的引用。必须符合关系类型中设置的约束条件 | 是的 | 是的 | 关系项 | {"trackedEntity"：{"trackedEntity"："ABCEF12345"}}，{"注册"：{"注册"："ABCDEF12345"}}或 {"事件"：{"事件"："ABCDEF12345"}} |
+
+> **Note**
+>
+> `Relationship item` represents a link to an object. Since a `relationship` can be between any tracker object like `tracked entity`, `enrollment`, and `event`, the value depends on the `relationship type`. For example, if the `relationship type` connects from an `event` to a `tracked entity`, the format is strict:
+>
+> ```json
+> {
+>     "from": {
+>         "event": { "event": "ABCDEF12345" }
+>     },
+>     "to": {
+>         "trackedEntity": { "trackedEntity": "FEDCBA12345" }
+>     }
+> }
+> ```
+
+### 属性 { #attribute }
+
+`Attributes` are the actual values describing the `tracked entities`. They can either be connected through a `tracked entity type` or a `program`. Implicitly this means `attributes` can be part of both a `tracked entity` and an `enrollment`.
+
+| 物业 | 描述 | 需要 | 不可改变 | 类型 | 例 |
+| --- | --- | --- | --- | --- | --- |
+| 特质 | 对所代表的跟踪实体属性的引用。 | 是的 | 是的 | String:Uid | ABCDEF12345 |
+| 码 | 仅用于读取数据。被跟踪实体属性的代码。 | 不 | 不 | 字符串：任意 | 美国广播公司 |
+| 显示名称 | 仅用于读取数据。被跟踪实体属性的显示名称。 | 不 | 不 | 字符串：任意 | 名称 |
+| createdAt | 添加值的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| updatedAt | 值最后一次更新的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| 存储方式 | 存储/创建值的客户端引用。 | 不 | 不 | 字符串：任意 | 无名氏 |
+| valueType | 仅用于读取数据。属性所代表的值类型。 | 不 | 不 | 枚举 | 文本、INTEGER 等 |
+| 价值 | 被跟踪实体属性的值。 | 不 | 不 | 字符串：任意 | 无名氏 |
+
+> **Note**
+>
+> For `attributes` only the "attribute" and "value" properties are required when adding data. "value" can be null, which implies the user should remove the value.
+>
+> In the context of tracker objects, we refer to `Tracked Entity Attributes` and `Tracked Entity Attribute Values` as "attributes". However, attributes are also their own thing, related to metadata. Therefore it's vital to separate Tracker attributes and metadata attributes. In the tracker API, it is possible to reference the metadata attributes when specifying `idScheme` (See request parameters for more information).
+
+### 数据值{ #data-values }
+
+While `Attributes` describes a `tracked entity` or an `enrollment`, `data values` describes an `event`. The major difference is that `attributes` can only have a single value for a given `tracked entity`. In contrast, `data values` can have many different values across different `events` - even if the `events` all belong to the same `enrollment` or `tracked entity`.
+
+| 物业 | 描述 | 需要 | 不可改变 | 类型 | 例 |
+| --- | --- | --- | --- | --- | --- |
+| 数据元素 | 该值代表的数据元素。 | 是的 | 是的 | String:Uid | ABCDEF12345 |
+| 价值 | 数据值的值。 | 不 | 不 | 字符串：任意 | 123 |
+| providedElsewhere | 表示用户是否在其他地方提供了值。如果未提供，则为 "假"。 | 不 | 不 | Boolean | 假或真 |
+| createdAt | 用户添加值的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| updatedAt | 值最后一次更新的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| 存储方式 | 存储/创建值的客户端引用。 | 不 | 不 | 字符串：任意 | 无名氏 |
+| 创建人 | 仅用于读取数据。创建对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid"："ABCDEF12345",<br>"username"："username",<br>"firstName"："John",<br>"surname"："Doe"<br>} |
+| 更新日期 | 仅用于读取数据。最后更新对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid"："ABCDEF12345",<br>"username"："username",<br>"firstName"："John",<br>"surname"："Doe"<br>} |
+
+> **Note**
+>
+> For `data elements` only the "dataElement" and "value" properties are required when adding data. "value" can be null, which implies the user should remove the value.
+
+### 跟踪器说明{ #tracker-notes }
+
+DHIS2 跟踪器允许使用数据元素和跟踪实体属性捕获数据。不过，有时可能需要记录有关当前问题的补充信息或评论。此类附加信息可使用跟踪注释来捕获。跟踪注释相当于 DHIS2 聚合系统中的数据值注释。
+
+有两种类型的跟踪记录--在事件级别记录的记录和在注册级别记录的记录。一个注册可以有一个或多个事件。关于每个事件的注释--例如，为什么某个事件错过了、重新安排了，或者为什么只填写了几个数据元素等等--都可以用事件注释记录下来。注册中的每个事件都可以有自己的故事/注释。例如，可以使用家长注册笔记记录对这些事件的整体观察。入学记录还有助于记录取消入学的原因。何时以及如何使用注释取决于用户的想象力和使用情况。
+
+注册和事件都可以根据需要添加注释，没有数量限制。但是，这两种备注都不能删除或更新。它们就像一本日志。如果要修改备注，可以创建另一个备注。删除备注的唯一方法是删除父对象--事件或注册。
+
+跟踪记录没有自己的专用端点，而是作为父事件和/或注册有效载荷的一部分进行交换。下面是一个有效载荷示例。
+
+```json
+{
+  "trackedEntityInstance": "oi3PMIGYJH8",
+  <entity_details>,
+  ],
+  "enrollments": [
+    {
+      "enrollment": "EbRsJr8LSSO",
+      <enrollment_details>
+      "notes": [
+        {
+          "note": "vxmCvYcPdaW",
+          "value": "Enrollment note 2.",
+        },
+        {
+          "value": "Enrollment note 1",
+        }
+      ],
+
+      "events": [
+        {
+          "event": "zfzS9WeO0uM",
+          <event_details>,
+          "notes": [
+            {
+              "note": "MAQFb7fAggS",
+              "value": "Event Note 1.",
+            },
+            {
+              "value": "Event Note 2.",
+            }
+          ],
+        },
+        {
+          ...
+        }
+      ]
+    }
+  ]
+}
+```
+
+| 物业 | 描述 | 需要 | 不可改变 | 类型 | 例 |
+| --- | --- | --- | --- | --- | --- |
+| 备注 | 注释的引用。若为空则生成 | 不 | 是的 | String:Uid | ABCDEF12345 |
+| 价值 | 纸条的内容。 | 是的 | 是的 | 字符串：任意 | 这是一份说明 |
+| 存储于 | 用户添加备注的时间戳。在服务器上设置。 | 不 | 是的 | Date:ISO 8601 | YYYY-MM-DDThh:mm:ss |
+| 存储方式 | 存储/创建备注的客户编号。 | 不 | 不 | 字符串：任意 | 无名氏 |
+| 创建人 | 仅用于读取数据。创建对象的用户。在服务器上设置 | 不 | 是的 | 用户 | {<br>"uid"："ABCDEF12345",<br>"username"："username",<br>"firstName"："John",<br>"surname"："Doe"<br>} |
+
+### 用户 { #user }
+
+| 物业 | 描述 | 需要 | 不可改变 | 类型 | 例 |
+| --- | --- | --- | --- | --- | --- |
+| uid | 用户的标识符。 | 是* | 是的 | String:Uid | ABCDEF12345 |
+| 用户名 | 用户使用的用户名。 | 是* | 是的 | 字符串：任意 | 123 |
+| 名 | 仅用于读取数据。用户名。 | 不 | 是的 | 字符串：任意 | 约翰 |
+| 姓氏 | 仅用于读取数据。用户姓氏。 | 不 | 是的 | 字符串：任意 | 无名氏 |
+
+> 必须提供 `uid` 或 `username` 字段中的一个。如果两个都提供，则只考虑用户名。
+
+### 计划阶段工作清单{ #webapi_working_list_filters }
+
+采集应用程序中的程序阶段工作列表功能旨在显示与特定程序阶段相关的预设工作列表。此功能可让用户保存与节目阶段相关的筛选器和排序首选项，从而方便组织和管理他们的工作流程。要与它们交互，您需要使用 _/api/programStageWorkingLists_ 资源。这些列表可以共享，并遵循与其他元数据相同的共享模式。使用 _/api/sharing_ 时，类型参数将是 _programStageWorkingLists_。
+
+    /api/40/programStageWorkingLists
+
+##### 对程序阶段工作列表进行 CRUD 操作的有效载荷{ #payload-on-crud-operations-to-program-stage-working-lists }
+
+上述端点可用于获取所有程序阶段工作列表。要获取单个列表，只需在末尾添加您感兴趣的列表 id 即可。如果要删除，也是一样。另一方面，如果要创建或更新程序阶段工作列表，除了上述端点外，还需要提供以下格式的有效载荷：
+
+表：有效载荷
+
+| 有效载荷值 | 描述 | 例 |
+| --- | --- | --- |
+| 名称 | 工作列表名称。必须填写。 |  |
+| 描述 | 工作清单说明。 |  |
+| 程序 | 包含程序 ID 的对象。必须填写。 | {"id" : "uy2gU8kTjF"} |
+| 程序阶段 | 包含程序阶段 ID 的对象。必须填写。 | {"id" : "oRySG82BKE6"} |
+| 程序阶段查询标准 | 代表各种可能过滤值的对象。请参阅下面的_程序阶段查询标准_定义表。 |
+
+表格：计划阶段查询标准 | 状态 | 事件状态。可能的值有：ACTIVE（活动）、COMPLETED（已完成）、VISITED（已访问）、SCHEDULE（计划）、OVERDUE（逾期）、SKIPPED（跳过）和 VISITED（已访问）。| 根据事件创建日期过滤 DateFilterPeriod 对象。| {"type":"ABSOLUTE","startDate":"2020-03-01","endDate":"2022-12-30"}| DateFilterPeriod 对象根据事件预定日期进行过滤。| {"类型": "相对", "周期": "TODAY"}。| | enrollmentStatus | 任何有效的 ProgramStatus。可能的值有 ACTIVE、COMPLETED 和 CANCELLED。| "enrollmentStatus"："COMPLETED": "已完成"。| DateFilterPeriod 对象根据事件注册日期进行过滤。| "enrolledAt"：{"type": "RELATIVE", "period": "THIS_MONTH"}。| | enrollmentOccurredAt | 基于事件发生日期的 DateFilterPeriod 对象。| {"类型": "相对", "周期": "THIS_MONTH"}。| | orgUnit | 有效的组织单位 UID | "orgUnit"："Rp268JB6Ne4" | | ouMode | 有效的 OU 选择模式 | "ouMode"："SELECTED" | | assignedUserMode | 有效的事件用户选择模式。可能的值有 CURRENT、PROVIDED、NONE、ANY 和 ALL。如果是 PROVIDED（或空），则预期有效负载中的分配用户为非空。| "assignedUserMode": "PROVIDED"（分配用户模式| | assignedUsers | 事件的指定用户列表。与上述 PROVIDED assignedUserMode 一起使用。| "assignedUsers":["DXyJmlo9rge"] | | order | 以逗号分隔的字段及其方向的列表，结果将按其排序。单个排序项的形式为 "orderDimension:direction"。| "order"："w75KJ2mc4zz:asc" | | displayColumnOrder | 列的输出排序 | "displayColumnOrder":["w75KJ2mc4zz", "zDhUuAYrxNC"] | | dataFilters | 包含查询事件时要使用的过滤器的项目列表 | "dataFilters"：[{"dataItem": "GXNUsigphqK", "ge": "10", "le": "20"}] | | attributeValueFilters | 属性值过滤器列表。在列出跟踪的实体实例时，用于指定属性值过滤器。
+
+请看下面的有效载荷示例：
+
+```json
+{
+    "name": "Test WL",
+    "program": { "id": "uy2gU8kT1jF" },
+    "programStage": { "id": "oRySG82BKE6" },
+    "description": "Test WL definition",
+    "programStageQueryCriteria": {
+        "status": "VISITED",
+        "eventCreatedAt": {
+            "type": "ABSOLUTE",
+            "startDate": "2020-03-01",
+            "endDate": "2022-12-30"
+        },
+        "scheduledAt": { "type": "RELATIVE", "period": "TODAY" },
+        "enrollmentStatus": "COMPLETED",
+        "enrolledAt": { "type": "RELATIVE", "period": "THIS_MONTH" },
+        "enrollmentOccurredAt": { "type": "RELATIVE", "period": "THIS_MONTH" },
+        "orgUnit": "Rp268JB6Ne4",
+        "ouMode": "SELECTED",
+        "assignedUserMode": "PROVIDED",
+        "assignedUsers": ["DXyJmlo9rge"],
+        "order": "w75KJ2mc4zz:asc",
+        "displayColumnOrder": ["w75KJ2mc4zz", "zDhUuAYrxNC"],
+        "dataFilters": [
+            {
+                "dataItem": "GXNUsigphqK",
+                "ge": "10",
+                "le": "20"
+            }
+        ],
+        "attributeValueFilters": [
+            {
+                "attribute": "ruQQnf6rswq",
+                "eq": "15"
+            }
+        ]
+    }
+}
+```
+
+## Tracker Import (`POST /api/tracker`) { #webapi_nti_import }
+
+The `POST /api/tracker` endpoint allows clients to import the following tracker objects into DHIS2:
+
+-   **跟踪实体**
+-   **入学人数**
+-   **活动**
+-   **关系**
+-   嵌入其他[跟踪器对象]的数据（#webapi_nti_tracker_objects）
+
+与其他跟踪器导入端点相比，主要变化有
+
+1. 导入有效载荷可以是 **_nested_** 或 **_flat_**
+2. 调用可以是 **_synchronous_** 或 **_asynchronous_**
+3. 导入 **_CSV_** 事件有效载荷
+
+### 请求参数{ #request-parameters }
+
+目前，跟踪器导入端点支持以下参数：
+
+| 参数名称 | 描述 | 类型 | 允许值 |
+| --- | --- | --- | --- |
+| 异步 | 表示导入是异步还是同步进行。 | Boolean | `TRUE`, `FALSE` |
+| 报告模式 | 仅在执行同步导入时使用。请参阅 importSummary 获取更多信息。 | 枚举 | `FULL`, `ERRORS`, `WARNINGS` |
+| 导入模式 | 表示导入模式。可以是仅验证（干运行）或提交（默认）。 | 枚举 | `VALIDATE`, `COMMIT` |
+| 方案 | 表示导入时元数据引用使用的总体 idScheme。默认为 UID。可为特定元数据重写（如下所列） | 枚举 | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
+| 数据元素标识方案 | 表示导入数据元素时使用的 idScheme。 | 枚举 | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
+| orgUnitIdScheme | 表示导入时组织单位要使用的 idScheme。 | 枚举 | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
+| 程序标识方案 | 表示导入程序时使用的 idScheme。 | 枚举 | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
+| 程序阶段标识方案 | 表示导入时程序阶段使用的 idScheme。 | 枚举 | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
+| 类别选项组合IdScheme | 表示导入时类别选项组合使用的 idScheme。 | 枚举 | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
+| 类别选项 IDScheme | 表示导入时类别选项使用的 idScheme。 | 枚举 | `UID`, `CODE`, `NAME`, `ATTRIBUTE` |
+| 导入策略 | Indicates the effect the import should have. Can either be `CREATE`, `UPDATE`, `CREATE_AND_UPDATE` and `DELETE`, which respectively only allows importing new data, importing changes to existing data, importing any new or updates to existing data, and finally deleting data. | 枚举 | `CREATE`, `UPDATE`, `CREATE_AND_UPDATE`, `DELETE` |
+| 原子模式 | 表示导入如何响应验证错误。如果是 `ALL`，则导入的所有数据必须有效，才能提交任何数据。如果是 `OBJECT`，只有提交的数据必须有效，其他数据可以无效。 | 枚举 | `ALL`, `OBJECT` |
+| 冲洗模式 | 表示刷新的频率。这与导入过程中向数据库推送数据的频率有关。主要用于调试，在生产环境中不应更改 | 枚举 | `AUTO`, `OBJECT` |
+| 验证模式 | 表示验证步骤的完整性。可以跳过、设置为快速失败（第一次出错时返回）或完全失败（默认），后者将返回发现的所有错误。 | 枚举 | `FULL`, `FAIL_FAST`, `SKIP` |
+| skipPatternValidation | 如果为 "true"，将跳过验证生成属性的模式。 | Boolean | `TRUE`, `FALSE` |
+| 跳过侧面效果 | 如果为 "true"，将跳过运行导入的任何副作用 | Boolean | `TRUE`, `FALSE` |
+| 跳过规则引擎 | 如果为 "true"，它将跳过运行导入的任何程序规则 | Boolean | `TRUE`, `FALSE` |
+
+**NOTE**: idScheme and its metadata specific idScheme parameters like orgUnitIdScheme, programIdScheme, ... used to allow and use the default `AUTO`. `AUTO` has been removed. The default idScheme has already been `UID`. Any requests sent with idScheme `AUTO` will see the same behavior as before, namely matching done using `UID`.
+
+### 扁平和嵌套有效载荷{ #flat-and-nested-payloads }
+
+导入器支持平面和嵌套有效载荷。主要区别在于客户对数据结构的要求。
+
+**平面** ：扁平结构有效载荷简单明了。它可以包含我们拥有的每个核心跟踪器对象的集合。这可与已分配了 UID 的现有数据无缝配合。但是，对于新数据，客户端必须为对象之间的任何引用提供新的 UID。例如，如果您导入一个带有新注册信息的新跟踪实体，则该跟踪实体要求客户端提供一个 UID，以便将注册信息与该 UID 相链接。
+
+**嵌套** ：嵌套有效载荷是最常用的结构。在这里，跟踪对象被嵌入其父对象中；例如，跟踪实体中的注册。这种结构的优点是，客户端不需要为这些连接提供 UID，因为在导入过程中，它们会被赋予这种连接，因为它们是嵌套在一起的。
+
+> **注意**
+>
+> 虽然嵌套有效载荷可能会让客户端更容易处理，但有效载荷总是会在导入前被扁平化。这意味着，对于大型导入，提供扁平结构的有效载荷既能提供更多控制，又能降低导入过程本身的开销。
+
+下面列出了**FLAT**和**NESTED**版本有效载荷的示例。两种情况使用的数据相同。
+
+#### **_FLAT_** 有效载荷{ #flat-payload }
+
+```json
+{
+    "trackedEntities": [
+        {
+            "orgUnit": "O6uvpzGd5pu",
+            "trackedEntity": "Kj6vYde4LHh",
+            "trackedEntityType": "Q9GufDoplCL"
+        }
+    ],
+    "enrollments": [
+        {
+            "orgUnit": "O6uvpzGd5pu",
+            "program": "f1AyMswryyQ",
+            "trackedEntity": "Kj6vYde4LHh",
+            "enrollment": "MNWZ6hnuhSw",
+            "trackedEntityType": "Q9GufDoplCL",
+            "enrolledAt": "2019-08-19T00:00:00.000",
+            "deleted": false,
+            "occurredAt": "2019-08-19T00:00:00.000",
+            "status": "ACTIVE",
+            "notes": [],
+            "attributes": []
+        }
+    ],
+    "events": [
+        {
+            "scheduledAt": "2019-08-19T13:59:13.688",
+            "program": "f1AyMswryyQ",
+            "event": "ZwwuwNp6gVd",
+            "programStage": "nlXNK4b7LVr",
+            "orgUnit": "O6uvpzGd5pu",
+            "trackedEntity": "Kj6vYde4LHh",
+            "enrollment": "MNWZ6hnuhSw",
+            "enrollmentStatus": "ACTIVE",
+            "status": "ACTIVE",
+            "occurredAt": "2019-08-01T00:00:00.000",
+            "attributeCategoryOptions": "xYerKDKCefk",
+            "deleted": false,
+            "attributeOptionCombo": "HllvX50cXC0",
+            "dataValues": [
+                {
+                    "updatedAt": "2019-08-19T13:58:37.477",
+                    "storedBy": "admin",
+                    "dataElement": "BuZ5LGNfGEU",
+                    "value": "20",
+                    "providedElsewhere": false
+                },
+                {
+                    "updatedAt": "2019-08-19T13:58:40.031",
+                    "storedBy": "admin",
+                    "dataElement": "ZrqtjjveTFc",
+                    "value": "Male",
+                    "providedElsewhere": false
+                },
+                {
+                    "updatedAt": "2019-08-19T13:59:13.691",
+                    "storedBy": "admin",
+                    "dataElement": "mB2QHw1tU96",
+                    "value": "[-11.566044,9.477801]",
+                    "providedElsewhere": false
+                }
+            ],
+            "notes": []
+        },
+        {
+            "scheduledAt": "2019-08-19T13:59:13.688",
+            "program": "f1AyMswryyQ",
+            "event": "XwwuwNp6gVE",
+            "programStage": "PaOOjwLVW23",
+            "orgUnit": "O6uvpzGd5pu",
+            "trackedEntity": "Kj6vYde4LHh",
+            "enrollment": "MNWZ6hnuhSw",
+            "enrollmentStatus": "ACTIVE",
+            "status": "ACTIVE",
+            "occurredAt": "2019-08-01T00:00:00.000",
+            "attributeCategoryOptions": "xYerKDKCefk",
+            "deleted": false,
+            "attributeOptionCombo": "HllvX50cXC0",
+            "notes": []
+        }
+    ],
+    "relationships": [
+        {
+            "relationshipType": "Udhj3bsdHeT",
+            "from": {
+                "trackedEntity": { "trackedEntity": "Kj6vYde4LHh" }
+            },
+            "to": {
+                "trackedEntity": { "trackedEntity": "Gjaiu3ea38E" }
+            }
+        }
+    ]
+}
+```
+
+#### **_NESTED_** 有效载荷{ #nested-payload }
+
+```json
+{
+    "trackedEntities": [
+        {
+            "orgUnit": "O6uvpzGd5pu",
+            "trackedEntity": "Kj6vYde4LHh",
+            "trackedEntityType": "Q9GufDoplCL",
+            "relationships": [
+                {
+                    "relationshipType": "Udhj3bsdHeT",
+                    "from": {
+                        "trackedEntity": { "trackedEntity": "Kj6vYde4LHh" }
+                    },
+                    "to": {
+                        "trackedEntity": { "trackedEntity": "Gjaiu3ea38E" }
+                    }
+                }
+            ],
+            "enrollments": [
+                {
+                    "orgUnit": "O6uvpzGd5pu",
+                    "program": "f1AyMswryyQ",
+                    "trackedEntity": "Kj6vYde4LHh",
+                    "enrollment": "MNWZ6hnuhSw",
+                    "trackedEntityType": "Q9GufDoplCL",
+                    "enrolledAt": "2019-08-19T00:00:00.000",
+                    "deleted": false,
+                    "occurredAt": "2019-08-19T00:00:00.000",
+                    "status": "ACTIVE",
+                    "notes": [],
+                    "relationships": [],
+                    "attributes": [],
+                    "events": [
+                        {
+                            "scheduledAt": "2019-08-19T13:59:13.688",
+                            "program": "f1AyMswryyQ",
+                            "event": "ZwwuwNp6gVd",
+                            "programStage": "nlXNK4b7LVr",
+                            "orgUnit": "O6uvpzGd5pu",
+                            "trackedEntity": "Kj6vYde4LHh",
+                            "enrollment": "MNWZ6hnuhSw",
+                            "enrollmentStatus": "ACTIVE",
+                            "status": "ACTIVE",
+                            "occurredAt": "2019-08-01T00:00:00.000",
+                            "attributeCategoryOptions": "xYerKDKCefk",
+                            "deleted": false,
+                            "attributeOptionCombo": "HllvX50cXC0",
+                            "dataValues": [
+                                {
+                                    "updatedAt": "2019-08-19T13:58:37.477",
+                                    "storedBy": "admin",
+                                    "dataElement": "BuZ5LGNfGEU",
+                                    "value": "20",
+                                    "providedElsewhere": false
+                                },
+                                {
+                                    "updatedAt": "2019-08-19T13:58:40.031",
+                                    "storedBy": "admin",
+                                    "dataElement": "ZrqtjjveTFc",
+                                    "value": "Male",
+                                    "providedElsewhere": false
+                                },
+                                {
+                                    "updatedAt": "2019-08-19T13:59:13.691",
+                                    "storedBy": "admin",
+                                    "dataElement": "mB2QHw1tU96",
+                                    "value": "[-11.566044,9.477801]",
+                                    "providedElsewhere": false
+                                }
+                            ],
+                            "notes": [],
+                            "relationships": []
+                        },
+                        {
+                            "scheduledAt": "2019-08-19T13:59:13.688",
+                            "program": "f1AyMswryyQ",
+                            "event": "XwwuwNp6gVE",
+                            "programStage": "PaOOjwLVW23",
+                            "orgUnit": "O6uvpzGd5pu",
+                            "trackedEntity": "Kj6vYde4LHh",
+                            "enrollment": "MNWZ6hnuhSw",
+                            "enrollmentStatus": "ACTIVE",
+                            "status": "ACTIVE",
+                            "occurredAt": "2019-08-01T00:00:00.000",
+                            "attributeCategoryOptions": "xYerKDKCefk",
+                            "deleted": false,
+                            "attributeOptionCombo": "HllvX50cXC0",
+                            "notes": [],
+                            "relationships": []
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
+```
+
+### 同步和反同步{ #sync-and-async }
+
+对用户而言，同步导入与异步导入的主要区别在于 API 的即时响应。对于同步导入，一旦导入完成，将立即返回导入摘要（importSummary）。但是，对于异步导入，响应将是即时的，并包含客户端可以轮询导入更新的引用。
+
+对于重要的导入，客户端使用异步导入可能会有好处，可以避免等待响应的时间过长。
+
+下面是**ASYNC**响应的示例。关于 **SYNC** 响应，请查看 [importSummary 部分](#webapi_nti_import_summary)。
+
+```json
+{
+    "httpStatus": "OK",
+    "httpStatusCode": 200,
+    "status": "OK",
+    "message": "Tracker job added",
+    "response": {
+        "responseType": "TrackerJob",
+        "id": "LkXBUdIgbe3",
+        "location": "https://play.dhis2.org/dev/api/tracker/jobs/LkXBUdIgbe3"
+    }
+}
+```
+
+### CSV 事件有效载荷{ #csv-events-payload }
+
+为了保持与旧版本跟踪器的兼容性，API 允许使用 CSV 格式导入事件。由于这种格式不允许将列表作为字段，因此 CSV 有效载荷的每一行都代表一个事件和一个数据值。因此，对于具有多个数据值的事件，CSV 文件中每个事件将有 `x` 行，其中 `x` 是该事件中数据值的数量。不支持其他列为 **_relationships_** 和 **_notes_** 的字段。要导入 CSV 有效负载，必须将请求的内容类型设置为 **_application/csv_** 或 **_text/csv_**。
+
+#### **_CSV PAYLOAD_** 示例{ #csv-payload-example }
+
+| 事件 | 地位 | 程序 | 程序阶段 | 注册 | orgUnit | occurredAt | 预定日期 | 数据元素 | 价值 | 存储方式 | providedElsewhere |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| V1CerIi3sdL | 已完成 | IpHINAT79UW | A03MvHHogjR | CCBLMntFuzb | DiszpKrYNg8 | 2020-02-26T23:00:00Z | 2020-02-27T23:00:00Z | a3kGcGDCuk6 | 11 | 管理 | 假 |
+| V1CerIi3sdL | 已完成 | IpHINAT79UW | A03MvHHogjR | CCBLMntFuzb | DiszpKrYNg8 | 2020-02-26T23:00:00Z | 2020-02-27T23:00:00Z | mB2QHw1tU96 | [-11.566044,9.477801] | 管理 | 假 |
+
+### 导入摘要{ #webapi_nti_import_summary }
+
+Tracker API 有两个主要端点，供消费者从导入中获取反馈。这些端点与异步导入作业最为相关，但也适用于同步作业。这些端点将返回与导入相关的日志或导入摘要本身。
+
+> **注**
+>
+> 这些端点依赖于应用程序内存中存储的信息。这意味着在某些情况下，如应用程序重启或在此请求之后有大量导入请求启动后，信息将不可用。
+
+提交跟踪器导入请求后，我们可以访问以下端点，以便根据日志监控工作进度：
+
+`GET /tracker/jobs/{uid}`
+
+| 参数 | 描述                               | 例     |
+| --------- | ----------------------------------------- | ----------- |
+| `{uid}`   | 现有跟踪器导入任务的 UID | ABCDEF12345 |
+
+#### **_REQUEST_** 示例{ #request-example }
+
+`GET /tracker/jobs/mEfEaFSCKCC`
+
+#### **_RESPONSE_** 示例{ #response-example }
+
+```json
+[
+    {
+        "uid": "mEfEaFSCKCC",
+        "level": "INFO",
+        "category": "TRACKER_IMPORT_JOB",
+        "time": "2021-01-01T00:00:06.00",
+        "message": "TRACKER_IMPORT_JOB ( mEfEaFSCKCC ) finished in 6.00000 sec. Import:Done",
+        "completed": true,
+        "id": "mEfEaFSCKCC"
+    },
+    {
+        "uid": "mEfEaFSCKCC",
+        "level": "DEBUG",
+        "category": "TRACKER_IMPORT_JOB",
+        "time": "2021-01-01T00:00:05.00",
+        "message": "TRACKER_IMPORT_JOB ( mEfEaFSCKCC ) commit completed in 1.00000 sec. Import:commit",
+        "completed": true,
+        "id": "mEfEaFSCKCC"
+    },
+    {
+        "uid": "mEfEaFSCKCC",
+        "level": "DEBUG",
+        "category": "TRACKER_IMPORT_JOB",
+        "time": "2021-01-01T00:00:04.00",
+        "message": "TRACKER_IMPORT_JOB ( mEfEaFSCKCC ) programruleValidation completed in 1.00000 sec. Import:programruleValidation",
+        "completed": true,
+        "id": "mEfEaFSCKCC"
+    },
+    {
+        "uid": "mEfEaFSCKCC",
+        "level": "DEBUG",
+        "category": "TRACKER_IMPORT_JOB",
+        "time": "2021-01-01T00:00:03.00",
+        "message": "TRACKER_IMPORT_JOB ( mEfEaFSCKCC ) programrule completed in 1.00000 sec. Import:programrule",
+        "completed": true,
+        "id": "mEfEaFSCKCC"
+    },
+    {
+        "uid": "mEfEaFSCKCC",
+        "level": "DEBUG",
+        "category": "TRACKER_IMPORT_JOB",
+        "time": "2021-01-01T00:00:02.00",
+        "message": "TRACKER_IMPORT_JOB ( mEfEaFSCKCC ) validation completed in 1.00000 sec. Import:validation",
+        "completed": true,
+        "id": "mEfEaFSCKCC"
+    },
+    {
+        "uid": "mEfEaFSCKCC",
+        "level": "DEBUG",
+        "category": "TRACKER_IMPORT_JOB",
+        "time": "2021-01-01T00:00:01.00",
+        "message": "TRACKER_IMPORT_JOB ( mEfEaFSCKCC ) preheat completed in 1.00000 sec. Import:preheat",
+        "completed": true,
+        "id": "mEfEaFSCKCC"
+    },
+    {
+        "uid": "mEfEaFSCKCC",
+        "level": "INFO",
+        "category": "TRACKER_IMPORT_JOB",
+        "time": "2021-01-01T00:00:00.00",
+        "message": "TRACKER_IMPORT_JOB ( mEfEaFSCKCC ) started by admin ( xE7jOejl9FI ) Import:Start",
+        "completed": true,
+        "id": "mEfEaFSCKCC"
+    }
+]
+```
+
+此外，以下端点将返回导入任务的导入摘要。该导入摘要只有在导入完成后才可用：
+
+`GET /tracker/jobs/{uid}/report`
+
+| 参数 | 描述 | 例 |
+| --- | --- | --- |
+| path `/{uid}` | 现有跟踪器导入任务的 UID | ABCDEF12345 |
+| `reportMode` | 要返回的报告级别 | `FULL`&#124;`ERRORS`&#124;`WARNINGS` |
+
+#### **_REQUEST_** 示例{ #request-example }
+
+`GET /tracker/jobs/mEfEaFSCKCC/report`.
+
+#### **_RESPONSE_** 示例{ #response-example }
+
+响应有效载荷]（#sample-responses）与同步导入请求后返回的有效载荷相同。
+
+> **注**
+>
+> 这两个端点主要用于异步导入；不过，`GET /tracker/jobs/{uid}` 也可用于同步请求，因为它最终会使用与异步请求相同的导入流程和日志记录。
+
+### 导入摘要结构{ #import-summary-structure }
+
+Import summaries have the following overall structure, depending on the requested `reportMode`:
+
+```json
+{
+    "status": "...",
+    "validationReport": {},
+    "stats": {},
+    "timingsStats": {},
+    "bundleReport": {},
+    "message": {}
+}
+```
+
+**_状态_**
+
+The property, `status`, of the import summary indicates the overall status of the import. If no errors or warnings were raised during the import, the `status` is reported as `OK`. The presence of any error or warnings in the import will result in a status of type `ERROR` or `WARNING`.
+
+`status` is based on the presence of the most significant `validationReport`. `ERROR` has the highest significance, followed by `WARNING` and finally `OK`. This implies that `ERROR` is reported as long as a single error was found during the import, regardless of how many warnings occurred.
+
+> **Note**
+>
+> If the import is performed using the AtomicMode "OBJECT", where the import will import any data without validation errors, the overall status will still be `ERROR` if any errors were found.
+
+**_验证报告_**
+
+The `validationReport` might include `errorReports` and `warningReports` if any errors or warnings were present during the import. When present, they provide a detailed list of any errors or warnings encountered.
+
+例如，导入 `TRACKED_ENTITY` 时出现验证错误：
+
+```json
+{
+  "validationReport": {
+    "errorReports": [
+      {
+        "message": "Could not find TrackedEntityType: `Q9GufDoplCL`.",
+        "errorCode": "E1005",
+        "trackerType": "TRACKED_ENTITY",
+        "uid": "Kj6vYde4LHh"
+      },
+      ...
+    ],
+    "warningReports" : [ ... ]
+  }
+}
+```
+
+The report contains a message and a code describing the actual error (See the [error codes](#error-codes) section for more information about errors). Additionally, the report includes the `trackerType` and `uid`, which aims to describe where in the data the error was found. In this case, there was a `TRACKED_ENTITY` with the uid `Kj6vYde4LHh`, which had a reference to a tracked entity type that was not found.
+
+> **注**
+>
+> 当提及跟踪对象的 `uid` 时，它们在有效载荷中被标记为对象名称。例如，被跟踪实体的 `uid` 在有效载荷中的名称是 "trackedEntity"。同样，"注册"、"事件 "和 "关系 "也分别代表注册、事件和关系。
+>
+> 如果有效负载中没有提供 uid，导入过程将生成新的 uid。这意味着错误报告可能会提到一个不存在于有效负载中的 uid。
+>
+> 错误代表有效载荷中存在导入程序无法规避的问题。任何错误都会阻止数据的导入。另一方面，警告是指可以安全规避的问题，但应让用户知道发生了这种情况。警告不会阻止数据导入。
+
+**_stats_**
+
+统计信息提供了导入的快速概览。导入完成后，这些将是实际计数，代表创建、更新、删除或忽略了多少数据。
+
+例：
+
+```json
+{
+    "stats": {
+        "created": 2,
+        "updated": 2,
+        "deleted": 1,
+        "ignored": 5,
+        "total": 10
+    }
+}
+```
+
+`created` 表示创建了多少个新对象。一般来说，有效载荷中没有 uid 的对象将被视为新对象。
+
+`updated` 指更新对象的数量。如果一个对象在有效负载中设置了 uid，只要数据库中存在相同的 uid，就会被视为更新。
+
+`deleted` refers to the number of objects deleted during the import. Deletion only happens when the import is configured to delete data and only then when the objects in the payload have existing uids set.
+
+`ignored` refers to objects that were not persisted. Objects can be ignored for several reasons, for example trying to create something that already exists. Ignores should always be safe, so if something was ignored, it was not necessary, or it was due to the configuration of the import.
+
+**_timingsStats_**
+
+`timingStats` represents the time elapsed in different steps of the import. These stats do not provide an accurate overall time for the import but rather the time spent in the code for different steps.
+
+The `timingStats` are primarily helpful in debugging imports that are causing issues to see which part of the import is having issues.
+
+```json
+{
+  "timingsStats": {
+    "timers": {
+      "preheat": "0.234086 sec.",
+      "preprocess": "0.000058 sec.",
+      ...
+      "totalImport": "0.236810 sec.",
+      "validation": "0.001533 sec."
+    }
+  }
+}
+```
+
+**_bundleReport_**
+
+When the import is completed, the `bundleReport` contains all the [tracker objects](#tracker-objects) imported.
+
+例如，`TRACKED_ENTITY`：
+
+```json
+{
+  "bundleReport": {
+    "typeReportMap": {
+      "TRACKED_ENTITY": {
+        "trackerType": "TRACKED_ENTITY",
+        "stats": {
+          "created": 1,
+          "updated": 0,
+          "deleted": 0,
+          "ignored": 0,
+          "total": 1
+        },
+        "objectReports": [
+          {
+            "trackerType": "TRACKED_ENTITY",
+            "uid": "FkxTQC4EAKK",
+            "index": 0,
+            "errorReports": []
+          }
+        ]
+      },
+      ...
+    }
+  }
+}
+```
+
+如图所示，每种类型的跟踪器对象都将被报告，每种类型都有自己的统计信息和 `对象报告`。这些 `objectReports` 将提供每个导入对象的详细信息，如类型、uid 以及任何适用的错误或警告报告。
+
+**_message_**
+
+If the import ended abruptly, the `message` would contain further information in relation to what happened.
+
+### 导入摘要报告级别{ #import-summary-report-level }
+
+如前所述，可以使用特定的 `reportMode` 参数检索 `GET /tracker/jobs/{uid}/report`。默认情况下，该端点将返回一个`reportMode``ERROR`的`importSummary`。
+
+| 参数 | 描述 |
+| --- | --- |
+| `FULL` | 返回 `WARNINGS` 和 `timingsStats` 中的所有内容 |
+| `WARNINGS` | 返回 `ERRORS` 中的所有内容，以及 `validationReports` 中的 `warningReports` 内容 |
+| `ERRORS` (default) | Returns only `errorReports` in `validationReports` |
+
+此外，所有 `reportMode` 都会在适用时返回 `status`、`stats`、`bundleReport` 和 `message` 。
+
+### 错误代码{ #webapi_nti_error_codes }
+
+不同的错误情形有不同的错误代码。下表列出了新 Tracker API 抛出的错误代码列表，以及错误信息和一些附加说明。错误信息中的占位符（`{0}`、`{1}`、`{2}`...）通常是 uids，除非另有说明。
+
+| 错误代码 | 错误信息 | 描述 |
+| :-- | :-- | :-- |
+| E1000 | User: `{0}`, has no write access to OrganisationUnit: `{1}`. | 这通常意味着组织单位 `{1}` 不在用户 `{0}` 的捕获范围内，因此写操作没有授权。 |
+| E1001 | User: `{0}`, has no data write access to TrackedEntityType: `{1}`. | 当用户无权创建或修改 TrackedEntityType `{1}` 的数据时会发生错误。 |
+| E1002 | TrackedEntityInstance: `{0}`，已存在。 | 当试图创建一个已有 uid 的新 TrackedEntity 时，会出现此错误。请确保在添加新的 TrackedEntity 时使用新的 uid。 |
+| E1005 | 找不到 TrackedEntityType：`{0}`。 | 当试图获取一个不存在的 TrackedEntityType（uid `{0}`）时出错。这也可能意味着用户没有读取 TrackedEntityType 的权限。 |
+| E1006 | Attribute: `{0}`, does not exist. | 当系统无法找到 uid `{0}` 匹配的 TrackedEntityAttribute 时抛出的错误。这也可能意味着用户没有访问 TrackedEntityAttribute 的权限。 |
+| E1007 | Error validating attribute value type: `{0}`; Error: `{1}`. | TrackedEntityAttribute 的值类型与其提供的属性值不匹配。实际验证错误将显示在 `{1}`。 |
+| E1009 | 文件资源：`{0}`，已分配给另一个对象。 | 文件资源 uid `{0}` 已分配给系统中的另一个对象。 |
+| E1010 | Could not find Program: `{0}`, linked to Event. | 系统无法找到在事件有效负载中指定了 uid `{0}` 的程序。这也可能意味着登录用户无法访问特定程序。 |
+| E1011 | Could not find OrganisationUnit: `{0}`, linked to Event. | 系统无法找到在事件有效载荷中指定了 uid `{0}` 的 OrganisationUnit。 |
+| E1012 | Geometry does not conform to FeatureType: `{0}`. | 所提供的 FeatureType 要么是 "无"，要么是与所提供的几何图形值不兼容。 |
+| E1013 | 找不到与事件相关联的 ProgramStage: `{0}`。 | 系统无法找到在事件有效载荷中指定了 uid `{0}` 的 ProgramStage。这也可能意味着登录用户无法访问 ProgramStage。 |
+| E1014 | Provided Program: `{0}`, is a Program without registration. An Enrollment cannot be created into Program without registration. | 只能为注册的计划创建注册。 |
+| E1015 | TrackedEntityInstance: `{0}`, 已经在计划 `{1}` 中注册。 | 如果该计划已存在另一个有效注册，则不能注册该计划。至少必须先完成当前注册。 |
+| E1016 | TrackedEntityInstance: `{0}`, already has an active enrollment in Program: `{1}`, and this program only allows enrolling one time. | 根据程序 `{1}` 配置，一个 TrackedEntity 只能注册该程序一次。看起来 TrackedEntity `{0}` 已经在该程序中注册过一次了。因此不能再添加另一个注册。 |
+| E1018 | Attribute: `{0}`, is mandatory in program `{1}` but not declared in enrollment `{2}`. | 有效负载中缺少被定义为程序强制属性的属性值。确保在有效负载中提供强制属性的属性值。 |
+| E1019 | Only Program attributes is allowed for enrollment; Non valid attribute: `{0}`. | 注册有效负载中指定的属性 uid `{0}` 与程序无关。 |
+| E1020 | Enrollment date: `{0}`, can`t be future date. | 除非计划配置允许，否则不能在未来日期注册。 |
+| E1021 | Incident date: `{0}`, can`t be future date. | 事件发生日期不能是未来日期，除非程序在配置中允许这样做。 |
+| E1022 | TrackedEntityInstance: `{0}`，必须与 Program `{1}` 具有相同的 TrackedEntityType。 | 程序被配置为接受与注册有效负载中提供的不同的 TrackedEntityType uid。 |
+| E1023 | DisplayIncidentDate is true but property occurredAt is null or has an invalid format: `{0}`. | 程序已配置 DisplayIncidentDate，但有效载荷中的日期要么为空，要么无效。 |
+| E1025 | Property enrolledAt is null or has an invalid format: `{0}`. | EnrolledAt Date 是注册的必填项。请确保它不是空值，并具有有效的日期格式。 |
+| E1029 | Event OrganisationUnit: `{0}`, and Program: `{1}`, don't match. | 事件有效载荷使用程序 `{1}`，该程序未配置为可被组织单位 `{0}` 访问。 |
+| E1030 | Event: `{0}`, already exists. | 当尝试使用已存在的 uid 添加新事件时，会出现此错误。请确保在添加新事件时使用新的 uid。 |
+| E1031 | 事件发生日期缺失。 | OccuredAt 属性为空或有效负载中的日期格式无效。 |
+| E1032 | Event: `{0}`, do not exist. |  |
+| E1033 | Event: `{0}`, Enrollment value is NULL. |  |
+| E1035 | Event: `{0}`, ProgramStage value is NULL. |  |
+| E1036 | 事件：`{0}`，TrackedEntityInstance 没有指向现有对象。 | 系统无法找到事件有效载荷中指定 uid 的 TrackedEntity。这也可能意味着用户没有读取 TrackedEntity 的权限。 |
+| E1039 | ProgramStage: `{0}`，不可重复，且事件已存在。 | 特定注册的 ProgramStage 已存在一个事件。由于程序阶段被配置为不可重复，因此无法为同一程序阶段添加另一个事件。 |
+| E1041 | Enrollment OrganisationUnit: `{0}`, and Program: `{1}`, don't match. | 注册有效载荷包含一个程序 `{1}`，该程序未配置为可被组织单位 `{0}` 访问。 |
+| E1042 | Event: `{0}`, needs to have completed date. | 如果程序被配置为具有 completeExpiryDays，则 COMPLETED 事件有效负载必须具有 CompletedDate。状态为 "已完成 "的事件应具有非空的 completedDate 属性和有效的日期格式。 |
+| E1048 | 对象：`{0}`，uid：`{1}`，uid 格式无效。 | 有效的 uid 有 11 个字符。第一个字符必须是字母（a-z 或 A-Z），其余 10 个字符可以是字母数字（a-z 或 A-Z 或 0-9）。 |
+| E1049 | Could not find OrganisationUnit: `{0}`, linked to Tracked Entity. | 系统无法找到 uid `{0}` 的 OrganisationUnit。 |
+| E1050 | 缺少事件 ScheduledAt 日期。 | 事件有效负载中的 ScheduledAt 属性丢失或日期格式无效。 |
+| E1055 | 由于程序具有非默认的 CategoryCombo，因此不允许使用默认的 AttributeOptionCombo。 | 程序被配置为包含非默认 CategoryCombo，但请求使用了默认 AttributeOptionCombo。 |
+| E1056 | 事件日期：`{0}`，在开始日期：`{1}`之前，属性选项：`{2}`。 | 类别选项配置了起始日期，有效载荷中的事件日期不能早于该起始日期。 |
+| E1057 | 事件日期: `{0}`, 在结束日期: `{1}` 之后, 属性选项; `{2}`。 | 类别选项已配置结束日期，有效负载中的事件日期不能晚于该结束日期。 |
+| E1063 | TrackedEntityInstance: `{0}`, 不存在。 | 当试图获取一个不存在的 TrackedEntity（uid `{0}`）时出错。这也可能意味着用户没有读取 TrackedEntity 的权限。 |
+| E1064 | 属性 `{1}` 的非唯一属性值 `{0}` | 属性值在定义的范围内必须是唯一的。错误表示该属性值已存在于另一个 TrackedEntity 中。 |
+| E1068 | 找不到 TrackedEntityInstance: `{0}`，链接到 Enrollment。 | 系统无法找到注册有效负载中指定的 TrackedEntity。这也可能意味着用户没有读取 TrackedEntity 的权限。 |
+| E1069 | Could not find Program: `{0}`, linked to Enrollment. | 系统无法找到注册有效负载中指定的程序。这也可能意味着用户没有程序的读取权限。 |
+| E1070 | Could not find OrganisationUnit: `{0}`, linked to Enrollment. | 系统无法找到注册有效负载中指定的 OrganisationUnit。 |
+| E1074 | 缺少 FeatureType。 |  |
+| E1075 | Attribute: `{0}`, is missing uid. |  |
+| E1076 | `{0}` `{1}` 是必填项，不能为空 |  |
+| E1077 | Attribute: `{0}`, text value exceed the maximum allowed length: `{0}`. |  |
+| E1080 | 注册： `{0}`，已存在。 | 当尝试使用已有的 uid 创建新的注册表时，会出现此错误。请确保在添加新注册表时使用新的 uid。 |
+| E1081 | 注册： `{0}`，不存在。 | 当尝试获取一个不存在的注册表（uid `{0}`）时出错。这也可能意味着用户没有读取注册信息的权限。 |
+| E1082 | Event: `{0}`, is already deleted and can't be modified. | 如果事件被软删除，则不允许对其进行任何修改。 |
+| E1083 | 用户：`{0}`，无权修改已完成的事件。 | 只有超级用户或具有 "F_UNCOMPLETE_EVENT "权限的用户才能修改已完成事件。已完成事件是指状态为已完成的事件。 |
+| E1084 | 文件资源：`{0}`，无法找到引用。 |  |
+| E1085 | Attribute: `{0}`, value does not match value type: `{1}`. | 属性值类型与其提供的属性值不匹配。 |
+| E1089 | Event: `{0}`, references a Program Stage `{1}` that does not belong to Program `{2}`. | 事件有效负载中的 ProgramStage uid 和 Program uid 不兼容。 |
+| E1090 | 属性：`{0}`，在被跟踪实体类型 `{1}` 中是强制性的，但在被跟踪实体 `{2}` 中没有声明。 | 有效负载中缺少强制 TrackedEntityTypeAttributes 的值。 |
+| E1091 | User: `{0}`, has no data write access to Program: `{1}`. | 在程序共享配置中，用户没有该程序的写入权限。 |
+| E1095 | User: `{0}`, 没有数据写入 ProgramStage: `{1}` 的权限。 | 程序阶段共享配置使得用户没有写入该程序阶段的权限。 |
+| E1096 | User: `{0}`, has no data read access to Program: `{1}`. | 在程序共享配置中，用户没有该程序的读取权限。 |
+| E1099 | User: `{0}`, 没有 CategoryOption: `{1}` 的写入权限。 | 类别选项共享配置使得用户没有写入该类别选项的权限 |
+| E1100 | User: `{0}`, is lacking 'F_TEI_CASCADE_DELETE' authority to delete TrackedEntityInstance: `{1}`. | 该 TrackedEntity 存在未删除的注册信息。如果用户没有 "F_TEI_CASCADE_DELETE "权限，则必须先明确删除这些注册信息，才能删除 TrackedEntity。 |
+| E1102 | User: `{0}`, does not have access to the tracked entity: `{1}`, Program: `{2}`, combination. | 当用户的组织单位不拥有该特定程序的 TrackedEntity 的所有权时，就会抛出此错误。拥有 TrackedEntity-Program 组合的组织单位应属于用户的捕获范围（有时是搜索范围）。 |
+| E1103 | 用户: `{0}`, 没有'F_ENROLLMENT_CASCADE_DELETE'权限删除注册 : `{1}`。 | 该 "注册 "存在未删除的 "事件"。如果用户没有 "F_ENROLLMENT_CASCADE_DELETE "权限，则必须先明确删除这些事件，才能删除注册表。 |
+| E1104 | User: `{0}`, has no data read access to program: `{1}`, TrackedEntityType: `{2}`. | 与程序相关联的 TrackedEntityType 的共享配置规定，用户没有数据读取权限。 |
+| E1112 | 属性值：`{0}`，设置为机密，但系统未正确配置为加密数据。 | Either JCE files is missing or the configuration property `encryption.password` might be missing in `dhis.conf`. |
+| E1113 | 注册：`{0}`，已删除，无法修改。 | 如果注册表被软删除，则不允许对其进行任何修改。 |
+| E1114 | TrackedEntity: `{0}`, is already deleted and can't be modified. | 如果 TrackedEntity 被软删除，则不允许对其进行任何修改。 |
+| E1115 | 找不到 CategoryOptionCombo: `{0}`。 |  |
+| E1116 | 找不到 CategoryOption: `{0}`。 | 这也可能意味着用户无法访问类别选项。 |
+| E1117 | CategoryOptionCombo does not exist for given category combo and category options: `{0}`. |  |
+| E1118 | 指定用户 `{0}` 不是有效的 uid。 |  |
+| E1119 | 已存在 uid `{0}` 的 Tracker Note。 |  |
+| E1120 | 程序阶段 `{0}` 不允许用户赋值 | 事件有效载荷具有 assignedUserId，但程序阶段未配置为允许用户分配。 |
+| E1121 | Missing required tracked entity property: `{0}`. |  |
+| E1122 | Missing required enrollment property: `{0}`. |  |
+| E1123 | Missing required event property: `{0}`. |  |
+| E1124 | Missing required relationship property: `{0}`. |  |
+| E1125 | 值 `{0}` 不是选项集 `{3}` 中 `{1}` `{2}` 的有效选项。 |  |
+| E1017 | Attribute: `{0}`, does not exist. |  |
+| E1093 | User: `{0}`, has no search access to OrganisationUnit: `{1}`. |  |
+| E1094 | 不允许更新注册： `{0}`，现有计划 `{1}`。 | 现有注册的注册有效载荷与最初注册的程序 uid 不同。 |
+| E1110 | Not allowed to update Event: `{0}`, existing Program `{1}`. | 现有事件的事件有效载荷与最初创建时的程序 uid 不同。 |
+| E1111 | We have a generated attribute: `{0}`, but no pattern. |  |
+| E1043 | Event: `{0}`, completeness date has expired. Not possible to make changes to this event. | 没有 "F_EDIT_EXPIRED "权限的用户无法更新在程序中配置的已过有效期的事件。 |
+| E1046 | Event: `{0}`, needs to have at least one (event or schedule) date. | 事件有效负载中应包含 occuredAt 或 scheduledAt 属性。 |
+| E1047 | Event: `{0}`, date belongs to an expired period. It is not possible to create such event. | 事件 occuredAt 或 scheduledAt 的值早于 PeriodType 开始日期。 |
+| E1300 | 由程序规则生成 (`{0}`) - `{1}` |  |
+| E1302 | 由程序规则 (`{0}`) 生成 - 数据元素 `{1}` 无效：`{2}` |  |
+| E1303 | 由程序规则生成 (`{0}`) - 不存在强制性数据元素 `{1}` |  |
+| E1304 | 由程序规则 (`{0}`) 生成 - 数据元素 `{1}` 不是有效的数据元素 |  |
+| E1305 | 由程序规则 (`{0}`) 生成 - 数据元素 `{1}` 不是程序阶段 `{2}` 的一部分 |  |
+| E1306 | 由程序规则 (`{0}`) 生成 - 不存在强制属性 `{1}` |  |
+| E1307 | 由程序规则生成 (`{0}`) - 无法为数据元素 `{1}` 赋值。提供的值必须为空或与计算值 `{2}` 匹配。 |  |
+| E1308 | 由程序规则 (`{0}`) 生成 - 数据元素 `{1}` 被事件 `{2}` 替换 |  |
+| E1309 | 由程序规则 (`{0}`) 生成 - 无法为属性 `{1}` 赋值。提供的值必须为空或与计算值 `{2}` 匹配。 |  |
+| E1310 | 由程序规则 (`{0}`) 生成 - 属性 `{1}` 在 tei `{2}` 中被替换 |  |
+| E4000 | 关系： `{0}` 不能链接到自身 |  |
+| E4001 | 关系 `{1}` 的关系项 `{0}` 无效：一个项只能链接一个 Tracker 实体。 |  |
+| E4006 | Could not find relationship Type: `{0}`. |  |
+| E4009 | 关系类型 `{0}` 无效。 |  |
+| E4010 | 关系类型 `{0}` 约束需要{1} ，但找到了{2} 。 |  |
+| E4011 | 关系： `{0}` 无法持久化，因为此关系引用的{1} {2} 无效。 |  |
+| E4012 | 无法找到 `{0}`： `{1}`，链接到 "关系"。 |  |
+| E4013 | 关系类型 `{0}` 约束缺失{1} 。 |  |
+| E4014 | 关系类型 `{0}` 约束要求跟踪实体具有 `{1}` 类型，但找到了 `{2}`。 |  |
+| E4062 | 项目 `{0}` 的绝对日期周期类型未指定开始日期或结束日期。 |  |
+| E4063 | 当指定用户模式设置为 "提供 "时，指定用户不能为空 |  |
+| E4064 | Organisation unit cannot be empty with `{0}` org unit mode |  |
+| E4065 | 过滤器中缺少数据项 UID |  |
+| E4066 | 未找到项目的数据元素：`{0}` |  |
+| E4067 | 过滤器中缺少属性 UID |  |
+| E4068 | 未为属性找到跟踪实体属性：`{0}` |  |
+| E9999 | 不适用 | 未定义的错误信息。 |
+
+### 验证方式 { #webapi_nti_validation }
+
+使用跟踪器导入程序导入数据时，会执行一系列验证以确保数据的有效性。本节将介绍执行的一些不同类型的验证，以便更好地了解导入验证是否失败。
+
+#### 所需属性{ #required-properties }
+
+在导入数据时，每个跟踪器对象都有一些必须具备的属性。有关所需属性的完整列表，请参阅[跟踪器对象部分](#webapi_nti_tracker_objects)。
+
+在验证必填属性时，我们通常说的是对其他数据或元数据的引用。在这种情况下，有三个主要标准：
+
+1. 有效负载中存在引用，且引用不为空。
+2. 引用指向正确的数据类型，并存在于数据库中
+3. 用户有权查看参考文献
+
+如果第一个条件失败，导入将失败，并提示缺少引用。但是，假设引用指向的内容不存在或用户无法访问。在这种情况下，这两种情况都会导致无法找到引用的信息。
+
+#### 格式{ #formats }
+
+跟踪器对象的某些属性需要特定的格式。在导入数据时，这些属性中的每个属性都会根据预期格式进行验证，并根据格式错误的属性返回不同的错误信息。以下是一些通过这种方式验证的属性示例：
+
+-   UID（涵盖 DHIS2 中对其他数据或元数据的所有引用。）
+-   日期
+-   几何图形（坐标必须符合其类型指定的格式）
+
+#### 用户访问{ #user-access }
+
+所有导入的数据都将根据数据中引用的元数据（[共享](#webapi_nti_metadata_sharing)）和组织单位（[组织单位范围](#webapi_nti_ou_scope)）进行验证。有关共享和组织单位作用域的更多信息，请参阅以下章节。
+
+在数据库中查找引用的同时，也会验证共享。用户访问权限之外的元数据将被视为不存在。导入将验证数据中引用的任何元数据。
+
+另一方面，组织单位具有双重作用。它主要是确保数据只有在导入用户 "捕获范围 "内的组织单位时才能导入。其次，组织单位还用于限制可用的程序。这意味着，如果你试图为一个无法访问你要导入的程序的组织单位导入数据，导入将是无效的。
+
+Users with the `ALL` authority will ignore the limits of sharing and organisation unit scopes when they import data. However, they can not import enrollments in organisation units that do not have access to the enrollment program.
+
+#### 属性和数据值{ #attribute-and-data-values }
+
+属性和数据值分别是被跟踪实体和事件的一部分。不过，属性可以通过类型（TrackedEntityType）或程序（Program）与被跟踪实体关联。此外，属性也可以是唯一的。
+
+导入过程中的初始验证是确保为属性或数据元素提供的值符合预期的值类型。例如，假设你导入了一个数值类型数据元素的值。在这种情况下，预期值就是数值。任何与类型和值不匹配相关的错误都会导致相同的错误代码，但会有与违规类型相关的特定消息。
+
+Mandatory attributes and data values are also checked. Currently, removing mandatory attributes is not allowed. Some use-cases require values to be sent separately, while others require all values to be sent as one. Programs can be configured to either validate mandatory attributes `ON_COMPLETE` or `ON_UPDATE_AND_INSERT` to accommodate these use-cases.
+
+导入时将验证唯一属性。也就是说，只要所提供的值在整个系统中是唯一的属性，就会通过。但是，如果发现唯一值被导入实体以外的任何其他跟踪实体使用，则导入将失败。
+
+#### 组态 { #configuration }
+
+导入程序中最后一部分验证是基于用户对相关元数据的配置进行的验证。有关每种配置的更多信息，请查看相关章节。可配置验证的一些示例：
+
+-   特征类型（用于几何图形）
+-   用户可指定的事件
+-   允许未来日期
+-   注册一次
+-   还有更多
+
+这些配置将进一步改变导入时的验证方式。
+
+### 计划规则{ #webapi_nti_program_rules }
+
+用户可以配置[程序规则](#webapi_program_rules)，为跟踪器表单添加条件行为。除了在跟踪器应用程序中运行这些规则外，跟踪器导入程序也将运行这些规则的一部分。由于导入程序也会运行这些规则，因此我们可以确保额外的验证级别。
+
+并非所有程序规则操作都受支持，因为它们只适用于前台演示。受支持的程序规则操作的完整列表如下。
+
+| 计划规则行动     | 支持的 |
+| ----------------------- | :-------: |
+| **显示文本**         |           |
+| **显示键值配对** |           |
+| **HIDEFIELD**           |           |
+| **隐藏部分**         |           |
+| **分配**              |   **X**   |
+| **显示警告**         |   **X**   |
+| **淋浴**           |   **X**   |
+| **完成时发出警告** |   **X**   |
+| **完成时出错**   |   **X**   |
+| **创建活动**         |           |
+| **设置必填字段**   |   **X**   |
+| **发送信息**         |   **X**   |
+| **日程安排信息**     |   **X**   |
+
+程序规则在导入程序中的评估方式与在 Tracker 应用程序中的评估方式相同。总之，执行程序规则时会考虑以下条件：
+
+-   程序规则必须与导入的数据相关联。例如，程序阶段或数据元素。
+-   程序规则的条件必须为真
+
+程序规则的结果取决于这些规则中定义的操作：
+
+-   程序规则操作可能会导致两种不同的结果：警告或错误。
+    -   错误会导致验证失败，而警告则会在导入摘要中以信息形式报告。
+        -   SHOWWARNING 和 WARNINGONCOMPLETION 操作只能生成警告。
+        -   SHOWERROR、ERRORONCOMPLETION 和 SETMANDATORYFIELD 操作只能生成错误。
+        -   ASSIGN 操作既可生成警告，也可生成错误。
+            -   当操作为空属性/数据元素赋值时，系统会发出警告。
+            -   当操作要为一个已经有相同值的属性/数据元素赋值时，系统会发出警告。
+            -   当操作要为一个已有值的属性/数据元素赋值，而要赋的值不同时，除非 `RULE_ENGINE_ASSIGN_OVERWRITE` 系统设置为 true，否则会产生错误。
+
+此外，程序规则也会产生副作用，如发送和计划信息。有关副作用的更多信息，请参阅下一节。
+
+> **注意**
+>
+> 在导入过程中，可以使用 `skipProgramRules` 参数跳过程序规则。
+
+### 副作用{ #webapi_nti_side_effects }
+
+导入完成后，可能会触发一些特定任务。这些任务就是我们所说的 "副作用"。这些任务执行的操作并不影响导入本身。
+
+副作用是脱离导入运行的任务，但总是由导入触发。由于副作用与导入分离，因此即使导入成功，副作用也可能失败。此外，只有在导入成功时才会运行侧效应，因此侧效应也不会失败。
+
+目前支持以下副作用：
+
+| 副作用 | 支持的 | 描述 |
+| --- | :-: | --- |
+| **跟踪通知** | **X** | 更新可触发通知。触发通知的更新包括**注册**、**事件更新**、**事件或注册完成**。 |
+| **ProgramRule Notification** | **X** | 程序规则可触发通知。请注意，这些通知是通过 DHIS2 规则引擎生成的程序规则效果的一部分。 |
+
+> **注意**
+>
+> 某些配置可以控制副作用的执行。可以在导入过程中设置 `skipSideEffects` 标志，以完全跳过副作用。例如，如果你导入了一些不想触发通知的内容，这个参数就很有用。
+
+### 为事件分配用户{ #webapi_nti_user_event_assignment }
+
+将事件当作任务来处理可使特定的工作流程受益，因此，您可以为事件分配一个用户。
+
+Assigning a user to an event will not change the access or permissions for users but will create a link between the Event and the user. When an event has a user assigned, you can query events from the API using the `assignedUser` field as a parameter.
+
+要为事件分配用户时，只需在 `assignedUser` 字段中提供要分配的用户的 UID 即可。请参阅以下示例：
+
+```json
+{
+  ...
+  "events": [
+    {
+      "event": "ZwwuwNp6gVd",
+      "programStage": "nlXNK4b7LVr",
+      "orgUnit": "O6uvpzGd5pu",
+      "enrollment": "MNWZ6hnuhSw",
+      "assignedUser" : "M0fCOxtkURr"
+    }
+  ],
+  ...
+}
+```
+
+在本例中，uid 为 `M0fCOxtkURr` 的用户将被分配给uid 为 `ZwwuwNp6gVd` 的事件。一个事件只能分配一个用户。
+
+要使用此功能，相关程序阶段必须启用用户分配功能，为用户提供的 uid 必须是一个有效的现有用户。
+
+## 跟踪器导出{ #webapi_nti_export }
+
+Tracker 导出端点是一组服务，允许客户端查询和检索使用导入端点存储的对象。
+
+Besides differences highlighted in **[Changes in the API](#Changes-in-the-API)**, request parameters for these endpoints match older ones.
+
+These endpoints are still being developed and are subject to change. However, the `request` and `response` interfaces will most likely not undergo significant changes.
+
+Tracker 输出端点处理以下 Tracker 对象：
+
+-   ** 跟踪实体**
+-   **活动**
+-   **入学人数**
+-   **关系**
+
+> **注意**
+>
+> - 目前所有这些端点都支持 `JSON`，只有跟踪实体和事件才支持 `CSV`。
+>
+> - 这些端点采用了**[API 中的更改](#Changes-the-API)**中记录的新命名约定。
+
+### 常见请求参数{ #common-request-parameters }
+
+以下终端支持分页的标准参数。
+
+-   **Tracked Entities** `GET /api/tracker/trackedEntities`
+-   **Events** `GET /api/tracker/events`
+-   **Enrollments** `GET /api/tracker/enrollments`
+-   **Relationships** `GET /api/tracker/relationships`
+
+#### 分页请求参数{ #request-parameters-for-pagination }
+
+| 请求参数 | 类型 | 允许值 | 描述 |
+| --- | --- | --- | --- |
+| `page` | `Integer` | 任何正整数 | 要返回的页码。如果缺少，默认为 1 |
+| `pageSize` | `Integer` | 任何正整数 | 页面大小。默认为 50。 |
+| `totalPages` | `Boolean` | `true`&#124;`false` | 表示是否在响应中返回总页数 |
+| `skipPaging` | `Boolean` | `true`&#124;`false` | 表示是否应忽略分页并返回所有行。默认设置为 `false`，即默认情况下，除非 `skipPaging=true` ，否则所有请求都要分页。 |
+| `order` | `String` | 以逗号分隔的`propName:sortDirection`形式的`OrderCriteria`列表。<br><br> 示例：`createdAt:desc`  **注意：** `propName`区分大小写，`sortDirection`不区分大小写。<br><br> | Sort the response based on given `OrderCriteria` |
+
+> **注意事项**
+>
+> 请注意，性能与请求的数据量直接相关。页面越大，返回所需的时间就越长。
+
+#### 组织单位选择模式的请求参数{ #request-parameters-for-organisational-unit-selection-mode }
+
+可用的组织单元选择模式在
+下表。
+
+| 模式 | 描述 |
+| --- | --- |
+| `SELECTED` | 申请中定义的组织单位。 |
+| `CHILDREN` | 被选中的组织单位及其直属单位，即下一级组织单位。 |
+| `DESCENDANTS` | 选定的组织单位和所有子组织单位，即子层次结构中的所有组织单位。 |
+| `ACCESSIBLE` | 与当前用户和所有子用户（即子层次结构中的所有组织单位）相关联的数据视图组织单位。如果前者未定义，则会返回到与当前用户相关联的数据采集组织单位。 |
+| `CAPTURE` | 与当前用户和所有子用户（即子层级中的所有组织单位）相关联的数据采集组织单位。 |
+| `ALL` | 系统中的所有组织单位。需要 ALL 权限。 |
+
+#### 用于过滤响应的请求参数{ #webapi_nti_field_filter }
+
+All export endpoints accept a `fields` parameter which controls which fields will be returned in the JSON response. `fields` parameter accepts a comma separated list of field names or patterns. A few possible `fields` filters are shown below. Refer to [Metadata field filter](#webapi_metadata_field_filter) for a more complete guide on how to use `fields`.
+
+##### 例子 { #examples }
+
+| 参数示例 | 意义 |
+| :-- | :-- |
+| `fields=*` | 返回所有字段 |
+| `fields=createdAt,uid`(字段=创建时间,uid) | only returns fields `createdAt` and `uid` |
+| `fields=enrollments[*,!uid]` | 返回 `enrollments` 中除 `uid` 以外的所有字段 |
+| `fields=enrollments[uid]` | 只返回 `enrollments` 字段 `uid` |
+| `fields=enrollments[uid,enrolledAt]`"（字段=注册[uid,enrolledAt | 只返回 `enrollments` 字段 `uid` 和 `enrolledAt` |
+
+### Tracked Entities (`GET /api/tracker/trackedEntities`) { #tracked-entities-get-apitrackertrackedentities }
+
+有两个端点专门用于跟踪实体：
+
+-   `GET /api/tracker/trackedEntities`
+    -   检索符合给定条件的被跟踪实体
+-   `GET /api/tracker/trackedEntities/{id}`
+    -   检索给定 id 的被跟踪实体
+
+#### Tracked Entities Collection endpoint `GET /api/tracker/trackedEntities` { #tracked-entities-collection-endpoint-get-apitrackertrackedentities }
+
+该端点的目的是检索与客户提供的标准相匹配的跟踪实体。
+
+端点会返回与请求参数相匹配的被跟踪实体列表。
+
+##### 请求语法 { #request-syntax }
+
+| 请求参数 | 类型 | 允许值 | 描述 |
+| --- | --- | --- | --- |
+| `query` | `String` | `{operator}:{filter-value}` | 创建跟踪实体属性的过滤器。只有过滤器值是必须的。如果未指定 `operator` 操作符，则使用 `EQ` 操作符。 |
+| `attribute` | `String` | 以逗号分隔的属性 `UID`s 值 | 对于响应中的每个跟踪实体，只返回指定的属性 |
+| `filter` | `String` | 以逗号分隔的属性筛选器值 | 将响应缩小到符合给定过滤器的 TEI。过滤器是以冒号分隔的属性或属性 UID，带有可选的操作符和值对。例如：`filter=H9IlTX2X6SL:sw:A`，操作符以`sw`开头，后跟一个值。特殊字符（如 `+`）需要按百分比编码，因此应使用 `%2B` 代替 `+`。允许对同一属性使用多个操作符/值对，如 `filter=AuPLng5hLbE:gt:438901703:lt:448901704`。不允许重复相同的属性 UID。用户需要访问属性才能对其进行过滤。 |
+| `orgUnit` | `String` | 以分号分隔的组织单位`UID`列表 | 只返回属于所提供组织单位的被跟踪实体实例 |
+| `ouMode` 见 [ouModes](#Request-parameters-for-Organisational-Unit-selection-mode)。 | `String` | `SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL` | The mode of selecting organisation units, can be. Default is `SELECTED`, which refers to the selected organisation units only. |
+| `program` | `String` | 程序 `UID` | 程序 `UID` ，响应中的实例必须注册到该程序中。 |
+| `programStatus` | `String` | `ACTIVE`&#124;`COMPLETED`&#124;`CANCELLED` | 给定程序中被跟踪实体实例的程序状态 |
+| `programStage` | `String` | `UID` | 一个程序阶段 `UID`，响应中的实例必须有以下事件 |
+| `followUp` | `Boolean` | `true`&#124;`false` | 表示跟踪的实体实例是否标记为指定计划的跟进对象 |
+| `updatedAfter` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 最后更新的开始日期 |
+| `updatedBefore` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 上次更新的结束日期 |
+| `updatedWithin` | `Duration` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601#Durations) | 返回不早于指定期限的 TEI |
+| `enrollmentEnrolledAfter` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 指定计划的注册开始日期 |
+| `enrollmentEnrolledBefore` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 指定项目的注册结束日期 |
+| `enrollmentOccurredAfter` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 指定计划中事件的开始日期 |
+| `enrollmentOccurredBefore` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 给定程序中事件的结束日期 |
+| `trackedEntityType` | `String` | 被跟踪实体类型的 UID | 只返回给定类型的跟踪实体实例 |
+| `trackedEntity` | `String` | 以分号分隔的跟踪实体实例`UID`列表 | Filter the result down to a limited set of tracked entities using explicit uids of the tracked entity instances by using `trackedEntity=id1;id2`. This parameter will, at the very least, create the outer boundary of the results, forming the list of all tracked entities using the uids provided. If other parameters/filters from this table are used, they will further limit the results from the explicit outer boundary. |
+| `assignedUserMode` | `String` | `CURRENT`&#124;`PROVIDED`&#124;`NONE`&#124;`ANY` | 根据指定的用户选择模式，将结果限制为已分配事件的被跟踪实体。有关解释，请参阅下表 "分配的用户模式"。 |
+| `assignedUser` | `String` | 以分号分隔的用户 UID 列表，用于根据分配给用户的事件进行过滤。 | Filter the result down to a limited set of tracked entities with events that are assigned to the given user IDs by using `assignedUser=id1;id2`.This parameter will only be considered if assignedUserMode is either `PROVIDED` or `null`. The API will error out, if for example, `assignedUserMode=CURRENT` and `assignedUser=someId` |
+| `eventStatus` | `String` | `ACTIVE`&#124;`COMPLETED`&#124;`VISITED`&#124;`SCHEDULE`&#124;`OVERDUE`&#124;`SKIPPED` | 指定程序中任何事件的状态 |
+| `eventOccurredAfter` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 指定计划的活动开始日期 |
+| `eventOccurredBefore` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 指定计划的活动结束日期 |
+| `skipMeta` | `Boolean` | `true`&#124;`false` | 表示是否在响应中包含元数据。 |
+| `includeDeleted` | `Boolean` | `true`&#124;`false` | 表示是否包含软删除元素 |
+| `includeAllAttributes` | `Boolean` | `true`&#124;`false` | 表示是否包含所有 TEI 属性 |
+| `attachment` | `String` |  | 导出为文件时的文件名 |
+| `potentialDuplicate` | `Boolean` | `true`&#124;`false` | true：返回标记为潜在重复的 TEI。false：返回未标记为潜在重复的 TEI。如果省略，我们将不检查 TEI 是否为潜在重复。 |
+
+下表解释了可用的指定用户模式。
+
+表：指定的用户模式
+
+| 模式 | 描述 |
+| --- | --- |
+| 当前 | 包括分配给当前登录用户的事件。 |
+| 提供 | 包括分配给请求中提供的用户的事件。 |
+| 无 | 仅包括未分配的活动。 |
+| 任何 | 包括所有分配的事件，只要是分配给某个人的事件，分配给谁并不重要。 |
+
+查询不区分大小写。以下规则适用于查询
+参数。
+
+-   必须使用 `orgUnit` 参数（一个或多个）指定至少一个组织单位，或指定 `ouMode=ALL`。
+
+-   只能指定 `program` 和 `trackedEntity` 参数中的一个（0 或 1）。
+
+-   If `programStatus` is specified, then `program` must also be specified.
+
+-   If `followUp` is specified, then `program` must also be specified.
+
+-   If `enrollmentEnrolledAfter` or `enrollmentEnrolledBefore` is specified then `program` must also be specified.
+
+-   过滤器项目只能指定一次。
+
+##### 申请示例{ #example-requests }
+
+查询与特定组织单位关联的所有实例
+看起来像这样：
+
+    GET /api/tracker/trackedEntities?orgUnit=DiszpKrYNg8
+
+使用一个带有过滤器的属性和一个属性来查询实例
+没有过滤器的属性，一个组织单位使用
+后代组织单位查询方式：
+
+    GET /api/tracker/trackedEntities?filter=zHXD5Ve1Efw:EQ:A
+        &attribure=AMpUYgxuCaE&orgUnit=DiszpKrYNg8;yMCshbaVExv
+
+用于查询响应中包含属性的实例，其中一个属性被用作过滤器：
+
+    GET /api/tracker/trackedEntities?filter=zHXD5Ve1Efw:EQ:A
+        &filter=AMpUYgxuCaE:LIKE:Road
+        &orgUnit=DiszpKrYNg8
+
+为过滤器指定了多个操作数和过滤器的查询
+物品：
+
+    GET /api/tracker/trackedEntities?orgUnit=DiszpKrYNg8
+        &program=ur1Edk5Oe2n
+        &filter=lw1SqmMlnfh:GT:150
+        &filter=lw1SqmMlnfh:LT:190
+
+使用 _IN_ 过滤器中的多个值查询属性：
+
+    GET /api/tracker/trackedEntities?orgUnit=DiszpKrYNg8
+        &filter=dv3nChNSIxy:IN:Scott;Jimmy;Santiago
+
+限制对属于特定事件一部分的实例的响应
+program 你可以包含一个 program 查询参数：
+
+    GET /api/tracker/trackedEntities?filter=zHXD5Ve1Efw:EQ:A
+        &orgUnit=O6uvpzGd5pu&ouMode=DESCENDANTS
+        &program=ur1Edk5Oe2n
+
+要将程序注册日期指定为查询的一部分，请执行以下操作：
+
+    GET /API/tracker/trackedEntities?
+        &orgUnit=O6uvpzGd5pu&program=ur1Edk5Oe2n
+        &enrollmentEnrolledAfter=2013-01-01
+        &enrollmentEnrolledBefore=2013-09-01
+
+要限制对特定跟踪实体实例的响应，您
+可以包含跟踪实体查询参数：
+
+    GET /api/tracker/trackedEntities?filter=zHXD5Ve1Efw:EQ:A
+        &orgUnit=O6uvpzGd5pu
+        &ouMode=DESCENDANTS
+        &trackedEntity=cyl5vuJ5ETQ
+
+默认情况下，实例以大小为 50 的页面返回，以更改
+您可以使用 page 和 pageSize 查询参数：
+
+    GET /api/tracker/trackedEntities?filter=zHXD5Ve1Efw:EQ:A
+        &orgUnit=O6uvpzGd5pu
+        &ouMode=DESCENDANTS
+        &page=2&pageSize=3
+
+您可以使用一系列运算符进行过滤：
+
+| 操作员 | 描述                                          |
+| -------- | ---------------------------------------------------- |
+| `EQ`     | 等于                                             |
+| `GT`     | 大于                                         |
+| `GE`     | 大于或等于                             |
+| `LT`     | 小于                                            |
+| `LE`     | 小于或等于                                |
+| `NE`     | 不等于                                         |
+| `LIKE`   | 喜欢（自由文本匹配）                               |
+| `IN`     | 等于用"; "分隔的多个值之一 |
+
+##### 回应格式 { #response-format }
+
+The `JSON` response can look like the following.
+
+可根据所需字段过滤响应，请参阅[用于过滤响应的请求参数](#webapi_nti_field_filter)
+
+```json
+{
+  "instances": [
+    {
+      "trackedEntity": "IzHblRD2sDH",
+      "trackedEntityType": "nEenWmSyUEp",
+      "createdAt": "2014-03-26T15:40:36.669",
+      "createdAtClient": "2014-03-26T15:40:36.669",
+      "updatedAt": "2014-03-28T12:28:17.544",
+      "orgUnit": "g8upMTyEZGZ",
+      "inactive": false,
+      "deleted": false,
+      "relationships": [],
+      "attributes": [
+        {
+          "attribute": "VqEFza8wbwA",
+          "code": "MMD_PER_ADR1",
+          "displayName": "Address",
+          "createdAt": "2016-01-12T00:00:00.000",
+          "updatedAt": "2016-01-12T00:00:00.000",
+          "valueType": "TEXT",
+          "value": "1061 Marconi St"
+        },
+        {
+          "attribute": "RG7uGl4w5Jq",
+          "code": "Longitude",
+          "displayName": "Longitude",
+          "createdAt": "2016-01-12T00:00:00.000",
+          "updatedAt": "2016-01-12T00:00:00.000",
+          "valueType": "TEXT",
+          "value": "27.866613"
+        },
+        ...,
+        ...,
+      ],
+      "enrollments": [],
+      "programOwners": []
+    }
+  ],
+  "page": 1,
+  "total": 39,
+  "pageSize": 1
+}
+```
+
+#### Tracked Entities single object endpoint `GET /api/tracker/trackedEntities/{uid}`
+
+该端点的目的是检索一个给定 uid 的被跟踪实体。
+
+##### 请求语法 { #request-syntax }
+
+`GET /api/tracker/trackedEntities/{uid}?program={programUid}&fields={fields}`
+
+| 请求参数 | 类型 | 允许值 | 描述 |
+| --- | --- | --- | --- |
+| `uid` | `String` | `uid` | 返回具有指定 `uid` 的跟踪实体实例 |
+| `program` | `String` | `uid` | 在响应中包含程序属性（仅限用户可访问的属性） |
+| `fields` | `String` | Any valid field filter (default `*,!relationships,!enrollments,!events,!programOwners`) | 在响应中包含指定的子对象 |
+
+##### 申请示例{ #example-requests }
+
+查询跟踪实体实例：
+
+    GET /api/tracker/trackedEntities/IzHblRD2sDH?program=ur1Edk5Oe2n&fields=*
+
+##### 回应格式 { #response-format }
+
+如果在请求 json 格式时传递了 `fields` 请求参数，则该端点支持返回子对象。如果是 csv 格式，则 `fields` 请求参数不起作用，响应将始终包含相同的字段：
+
+-   跟踪实体（标识符）
+-   跟踪实体类型（标识符）
+-   创建时间（日期）
+-   创建于客户端（日期时间）
+-   updatedAt （日期时间）
+-   updatedAtClient （日期时间）
+-   orgUnit （标识符）
+-   非活动（布尔）
+-   已删除（布尔型）
+-   潜在重复（布尔）
+-   几何学 (WKT, https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry)
+-   storedBy (字符串)
+-   createdBy （用户的用户名）
+-   updatedBy（用户的用户名）
+-   属性（每个有效属性作为另一列列出）
+
+json 响应示例：
+
+```json
+{
+    "trackedEntity": "IzHblRD2sDH",
+    "trackedEntityType": "nEenWmSyUEp",
+    "createdAt": "2014-03-26T15:40:36.669",
+    "updatedAt": "2014-03-28T12:28:17.544",
+    "orgUnit": "g8upMTyEZGZ",
+    "inactive": false,
+    "deleted": false,
+    "relationships": [],
+    "attributes": [
+        {
+            "attribute": "w75KJ2mc4zz",
+            "code": "MMD_PER_NAM",
+            "displayName": "First name",
+            "createdAt": "2016-01-12T09:10:26.986",
+            "updatedAt": "2016-01-12T09:10:35.884",
+            "valueType": "TEXT",
+            "value": "Wegahta"
+        },
+        {
+            "attribute": "zDhUuAYrxNC",
+            "displayName": "Last name",
+            "createdAt": "2016-01-12T09:10:26.986",
+            "updatedAt": "2016-01-12T09:10:35.884",
+            "valueType": "TEXT",
+            "value": "Goytiom"
+        }
+    ],
+    "enrollments": [
+        {
+            "enrollment": "uT5ZysTES7j",
+            "createdAt": "2017-03-28T12:28:17.539",
+            "createdAtClient": "2016-03-28T12:28:17.539",
+            "updatedAt": "2017-03-28T12:28:17.544",
+            "trackedEntity": "IzHblRD2sDH",
+            "trackedEntityType": "nEenWmSyUEp",
+            "program": "ur1Edk5Oe2n",
+            "status": "ACTIVE",
+            "orgUnit": "g8upMTyEZGZ",
+            "orgUnitName": "Njandama MCHP",
+            "enrolledAt": "2020-11-10T12:28:17.532",
+            "occurredAt": "2020-10-12T12:28:17.532",
+            "followUp": false,
+            "deleted": false,
+            "events": [
+                {
+                    "event": "ixDYEGrNQeH",
+                    "status": "ACTIVE",
+                    "program": "ur1Edk5Oe2n",
+                    "programStage": "ZkbAXlQUYJG",
+                    "enrollment": "uT5ZysTES7j",
+                    "enrollmentStatus": "ACTIVE",
+                    "trackedEntity": "IzHblRD2sDH",
+                    "relationships": [],
+                    "scheduledAt": "2019-10-12T12:28:17.532",
+                    "followup": false,
+                    "deleted": false,
+                    "createdAt": "2017-03-28T12:28:17.542",
+                    "createdAtClient": "2016-03-28T12:28:17.542",
+                    "updatedAt": "2017-03-28T12:28:17.542",
+                    "attributeOptionCombo": "HllvX50cXC0",
+                    "attributeCategoryOptions": "xYerKDKCefk",
+                    "dataValues": [],
+                    "notes": []
+                }
+            ],
+            "relationships": [],
+            "attributes": [],
+            "notes": []
+        }
+    ],
+    "programOwners": [
+        {
+            "orgUnit": "g8upMTyEZGZ",
+            "trackedEntity": "IzHblRD2sDH",
+            "program": "ur1Edk5Oe2n"
+        }
+    ]
+}
+```
+
+### Events (`GET /api/tracker/events`) { #events-get-apitrackerevents }
+
+有两个端点专门用于处理事件：
+
+-   `GET /api/tracker/events`
+    -   检索符合给定条件的事件
+-   `GET /api/tracker/events/{id}`
+    -   检索给定 id 的事件
+
+#### Events Collection endpoint `GET /api/tracker/events` { #events-collection-endpoint-get-apitrackerevents }
+
+根据提供的筛选器返回事件列表。
+
+| 请求参数 | 类型 | 允许值 | 描述 |
+| --- | --- | --- | --- |
+| `program` | `String` | `uid` | 计划标识符 |
+| `programStage` | `String` | `uid` | 计划阶段的标识符 |
+| `programStatus` | `enum` | `ACTIVE`&#124;`COMPLETED`&#124;`CANCELLED` | 事件在程序中的状态 |
+| `filter` | `String` | 数据元素过滤器的逗号分隔值 | 将响应缩小到与给定过滤器匹配的事件。过滤器是以冒号分隔的属性或数据元素 UID，带有可选的操作符和值对。例如：`filter=fazCI2ygYkq:eq:PASSIVE`，操作符以`eq`开头，后跟一个值。允许对同一属性/数据元素使用多个操作符/值对，如 `filter=qrur9Dvnyt5:gt:70:lt:80`。不允许重复相同的数据元素 UID。用户需要访问数据元素才能对其进行筛选。 |
+| `filterAttributes` | `String` | 以逗号分隔的属性筛选器值 | 将响应缩小到符合给定过滤器的 TEI。过滤器是以冒号分隔的属性或属性 UID，带有可选的操作符和值对。例如：`filter=H9IlTX2X6SL:sw:A`，操作符以`sw`开头，后跟一个值。特殊字符（如 `+`）需要按百分比编码，因此应使用 `%2B` 代替 `+`。允许对同一属性使用多个操作符/值对，如 `filter=AuPLng5hLbE:gt:438901703:lt:448901704`。不允许重复相同的属性 UID。用户需要访问属性才能对其进行过滤。 |
+| `followUp` | `boolean` | `true`&#124;`false` | Whether event is considered for follow up in program. Defaults to `true` |
+| `trackedEntityInstance` | `String` | `uid` | 被跟踪实体实例的标识符 |
+| `orgUnit` | `String` | `uid` | 组织单位标识符 |
+| `ouMode` 见 [ouModes](#Request-parameters-for-Organisational-Unit-selection-mode)。 | `String` | `SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS` | 机关单位选择模式 |
+| `status` | `String` | `ACTIVE`&#124;`COMPLETED`&#124;`VISITED`&#124;`SCHEDULE`&#124;`OVERDUE`&#124;`SKIPPED` | 事件状态 |
+| `occurredAfter` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 筛选此日期之后发生的事件。 |
+| `occurredBefore` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 筛选在此日期之前发生的事件。 |
+| `scheduledAfter` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 筛选在此日期之后安排的事件。 |
+| `scheduledBefore` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 筛选在此日期之前安排的事件。 |
+| `updatedAfter` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 筛选在此日期后更新的事件。不能与 `updatedWithin` 一起使用。 |
+| `updatedBefore` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 筛选在此日期之前更新的事件。不能与 `updatedWithin` 一起使用。 |
+| `updatedWithin` | `Duration` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601#Durations) | Include only items which are updated within the given duration.<br><br> The format is [ISO-8601#Duration](https://en.wikipedia.org/wiki/ISO_8601#Durations) |
+| `enrollmentEnrolledAfter` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 指定计划的注册开始日期 |
+| `enrollmentEnrolledBefore` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 指定项目的注册结束日期 |
+| `enrollmentOccurredAfter` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 指定计划中事件的开始日期 |
+| `enrollmentOccurredBefore` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 给定程序中事件的结束日期 |
+| `skipMeta` | `Boolean` | `true`&#124;`false` | 排除响应的元数据部分（提高性能） |
+| `dataElementIdScheme` | `String` | `UID`&#124;`CODE`&#124;`ATTRIBUTE:{ID}` | 用于导出的数据元素 ID 方案。 |
+| `categoryOptionComboIdScheme` | `String` | `UID`&#124;`CODE`&#124;`ATTRIBUTE:{ID}` | 类别 选项 组合 ID 方案用于导出 |
+| `orgUnitIdScheme` | `String` | `UID`&#124;`CODE`&#124;`ATTRIBUTE:{ID}` | 出口时使用的组织单位标识方案 |
+| `programIdScheme` | `String` | `UID`&#124;`CODE`&#124;`ATTRIBUTE:{ID}` | 用于导出的程序 ID 方案 |
+| `programStageIdScheme` | `String` | `UID`&#124;`CODE`&#124;`ATTRIBUTE:{ID}` | 用于导出的计划阶段 ID 方案 |
+| `idScheme` | `string` | `UID`&#124;`CODE`&#124;`ATTRIBUTE:{ID}` | 允许一次性为数据元素、类别选项组合、orgUnit、程序和程序阶段设置 id 方案。 |
+| `order` | `String` | 以逗号分隔的属性名称、属性或数据元素 UID 和排序方向对的列表，格式为 `propName:sortDirection`。 | 根据给定的顺序值对响应进行排序。<br><br> 示例：`createdAt:desc` 或 `SzVk2KvkSSd:asc`<br><br> **注意：** `propName`区分大小写，`sortDirection`不区分大小写。支持 `storedBy, attributeCategoryOptions, dueDate, assignedUserUsername, createdAtClient, program, lastUpdated, event, assignedUser, programStage, programType, occurredAt, created, createdAt, orgUnit、completedDate, enrollment, trackedEntityInstance, followup, deleted, enrollmentStatus, attributeOptionCombo, assignedUserDisplayName, completedBy, orgUnitName, eventDate, lastUpdatedAtClient, status, enrolledAt`. |
+| `event` | `String` | 以逗号分隔的 `uid` 列表 | Filter the result down to a limited set of IDs by using event=id1;id2. |
+| `skipEventId` | `Boolean` |  | 跳过响应中的事件标识符 |
+| `attributeCc` (see note) | `String` | 属性类别组合标识符（必须与 attributeCos 结合使用） |
+| `attributeCos` (see note) | `String` | 属性类别选项标识符，用 ; 分隔（必须与 attributeCc 结合使用） |
+| `includeDeleted` | `Boolean` |  | 为真时，软删除事件将包含在查询结果中。 |
+| `assignedUserMode` | `String` | `CURRENT`&#124;`PROVIDED`&#124;`NONE`&#124;`ANY` | 指定用户选择模式 |
+| `assignedUser` | `String` | 以逗号分隔的列表 od `uid` | 使用`assignedUser=id1;id2`将结果筛选到分配给给定用户 ID 的有限事件集。<br><br> 只有当 assignedUserMode 为`PROVIDED`或`null`时，才会考虑该参数。<br><br> 如果出现`assignedUserMode=CURRENT`和`assignedUser=someId`等情况，API 将出错。 |
+
+> **注意**
+>
+>如果查询既不包含`attributeCC`也不包含`attributeCos`，则服务器将为用户具有读取访问权限的所有属性选项组合返回事件。
+
+##### 申请示例{ #example-requests }
+
+查询具有特定组织单位子机构的所有事件：
+
+    GET /api/tracker/events?orgUnit=YuQRtpLP10I&ouMode=CHILDREN
+
+查询特定组织单位所有后代的所有事件，即子层次结构中的所有组织单位：
+
+    GET /api/tracker/events?orgUnit=O6uvpzGd5pu&ouMode=DESCENDANTS
+
+使用特定程序和组织单位查询所有事件：
+
+    GET /api/tracker/events?orgUnit=DiszpKrYNg8&program=eBAyeGv0exc
+
+查询具有一定节目和组织单位的所有事件，
+按截止日期排序
+    上升：
+
+    GET /api/tracker/events?orgUnit=DiszpKrYNg8&program=eBAyeGv0exc&order=dueDate
+
+查询某节目中活动日期最新的10个活动
+和组织单位 - 按到期日降序分页和排序：
+
+    GET /api/tracker/events?orgUnit=DiszpKrYNg8&program=eBAyeGv0exc
+      &order=eventDate:desc&pageSize=10&page=1
+
+查询具有特定节目和组织单位的所有事件
+特定的跟踪实体实例：
+
+    GET /api/tracker/events?orgUnit=DiszpKrYNg8
+      &program=eBAyeGv0exc&trackedEntityInstance=gfVxE3ALA9m
+
+查询某个程序和组织单位较旧的所有事件
+或等于
+    2014-02-03：
+
+    GET /api/tracker/events?orgUnit=DiszpKrYNg8&program=eBAyeGv0exc&endDate=2014-02-03
+
+查询具有一定节目阶段、组织单位和
+2014年被跟踪实体实例：
+
+    GET /api/tracker/events?orgUnit=DiszpKrYNg8&program=eBAyeGv0exc
+      &trackedEntityInstance=gfVxE3ALA9m&occurredAfter=2014-01-01&occurredBefore=2014-12-31
+
+Retrieve events with specified Organisation unit and Program, and use `Attribute:Gq0oWTf2DtN` as identifier scheme
+
+    GET /api/tracker/events?orgUnit=DiszpKrYNg8&program=lxAQ7Zs9VYR&idScheme=Attribute:Gq0oWTf2DtN
+
+Retrieve events with specified Organisation unit and Program, and use UID as identifier scheme for organisation units, Code as identifier scheme for Program stages, and _Attribute:Gq0oWTf2DtN_ as the identifier scheme for the rest of the metadata with assigned attributes.
+
+    GET /api/tracker/events?orgUnit=DiszpKrYNg8&program=lxAQ7Zs9VYR&idScheme=Attribute:Gq0oWTf2DtN
+      &orgUnitIdScheme=UID&programStageIdScheme=Code
+
+##### 回应格式 { #response-format }
+
+The `JSON` response can look like the following.
+
+```json
+{
+    "instances": [
+        {
+            "event": "rgWr86qs0sI",
+            "status": "ACTIVE",
+            "program": "kla3mAPgvCH",
+            "programStage": "aNLq9ZYoy9W",
+            "orgUnit": "DiszpKrYNg8",
+            "orgUnitName": "Ngelehun CHC",
+            "relationships": [],
+            "occurredAt": "2021-10-12T00:00:00.000",
+            "followup": false,
+            "deleted": false,
+            "createdAt": "2018-10-20T12:09:19.492",
+            "updatedAt": "2018-10-20T12:09:19.492",
+            "attributeOptionCombo": "amw2rQP6r6M",
+            "attributeCategoryOptions": "RkbOhHwiOgW",
+            "dataValues": [
+                {
+                    "createdAt": "2015-10-20T12:09:19.640",
+                    "updatedAt": "2015-10-20T12:09:19.640",
+                    "storedBy": "system",
+                    "providedElsewhere": false,
+                    "dataElement": "HyJL2Lt37jN",
+                    "value": "12"
+                },
+              ...
+            ],
+            "notes": []
+        }
+    ],
+    "page": 1,
+    "pageSize": 1
+}
+```
+
+The `CSV` response can look like the following.
+
+```
+|事件|状态|计划|计划阶段|注册|机构单位|发生在|计划在|数据元素|值|存储在|提供的其他地方
+|---|---|---|---|---|---|---|---|---|---|---|---|
+|V1CerIi3sdL|COMPLETED|IpHINAT79UW|A03MvHHogjR|CCBLMntFuzb|DiszpKrYNg8|2020-02-26T23:00:00Z|2020-02-27T23:00:00Z|a3kGcGDCuk6|11|admin|false
+|V1CerIi3sdL|COMPLETED|IpHINAT79UW|A03MvHHogjR|CCBLMntFuzb|DiszpKrYNg8|2020-02-26T23:00:00Z|2020-02-27T23:00:00Z|mB2QHw1tU96|[-11.566044,9.477801]|admin|false
+```
+
+#### Events single object endpoint `GET /api/tracker/events/{uid}`
+
+该端点的目的是检索一个给定 uid 的事件。
+
+##### 请求语法 { #request-syntax }
+
+`GET /api/tracker/events/{uid}?fields={fields}`
+
+| 请求参数 | 类型 | 允许值 | 描述 |
+| --- | --- | --- | --- |
+| `uid` | `String` | `uid` | 返回指定 `uid` 的事件 |
+| `fields` | `String` | 任何有效的字段过滤器（默认为`*,!关系`）。 | 在响应中包含指定的子对象 |
+
+##### 申请示例{ #example-requests }
+
+查询事件：
+
+    GET /api/tracker/events/rgWr86qs0sI
+
+##### 回应格式 { #response-format }
+
+```json
+{
+    "event": "rgWr86qs0sI",
+    "status": "ACTIVE",
+    "program": "kla3mAPgvCH",
+    "programStage": "aNLq9ZYoy9W",
+    "enrollment": "Lo3SHzCnMSm",
+    "enrollmentStatus": "ACTIVE",
+    "orgUnit": "DiszpKrYNg8",
+    "orgUnitName": "Ngelehun CHC",
+    "relationships": [],
+    "occurredAt": "2021-10-12T00:00:00.000",
+    "followup": false,
+    "deleted": false,
+    "createdAt": "2018-10-20T12:09:19.492",
+    "createdAtClient": "2017-10-20T12:09:19.492",
+    "updatedAt": "2018-10-20T12:09:19.492",
+    "attributeOptionCombo": "amw2rQP6r6M",
+    "attributeCategoryOptions": "RkbOhHwiOgW",
+    "dataValues": [
+        {
+            "createdAt": "2015-10-20T12:09:19.640",
+            "updatedAt": "2015-10-20T12:09:19.640",
+            "storedBy": "system",
+            "providedElsewhere": false,
+            "dataElement": "HyJL2Lt37jN",
+            "value": "12"
+        },
+        {
+            "createdAt": "2015-10-20T12:09:19.514",
+            "updatedAt": "2015-10-20T12:09:19.514",
+            "storedBy": "system",
+            "providedElsewhere": false,
+            "dataElement": "b6dOUjAarHD",
+            "value": "213"
+        },
+        {
+            "createdAt": "2015-10-20T12:09:19.626",
+            "updatedAt": "2015-10-20T12:09:19.626",
+            "storedBy": "system",
+            "providedElsewhere": false,
+            "dataElement": "UwCXONyUtGs",
+            "value": "3"
+        },
+        {
+            "createdAt": "2015-10-20T12:09:19.542",
+            "updatedAt": "2015-10-20T12:09:19.542",
+            "storedBy": "system",
+            "providedElsewhere": false,
+            "dataElement": "fqnXmRYo5Cz",
+            "value": "123"
+        },
+        {
+            "createdAt": "2015-10-20T12:09:19.614",
+            "updatedAt": "2015-10-20T12:09:19.614",
+            "storedBy": "system",
+            "providedElsewhere": false,
+            "dataElement": "Qz3kfeKgLgL",
+            "value": "23"
+        },
+        {
+            "createdAt": "2015-10-20T12:09:19.528",
+            "updatedAt": "2015-10-20T12:09:19.528",
+            "storedBy": "system",
+            "providedElsewhere": false,
+            "dataElement": "W7aC8jLASW8",
+            "value": "12"
+        },
+        {
+            "createdAt": "2015-10-20T12:09:19.599",
+            "updatedAt": "2015-10-20T12:09:19.599",
+            "storedBy": "system",
+            "providedElsewhere": false,
+            "dataElement": "HrJmqlBqTFG",
+            "value": "3"
+        }
+    ],
+    "notes": []
+}
+```
+
+### Enrollments (`GET /api/tracker/enrollments`) { #enrollments-get-apitrackerenrollments }
+
+有两个端点专门用于注册：
+
+-   `GET /api/tracker/enrollments`
+    -   检索符合给定条件的注册人数
+-   `GET /api/tracker/enrollments/{id}`
+    -   检索给定 id 的注册信息
+
+#### Enrollment Collection endpoint `GET /api/tracker/enrollments` { #enrollment-collection-endpoint-get-apitrackerenrollments }
+
+根据筛选条件返回事件列表。
+
+| 请求参数 | 类型 | 允许值 | 描述 |
+| --- | --- | --- | --- |
+| `orgUnit` | `String` | `uid` | 组织单位标识符 |
+| `ouMode` 见 [ouModes](#Request-parameters-for-Organisational-Unit-selection-mode)。 | `String` | `SELECTED`&#124;`CHILDREN`&#124;`DESCENDANTS`&#124;`ACCESSIBLE`&#124;`CAPTURE`&#124;`ALL | 机关单位选择模式 |
+| `program` | `String` | `uid` | 计划标识符 |
+| `programStatus` | `enum` | `ACTIVE`&#124;`COMPLETED`&#124;`CANCELLED` | 计划状态 |
+| `followUp` | `boolean` | `true`&#124;`false` | 跟踪给定程序的实例状态。可以是 `true`&#124;`false` 或省略。 |
+| `updatedAfter` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 只有在此日期后更新的注册信息 |
+| `updatedWithin` | `Duration` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 只有在给定期限后更新的注册信息 |
+| `enrolledAfter` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 仅限此日期之前的注册 |
+| `enrolledBefore` | `DateTime` | [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) | 仅限于此日期之前的注册 |
+| `trackedEntityType` | `String` | `uid` | 被跟踪实体类型的标识符 |
+| `trackedEntity` | `String` | `uid` | 被跟踪实体实例的标识符 |
+| `enrollment` | `String` | 以逗号分隔的 `uid` 列表 | Filter the result down to a limited set of IDs by using enrollment=id1;id2. |
+| `includeDeleted` | `Boolean` |  | 为真时，软删除事件将包含在查询结果中。 |
+
+查询不区分大小写。以下规则适用于查询参数。
+
+-   必须使用 `orgUnit` 参数（一个或多个）指定至少一个组织单位，或者指定 _ouMode=ALL_。
+
+-   只能指定 _program_ 和 _trackedEntity_ 参数中的一个（0 或 1）。
+
+-   如果指定了 _programStatus_，则还必须指定 _program_。
+
+-   如果指定了 _followUp_，则还必须指定 _program_。
+
+-   如果指定了 _enrolledAfter_ 或 _enrolledBefore_，则还必须指定 _program_。
+
+##### 申请示例{ #example-requests }
+
+查询与特定组织单位关联的所有注册
+看起来像这样：
+
+    GET /api/tracker/enrollments?orgUnit=DiszpKrYNg8
+
+限制对作为特定活动一部分的注册的响应
+程序，您可以包含程序查询
+    范围：
+
+    GET /api/tracker/enrollments?orgUnit=O6uvpzGd5pu&ouMode=DESCENDANTS&program=ur1Edk5Oe2n
+
+要将程序注册日期指定为查询的一部分，请执行以下操作：
+
+    GET /api/tracker/enrollments?&orgUnit=O6uvpzGd5pu&program=ur1Edk5Oe2n
+      &enrolledAfter=2013-01-01&enrolledBefore=2013-09-01
+
+限制对特定被跟踪实体的注册的响应
+您可以包含跟踪实体查询
+    范围：
+
+    GET /api/tracker/enrollments?orgUnit=O6uvpzGd5pu&ouMode=DESCENDANTS&trackedEntity=cyl5vuJ5ETQ
+
+要将响应限制为特定跟踪实体的注册信息，可以包含一个跟踪实体实例查询参数，在本例中，我们将其限制为当前用户可查看的可用注册信息：
+
+    GET /API/tracker/enrollments?ouMode=ACCESSIBLE&trackedEntity=tphfdyIiVL6
+
+##### 回应格式 { #response-format }
+
+The `JSON` response can look like the following.
+
+```json
+{
+    "instances": [
+        {
+            "enrollment": "iKaBMOyq7QQ",
+            "createdAt": "2017-03-28T12:28:19.812",
+            "createdAtClient": "2016-03-28T12:28:19.812",
+            "updatedAt": "2017-03-28T12:28:19.817",
+            "trackedEntity": "PpqV8ytvW5i",
+            "trackedEntityType": "nEenWmSyUEp",
+            "program": "ur1Edk5Oe2n",
+            "status": "ACTIVE",
+            "orgUnit": "NnQpISrLYWZ",
+            "orgUnitName": "Govt. Hosp. Bonthe",
+            "enrolledAt": "2020-10-23T12:28:19.805",
+            "occurredAt": "2020-10-07T12:28:19.805",
+            "followUp": false,
+            "deleted": false,
+            "events": [],
+            "relationships": [],
+            "attributes": [],
+            "notes": []
+        }
+    ],
+    "page": 1,
+    "total": 1,
+    "pageSize": 5
+}
+```
+
+#### Enrollments single object endpoint `GET /api/tracker/enrollments/{uid}`
+
+该端点的目的是检索一个给定 uid 的 Enrollment。
+
+##### 请求语法 { #request-syntax }
+
+`GET /api/tracker/enrollment/{uid}`
+
+| 请求参数 | 类型 | 允许值 | 描述 |
+| --- | --- | --- | --- |
+| `uid` | `String` | `uid` | 返回指定`uid`的注册信息 |
+| `fields` | `String` | Any valid field filter (default `*,!relationships,!events,!attributes`) | 在响应中包含指定的子对象 |
+
+##### 申请示例{ #example-requests }
+
+报名查询：
+
+    GET /api/tracker/enrollments/iKaBMOyq7QQ
+
+##### 回应格式 { #response-format }
+
+```json
+{
+    "enrollment": "iKaBMOyq7QQ",
+    "createdAt": "2017-03-28T12:28:19.812",
+    "createdAtClient": "2016-03-28T12:28:19.812",
+    "updatedAt": "2017-03-28T12:28:19.817",
+    "trackedEntity": "PpqV8ytvW5i",
+    "trackedEntityType": "nEenWmSyUEp",
+    "program": "ur1Edk5Oe2n",
+    "status": "ACTIVE",
+    "orgUnit": "NnQpISrLYWZ",
+    "orgUnitName": "Govt. Hosp. Bonthe",
+    "enrolledAt": "2020-10-23T12:28:19.805",
+    "occurredAt": "2020-10-07T12:28:19.805",
+    "followUp": false,
+    "deleted": false,
+    "events": [],
+    "relationships": [],
+    "attributes": [],
+    "notes": []
+}
+```
+
+### Relationships (`GET /api/tracker/relationships`) { #relationships-get-apitrackerrelationships }
+
+关系是跟踪器中两个实体之间的链接。这些实体可以是跟踪实体实例、注册和事件。
+
+该端点的目的是检索对象之间的关系。
+
+与其他跟踪对象端点不同，关系只暴露一个端点：
+
+-   `GET /api/tracker/relationships?[trackedEntity={trackedEntityUid}|enrollment={enrollmentUid}|event={eventUid}]&fields=[fields]`
+
+#### 请求参数{ #request-parameters }
+
+| 请求参数 | 类型 | 允许值 | 描述 |
+| --- | --- | --- | --- |
+| `trackedEntity` | `String` | `uid` | 被跟踪实体实例的标识符 |
+| `enrollment` | `String` | `uid` | 注册的标识符 |
+| `event` | `String` | `uid` | 事件标识符 |
+| `fields` | `String` | Any valid field filter (default `relationship,relationshipType,from[trackedEntity[trackedEntity],enrollment[enrollment],event[event]],to[trackedEntity[trackedEntity],enrollment[enrollment],event[event]]`) | 在响应中包含指定的子对象 |
+
+以下规则适用于查询参数。
+
+-   only one parameter among `trackedEntity`, `enrollment`, `event` can be passed
+
+> **注意**
+>
+> 使用跟踪实体、注册或事件参数，将返回跟踪实体、注册或事件是关系一部分（从或至）的任何关系。只要用户有访问权限。
+
+#### 答复示例{ #example-response }
+
+```json
+{
+    "instances": [
+        {
+            "relationship": "SSfIicJKbh5",
+            "relationshipType": "Mv8R4MPcNcX",
+            "from": {
+                "trackedEntity": {
+                    "trackedEntity": "neR4cmMY22o"
+                }
+            },
+            "to": {
+                "trackedEntity": {
+                    "trackedEntity": "rEYUGH97Ssd"
+                }
+            }
+        },
+        {
+            "relationship": "S9kZGYPKk3x",
+            "relationshipType": "Mv8R4MPcNcX",
+            "from": {
+                "trackedEntity": {
+                    "trackedEntity": "neR4cmMY22o"
+                }
+            },
+            "to": {
+                "trackedEntity": {
+                    "trackedEntity": "k8TU70vWtnP"
+                }
+            }
+        }
+    ],
+    "page": 1,
+    "pageSize": 2
+}
+```
+
+## 跟踪器门禁控制{ #webapi_nti_access_control }
+
+Tracker 在访问控制方面有几个不同的概念，如共享、组织单位范围、所有权和访问级别。下文将简要介绍不同的主题。
+
+### 元数据共享{ #webapi_nti_metadata_sharing }
+
+共享设置是 DHIS2 的标准功能，适用于跟踪和汇总元数据/数据以及仪表盘和可视化项目。共享的核心是定义谁能看到/做什么。一般来说，有五种可能的共享配置--无访问权限、元数据读取、元数据写入、数据读取和数据写入。这些访问配置可在用户和/或用户组级别授予（更具灵活性）。以 Tracker 为重点，以下元数据及其共享设置尤为重要：数据元素、类别选项、计划、计划阶段、跟踪实体类型、跟踪实体属性以及与跟踪器相关的仪表盘和仪表盘项目。
+
+共享设置的工作原理非常简单，即在 Tracker 数据导入/导出过程中执行设置。要读取数据值，用户需要拥有数据读取权限。如果用户要修改数据，则需要拥有数据写入权限。同样，如果用户要修改元数据，则必须授予元数据写入权限。
+
+Tracker 数据的一个关键点是需要采用整体方法。例如，用户无法只通过读取数据元素的访问权限来查看数据元素的值。用户需要通过读取数据来访问该数据元素所属的父计划阶段和计划。类别选项组合也是如此。在 Tracker 中，事件与属性选项组合（AttributeOptionCombo）相关，而属性选项组合是由类别选项组合而成的。因此，用户要读取一个事件的数据，需要有对所有类别选项和相应类别的数据读取权限，这些类别选项和相应类别构成了该事件的属性选项组合。如果用户只有一个类别选项或类别的访问权限，则无法访问整个事件。
+
+要访问 "注册 "数据，必须先访问 "跟踪实体"。对跟踪实体的访问通过程序、跟踪实体类型和跟踪实体属性的共享设置来控制。访问 "注册 "后，就可以访问 "事件 "数据，这同样取决于 "计划阶段 "和 "数据元素 "共享设置。
+
+另一个需要考虑的关键点是如何规划对不同程序阶段的访问。有时，我们可能需要向特定用户组（实验室技术人员）授予对特定阶段（例如 "实验室结果"）的访问权限。在这种情况下，我们可以向 "化验结果 "阶段提供数据写入访问权限，也可以向一个或多个阶段提供数据读取权限，以防我们希望实验室技术人员读取其他医疗结果，或者，如果我们认为实验室技术人员没有必要查看与化验结果无关的数据，则不提供访问权限。
+
+总之，DHIS2 具有细粒度的共享设置，我们可以用它在数据和元数据层面实施访问控制机制。这些共享设置可直接应用于用户层或用户组层。具体如何应用共享设置取决于手头的用例。
+
+有关数据共享的详细信息，请查阅 [数据共享](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/about-sharing-of-objects.html#data-sharing-for-event-based-programs)。
+
+### 组织单位范围{ #webapi_nti_ou_scope }
+
+组织单位是 DHIS2 中最基本的对象之一。它们定义了允许用户记录和/或读取数据的范围。可分配给用户的组织单位有三种。它们是数据采集、数据查看和跟踪搜索。顾名思义，这些组织单位定义了一个范围，允许用户在此范围内进行相应的操作。
+
+不过，为了进一步微调范围，DHIS2 Tracker 引入了一个概念，我们称之为**组织单位选择模式（**OrganisationUnitSelectionMode）。这种模式通常在导出跟踪器对象时使用。例如，用户有一个特定的跟踪器搜索范围，这是否意味着每次用户试图搜索跟踪器、登记或事件对象时，我们都必须使用这个范围？或者，用户是否有兴趣将搜索范围限制在选定的组织单位或整个捕获组织单位范围内，等等。
+
+用户可以通过在 API 请求中传递 ouMode 的特定值来进行微调：
+
+_api/tracker/trackedEntities?orgUnit=UID&ouMode=specific_organisation_unit_selection_mode_
+
+Currently, there are six selection modes available: _SELECTED, CHILDREN, DESCENDANTS, CAPTURE, ACCESSIBLE, and ALL_.
+
+1. **选定**：顾名思义，请求 API 的所有操作都会缩小到选定的组织单位。
+2. **子女**：在此模式下，组织单位范围将使用所选组织单位及其直接子女来构建。
+3. **执行者**：在这里，被选中的组织单位及其下的所有组织单位，而不仅仅是直接的子组织单位，构成了数据操作范围。
+4. **捕获**：顾名思义，分配给用户数据捕获的组织单位构成了范围。请注意，在可分配给用户的三个组织单位中，数据捕获是必选的一个。如果用户没有数据视图和跟踪器搜索组织单位，系统将退回到数据捕获。这样，我们就能确保用户至少有一个宇宙。
+5. **可**：从技术上讲，这与用户的跟踪器搜索组织单位的范围相同。
+6. **ALL**：如果我们面对的是超级用户，那么 ALL 这个名称就非常合理了。对于超级用户来说，这个范围意味着系统中可用的整个组织单位。但是，对于非超级用户来说，"ALL "归结为可访问的组织单位。
+
+在进行跟踪器导入操作时传递这些模式意义不大。因为在写入跟踪器数据时，每个对象都需要附加一个特定的组织单位。然后，系统将确保所提及的每个组织单位都属于 CAPTURE 范围。如果不属于，系统将直接拒绝写入操作。
+
+请注意，与跟踪对象相关的组织单位关联有 4 种类型。跟踪实体（TrackedEntity）有一个组织单位，通常称为注册组织单位。注册有一个与之关联的组织单位。事件也有一个与之相关的组织单位。跟踪实体-程序组合还有一个所有者组织单元。
+
+获取跟踪器对象时，根据上下文，组织单位范围会应用到上述四个组织单位关联中的一个。
+
+例如，在检索无程序上下文的 TrackedEntities 时，组织单位范围适用于 TrackedEntity 的注册组织单位。而当检索包含特定程序数据的 TrackedEntities 时，组织单位范围则应用于所有者组织单位。
+
+-   **解释它们与所有权的关系 - 与计划所有权的联系**
+
+### 跟踪器计划所有权{ #webapi_nti_ownership }
+
+2.30 引入了一个新概念，称为 "追踪者所有权"（Tracker Ownership）。它为 TrackedEntity - Program 组合引入了一个新的组织单位关联。我们称之为程序上下文中 TrackedEntity 的 Owner（或 Owning）组织单位。当读写与程序相关的跟踪数据时，所有者组织单位用于决定访问权限。这与程序的[访问级别]（#webapi_nti_access_level）配置一起，决定了程序相关数据（注册和事件）的访问行为。如果 TrackedEntity-Program 组合的相应所有者组织单位属于用户的组织单位范围（搜索/捕获），用户就可以访问 TrackedEntity 的 Program 数据。对于访问级别为 _OPEN_ 或 _AUDITED_ 的程序，所有者组织单位必须在用户的搜索范围内。对于访问级别为 _PROTECTED_ 或 _CLOSED_ 的程序，所有者组织单位必须在用户的捕获范围内，才能访问特定被跟踪实体的相应程序数据。
+
+#### 跟踪器所有权优先：打破常规 { #webapi_nti_tracker_ownership_override }
+
+对于访问级别配置为 _PROTECTED_ 的程序，可以临时覆盖此所有权权限。如果用户指定了访问 TrackedEntity-Program 数据的理由，任何用户都可以临时访问与程序相关的数据。这种临时访问行为被称为_breaking the glass_。目前，允许临时访问的时间为 3 小时。DHIS2 将根据用户指定的理由对 "打破玻璃 "进行审核。临时访问已配置为_CLOSED_访问级别的程序是不可能的。要打破 TrackedEntity-Program 组合的玻璃，可使用以下 POST 请求：
+
+    /API/33/tracker/ownership/override?trackedEntityInstance=DiszpKrYNg8
+      &program=eBAyeGv0exc&reason=patient+showed+up+for+emergency+care
+
+#### 跟踪器所有权转移 { #webapi_nti_tracker_ownership_transfer }
+
+可将 TrackedEntity-Program 的所有权从一个组织单位转移到另一个组织单位。这在病人转诊或迁移时非常有用。只有拥有所有权访问权限（或打破玻璃的临时访问权限）的用户才能转移所有权。要将一个 TrackedEntity-Program 的所有权转移到另一个组织单位，可以使用下面的 PUT 请求：
+
+    /API/33/tracker/ownership/transfer?trackedEntityInstance=DiszpKrYNg8
+      &program=eBAyeGv0exc&ou=EJNxP3WreNP
+
+### 访问级别{ #webapi_nti_access_level }
+
+DHIS2 对追踪器数据提供额外的保护。除了通过共享设置保护元数据和数据的标准功能外，追踪器数据还受到额外访问级别保护机制的保护。目前，可为程序配置四种访问级别：开放、审核、保护和关闭。
+
+只有当用户尝试与计划数据（即 "注册 "和 "活动 "数据）交互时，才会触发这些访问级别。程序的不同访问级别配置是程序数据的开放（或封闭）程度。需要注意的是，所有其他共享设置仍然受到尊重，访问级别只是访问控制的附加层。以下是可为程序配置的四种访问级别的简短说明。
+
+1. 开放：该访问级别是访问级别中限制最少的。如果所有者组织单位属于用户的搜索范围，用户就可以访问和修改 OPEN 程序中的数据。使用此访问级别，可以访问和修改捕获范围之外的数据，而无需任何理由或后果。
+2. 已审核：这与开放访问级别相同。不同之处在于，系统会自动为特定用户访问的数据添加审计日志条目。
+3. 受保护：此访问级别的限制稍多。只有当所有者组织单位属于用户的捕获范围时，用户才能访问受保护程序中的数据。不过，如果用户的搜索范围中只有 "所有者 "组织单位，他可以通过[打破玻璃]（#webapi_nti_tracker_ownership_override）获得临时所有权。用户必须说明访问手头数据的理由。然后，系统会将理由和访问审核记录在案，并为用户提供 3 小时的临时访问权限。请注意，打碎玻璃后，所有者组织单元保持不变，只有打碎玻璃的用户才能获得临时访问权。
+4. 关闭：这是最受限制的访问级别。如果所有者组织单位不在用户的捕获范围内，则无法访问配置为 "关闭 "访问级别的程序下记录的数据。在此配置下也无法打破玻璃或获得临时所有权。请注意，仍有可能将所有权转移到另一个组织单位。只有有权访问数据的用户才能将 TrackedEntity-Program 组合的所有权转移给另一个组织单位。如果所有权转移，所有者组织单位将被更新。

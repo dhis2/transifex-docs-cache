@@ -1,0 +1,464 @@
+---
+edit_url: "https://github.com/dhis2-metadata/AEFI-TRK-Adverse_Events_Following_Immunization/blob/master/docs/adverse_events_following_immunization_aefi_tracker_design.md"
+revision_date: "2022-02-04"
+---
+
+# 免疫接种后不良事件 (AEFI) 跟踪系统设计 { #aefi-design }
+
+## 目的 { #purpose }
+
+免疫接种后不良事件 (AEFI) 跟踪系统设计文件概述了用于配置跟踪程序的概念设计，以支持国家和地方各级 AEFI 病例的通知、报告和调查。本文件旨在供 DHIS2 实施者和免疫计划数据管理者使用，以便能够支持包的实施和本地化。在此配置包的本地化和改编中应考虑当地工作流程和国家指南。
+
+## 背景 { #background }
+
+免疫接种后不良事件 (AEFI) 数字数据包的开发是为了支持[世卫组织全球疫苗安全倡议 (GVSI)](https://www.who.int/vaccine_safety/initiative/en/) AEFI 是所有免疫计划的重要组成部分，以确保公众对疫苗接种的持续信心。 AEFI 以 [WHO AEFI 报告和调查表](https://www.who.int/vaccine_safety/initiative/tools/AEFI_reporting_form_EN_Jan2016.pdf) 为蓝本，并允许用户使用 WHO 捕获基于病例的数据推荐的[25个核心变量](https://www.who.int/vaccine_safety/news/HL_1/en/)，促进不良事件的调查，并为决策生成可靠的数据。 AEFI 追踪器旨在支持疫苗安全监测的可持续方法。
+
+AEFI 可适用于监测 Covid-19 疫苗的安全性。正在与世界卫生组织的内容专家进行讨论，以了解该设计的要求和整合。
+
+## 系统设计概述{ #system-design-overview }
+
+### 使用案例{ #use-case }
+
+DHIS2 中使用的跟踪器数据模型能够随着时间的推移跟踪单个 AEFI 病例并与唯一标识符链接。该计划使医疗保健提供者、免疫计划管理者以及国家以下和国家层面的监管机构能够报告、访问、修改和分析 AEFI 数据。
+
+该计划旨在支持地方和国家层面的工作流程，以适应设施不良事件的报告、地区免疫官员的一级调查表格以及国家层面的调查和结果。该[程序](https://drive.google.com/file/d/19iP8_G0Q2uAkJAhBR5xOz0PMTvuve9q0/view?usp=sharing)还能够充当国家存储库，存储、修改和提取政策和监管决策的信息并成为评估当地 AEFI 监测绩效的枢纽。
+
+AEFI 跟踪器包包括标准指示器和仪表板支持，它们会自动填充以方便分析。此外，还可以生成通知来提醒调查人员并促进快速响应。
+
+该程序是一个独立程序，可以单独采用，也可以与其他跟踪程序（包括 DHIS2 免疫 eRegistry 跟踪程序包）结合使用。
+
+### 目标用户{ #intended-users }
+
+AEFI 跟踪程序旨在支持 AEFI 报告和调查的一般工作流程。采用该模块的第一步是确定适合您所在国家/地区流程的用户和角色。在采用之前应讨论和映射以下角色。
+
+-   临床和设施工作人员：可以在护理点或由设施工作人员收集最少的数据，以通知和提醒下一级进行响应和调查。
+-   设施经理、区免疫官员/区医疗官员：审查并完成数据输入，并完成分区特定的数据分析。工作清单旨在支持工作人员在调查阶段跟踪案件。
+-   州/省 EPI 官员、州/省 AEFI 委员会：审查并完成数据输入，还完成地区特定分析、因果关系评估和信号生成。
+-   国家 EPI 经理、国家 AEFI 委员会、NRA/PV 中心：审查数据并完成州/省或次州/省的具体分析，协助因果关系评估和信号生成。
+-   多个级别的数据分析用户：数据可以按层级进行分类，并显示在适合设施、地区和国家级别的仪表板上。卫生监督员和项目经理还可以使用这些数据来监督和跟进护理质量和文件要求。
+
+虽然开发此一揽子计划是为了加强国家和国家以下各级的疫苗安全监测，但此处包含的 25 个核心变量将有助于向 Vigibase 等全球数据库提供更高质量的报告。纳入变量映射和 Vigibase 应用的 E2B 标准将进一步减轻向上报告的负担。
+
+目标用户可能的入口点示例
+
+![入口点](resources/images/AEFI_Tracker_design_01.png)
+
+### 程序结构{ #program-structure }
+
+![AEFI 程序结构](resources/images/AEFI_Tracker_design_02.png)
+
+### AEFI 案例之后的工作流程{ #workflow-following-an-aefi-case }
+
+The program is designed for the AEFI case to be enrolled at the facility organisation unit _where the AEFI case received the vaccination_, even if the data are being entered by investigators or reporters at another facility. This enables analysis of adverse events at the vaccination site. The user entering data selects the vaccine site (e.g. facility) from the organization unit hierarchy and selects the AEFI program to register the case.
+
+报告单位（客户出现不良事件症状的机构）在第一个计划阶段被捕获为数据元素，表格名称为“报告医疗机构地址”。对于 AEFI，数据输入通常在地区级别完成，这意味着学区用户（或负责 AEFI 调查数据输入的人员）应对 AEFI 数据输入计划拥有学区所有疫苗接种地点（设施、外展站等）的读/写访问权限。
+
+在设施能够直接在 DHIS2 中报告初始 AEFI 病例数据的情况下，可能会出现不良事件在原始疫苗接种点以外的设施中通知或出现的情况。在这种情况下，报告单位通常将信息发送给疫苗接种地点或负责的地区官员以完成报告。
+
+在极少数情况下，如果疫苗接种地点位于另一个地区，负责报告单位的地区免疫官员通常应通知负责疫苗接种地点的地区官员报告数据。
+
+在采用该计划时，应仔细考虑国家数据流和报告标准操作程序，以实现相应的用户分配和访问。
+
+### 用户组{ #user-groups }
+
+元数据包中配置并包含以下三个核心用户组：
+
+-   AEFI 数据输入
+    -   这些用户可能包括 AEFI 调查员等用户
+    -   可以查看元数据
+    -   可以捕获所有程序阶段的数据
+-   AEFI 访问
+    -   这些用户可能包括监测官员、地区免疫官员和国家 EPI 官员，通常负责分析数据。
+    -   可以查看元数据
+    -   可以查看所有程序阶段的数据
+-   AEFI 管理员
+    -   这些用户可能包括有权编辑元数据以支持包本地化的核心 HMIS 单元或 IT 支持团队。
+    -   可以编辑元数据
+    -   无法访问数据。
+
+此外，还配置了另外三个用户组，以启用通知和不同类型的用户根据其在 AEFI 调查过程中的角色，通过基于_程序阶段_分配访问权限来查看或捕获数据。这些旨在提供一个示例，说明如何对不同级别的用户进行分散的数据查看和捕获（例如，负责初步调查的地区 EPI 官员与负责审查调查数据的国家计划）。
+
+-   AEFI 区
+    -   AEFI 阶段的数据采集
+    -   查看第一决策层阶段和国家级阶段的数据
+-   AEFI 一级决策
+    -   查看AEFI阶段的数据
+    -   在第一决策阶段捕获数据
+    -   查看国家层面的数据
+-   AEFI 国家
+    -   查看 AEFI 阶段和第一决策层阶段的数据
+    -   在国家层面获取数据
+
+用户访问权限应适应当地情况，并根据工作职能分配给适当的个人。例如，地区免疫官员可能包含在 AEFI 访问用户组中，但访问权限仅限于其所在地区。在 [DHIS2 文档] 中了解有关用户配置和用户管理的更多信息。(https://docs.dhis2.org/master/en/dhis2_user_manual_en/manage-users-user-roles-and-user-groups.html)
+
+### 程序结构的基本原理{ #rationale-for-program-structure }
+
+AEFI 以 [WHO AEFI 报告和调查表](https://www.who.int/vaccine_safety/initiative/tools/AEFI_reporting_form_EN_Jan2016.pdf) 为蓝本，并允许用户使用 WHO 捕获基于病例的数据推荐的[25个核心变量](https://www.who.int/vaccine_safety/news/HL_1/en/)，促进不良事件的调查，并为决策生成可靠的数据。
+
+### AEFI 25 核心变量 { #aefi-25-core-variables }
+
+| 核心变量 | 描述 | 元数据名称和 UID |
+| --- | --- | --- |
+| **身份** |  |  |
+| 1. 国家中心首次收到 AEFI 报告的日期 | 为 AEFI 案例 I 创建国家级阶段的日期 | AEFI - 国家级批准日期<br> cWMUoQEuvtR |
+| 2. AEFI 报告的国家 | 首次输入数据的国家/地区名称 | “此 AEFI 报告的国家/地区”<br> [由国家组织单位层次结构的父级捕获] |
+| 3. 地点（地址） | 案件所在地（地址） | 地址（当前）<br> [TEI 属性] <br> VCtm2pySeEV |
+| 4. 全球唯一号码 | 用于在国际层面传达案件详细信息的唯一号码 | AEFI - 最终分类 <br> D42M2tdJo7R |
+| **患者标识符** |  |  |
+| 5. 患者标识符 | 由国家决定的患者姓名或缩写 | 名字 <br> [TEI 属性] <br> TfdH5KvFmMy |
+| 6. 出生日期 | 生日 | 出生日期 <br> [TEI 属性] <br> BiTsLcJQ95V |
+| 7. 性 | 男女不限 | 性别 <br> [TEI 属性] <br> CklPZdOd6H1 |
+| 8. 病史 | 自由文本 | AEFI - 病史 <br> IV9W7YXh939 |
+| **疫苗** |  |  |
+| 9. 主要可疑疫苗名称（通用） | 疑似引起 AEFI 的疫苗 | AEFI_Vaccine 1 名称<br> uSVcZzSM3zg<br> AEFI_Vaccine 2 名称<br> g9PjywVj2fs<br> AEFI_Vaccine 3 名称<br> OU5klvkk3SM<br> AEFI_Vaccine 4 名称<br> menOXwIFZh5 |
+| 10. AEFI 之前接种的其他疫苗 | 在 AEFI 之前接种的其他疫苗 | AEFI - 其他疫苗 1 名称<br> yr2dELskXm4<br> AEFI - 其他疫苗 2 名称<br> dKWFXaSNIef<br> AEFI - 其他疫苗 3 名称<br> NmQkARV9bm4<br> AEFI - 其他疫苗 4 名称<br> PDDaOMSiSDG |
+| 11.疫苗批号 | 上述所有疫苗的批号 | AEFI - 批次/批号（疫苗 1）<br> LNqkAlvGplL <br> AEFI - 批次/批号（疫苗 2）<br> b1rSwGRcY5W <br> AEFI - 批次/批号（疫苗 3）<br> YBnFoNouH6f <br> AEFI - 批次/批号（疫苗 4）<br> BHAfwo6JPDa <br> [数据元素] |
+| 12. 该特定疫苗的疫苗剂量数 | 疫苗的剂量数 | AEFI - 疫苗 1 剂 <br> LIyV4t7eCfZ <br> AEFI - 疫苗 2 剂 <br> E3F414izniN <br> AEFI - 疫苗 3 剂 <br> WlE0K4xCc14 <br> AEFI - 疫苗4剂量 <br> Aya8C25DXHe |
+| 13. 稀释剂批次/批号 | 批次/批号（如果适用） | AEFI - 稀释剂批次/批号 1 <br> FQM2ksIQix8 <br> AEFI - 稀释剂批次/批号 2 <br> ufWU3WStZgG <br> AEFI - 稀释剂批次/批号 3 <br> MLP8fi1X7UX  <br> AEFI - 稀释剂批次/批号 4 <br> MyWtDaOdlyD |
+| **事件** |  |  |
+| 14. 疫苗接种日期和时间 | 疫苗接种日期和时间 | AEFI_Vaccination 1 日期<br> dOkuCjpD978<br> AEFI - 疫苗接种 1 时间<br> BSUncNBb20j<br> AEFI_Vaccination 2 日期<br> VrzEutEnzSJ<br> AEFI - 疫苗接种 2 时间接种 2 次<br> fZFQVZFqu0q<br> AEFI_Vaccination 3 日期<br> f4WCAVwjHz0<br> AEFI - Vaccination 3 时间<br> VQKdZ1KeD7u<br> AEFI_Vaccination 4 日期<br> H3TKHMFIN6V<br> AEFI - Vaccination 4 时间<br> S1PRFSk8Y9v |
+| 15. AEFI 发生的日期和时间 | AEFI 发生的日期和时间 | AEFI - AEFI 开始日期 <br> vNGUuAZA2C2 <br> AEFI - AEFI 时间 <br> NyCB1VAOfJd |
+| 16. 不良事件 | 病例诊断+体征和症状 | AEFI - 不良事件 DE 组 <br> yhXZIbQuxOt <br> 此 DE 组中映射的所有 DE |
+| 17. AEFI 的结果 | 已恢复/解决；恢复/解决；未恢复/未解决；后遗症康复/解决；致命的;未知 | AEFI - AEFI 结果 <br> yRrSDiR5v1M |
+| 18. 严肃 | 如果该事件导致死亡、威胁患者生命、导致残疾、住院或先天性异常 | AEFI - 报告严重事件 <br> fq1c1A3EOX5 |
+| **记者** |  |  |
+| 19. AEFI第一报告人姓名 | AEFI第一位记者姓名 | AEFI - AEFI 案例的记者 <br> uZ9c4fKXuNS |
+| 20. 机构/地点 | 记者地址 | AEFI - 报告者地址 <br> Q20pEixZxCs |
+| 21. 职位/部门 | 记者姓名 | AEFI - 职位/部门 <br> Tgi4xP5DCzr |
+| 22. 电子邮件地址 | 记者的电子邮件 ID | AEFI - 电子邮件地址 <br> UmXSiK5Jlr4 |
+| 23. 记者电话 | 电话 | AEFI - 联系电话 <br> iLaon1495vY |
+| 24. 报告日期 | 报告者在 DHIS2 中提交报告的日期 | ‘报告编译日期’<br> [由 AEFI 计划阶段的事件日期捕获] |
+| **其他** |  |  |
+| 25. 意见（如有） | 自由文本 | AEFI - 评论 <br> LaMvzTltCOP |
+
+### 跟踪器程序配置{ #tracker-program-configuration }
+
+| 结构 | 描述 |
+| --- | --- |
+| 注册 | 一旦孩子被确定患有 AEFI，他们就应该参加 AEFI 计划。注册阶段将包括个人信息和唯一标识符，其中一些将自动生成。 <br> 注册日期 = “患者向卫生系统通知该事件的日期” 孩子注册加入 AEFI 计划的日期。 |
+| 属性 | 属性包括儿童信息和病例标识符<br> - AEFI 病例 ID<br> 唯一系统标识符 (EPI)<br> 姓名<br> 姓氏<br> 性别<br> 出生日期<br> 地址<br> 母亲/照顾者的联系电话 |
+| 第一阶段：AEFI | 此阶段是**不可重复**阶段。当报告 AEFI 时，将输入此阶段的数据。包括详细的 AEFI 信息和分析所需的数据元素。 <br> 该计划阶段有一个自定义表格，与 HCP 习惯使用的纸质表格相匹配。 <br> 事件日期 =“报告编译日期”。这是 AEFI 表格启动的日期。还有 AEFI 监测分析中的 DOR（报告日期）。 |
+| 第二阶段：第一决策层 | 此阶段是**不可重复**阶段。当第一个决策级别完成时，将输入此阶段的数据。 <br> 该计划阶段有一个自定义表格，与 HCP 习惯使用的纸质表格相匹配。 <br> 事件日期 =“报告日期” 这是启动第一个决策级别表格的日期。 |
+| 第三阶段：国家级 | 此阶段是**不可重复**阶段。当国家级调查完成后，将输入此阶段的数据。 <br> 该计划阶段有一个自定义表格，与 HCP 习惯使用的纸质表格相匹配。 <br> 事件日期 =“报告日期” 这是启动国家级表格的日期。 |
+
+### 注册详情{ #enrollment-details }
+
+登记新患者是一个相对简单的过程。当您输入个人信息时，DHIS2 会警告您是否存在潜在的重复患者。一旦选择了组织单位，它将与患者相关联。
+
+登记日期描述为“患者向卫生系统通知该事件的日期”。这是孩子注册参加 AEFI 计划的日期。该日期还用作 AEFI 监测分析中的 DON（通知日期）。
+
+即使数据是由其他机构的调查员或报告人员输入的，所选的接种组织单位也应反映 **_AEFI病例（毒性教育指标）接种疫苗的机构组织单位_**。
+
+![详细报名截图](resources/images/AEFI_Tracker_design_03.png)
+
+### 属性 { #attributes }
+
+在使用 DHIS 免疫电子注册的国家/地区，经历不良事件的人可能已在 Tracker 中注册为 TEI。当用户输入属性来注册注册时，DHIS2 将进行搜索并提醒用户可能的匹配项。用户应选择匹配的现有个人，并继续输入数据，以免创建重复的 TEI。这样，AEFI 还将与个人的免疫记录相关联，可以在免疫登记程序中看到。
+
+如果用户无法输入所有数据字段，则必须强制使用有限的字段来降低输入错误数据的风险。虽然有关注册的信息应在首次注册案例时完成，但如果有新信息（例如联系信息）可用，则可以在活动注册期间的任何时刻更新属性值。
+
+### 标识符{ #identifiers }
+
+配置中应用了多个标识符，并且可以根据国家背景进行调整。
+
+1. 系统生成的唯一 ID：TEI 属性**“唯一系统标识符 (EPI)”** 已配置为 DHIS2 内唯一的属性。标识符是根据以下模式自动生成的：EPI + RANDOM(#######) 8 位序列号，足以容纳人群。该 TEI 属性旨在针对特定节目；也就是说，它是系统内的唯一 ID，仅供国家 EPI 计划使用：AEFI 和免疫电子注册。该 TEI 属性在免疫电子注册和 AEFI 计划之间共享，以促进两者之间的联系。 **由于此 ID 是系统生成的，因此可以保证在集成的 DHIS2 实例中，没有两个 TEI 能够具有相同的 EPI 唯一系统标识符**。可以根据其他参数更改该模式以供国家实施。
+
+2. 案例 ID：此属性 **“AEFI 案例 ID”** 特定于 AEFI 工作流程。通常，不良事件会被手动分配一个唯一的 ID，通常是在地区甚至国家级别。此 TEI 属性配置为自由文本，以适应在每个国家/地区上下文中实施的 ID 分配，并且可以更新以包括根据预期格式的验证。
+
+可以根据国家情况将其他标识符添加到程序中。例如，如果存在国民 ID，则可以将其作为 TEI 属性添加到 AEFI 和其他跟踪程序中。该属性附加到 TEI 本身，并且在整个程序中保持不变。
+
+![报名截图](resources/images/AEFI_Tracker_design_04.png)
+
+**注册组织单位：** 基于组织单位层次结构（国家、地区、设施级别）。在不同“组织单位”中查看和绘制图表的可访问性取决于用户的用户角色。
+
+### 访问 { #access }
+
+**程序**配置为**受保护**，以保护个人身份数据免遭未经授权的访问。这意味着用户可以读取和写入被分配了数据捕获访问权限的组织单位所拥有的跟踪实体实例，但其搜索范围应比其读/写范围更宽，以确保他们将在搜索过程中识别任何现有的 TEI，即使它们不属于其组织部门。如果搜索返回的 TEI 存在于其组织单位之外，则会向用户提供访问患者记录的选项，方法是首先记录访问记录的原因。这种保护隐私的方法被称为“打破玻璃”，因为它允许用户在没有外部许可或协助的情况下做出访问记录的决定，但会留下清晰的痕迹以供审核。一旦用户给出打破玻璃的原因，他们就获得了被跟踪实体实例的临时所有权（请参阅 [Tracker 用户指南](https://docs.dhis2.org/2.34/en/dhis2_user_manual_en/using-the-tracker -capture-app.html#break-the-glass）了解更多信息。）
+
+将完成第一阶段的用户可能会位于地区级别，并负责调查其地区所有组织单位的不良事件。为了将数据正确归属于进行免疫接种的组织单位，该区级用户应对其负责的所有组织单位拥有读/写访问权限。
+
+### 自定义表单{ #custom-form }
+
+该程序有一个自定义 html 表单，与 HCP 习惯使用的纸质表单一致。如果您希望向表单添加元素，则需要对自定义表单进行一些调整。如果您不想使用该表格，可以将其删除，并按照安装指南中的说明使用标准 DHIS2 格式。 **请注意，程序隐藏规则不适用于自定义表单，但仍可以使用 javascript 应用表单逻辑。**
+
+### 计划阶段 1：AEFI { #program-stage-1-aefi }
+
+此阶段是一个**不可重复**阶段，因为个人的每一项不良事件都被视为一次导致调查的登记。当报告 AEFI 时，将输入此阶段的数据，其中包括详细的 AEFI 信息和分析所需的数据。
+
+该计划的事件日期被标识为“报告编译日期”，该日期被指定为启动 AEFI 表格的日期。该日期也用作 AEFI 监测分析中的 DOR（报告日期）。根据国家工作流程，该阶段可由多个用户完成，较低级别的用户提供初始信息，较高级别的用户提供更多细节。
+
+![AEFI：屏幕截图 1](resources/images/AEFI_Tracker_design_05.png)
+
+![AEFI：屏幕截图 2](resources/images/AEFI_Tracker_design_06.png)
+
+![AEFI：屏幕截图 3](resources/images/AEFI_Tracker_design_07.png)
+
+![AEFI：屏幕截图 4](resources/images/AEFI_Tracker_design_08.png)
+
+![AEFI：屏幕截图 5](resources/images/AEFI_Tracker_design_09.png)
+
+### 计划阶段 2：第一决策层 { #program-stage-2-first-decision-making-level }
+
+此阶段是**不可重复**阶段。当第一个决策级别完成并已决定是否需要 AEFI 调查时，将输入此阶段的数据。
+
+该程序的事件日期默认命名为“报告日期”，假定为数据输入系统的日期。活动日期的命名可以根据国家协议进行更改。此阶段复制世界卫生组织的调查和报告形式，并支持调查分析。此阶段包含“计划调查日期”的数据元素，以支持监测系统指标的分析。
+
+![第一决策层](resources/images/AEFI_Tracker_design_10.png)
+
+### 计划阶段 3：国家级 { #program-stage-3-national-level }
+
+此阶段是**不可重复**阶段。
+
+该程序的事件日期默认命名为“报告日期”，假定报告输入系统的日期。此阶段复制世界卫生组织的调查和报告形式。此外，还包含一个日期作为数据元素，用于分析在国家层面收到报告的日期（这对于有关报告间隔时间的监测指标很重要）。
+
+### 计划规则{ #program-rules }
+
+出于数据验证和数据质量的目的，根据世界卫生组织的建议配置了以下计划规则。如果满足这些条件，程序将配置为触发“_完成后显示警告_”操作，以通知数据输入用户数据质量错误：
+
+-   如果计划调查日期早于疫苗接种日期
+-   如果死亡日期早于发病日期（AEFI 开始日期）
+-   如果通知日期早于疫苗接种日期
+-   如果发病日期早于疫苗接种日期
+-   如果国家层面的报告日期早于报告日期
+-   如果疫苗接种日期早于出生日期
+-   如果疫苗接种日期早于配制日期
+
+已配置许多附加程序规则以方便数据输入。这些可以在元数据审查文件中进行审查。 **请注意，使用自定义表单时，由于标准自定义表单的工作流程，为方便数据输入而配置的“隐藏字段”程序规则将无法正常运行。** 使用自定义表单时，程序规则将显示警告一旦按下完成按钮。但是，这些计划规则包含在选择不使用自定义表单的国家/地区的配置中。
+
+** 隐藏** 添加了使用稀释剂的疫苗的显示规则。并非所有疫苗都用稀释剂重组。根据世卫组织的建议和[世卫组织预认证疫苗]（https://extranet.who.int/pqweb/vaccines/prequalified-vaccines?field_vaccines_effective_date%5Bdate%5D=&field_vaccines_effective_date_1%5Bdate%5D=&field_vaccines_name=&search_api_views_fulltext=&field_pharmaceutical_form=Lyophilised%20active%20component%20%20to%20be%20reconstituted%20with%20excipient%20diluent%20before%20use&field_vaccines_number_of_doses=&page=6），已配置了一份带稀释剂的疫苗列表。当选择使用稀释剂重组的疫苗时，与稀释剂相关的日期元素将根据程序规则显示，并使用户能够添加稀释剂信息。
+
+**含稀释剂的疫苗：**
+
+-   黄热病
+-   b 型流感嗜血杆菌 (Hib)
+-   卡介苗
+-   登革热
+-   日本脑炎
+-   麻疹
+-   麻疹和风疹
+-   麻疹，腮腺炎和风疹
+-   脑膜炎球菌A
+-   流感大流行 (H1N1)
+-   轮状病毒
+-   狂犬病
+-   风疹
+-   水痘
+-   白喉-破伤风-百日咳（全细胞）-乙型肝炎-B型流感嗜血杆菌（五种）
+
+![稀释剂信息](resources/images/AEFI_Tracker_design_28.png)
+
+## 配置为支持该计划的其他功能{ #additional-features-configured-to-support-the-program }
+
+### COVID 19 更新{ #covid-19-updates }
+
+计划中已更新 COVID 19 要求
+
+我们更新了分析的年龄分组分类
+
+-   0 - 1 年
+-   15年
+-   5 - 18 岁
+-   18 - 60 岁
+-   60+年
+
+孕妇和哺乳期已添加以下计划规则。
+
+-   填写性别和出生日期的必填字段
+-   如果大于 >10岁，且女性显示怀孕和哺乳
+
+![顶栏通知](resources/images/AEFI_Tracker_design_12.png)
+
+已知的 COVID19 疫苗列表已添加到“疫苗名称”下拉列表中，应按国家/地区进行审查，并随着更多疫苗获得批准而更新。还有一个“COVID19：其他”选项，可以添加自由文本。
+
+“品牌名称包括。 “制造商名称”字段已作为新冠上下文的自由文本框添加。
+
+![Covid 19 疫苗](资源/图片/AEFI_Tracker_design_13.png)
+
+专门针对新冠肺炎添加了三个不良事件选项
+
+-   贝尔氏麻痹症
+-   过敏反应
+-   淋巴结肿大
+
+在 AEFI 报告表中添加文本
+
+“既往病史（包括类似反应或其他过敏史）、合并用药和给药日期（不包括用于治疗反应的药物）其他相关信息（例如其他病例）”。
+
+![添加文本](resources/images/AEFI_Tracker_design_14.png)
+
+国家级部分更新了因果关系分类。
+
+例如：
+
+![因果关系分类1](resources/images/AEFI_Tracker_design_15.png)
+
+![因果关系分类2](resources/images/AEFI_Tracker_design_16.png)
+
+AEFI COVID 仪表板更新：
+
+AEFI COVID 仪表板包含符合 WHO 建议的关键监测指标。
+
+仪表板中的第一组图表按 COVID 疫苗类型、地理区域和事件/反应快速概述了 AEFI。
+
+![AEFI COVID 仪表板 - 1.2](资源/图片/AEFI_Tracker_design_29.png)
+
+![AEFI COVID 仪表板 - 1.2](资源/图片/AEFI_Tracker_design_30.png)
+
+![AEFI COVID 仪表板 - 1.3](资源/图片/AEFI_Tracker_design_31.png)
+
+第二组图表显示了按怀孕和哺乳状态划分的新冠疫苗接种类型后的不良事件
+
+![AEFI COVID 仪表板 - 2.1](资源/图片/AEFI_Tracker_design_32.png)
+
+#### AEFI - 最终因果关系评估分类{ #aefi-final-causality-assessment-classification }
+
+该可视化位于 AEFI 仪表板上。
+
+-   AEFI - 最终分类
+
+饼图：显示按最终因果关系评估分类分类的 AEFI 病例总数
+
+![AEFI - 最终分类](resources/images/AEFI_Tracker_design_26.png)
+
+#### AEFI - 最终因果关系评估子分类{ #aefi-final-causality-assessment-sub-classification }
+
+该可视化位于 AEFI 仪表板上。
+
+AEFI - 最终子分类饼图：显示按最终因果关系评估子分类分类的 AEFI 病例总数
+
+![AEFI - 最终因果关系评估子分类](resources/images/AEFI_Tracker_design_27.png)
+
+### 通知{ #notifications }
+
+通知已配置为根据计划阶段完成情况向定义的用户组（例如 AEFI 阶段、一级和国家级）触发通知。这些通知可以通过系统消息、外部电子邮件（例如，在用户帐户中配置的电子邮件）或短信（如果配置了短信网关）发送。根据国家要求和用途，通知是可选的，并且可以禁用。
+
+包中预先配置了以下通知：
+
+1. **报告的 AEFI 事件**：在 AEFI 计划阶段完成后发送给_组织单位_（例如设施）的用户，以提醒报告了不良事件。
+2. **AEFI 阶段已完成**：AEFI 计划阶段完成后发送给_AEFI 一级决策_用户组，以审查 AEFI 报告并采取下一步调查行动。
+3. **AEFI 一级决策层审查完成：** 当一级决策完成时，根据程序规则向_AEFI 国家级用户组_发送通知，供国家委员会根据国家协议审查和批准该报告。
+4. **需要 AEFI 调查：** 如果在第一级决策阶段根据 DE 确定需要进行调查，则根据计划规则发送通知；发送给_AEFI 地区组_中的用户，预计他们将开始调查的第一部分。
+5. **AEFI 国家级审查完成：** 国家级阶段完成后向用户组 _AEFI national_ 中的用户发送通知，表示国家审查已完成并获得批准，可以采取后续步骤，例如全球报告。
+
+您可以在此处找到有关如何配置节目阶段通知的信息。 <https://docs.dhis2.org/2.33/en/dhis2_user_manual_en/configure-programs-in-the-maintenance-app.html#create-a-program-stage-notification>。为了设置短信，您需要设置短信网关。您可以在此处找到有关如何配置它的信息<https://docs.dhis2.org/master/en/developer/html/webapi_sms.html>
+
+### 线路列表 { #line-listing }
+
+仪表板中包含的行列表反映了全球疫苗安全咨询委员会 (GACVS) 于 2012 年 6 月确定的 25 个核心变量。这些核心变量涵盖了向区域和全球疫苗安全数据库向上报告的预期要求。目前正在努力将这些变量映射并编码到 Vigibase（世卫组织全球个案安全报告数据库）使用的 E2B 指南中。
+
+![行列表](resources/images/AEFI_Tracker_design_17.png)
+
+-   **注意：**上面的屏幕截图并不代表完整的线路列表；请参阅 DHIS2 查看完整的线路列表
+-   设施级别行列表中的所有字段均直接取自 AEFI 程序。这包括注册过程以及程序第一阶段的字段（标记为**“AEFI”**）。行列表中每个字段的来源如下所示。
+
+| 字段/列# | 变量名 | 来源 | 描述 |
+| --- | --- | --- | --- |
+| 1 | 数 |  | 列表中的案例编号 |
+| 2 | DOR（报告日期 - 报告编制日期） | AEFI阶段 | AEFI 计划阶段的活动日期 |
+| 3 | DON（通知日期 - 患者向卫生系统通知该事件的日期） | 报名阶段 | 患者向卫生系统通知该事件的日期。开学报道日。 |
+| 4 | 事件日期 |  | N/A（忽略此字段） |
+| 5 | 组织单位 | 报名阶段 | 组织单位（来自层次结构），很可能代表 AEFI 注册的机构 |
+| 6 | AEFI-案例报告者 | AEFI阶段 | 报告 AEFI 病例的人 |
+| 7 | AEFI-- 记者地址 | AEFI阶段 | 报告 AEFI 病例的人的地址 |
+| 8 | AEFI 病例 ID | 报名阶段 | 本地分配的唯一 AEFI 病例 ID |
+| 9 | 给定的名称 | 报名阶段 | 案件的名字 |
+| 10 | 姓 | 报名阶段 | 案件的姓氏 |
+| 11 | 出生日期 | 报名阶段 | 案件的出生日期 |
+| 12 | 性别 | 报名阶段 | 病例的生理性别 |
+| 13 | AEFI 开始日期 | AEFI阶段 | AEFI 的事件日期（AEFI 开始的日期） |
+| 14 | AEFI严重病例 | AEFI阶段 | 确定案件是否严重或不严重 |
+| 15 | AEFI - AEFI 结果 | AEFI阶段 | 确定卫生人员确定的病例结果 |
+| 16 | AEFI - 疫苗接种 1 日期 | AEFI阶段 | 对病例注射**第一次**疫苗的日期 |
+| 17 | AEFI - 疫苗 1 名称 | AEFI阶段 | 对该病例注射的**第一种**疫苗的名称 |
+| 18 | AEFI - 批次/批号（疫苗 1） | AEFI阶段 | 对该病例注射的**第一**疫苗的批次/批号 |
+| 19 | AEFI - 稀释剂批次/批号 1 | AEFI阶段 | 给病例注射的**第**个疫苗中使用的稀释剂的批次/批号 |
+| 20 | AEFI - 疫苗接种 2 日期 | AEFI阶段 | 对病例注射**第二次**疫苗（如果有）的日期 |
+| 21 | AEFI - 疫苗 2 名称 | AEFI阶段 | 对该病例注射的**第二种**疫苗（如果有）的名称 |
+| 22 | AEFI - 批次/批号（疫苗 2） | AEFI阶段 | 对该病例注射的**第二种**疫苗（如果有）的批次/批号 |
+| 23 | AEFI - 稀释剂批次/批号 2 | AEFI阶段 | 对该病例施用的**第二种**疫苗（如果有）中使用的稀释剂的批次/批号 |
+| 24 | AEFI - 疫苗接种 3 日期 | AEFI阶段 | 对病例注射**第三**疫苗（如果有）的日期 |
+| 25 | AEFI - 疫苗 3 名称 | AEFI阶段 | 对该病例注射的**第三**疫苗（如果有）的名称 |
+| 26 | AEFI - 批次/批号（疫苗 3） | AEFI阶段 | 对该病例注射的**第三**疫苗（如果有）的批次/批号 |
+| 27 | AEFI - 稀释剂批次/批号 3 | AEFI阶段 | 对该病例施用的**第三**疫苗（如果有）中使用的稀释剂的批次/批号 |
+| 28 | 不良事件（个体数据元素） | AEFI阶段 | 计划中报告的所有可能不良事件的列表。这包括为案例报告的所有严重和非严重事件，并构成行列表的其余列 |
+
+#### 源字段 { #source-fields }
+
+![注册](资源/图片/AEFI_Tracker_design_18.png)
+
+![AEFI 阶段 - 记者部分](resources/images/AEFI_Tracker_design_19.png)
+
+![AEFI 阶段 - 疫苗接种信息](resources/images/AEFI_Tracker_design_20.png)
+
+![AEFI 阶段 - AEFI 信息](resources/images/AEFI_Tracker_design_21.png)
+
+#### 可视化 { #visualizations }
+
+线路列表中的许多字段在配置包中可用的仪表板中以可视化形式表示。如果需要，这些都可以进行修改以满足当地需求。下面描述了附加到行列表中每个字段的可视化的简要说明。
+
+-   无可视化的字段：编号、AEFI - 病例报告者、AEFI - 报告者地址、AEFI 病例 ID、名字、姓氏、AEFI 开始日期、AEFI - 疫苗接种 1 日期、AEFI - 疫苗接种 2 日期、AEFI - 疫苗接种 3 日期、AEFI - 批次/批号（疫苗 1），AEFI - 批次/批号（疫苗 2），AEFI - 批次/批号（疫苗 3），AEFI - 稀释剂批次/批号 1，AEFI - 稀释剂批次/批号 2， AEFI - 稀释剂批次/批号 3
+
+-   DOR（报告日期 - 报告编译日期）请参阅 AEFI 监视仪表板，了解有关如何使用此变量为程序生成输出的更多信息
+
+-   DON（通知日期 - 患者向卫生系统通知该事件的日期）请参阅 AEFI 监测仪表板，了解有关如何使用此变量为项目生成输出的更多信息
+
+-   DOO（发病日期 - AEFI 开始日期）请参阅 AEFI 监视仪表板，了解有关如何使用此变量为程序生成输出的更多信息
+
+![AEFI 国家线路列表](resources/images/AEFI_Tracker_design_22.png)
+
+-   **注意：**上面的屏幕截图并不代表完整的线路列表；请参阅 DHIS2 查看完整的线路列表
+
+国家水平线列表已随新冠疫情更新而添加。此摘要列表源自国家级部分 AEFI 报告表中包含的数据。其中包括与表格中收集的设施级别数据相关的信息。
+
+-   位于 AEFI 仪表板上，标题为“AEFI 国家摘要（今年）”。
+-   包含以下信息（建议您在查看此说明时在 DHIS2 中打开线路列表）
+-   设施级别行列表中的所有字段均直接取自 AEFI 程序。该清单还包括注册过程中的数据、该计划的第一阶段（标记为**“AEFI”**）以及该计划的第三阶段（标记为“国家级”）。行列表中每个字段的来源如下所示。
+
+| 字段/列# | 变量名 | 来源 | 描述 |
+| --- | --- | --- | --- |
+| 1 | 数 |  | 列表中的案例编号 |
+| 2 | DON（通知日期 - 患者向卫生系统通知该事件的日期） | 报名阶段 | 患者向卫生系统通知该事件的日期。开学报道日。 |
+| 3 | 事件日期 |  | N/A（忽略此字段） |
+| 4 | 组织单位 | 报名阶段 | 组织单位（来自层次结构），很可能代表 AEFI 注册的机构 |
+| 5 | AEFI 病例 ID | 报名阶段 | 本地分配的唯一 AEFI 病例 ID |
+| 6 | AEFI - 国家级批准日期 | 国家级舞台 | 国家级收到 AEFI 报告以准备批准的日期 |
+| 7 | AEFI - 最终分类日期 | 国家级舞台 | AEFI 最终分类的日期 |
+| 8 | AEFI-有效诊断 | 国家级舞台 | 用于因果关系评估的经过验证的诊断 |
+| 9 | AEFI - 疫苗 1 名称 | AEFI阶段 | 对该病例注射的第一种疫苗的名称 |
+| 10 | AEFI - 疫苗接种 1 日期 | AEFI阶段 | 对该病例注射第一次疫苗的日期 |
+| 11 | AEFI - 疫苗 2 名称 | AEFI阶段 | 对该病例注射的第二种疫苗（如果有）的名称 |
+| 12 | AEFI - 疫苗接种 2 日期 | AEFI阶段 | 对该病例注射第二次疫苗（如果有）的日期 |
+| 13 | AEFI - 疫苗 3 名称 | AEFI阶段 | 对该病例注射的第三种疫苗（如果有）的名称 |
+| 14 | AEFI - 疫苗接种 3 日期 | AEFI阶段 | 对该病例注射第三次疫苗（如有）的日期 |
+| 15 | AEFI - 疫苗 4 名称 | AEFI阶段 | 对该病例注射的第四种疫苗（如果有）的名称 |
+| 16 | AEFI - 疫苗接种 4 日期 | AEFI阶段 | 对该病例注射第四次疫苗（如有）的日期 |
+| 17 | AEFI - 最终因果关系评估分类 | 国家级舞台 | 国家级审查小组确定的 AEFI 最终因果关系评估 |
+| 18 | AEFI - 最终因果关系评估子分类 | 国家级舞台 | 国家级审查小组确定的 AEFI 最终因果关系评估子分类 |
+
+该列表强调了引起 AEFI 的疫苗接种与国家级审查小组确定的最终因果关系评估分类和子分类之间的联系。
+
+#### 源字段 { #source-fields }
+
+![注册](资源/图片/AEFI_Tracker_design_23.png)
+
+![AEFI 阶段 - 疫苗接种信息](resources/images/AEFI_Tracker_design_24.png)
+
+![国家级阶段](resources/images/AEFI_Tracker_design_25.png)
+
+## Android 数据收集兼容性 { #android-compatibility-for-data-collection }
+
+数字数据包针对使用 DHIS2 Capture 应用程序进行 Android 数据收集进行了优化，可在 [Google Play 商店](https://play.google.com/store/apps/details?id=com.dhis2&hl=en) 免费下载。以下是 DHIS2 Android Capture 应用程序 v 2.2.0 的已知限制以及对此跟踪器包的影响：
+
+-   不支持自定义数据输入表单
+
+## 仪表板、分析和指标 { #dashboards-analytics-and-indicators }
+
+该软件包包括符合世卫组织建议要求的预先配置的规划指标。软件包中包含的仪表板专为国家级分析而设计，但也可供其所在地区或省的地方工作人员查看。
+
+该仪表板遵循世卫组织关于生成描述性流行病学分析和关键疫苗安全监测指标（例如系统级别之间的报告和调查之间的时间间隔）的分析输出的建议。
+
+## 引用 { #references }
+
+WHO。 （2018）。全球疫苗安全：全球疫苗安全倡议（GVSI）。检索自：<https://www.who.int/vaccine_safety/initiative/en/>
+
+WHO。 （2018）。全球疫苗安全：免疫接种后的不良事件 (AEFI)。检索自：<https://www.who.int/vaccine_safety/committee/topics/global_AEFI_monitoring/en/>

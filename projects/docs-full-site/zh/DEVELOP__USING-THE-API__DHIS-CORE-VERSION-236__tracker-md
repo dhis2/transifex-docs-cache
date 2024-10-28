@@ -1,0 +1,3421 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.36/src/developer/web-api/tracker.md"
+revision_date: "2021-06-14"
+tags:
+    - Develop
+    - DHIS 核心版本 2.36
+---
+
+# 追踪器 { #tracker }
+
+## 跟踪器Web API { #webapi_tracker_api }
+
+Tracker Web API consists of 3 endpoints that have full CRUD (create,
+read, update, delete) support. The 3 endpoints are
+`/api/trackedEntityInstances`, `/api/enrollments` and
+`/api/events` and they are responsible for tracked entity instance,
+enrollment and event items.
+
+### 跟踪实体实例管理 { #webapi_tracked_entity_instance_management }
+
+跟踪的实体实例在API中具有完整的CRUD支持。一起
+使用API进行注册，需要使用以下大部分操作
+支持跟踪的实体实例和程序。
+
+    / api / 33 / trackedEntityInstances
+
+#### 创建一个新的跟踪实体实例 { #webapi_creating_tei }
+
+为了在系统中创建新人员，您将使用 _trackedEntityInstances_ 资源。模板有效负载如下所示：
+
+```json
+{
+    "trackedEntity": "tracked-entity-id",
+    "orgUnit": "org-unit-id",
+    "geometry": "<Geo JSON>",
+    "attributes": [
+        {
+            "attribute": "attribute-id",
+            "value": "attribute-value"
+        }
+    ]
+}
+```
+
+字段“ geometry”接受一个GeoJson对象，其中
+GeoJson必须匹配TrackedEntityType的featureType
+定义。一个示例GeoJson对象如下所示：
+
+```json
+{
+    "type": "Point",
+    "coordinates": [1, 1]
+}
+```
+
+“坐标”字段在2.29中引入，并接受一个坐标
+或多边形作为值。
+
+要获取`relationship`和`attributes`的 ID，您可以查看各自的资源`relationshipTypes`、`trackedEntityAttributes`。要创建跟踪实体实例，您必须使用 HTTP _POST_ 方法。您可以将有效负载发布到以下 URL： 
+
+    / api / trackedEntityInstances
+
+例如，让我们创建一个人员跟踪实体的新实例，然后
+指定其名字和姓氏属性：
+
+```json
+{
+    "trackedEntity": "nEenWmSyUEp",
+    "orgUnit": "DiszpKrYNg8",
+    "attributes": [
+        {
+            "attribute": "w75KJ2mc4zz",
+            "value": "Joe"
+        },
+        {
+            "attribute": "zDhUuAYrxNC",
+            "value": "Smith"
+        }
+    ]
+}
+```
+
+要将其推送到服务器，您可以使用cURL命令，如下所示：
+
+```bash
+curl -d @tei.json "https://play.dhis2.org/demo/api/trackedEntityInstances" -X POST
+  -H "Content-Type: application/json" -u admin:district
+```
+
+要在一个请求中创建多个实例，您可以将有效负载包装在
+像这样的外部数组并 POST 到与上面相同的资源：[]()
+
+```json
+{
+    "trackedEntityInstances": [
+        {
+            "trackedEntity": "nEenWmSyUEp",
+            "orgUnit": "DiszpKrYNg8",
+            "attributes": [
+                {
+                    "attribute": "w75KJ2mc4zz",
+                    "value": "Joe"
+                },
+                {
+                    "attribute": "zDhUuAYrxNC",
+                    "value": "Smith"
+                }
+            ]
+        },
+        {
+            "trackedEntity": "nEenWmSyUEp",
+            "orgUnit": "DiszpKrYNg8",
+            "attributes": [
+                {
+                    "attribute": "w75KJ2mc4zz",
+                    "value": "Jennifer"
+                },
+                {
+                    "attribute": "zDhUuAYrxNC",
+                    "value": "Johnson"
+                }
+            ]
+        }
+    ]
+}
+```
+
+系统不允许创建跟踪实体实例
+（以及注册和事件）具有已在
+系统。这意味着不能重复使用 UID。
+
+#### 更新跟踪的实体实例 { #webapi_updating_tei }
+
+更新跟踪实体实例的有效载荷与上一节相同。不同的是，在发送有效负载时，必须使用 HTTP _PUT_ 方法进行请求。您还需要在 URL 中的 _trackedEntityInstances_ 资源中添加个人标识符，如下所示，其中 `<tracked-entity-instance-identifier>` 应替换为被跟踪实体实例的标识符：
+
+    / api / trackedEntityInstances / <tracked-entity-instance-id>
+
+有效载荷必须包含所有，甚至未修改的属性和
+关系。之前和之前存在的属性或关系
+不再存在于当前有效载荷中，将从中删除
+系统。这意味着如果属性/关系在
+当前有效负载，所有现有的属性/关系都将被删除
+从系统。从 2.31 开始，可以忽略空
+当前有效负载中的属性/关系。一个请求参数
+`ignoreEmptyCollection` 设置为 `true` 可以在你不这样做的情况下使用
+希望发送任何属性/关系，也不想要它们
+要从系统中删除。
+
+不允许更新已删除的跟踪实体实例。
+此外，不允许通过以下方式将跟踪的实体实例标记为已删除
+更新请求。相同的规则适用于注册和活动。
+
+#### 删除跟踪的实体实例 { #webapi_deleting_tei }
+
+为了删除跟踪实体实例，请使用 _DELETE_ 方法向标识跟踪实体实例的 URL 发出请求。该 URL 与上面用于更新的 URL 相同。
+
+#### 创建并注册跟踪的实体实例 { #webapi_create_enroll_tei }
+
+也可以创建（和更新）一个被跟踪的实体
+实例，同时注册一个程序。
+
+```json
+{
+    "trackedEntity": "tracked-entity-id",
+    "orgUnit": "org-unit-id",
+    "attributes": [
+        {
+            "attribute": "attribute-id",
+            "value": "attribute-value"
+        }
+    ],
+    "enrollments": [
+        {
+            "orgUnit": "org-unit-id",
+            "program": "program-id",
+            "enrollmentDate": "2013-09-17",
+            "incidentDate": "2013-09-17"
+        },
+        {
+            "orgUnit": "org-unit-id",
+            "program": "program-id",
+            "enrollmentDate": "2013-09-17",
+            "incidentDate": "2013-09-17"
+        }
+    ]
+}
+```
+
+您可以像通常在创建或
+更新一个新的跟踪实体实例。
+
+```bash
+curl -X POST -d @tei.json -H "Content-Type: application/json"
+  -u user:pass "http://server/api/33/trackedEntityInstances"
+```
+
+#### 有效负载的完整示例包括：跟踪的实体实例，注册和事件 { #webapi_create_enroll_tei_create_event }
+
+也可以创建（和更新）一个被跟踪的实体实例，在
+同时注册一个程序并创建一个事件。
+
+```json
+{
+    "trackedEntityType": "nEenWmSyUEp",
+    "orgUnit": "DiszpKrYNg8",
+    "attributes": [
+        {
+            "attribute": "w75KJ2mc4zz",
+            "value": "Joe"
+        },
+        {
+            "attribute": "zDhUuAYrxNC",
+            "value": "Rufus"
+        },
+        {
+            "attribute": "cejWyOfXge6",
+            "value": "Male"
+        }
+    ],
+    "enrollments": [
+        {
+            "orgUnit": "DiszpKrYNg8",
+            "program": "ur1Edk5Oe2n",
+            "enrollmentDate": "2017-09-15",
+            "incidentDate": "2017-09-15",
+            "events": [
+                {
+                    "program": "ur1Edk5Oe2n",
+                    "orgUnit": "DiszpKrYNg8",
+                    "eventDate": "2017-10-17",
+                    "status": "COMPLETED",
+                    "storedBy": "admin",
+                    "programStage": "EPEcjy3FWmI",
+                    "coordinate": {
+                        "latitude": "59.8",
+                        "longitude": "10.9"
+                    },
+                    "dataValues": [
+                        {
+                            "dataElement": "qrur9Dvnyt5",
+                            "value": "22"
+                        },
+                        {
+                            "dataElement": "oZg33kd9taw",
+                            "value": "Male"
+                        }
+                    ]
+                },
+                {
+                    "program": "ur1Edk5Oe2n",
+                    "orgUnit": "DiszpKrYNg8",
+                    "eventDate": "2017-10-17",
+                    "status": "COMPLETED",
+                    "storedBy": "admin",
+                    "programStage": "EPEcjy3FWmI",
+                    "coordinate": {
+                        "latitude": "59.8",
+                        "longitude": "10.9"
+                    },
+                    "dataValues": [
+                        {
+                            "dataElement": "qrur9Dvnyt5",
+                            "value": "26"
+                        },
+                        {
+                            "dataElement": "oZg33kd9taw",
+                            "value": "Female"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
+```
+
+您可以像通常在创建或
+更新一个新的跟踪实体实例。
+
+```bash
+curl -X POST -d @tei.json -H "Content-Type: application/json"
+  -u user:pass "http://server/api/33/trackedEntityInstances"
+```
+
+#### 生成的跟踪实体实例属性 { #webapi_generate_tei_attributes }
+
+使用自动生成的跟踪实体实例属性
+唯一值具有应用程序使用的三个端点。端点
+都用于生成和保留值。
+
+在 2.29 中，我们引入了 TextPattern 来定义和生成这些
+模式。所有现有模式都将转换为有效的 TextPattern
+升级到 2.29 时。
+
+> **注意**
+>
+> 自 2.29 起，所有这些端点都将要求您包含`requiredValues`端点报告的任何变量，并按要求列出。现有模式，仅由 `#` 组成，将升级为新的 TextPattern 语法 `RANDOM(<old-pattern>)`。 TextPattern 的 RANDOM 段不是必需的变量，因此对于 2.29 之前定义的模式，此端点将像以前一样工作。
+
+##### 寻找所需的值 { #finding-required-values }
+
+TextPattern 可以包含根据不同的变量而变化的变量
+因素。其中一些因素对服务器来说是未知的，因此
+这些变量的值必须在生成和
+保留值。
+
+此端点将返回必需值和可选值的映射，即
+服务器将在生成新值时注入 TextPattern。
+必须为生成提供必需的变量，但可选
+仅当您知道自己在做什么时才应提供变量。
+
+    获取 /api/33/trackedEntityAttributes/Gs1ICEQTPlG/requiredValues
+
+```json
+{
+    "REQUIRED": ["ORG_UNIT_CODE"],
+    "OPTIONAL": ["RANDOM"]
+}
+```
+
+##### 产生价值终点 { #webapi_generate_values }
+
+在线 Web 应用程序和其他希望产生价值的客户
+将立即使用可以使用简单的生成端点。这
+端点将生成一个值，该值保证在
+世代时间。该值也保证不被保留。作为
+2.29，此端点还将保留生成的值 3 天。
+
+如果您的 TextPattern 包含必需的值，您可以将它们作为
+参数如下例：
+
+过期时间也可以在生成时被覆盖，通过
+将 `?expiration= <number-of-days> ` 添加到请求中。
+
+    GET /api/33/trackedEntityAttributes/Gs1ICEQTPlG/generate?ORG_UNIT_CODE=OSLO
+
+```json
+{
+    "ownerObject": "TRACKEDENTITYATTRIBUTE",
+    "ownerUid": "Gs1ICEQTPlG",
+    "key": "RANDOM(X)-OSL",
+    "value": "C-OSL",
+    "created": "2018-03-02T12:01:36.680",
+    "expiryDate": "2018-03-05T12:01:36.678"
+}
+```
+
+##### 产生并保留价值终点 { #webapi_generate_reserve_values }
+
+生成和保留端点由需要的离线客户端使用
+能够注册具有唯一 ID 的跟踪实体。他们会
+保留一些唯一的 ID，此设备将在以下情况下使用
+注册新的跟踪实体实例。端点被称为
+检索多个跟踪的实体实例保留值。一个
+可选参数 numberToReserve 指定要生成多少个 id
+（默认值为 1）。
+
+如果您的 TextPattern 包含必需的值，您可以将它们作为
+参数如下例：
+
+与 /generate 端点类似，该端点也可以指定
+过期时间同理。通过添加`?expiration=<number-of-days>`
+您可以覆盖默认的 60 天。
+
+    GET /api/33/trackedEntityAttributes/Gs1ICEQTPlG/generateAndReserve?numberToReserve=3&ORG_UNIT_CODE=OSLO
+
+```json
+[
+    {
+        "ownerObject": "TRACKEDENTITYATTRIBUTE",
+        "ownerUid": "Gs1ICEQTPlG",
+        "key": "RANDOM(X)-OSL",
+        "value": "B-OSL",
+        "created": "2018-03-02T13:22:35.175",
+        "expiryDate": "2018-05-01T13:22:35.174"
+    },
+    {
+        "ownerObject": "TRACKEDENTITYATTRIBUTE",
+        "ownerUid": "Gs1ICEQTPlG",
+        "key": "RANDOM(X)-OSL",
+        "value": "Q-OSL",
+        "created": "2018-03-02T13:22:35.175",
+        "expiryDate": "2018-05-01T13:22:35.174"
+    },
+    {
+        "ownerObject": "TRACKEDENTITYATTRIBUTE",
+        "ownerUid": "Gs1ICEQTPlG",
+        "key": "RANDOM(X)-OSL",
+        "value": "S-OSL",
+        "created": "2018-03-02T13:22:35.175",
+        "expiryDate": "2018-05-01T13:22:35.174"
+    }
+]
+```
+
+##### 保留值 { #reserved-values }
+
+目前无法通过 api 访问保留值，但是，它们
+由`generate` 和`generateAndReserve` 端点返回。这
+下表解释了保留值对象的属性：
+
+#####
+
+ <table style="width:100%;">
+ <caption>保留值</caption>
+ <colgroup>
+ <col style="width: 15%" />
+ <col style="width: 84%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ 属性<th> </th>
+ <th>说明</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> ownerObject </td>
+ <td>生成和保留值时引用的元数据类型。目前仅支持TRACKEDENTITYATTRIBUTE。 </td>
+ </tr>
+ <tr class="even">
+ <td> ownerUid </td>
+ <td>生成和保留值时引用的元数据对象的uid。 </td>
+ </tr>
+ <tr class="odd">
+ <td>键</td>
+ <td>部分生成的值，其中尚未添加生成的段。 </td>
+ </tr>
+ <tr class="even">
+ <td>值</td>
+ <td>保留完全解析的值。这是存储数据时发送给服务器的值。 </td>
+ </tr>
+ <tr class="odd">
+ <td>创建了</td>
+ <td>进行预订的时间戳记</td>
+ </tr>
+ <tr class="even">
+ <td>到期日期</td>
+ <td>不再保留保留的时间戳</td>
+ </tr>
+ </tbody>
+ </table>
+
+过期的预订每天都会被删除。如果模式发生变化，则值
+存储数据时将接受已经保留的数据，即使
+它们与新模式不匹配，只要预订没有
+已到期。
+
+#### 图片属性 { #image-attributes }
+
+处理图像属性很像处理文件数据
+值。具有图像值类型的属性的值是
+关联的文件资源。一个 GET 请求
+`/api/trackedEntityInstances/ <entityId> / <attributeId> /image`
+端点将返回实际图像。可选的高度和宽度
+参数可用于指定图像的尺寸。
+
+```bash
+curl "http://server/api/33/trackedEntityInstances/ZRyCnJ1qUXS/zDhUuAYrxNC/image?height=200&width=200"
+  > image.jpg
+```
+
+API 还支持 _dimension_ 参数。它可以采用三个可能的值：`小`(254x254)、`中`(512x512)、`大`(1024x1024) 或`原始`。图像类型属性将以预先生成的尺寸存储，并根据`尺寸`参数的值根据要求提供。
+
+```bash
+curl "http://server/api/33/trackedEntityInstances/ZRyCnJ1qUXS/zDhUuAYrxNC/image?dimension=medium"
+```
+
+#### 跟踪实体实例查询 { #webapi_tracked_entity_instance_query }
+
+要查询跟踪的实体实例，您可以与
+`/api/trackedEntityInstances` 资源。
+
+    / api / 33 / trackedEntityInstances
+
+##### 请求语法 { #webapi_tei_query_request_syntax }
+
+ <table style="width:100%;">
+ <caption> 跟踪实体实例查询参数 </caption>
+ <colgroup>
+ <col style="width: 15%" />
+ <col style="width: 84%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th> 查询参数 </th>
+ <th> 说明 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> 过滤器 </td>
+ <td> 用作查询过滤器的属性。参数可以重复任意次。过滤器可以应用到对格式&lt;attribute-id&gt;的尺寸：&lt;operator&gt;：&lt;filter&gt; [：&lt;operator&gt;：&lt;filter&gt;]。过滤器值不区分大小写，可以与运算符一起重复任意次数。算可以EQ | GT |通用电气 | LT |乐 |东北 |喜欢 |在。 </td>
+ </tr>
+ <tr class="even">
+ <td> 或 </td>
+ <td> 组织单位标识符，由 &quot;;&quot; 分隔。 </td>
+ </tr>
+ <tr class="odd">
+ <td> ouMode </td>
+ <td> 选择组织单位的方式，可以是SELECTED |儿童 |后代 |无障碍 |捕捉 |全部。默认为 SELECTED，仅指选定的选定组织单位。有关解释，请参见下表。 </td>
+ </tr>
+ <tr class="even">
+ <td> 程序 </td>
+ <td> 程序标识符。限制实例注册到给定的程序。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 程序状态 </td>
+ <td> 给定程序的实例状态。可以活跃 |已完成 |取消。 </td>
+ </tr>
+ <tr class="even">
+ <td> 跟进 </td>
+ <td> 跟踪给定程序的实例状态。可以是真的|错误或省略。 </td>
+ </tr>
+ <tr class="odd">
+ <td> programStartDate </td>
+ <td> 被跟踪实体实例的给定程序的注册开始日期。 </td>
+ </tr>
+ <tr class="even">
+ <td> programEndDate </td>
+ <td> 被跟踪实体实例在给定程序中的注册结束日期。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 被跟踪实体 </td>
+ <td> 被跟踪的实体标识符。将实例限制为给定的跟踪实例类型。 </td>
+ </tr>
+ <tr class="even">
+ <td> 页面 </td>
+ <td> 页码。默认页面为 1。</td>
+ </tr>
+ <tr class="odd">
+ <td> 页面大小 </td>
+ <td> 页面大小。默认大小为每页 50 行。 </td>
+ </tr>
+ <tr class="even">
+ <td> 总页数 </td>
+ <td> 指示是否在分页响应中包含总页数（意味着更长的响应时间）。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 跳过分页 </td>
+ <td> 指示是否应忽略分页并应返回所有行。 </td>
+ </tr>
+ <tr class="even">
+ <td> lastUpdatedStartDate </td>
+ <td> 过滤此日期之后更新的事件。不能与 <em> lastUpdatedDuration </em> 一起使用。 </td>
+ </tr>
+ <tr class="odd">
+ <td> lastUpdatedEndDate </td>
+ <td> 过滤截至此日期更新的事件。不能与 <em> lastUpdatedDuration </em> 一起使用。 </td>
+ </tr>
+ <tr class="even">
+ <td> lastUpdatedDuration </td>
+ <td> 仅包括在给定持续时间内更新的项目。格式为 <value> <time-unit> ，其中支持的时间单位为“d”（天）、“h”（小时）、“m”（分钟）和“s”（秒）。不能与 <em> lastUpdatedStartDate </em> 和/或 <em> lastUpdatedEndDate </em> 一起使用。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 分配的用户模式 </td>
+ <td> 根据分配的用户选择模式将结果限制为 tei 分配的事件，可以是 CURRENT |提供 |无 |任何。 </td>
+ </tr>
+ <tr class="even">
+ <td> 分配用户 </td>
+ <td> 使用 <em>assignedUser=id1;id2 </em> 将结果过滤到有限的一组 teis，其中的事件分配给给定的用户 ID。仅当assignedUserMode 为 null 时才会考虑此参数。PROVIDED API 将出错，例如，如果assignedUserMode=CURRENT 和assignedUser=someId </td>
+ </tr>
+ <tr class="odd">
+ <td> 跟踪实体实例 </td>
+ <td> 使用 <em> trackedEntityInstance=id1;id2 </em> 使用被跟踪实体实例的显式 uid 将结果过滤到一组有限的 teis。该参数至少会创建结果的外边界，使用提供的 uid 形成所有 teis 的列表。如果使用此表中的其他参数/过滤器，它们将进一步限制来自显式外部边界的结果。 </td>
+ </tr>
+ </tbody>
+ </table>
+
+可用的组织单元选择模式在
+下表。
+
+ <table>
+ <caption>组织单位选择模式</caption>
+ <colgroup>
+ <col style="width: 20%" />
+ <col style="width: 79%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>模式</th>
+ <th>说明</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td>已选择</td>
+ <td>请求中定义的组织单位。 </td>
+ </tr>
+ <tr class="even">
+ 儿童<td>儿童</td>
+ <td>所选组织单位和直属子级，即以下级别的组织单位。 </td>
+ </tr>
+ <tr class="odd">
+ <td>后裔</td>
+ <td>所选组织单位和所有子级，即子层次结构中的所有组织单位。 </td>
+ </tr>
+ <tr class="even">
+ <td>可访问</td>
+ <td>数据视图与当前用户和所有子级关联的组织单位，即子层次结构中的所有组织单位。如果未定义当前用户，它将退回到与当前用户关联的数据捕获组织单位。 </td>
+ </tr>
+ <tr class="odd">
+ <td>捕获</td>
+ <td>与当前用户和所有子级关联的数据捕获组织单位，即子层次结构中的所有组织单位。 </td>
+ </tr>
+ <tr class="even">
+ <td>所有</td>
+ <td>系统中的所有组织单位。需要ALL权限。 </td>
+ </tr>
+ </tbody>
+ </table>
+
+查询不区分大小写。以下规则适用于查询
+参数。
+
+-   必须使用 _ou_ 参数（一个或多个）指定至少一个组织单位，或者必须指定 _ouMode=ALL_。
+
+-   只能指定 _program_ 和 _trackedEntity_ 参数之一（零或一）。
+
+-   如果指定了 _programStatus_，则还必须指定 _program_。
+
+-   如果指定了 _followUp_，则还必须指定 _program_。
+
+-   如果指定了 _programStartDate_ 或 _programEndDate_，则还必须指定 _program_。
+
+-   过滤器项目只能指定一次。
+
+查询与特定组织单位关联的所有实例
+看起来像这样：
+
+    /api/33/trackedEntityInstances.json?ou=DiszpKrYNg8
+
+使用一个带有过滤器的属性和一个属性来查询实例
+没有过滤器的属性，一个组织单位使用
+后代组织单位查询方式：
+
+    /api/33/trackedEntityInstances.json?filter=zHXD5Ve1Efw:EQ:A
+      ＆filter = AMpUYgxuCaE＆ou = DiszpKrYNg8; yMCshbaVExv
+
+对响应中包含一个属性的实例的查询
+并且一个属性被用作
+    筛选：
+
+    /api/33/trackedEntityInstances.json?filter=zHXD5Ve1Efw:EQ:A
+      ＆filter = AMpUYgxuCaE：LIKE：Road＆ou = DiszpKrYNg8
+
+为过滤器指定了多个操作数和过滤器的查询
+物品：
+
+    api / 33 / trackedEntityInstances.json？ou = DiszpKrYNg8＆program = ur1Edk5Oe2n
+      ＆filter = lw1SqmMlnfh：GT：150：LT：190
+
+要在 _IN_ 过滤器中使用多个值查询属性：
+
+    api / 33 / trackedEntityInstances.json？ou = DiszpKrYNg8
+      ＆filter = dv3nChNSIxy：IN：Scott; Jimmy; Santiago
+
+限制对属于特定事件一部分的实例的响应
+program 你可以包含一个 program 查询参数：
+
+    api / 33 / trackedEntityInstances.json？filter = zHXD5Ve1Efw：EQ：A＆ou = O6uvpzGd5pu
+      ＆ouMode = DESCENDANTS＆program = ur1Edk5Oe2n
+
+要将程序注册日期指定为查询的一部分，请执行以下操作：
+
+    api / 33 / trackedEntityInstances.json？filter = zHXD5Ve1Efw：EQ：A＆ou = O6uvpzGd5pu
+      ＆program = ur1Edk5Oe2n＆programStartDate = 2013-01-01＆programEndDate = 2013-09-01
+
+要限制对特定跟踪实体实例的响应，您
+可以包含跟踪实体查询参数：
+
+    api / 33 / trackedEntityInstances.json？filter = zHXD5Ve1Efw：EQ：A＆ou = O6uvpzGd5pu
+      ＆ouMode = DESCENDANTS＆trackedEntity = cyl5vuJ5ETQ
+
+默认情况下，实例以大小为 50 的页面返回，以更改
+您可以使用 page 和 pageSize 查询参数：
+
+    api / 33 / trackedEntityInstances.json？filter = zHXD5Ve1Efw：EQ：A＆ou = O6uvpzGd5pu
+      ＆ouMode = DESCENDANTS＆page = 2＆pageSize = 3
+
+您可以使用一系列运算符进行过滤：
+
+ <table>
+ <caption> 过滤运算符 </caption>
+ <colgroup>
+ <col style="width: 19%" />
+ <col style="width: 80%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th> 操作员 </th>
+ <th> 说明 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> EQ </td>
+ <td> 等于 </td>
+ </tr>
+ <tr class="even">
+ <td> GT </td>
+ <td> 大于 </td>
+ </tr>
+ <tr class="odd">
+ <td> GE </td>
+ <td> 大于等于</td>
+ </tr>
+ <tr class="even">
+ <td> LT </td>
+ <td> 小于</td>
+ </tr>
+ <tr class="odd">
+ <td> LE </td>
+ <td> 小于等于</td>
+ </tr>
+ <tr class="even">
+ <td> NE </td>
+ <td> 不等于 </td>
+ </tr>
+ <tr class="odd">
+ <td> LIKE </td>
+ <td> 喜欢（自由文本匹配） </td>
+ </tr>
+ <tr class="even">
+ <td> 在 </td>
+ <td> 等于由 &quot;;&quot; </td> 分隔的多个值之一
+ </tr>
+ </tbody>
+ </table>
+
+##### 回应格式 { #webapi_tei_query_response_format }
+
+此资源支持 JSON、JSONP、XLS 和 CSV 资源
+表示。
+
+-   json（应用程序/ json）
+
+-   jsonp（应用程序/ javascript）
+
+-   xml（应用程序/ xml）
+
+JSON/XML 中的响应采用对象格式，看起来像
+下列的。请注意，支持字段过滤，所以如果你想
+一个完整的视图，您可能希望将 `fields=*` 添加到查询中：
+
+```json
+{
+    "trackedEntityInstances": [
+        {
+            "lastUpdated": "2014-03-28 12:27:52.399",
+            "trackedEntity": "cyl5vuJ5ETQ",
+            "created": "2014-03-26 15:40:19.997",
+            "orgUnit": "ueuQlqb8ccl",
+            "trackedEntityInstance": "tphfdyIiVL6",
+            "relationships": [],
+            "attributes": [
+                {
+                    "displayName": "Address",
+                    "attribute": "AMpUYgxuCaE",
+                    "type": "string",
+                    "value": "2033 Akasia St"
+                },
+                {
+                    "displayName": "TB number",
+                    "attribute": "ruQQnf6rswq",
+                    "type": "string",
+                    "value": "1Z 989 408 56 9356 521 9"
+                },
+                {
+                    "displayName": "Weight in kg",
+                    "attribute": "OvY4VVhSDeJ",
+                    "type": "number",
+                    "value": "68.1"
+                },
+                {
+                    "displayName": "Email",
+                    "attribute": "NDXw0cluzSw",
+                    "type": "string",
+                    "value": "LiyaEfrem@armyspy.com"
+                },
+                {
+                    "displayName": "Gender",
+                    "attribute": "cejWyOfXge6",
+                    "type": "optionSet",
+                    "value": "Female"
+                },
+                {
+                    "displayName": "Phone number",
+                    "attribute": "P2cwLGskgxn",
+                    "type": "phoneNumber",
+                    "value": "085 813 9447"
+                },
+                {
+                    "displayName": "First name",
+                    "attribute": "dv3nChNSIxy",
+                    "type": "string",
+                    "value": "Liya"
+                },
+                {
+                    "displayName": "Last name",
+                    "attribute": "hwlRTFIFSUq",
+                    "type": "string",
+                    "value": "Efrem"
+                },
+                {
+                    "code": "Height in cm",
+                    "displayName": "Height in cm",
+                    "attribute": "lw1SqmMlnfh",
+                    "type": "number",
+                    "value": "164"
+                },
+                {
+                    "code": "City",
+                    "displayName": "City",
+                    "attribute": "VUvgVao8Y5z",
+                    "type": "string",
+                    "value": "Kranskop"
+                },
+                {
+                    "code": "State",
+                    "displayName": "State",
+                    "attribute": "GUOBQt5K2WI",
+                    "type": "number",
+                    "value": "KwaZulu-Natal"
+                },
+                {
+                    "code": "Zip code",
+                    "displayName": "Zip code",
+                    "attribute": "n9nUvfpTsxQ",
+                    "type": "number",
+                    "value": "3282"
+                },
+                {
+                    "code": "National identifier",
+                    "displayName": "National identifier",
+                    "attribute": "AuPLng5hLbE",
+                    "type": "string",
+                    "value": "465700042"
+                },
+                {
+                    "code": "Blood type",
+                    "displayName": "Blood type",
+                    "attribute": "H9IlTX2X6SL",
+                    "type": "string",
+                    "value": "B-"
+                },
+                {
+                    "code": "Latitude",
+                    "displayName": "Latitude",
+                    "attribute": "Qo571yj6Zcn",
+                    "type": "string",
+                    "value": "-30.659626"
+                },
+                {
+                    "code": "Longitude",
+                    "displayName": "Longitude",
+                    "attribute": "RG7uGl4w5Jq",
+                    "type": "string",
+                    "value": "26.916172"
+                }
+            ]
+        }
+    ]
+}
+```
+
+#### 跟踪实体实例网格查询 { #webapi_tracked_entity_instance_grid_query }
+
+要查询跟踪的实体实例，您可以与 _/api/trackedEntityInstances/grid_ 资源进行交互。有两种类型的查询：一种是定义 _query_ 查询参数和可选的 _attribute_ 参数，另一种是定义 _attribute_ 和 _filter_ 参数。此端点使用更紧凑的“网格”格式，是上一节中查询的替代方案。
+
+    / api / 33 / trackedEntityInstances / query
+
+##### 请求语法 { #webapi_tei_grid_query_request_syntax }
+
+ <table style="width:100%;">
+ <caption> 跟踪实体实例查询参数 </caption>
+ <colgroup>
+ <col style="width: 15%" />
+ <col style="width: 84%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th> 查询参数 </th>
+ <th> 说明 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> 查询 </td>
+ <td> 查询字符串。属性查询参数可用于定义要包含在响应中的属性。如果没有定义但程序的属性，则将使用程序中的属性。如果未定义程序，则将使用所有属性。有两种格式。第一个是计划查询字符串。第二个是格式 &lt;operator&gt;:&lt;query&gt;。算可以EQ |喜欢。 EQ 表示单词完全匹配，LIKE 表示单词部分匹配。查询将在空间上拆分，其中每个单词将形成一个逻辑 AND 查询。 </td>
+ </tr>
+ <tr class="even">
+ <td> 属性 </td>
+ <td> 要包含在响应中的属性。也可以用作查询的过滤器。参数可以重复任意次。过滤器可以应用到对格式&lt;attribute-id&gt;的尺寸：&lt;operator&gt;：&lt;filter&gt; [：&lt;operator&gt;：&lt;filter&gt;]。过滤器值不区分大小写，可以与运算符一起重复任意次数。算可以EQ | GT |通用电气 | LT |乐 |东北 |喜欢 |在。可以省略过滤器，以便在没有任何约束的情况下简单地在响应中包含属性。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 过滤器 </td>
+ <td> 用作查询过滤器的属性。参数可以重复任意次。过滤器可以应用到对格式&lt;attribute-id&gt;的尺寸：&lt;operator&gt;：&lt;filter&gt; [：&lt;operator&gt;：&lt;filter&gt;]。过滤器值不区分大小写，可以与运算符一起重复任意次数。算可以EQ | GT |通用电气 | LT |乐 |东北 |喜欢 |在。 </td>
+ </tr>
+ <tr class="even">
+ <td> 或 </td>
+ <td> 组织单位标识符，由 &quot;;&quot; 分隔。 </td>
+ </tr>
+ <tr class="odd">
+ <td> ouMode </td>
+ <td> 选择组织单位的方式，可以是SELECTED |儿童 |后代 |无障碍 |全部。默认为 SELECTED，仅指选定的组织单位。有关解释，请参见下表。 </td>
+ </tr>
+ <tr class="even">
+ <td> 程序 </td>
+ <td> 程序标识符。限制实例注册到给定的程序。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 程序状态 </td>
+ <td> 给定程序的实例状态。可以活跃 |已完成 |取消。 </td>
+ </tr>
+ <tr class="even">
+ <td> 跟进 </td>
+ <td> 跟踪给定程序的实例状态。可以是真的|错误或省略。 </td>
+ </tr>
+ <tr class="odd">
+ <td> programStartDate </td>
+ <td> 被跟踪实体实例的给定程序的注册开始日期。 </td>
+ </tr>
+ <tr class="even">
+ <td> programEndDate </td>
+ <td> 被跟踪实体实例在给定程序中的注册结束日期。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 被跟踪实体 </td>
+ <td> 被跟踪的实体标识符。将实例限制为给定的跟踪实例类型。 </td>
+ </tr>
+ <tr class="even">
+ <td> eventStatus </td>
+ <td> 与给定程序和被跟踪实体实例相关联的任何事件的状态。可以活跃 |已完成 |访问 |预定 |逾期 |跳过。 </td>
+ </tr>
+ <tr class="odd">
+ <td> eventStartDate </td>
+ <td> 与给定程序和事件状态相关联的事件的开始日期。 </td>
+ </tr>
+ <tr class="even">
+ <td> eventEndDate </td>
+ <td> 与给定程序和事件状态相关联的事件的结束日期。 </td>
+ </tr>
+ <tr class="odd">
+ <td> programStage </td>
+ <td> 应应用事件相关过滤器的 programStage。如果未提供，将考虑所有阶段。 </td>
+ </tr>
+ <tr class="even">
+ <td> skipMeta </td>
+ <td> 指示是否应包含响应的元数据。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 页面 </td>
+ <td> 页码。默认页面为 1。</td>
+ </tr>
+ <tr class="even">
+ <td> 页面大小 </td>
+ <td> 页面大小。默认大小为每页 50 行。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 总页数 </td>
+ <td> 指示是否在分页响应中包含总页数（意味着更长的响应时间）。 </td>
+ </tr>
+ <tr class="even">
+ <td> 跳过分页 </td>
+ <td> 指示是否应忽略分页并应返回所有行。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 分配的用户模式 </td>
+ <td> 根据分配的用户选择模式将结果限制为 tei 分配的事件，可以是 CURRENT |提供 |无 |任何。 </td>
+ </tr>
+ <tr class="even">
+ <td> 分配用户 </td>
+ <td> 使用 <em>assignedUser=id1;id2 </em> 将结果过滤到有限的一组 teis，其中的事件分配给给定的用户 ID。仅当assignedUserMode 为 null 时才会考虑此参数。PROVIDED API 将出错，例如，如果assignedUserMode=CURRENT 和assignedUser=someId </td>
+ </tr>
+ <tr class="odd">
+ <td> 跟踪实体实例 </td>
+ <td> 使用 <em> trackedEntityInstance=id1;id2 </em> 使用被跟踪实体实例的显式 uid 将结果过滤到一组有限的 teis。该参数至少会创建结果的外边界，使用提供的 uid 形成所有 teis 的列表。如果使用此表中的其他参数/过滤器，它们将进一步限制来自显式外部边界的结果。 </td>
+ </tr>
+ </tbody>
+ </table>
+
+可用的组织单元选择模式在
+下表。
+
+ <table>
+ <caption>组织单位选择模式</caption>
+ <colgroup>
+ <col style="width: 20%" />
+ <col style="width: 79%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>模式</th>
+ <th>说明</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td>已选择</td>
+ <td>请求中定义的组织单位。 </td>
+ </tr>
+ <tr class="even">
+ 儿童<td>儿童</td>
+ <td>请求中定义的组织单位的直接子级，即仅位于下面的第一级。 </td>
+ </tr>
+ <tr class="odd">
+ <td>后裔</td>
+ <td>所有孩子，即仅低于以下水平的孩子，例如包括请求中定义的组织单位的孩子的孩子。 </td>
+ </tr>
+ <tr class="even">
+ <td>可访问</td>
+ <td>与当前用户关联的数据视图组织单位的所有后代。如果未定义当前用户，它将退回到与当前用户关联的数据捕获组织单位。 </td>
+ </tr>
+ <tr class="odd">
+ <td>捕获</td>
+ <td>与当前用户和所有子级关联的数据捕获组织单位，即子层次结构中的所有组织单位。 </td>
+ </tr>
+ <tr class="even">
+ <td>所有</td>
+ <td>系统中的所有组织单位。需要权限。 </td>
+ </tr>
+ </tbody>
+ </table>
+
+请注意，您可以使用过滤器指定“属性”或直接使用“过滤器”参数来限制
+实例返回。
+
+某些规则适用于返回的属性。
+
+-   如果在没有任何属性或程序的情况下指定“查询”，则标记为“在列表中显示但没有程序”的所有属性都将包含在响应中。
+
+-   如果指定了程序，则与该程序链接的所有属性都将包含在响应中。
+
+-   如果指定了跟踪实体类型，则所有跟踪实体类型属性将包含在响应中。
+
+您可以使用由空格分隔的单词来指定查询 - 即
+情况系统会独立查询每个单词并返回
+每个词都包含在任何属性中的记录。一个查询项可以
+一次指定为属性，一次指定为过滤器（如果需要）。这
+查询不区分大小写。以下规则适用于查询
+参数。
+
+-   必须使用 _ou_ 参数（一个或多个）指定至少一个组织单位，或者必须指定 _ouMode=ALL_。
+
+-   只能指定 _program_ 和 _trackedEntity_ 参数之一（零或一）。
+
+-   如果指定了 _programStatus_，则还必须指定 _program_。
+
+-   如果指定了 _followUp_，则还必须指定 _program_。
+
+-   如果指定了 _programStartDate_ 或 _programEndDate_，则还必须指定 _program_。
+
+-   如果指定了 _eventStatus_，则还必须指定 _eventStartDate_ 和 _eventEndDate_。
+
+-   不能与过滤器一起指定查询。
+
+-   属性项目只能指定一次。
+
+-   过滤器项目只能指定一次。
+
+查询与特定组织单位关联的所有实例
+看起来像这样：
+
+    /api/33/trackedEntityInstances/query.json?ou=DiszpKrYNg8
+
+查询特定值和组织单位的所有属性，
+使用精确的单词匹配：
+
+    /api/33/trackedEntityInstances/query.json?query=scott&ou=DiszpKrYNg8
+
+使用部分词查询特定值的所有属性
+比赛：
+
+    /api/33/trackedEntityInstances/query.json?query=LIKE:scott&ou=DiszpKrYNg8
+
+您可以查询由 URL 字符分隔的多个单词
+空间为 %20，将对每个空间使用逻辑 AND 查询
+    单词：
+
+    /api/33/trackedEntityInstances/query.json?query=isabel%20may&ou=DiszpKrYNg8
+
+指定要包含在响应中的属性的查询：
+
+    /api/33/trackedEntityInstances/query.json?query=isabel
+      ＆attribute = dv3nChNSIxy＆attribute = AMpUYgxuCaE＆ou = DiszpKrYNg8
+
+使用一个带有过滤器的属性和一个属性来查询实例
+没有过滤器的属性，一个组织单位使用
+后代组织单位查询方式：
+
+    /api/33/trackedEntityInstances/query.json?attribute=zHXD5Ve1Efw:EQ:A
+      ＆attribute = AMpUYgxuCaE＆ou = DiszpKrYNg8; yMCshbaVExv
+
+对响应中包含一个属性的实例的查询
+并且一个属性被用作
+    筛选：
+
+    /api/33/trackedEntityInstances/query.json?attribute=zHXD5Ve1Efw:EQ:A
+      ＆filter = AMpUYgxuCaE：LIKE：Road＆ou = DiszpKrYNg8
+
+为过滤器指定了多个操作数和过滤器的查询
+物品：
+
+    /api/33/trackedEntityInstances/query.json?ou=DiszpKrYNg8&program=ur1Edk5Oe2n
+      ＆filter = lw1SqmMlnfh：GT：150：LT：190
+
+使用 IN 中的多个值查询属性
+    筛选：
+
+    /api/33/trackedEntityInstances/query.json?ou=DiszpKrYNg8
+      ＆attribute = dv3nChNSIxy：IN：Scott; Jimmy; Santiago
+
+限制对属于特定事件一部分的实例的响应
+program 你可以包含一个 program 查询参数：
+
+    /api/33/trackedEntityInstances/query.json?filter=zHXD5Ve1Efw:EQ:A
+      ＆ou = O6uvpzGd5pu＆ouMode = DESCENDANTS＆program = ur1Edk5Oe2n
+
+要将程序注册日期指定为查询的一部分，请执行以下操作：
+
+    /api/33/trackedEntityInstances/query.json?filter=zHXD5Ve1Efw:EQ:A
+      ＆ou = O6uvpzGd5pu＆program = ur1Edk5Oe2n＆programStartDate = 2013-01-01
+      ＆programEndDate = 2013-09-01
+
+要限制对特定跟踪实体实例的响应，您
+可以包含跟踪实体查询参数：
+
+    /api/33/trackedEntityInstances/query.json?attribute=zHXD5Ve1Efw:EQ:A
+      ＆ou = O6uvpzGd5pu＆ouMode = DESCENDANTS＆trackedEntity = cyl5vuJ5ETQ
+
+默认情况下，实例以大小为 50 的页面返回，以更改
+您可以使用 page 和 pageSize 查询参数：
+
+    /api/33/trackedEntityInstances/query.json?attribute=zHXD5Ve1Efw:EQ:A
+      ＆ou = O6uvpzGd5pu＆ouMode = DESCENDANTS＆page = 2＆pageSize = 3
+
+查询具有给定状态的事件的实例
+给定的时间跨度：
+
+    /api/33/trackedEntityInstances/query.json?ou=O6uvpzGd5pu
+      ＆program = ur1Edk5Oe2n＆eventStatus = LATE_VISIT
+      ＆eventStartDate = 2014-01-01＆eventEndDate = 2014-09-01
+
+您可以使用一系列运算符进行过滤：
+
+ <table>
+ <caption> 过滤运算符 </caption>
+ <colgroup>
+ <col style="width: 19%" />
+ <col style="width: 80%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th> 操作员 </th>
+ <th> 说明 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> EQ </td>
+ <td> 等于 </td>
+ </tr>
+ <tr class="even">
+ <td> GT </td>
+ <td> 大于 </td>
+ </tr>
+ <tr class="odd">
+ <td> GE </td>
+ <td> 大于等于</td>
+ </tr>
+ <tr class="even">
+ <td> LT </td>
+ <td> 小于</td>
+ </tr>
+ <tr class="odd">
+ <td> LE </td>
+ <td> 小于等于</td>
+ </tr>
+ <tr class="even">
+ <td> NE </td>
+ <td> 不等于 </td>
+ </tr>
+ <tr class="odd">
+ <td> LIKE </td>
+ <td> 喜欢（自由文本匹配） </td>
+ </tr>
+ <tr class="even">
+ <td> 在 </td>
+ <td> 等于由 &quot;;&quot; </td> 分隔的多个值之一
+ </tr>
+ </tbody>
+ </table>
+
+##### 回应格式 { #webapi_tei_grid_query_response_format }
+
+此资源支持 JSON、JSONP、XLS 和 CSV 资源
+表示。
+
+-   json（应用程序/ json）
+
+-   jsonp（应用程序/ javascript）
+
+-   xml（应用程序/ xml）
+
+-   csv（应用程序/ csv）
+
+-   xls（application / vnd.ms-excel）
+
+JSON 中的响应采用表格格式，如下所示。 _headers_ 部分描述了每列的内容。实例、已创建、上次更新、组织单位和跟踪实体列始终存在。以下各列对应于查询中指定的属性。 _rows_ 部分每个实例包含一行。
+
+```json
+{
+    "headers": [
+        {
+            "name": "instance",
+            "column": "Instance",
+            "type": "java.lang.String"
+        },
+        {
+            "name": "created",
+            "column": "Created",
+            "type": "java.lang.String"
+        },
+        {
+            "name": "lastupdated",
+            "column": "Last updated",
+            "type": "java.lang.String"
+        },
+        {
+            "name": "ou",
+            "column": "Org unit",
+            "type": "java.lang.String"
+        },
+        {
+            "name": "te",
+            "column": "Tracked entity",
+            "type": "java.lang.String"
+        },
+        {
+            "name": "zHXD5Ve1Efw",
+            "column": "Date of birth type",
+            "type": "java.lang.String"
+        },
+        {
+            "name": "AMpUYgxuCaE",
+            "column": "Address",
+            "type": "java.lang.String"
+        }
+    ],
+    "metaData": {
+        "names": {
+            "cyl5vuJ5ETQ": "Person"
+        }
+    },
+    "width": 7,
+    "height": 7,
+    "rows": [
+        [
+            "yNCtJ6vhRJu",
+            "2013-09-08 21:40:28.0",
+            "2014-01-09 19:39:32.19",
+            "DiszpKrYNg8",
+            "cyl5vuJ5ETQ",
+            "A",
+            "21 Kenyatta Road"
+        ],
+        [
+            "fSofnQR6lAU",
+            "2013-09-08 21:40:28.0",
+            "2014-01-09 19:40:19.62",
+            "DiszpKrYNg8",
+            "cyl5vuJ5ETQ",
+            "A",
+            "56 Upper Road"
+        ],
+        [
+            "X5wZwS5lgm2",
+            "2013-09-08 21:40:28.0",
+            "2014-01-09 19:40:31.11",
+            "DiszpKrYNg8",
+            "cyl5vuJ5ETQ",
+            "A",
+            "56 Main Road"
+        ],
+        [
+            "pCbogmlIXga",
+            "2013-09-08 21:40:28.0",
+            "2014-01-09 19:40:45.02",
+            "DiszpKrYNg8",
+            "cyl5vuJ5ETQ",
+            "A",
+            "12 Lower Main Road"
+        ],
+        [
+            "WnUXrY4XBMM",
+            "2013-09-08 21:40:28.0",
+            "2014-01-09 19:41:06.97",
+            "DiszpKrYNg8",
+            "cyl5vuJ5ETQ",
+            "A",
+            "13 Main Road"
+        ],
+        [
+            "xLNXbDs9uDF",
+            "2013-09-08 21:40:28.0",
+            "2014-01-09 19:42:25.66",
+            "DiszpKrYNg8",
+            "cyl5vuJ5ETQ",
+            "A",
+            "14 Mombasa Road"
+        ],
+        [
+            "foc5zag6gbE",
+            "2013-09-08 21:40:28.0",
+            "2014-01-09 19:42:36.93",
+            "DiszpKrYNg8",
+            "cyl5vuJ5ETQ",
+            "A",
+            "15 Upper Hill"
+        ]
+    ]
+}
+```
+
+#### 跟踪实体实例过滤器 { #webapi_tei_filters }
+
+要创建、读取、更新和删除跟踪的实体实例过滤器，您可以与 _/api/trackedEntityInstanceFilters_ 资源进行交互。
+
+    / api / 33 / trackedEntityInstanceFilters
+
+##### 创建和更新跟踪的实体实例过滤器定义 { #create-and-update-a-tracked-entity-instance-filter-definition }
+
+为了在系统中创建和更新跟踪实体实例过滤器，您将使用 _trackedEntityInstanceFilters_ 资源。跟踪的实体实例过滤器定义在 Tracker Capture 应用程序中使用，以在跟踪器用户界面中显示相关的预定义“工作列表”。
+
+<table>
+<caption>Payload</caption>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Payload values</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>name</td>
+<td>Name of the filter. Required.</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>description</td>
+<td>A description of the filter.</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>sortOrder</td>
+<td>The sort order of the filter. Used in Tracker Capture to order the filters in the program dashboard.</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>style</td>
+<td>Object containing css style.</td>
+<td>( &quot;color&quot;: &quot;blue&quot;, &quot;icon&quot;: &quot;fa fa-calendar&quot;}</td>
+</tr>
+<tr class="odd">
+<td>program</td>
+<td>Object containing the id of the program. Required.</td>
+<td>{ &quot;id&quot; : &quot;uy2gU8kTjF&quot;}</td>
+</tr>
+<tr class="even">
+<td>enrollmentStatus</td>
+<td>The TEIs enrollment status. Can be none(any enrollmentstatus) or ACTIVE|COMPLETED|CANCELED</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>followup</td>
+<td>When this parameter is true, the filter only returns TEIs that have an enrollment with status followup.</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>enrollmentCreatedPeriod</td>
+<td>Period object containing a period in which the enrollment must be created. See <em>Period</em> definition table below.</td>
+<td>{ &quot;periodFrom&quot;: -15, &quot;periodTo&quot;: 15}</td>
+</tr>
+<tr class="odd">
+<td>eventFilters</td>
+<td>A list of eventFilters. See <em>Event filters</em> definition table below.</td>
+<td>[{&quot;programStage&quot;: &quot;eaDH9089uMp&quot;, &quot;eventStatus&quot;: &quot;OVERDUE&quot;, &quot;eventCreatedPeriod&quot;: {&quot;periodFrom&quot;: -15, &quot;periodTo&quot;: 15}}]</td>
+</tr>
+</tbody>
+</table>
+
+<table>
+<caption>Event filters definition</caption>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<tbody>
+<tr class="odd">
+<td>programStage</td>
+<td>Which programStage the TEI needs an event in to be returned.</td>
+<td>&quot;eaDH9089uMp&quot;</td>
+</tr>
+<tr class="even">
+<td>eventStatus</td>
+<td>The events status. Can be none(any event status) or ACTIVE|COMPLETED|SCHEDULED|OVERDUE</td>
+<td>ACTIVE</td>
+</tr>
+<tr class="odd">
+<td>eventCreatedPeriod</td>
+<td>Period object containing a period in which the event must be created. See <em>Period</em> definition below.</td>
+<td>{ &quot;periodFrom&quot;: -15, &quot;periodTo&quot;: 15}</td>
+</tr>
+<tr class="even">
+<td>assignedUserMode</td>
+<td>To specify the assigned user selection mode for events. Possible values are CURRENT (events assigned to current user)| PROVIDED (events assigned to users provided in "assignedUsers" list) | NONE (events assigned to no one) | ANY (events assigned to anyone). If PROVIDED (or null), non-empty assignedUsers in the payload will be considered.</td>
+<td>"assignedUserMode": "PROVIDED"</td>
+</tr>
+<tr class="odd">
+<td>assignedUsers</td>
+<td>To specify a list of assigned users for events. To be used along with PROVIDED assignedUserMode above.</td>
+<td>"assignedUsers": ["a3kGcGDCuk7", "a3kGcGDCuk8"]</td>
+</tr>
+</tbody>
+</table>
+
+ <table>
+ <caption>期间定义</caption>
+ <colgroup>
+ <col style="width: 33%" />
+ <col style="width: 33%" />
+ <col style="width: 33%" />
+ </colgroup>
+ <tbody>
+ <tr class="odd">
+ <td>期间从</td>
+ <td>从当天算起的天数。可以是正整数或负整数。 </td>
+ <td> -15 </td>
+ </tr>
+ <tr class="even">
+ <td>周期到</td>
+ <td>从当天算起的天数。必须大于periodFrom。可以是正整数或负整数。 </td>
+ <td> 15 </td>
+ </tr>
+ </tbody>
+ </table>
+
+##### 跟踪实体实例过滤器查询 { #tracked-entity-instance-filters-query }
+
+要查询系统中跟踪的实体实例过滤器，您可以与 _/api/trackedEntityInstanceFilters_ 资源进行交互。
+
+ <table>
+ <caption>跟踪的实体实例过滤器查询参数</caption>
+ <colgroup>
+ <col style="width: 50%" />
+ <col style="width: 50%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>查询参数</th>
+ <th>说明</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td>程序</td>
+ <td>程序标识符。将过滤器限制为给定程序。 </td>
+ </tr>
+ </tbody>
+ </table>
+
+### 招生管理 { #webapi_enrollment_management }
+
+注册在 API 中具有完整的 CRUD 支持。与 API 一起
+对于跟踪的实体实例，使用所需的大多数操作
+支持被跟踪的实体实例和程序。
+
+    / api / 33 /注册
+
+#### 将跟踪的实体实例注册到程序中 { #webapi_enrolling_tei }
+
+要将人员注册到计划中，您需要首先从 _trackedEntityInstances_ 资源中获取人员的标识符。然后，您需要从 _programs_ 资源获取程序标识符。模板有效负载如下所示：
+
+```json
+{
+    "trackedEntityInstance": "ZRyCnJ1qUXS",
+    "orgUnit": "ImspTQPwCqd",
+    "program": "S8uo8AlvYMz",
+    "enrollmentDate": "2013-09-17",
+    "incidentDate": "2013-09-17"
+}
+```
+
+此负载应在对以下 URL 标识的注册资源的 _POST_ 请求中使用：
+
+    / api / 33 /注册
+
+For cancelling or completing an enrollment, you can make a _PUT_ request to the `enrollments` resource, including the identifier and the action you want to perform. For cancelling an enrollment for a tracked entity instance:
+
+    / api / 33 / enrollments / <enrollment-id> /取消
+
+要完成跟踪实体实例的注册，您可以向以下 URL 发出 _PUT_ 请求：
+
+    / api / 33 / enrollments / <enrollment-id> /已完成
+
+要删除注册，您可以向以下 URL 发出 _DELETE_ 请求：
+
+    / api / 33 / enrollments / <enrollment-id>
+
+#### 注册实例查询 { #webapi_enrollment_instance_query }
+
+要查询注册情况，您可以与 _/api/enrollments_ 资源进行交互。
+
+    / api / 33 /注册
+
+##### 请求语法 { #webapi_enrollment_query_request_syntax }
+
+ <table style="width:100%;">
+ <caption>注册查询参数</caption>
+ <colgroup>
+ <col style="width: 15%" />
+ <col style="width: 84%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>查询参数</th>
+ <th>说明</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> ou </td>
+ <td>组织单位标识符，以&quot;; &quot;分隔。 </td>
+ </tr>
+ <tr class="even">
+ <td> ouMode </td>
+ <td>选择组织单位的模式可以选择|儿童|后裔|可访问|捕捉|所有。默认值为SELECTED，它仅引用所选的组织单位。有关说明，请参见下表。 </td>
+ </tr>
+ <tr class="odd">
+ <td>程序</td>
+ <td>程序标识符。将实例限制为注册到给定程序中。 </td>
+ </tr>
+ <tr class="even">
+ <td>程序状态</td>
+ <td>给定程序的实例状态。可以处于活动状态|已完成取消。 </td>
+ </tr>
+ <tr class="odd">
+ <td>跟进</td>
+ <td>给定程序的实例的跟踪状态。可以是真的错误或省略。 </td>
+ </tr>
+ <tr class="even">
+ <td>程序启动日期</td>
+ <td>跟踪的实体实例在给定程序中注册的开始日期。 </td>
+ </tr>
+ <tr class="odd">
+ <td>程序结束日期</td>
+ <td>跟踪的实体实例在给定程序中的注册结束日期。 </td>
+ </tr>
+ <tr class="even">
+ <td> lastUpdatedDuration </td>
+ <td>仅包括在给定持续时间内更新的项目。格式为<value> <time-unit>，其中支持的时间单位为“ d”（天），“ h”（小时），“ m”（分钟）和“ s”（秒）。 </td>
+ </tr>
+ <tr class="odd">
+ <td> trackedEntity </td>
+ <td>跟踪的实体标识符。将实例限制为给定的跟踪实例类型。 </td>
+ </tr>
+ <tr class="even">
+ <td> trackedEntityInstance </td>
+ <td>跟踪的实体实例标识符。不应与trackedEntity一起使用。 </td>
+ </tr>
+ <tr class="odd">
+ <td>页面</td>
+ <td>页码。默认页面为1。</td>
+ </tr>
+ <tr class="even">
+ <td>页面大小</td>
+ <td>页面大小。默认大小是每页50行。 </td>
+ </tr>
+ <tr class="odd">
+ <td>总页数</td>
+ <td>指示是否在寻呼响应中包括总页数（意味着响应时间更长）。 </td>
+ </tr>
+ <tr class="even">
+ <td> skipPaging </td>
+ <td>指示是否应忽略分页并应返回所有行。 </td>
+ </tr>
+ <tr class="odd">
+ <td> include已删除</td>
+ <td>指示是否包括软删除的注册。默认情况下为false。 </td>
+ </tr>
+ </tbody>
+ </table>
+
+可用的组织单元选择模式在
+下表。
+
+ <table>
+ <caption>组织单位选择模式</caption>
+ <colgroup>
+ <col style="width: 20%" />
+ <col style="width: 79%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>模式</th>
+ <th>说明</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td>已选择</td>
+ <td>请求中定义的组织单位（默认）。 </td>
+ </tr>
+ <tr class="even">
+ 儿童<td>儿童</td>
+ <td>请求中定义的组织单位的直接子级，即仅位于下面的第一级。 </td>
+ </tr>
+ <tr class="odd">
+ <td>后裔</td>
+ <td>所有孩子，即仅低于以下水平的孩子，例如包括请求中定义的组织单位的孩子的孩子。 </td>
+ </tr>
+ <tr class="even">
+ <td>可访问</td>
+ <td>与当前用户关联的数据视图组织单位的所有后代。如果未定义当前用户，它将退回到与当前用户关联的数据捕获组织单位。 </td>
+ </tr>
+ <tr class="odd">
+ <td>所有</td>
+ <td>系统中的所有组织单位。需要权限。 </td>
+ </tr>
+ </tbody>
+ </table>
+
+查询不区分大小写。以下规则适用于查询
+参数。
+
+-   必须使用 _ou_ 参数（一个或多个）指定至少一个组织单位，或者必须指定 _ouMode=ALL_。
+
+-   只能指定 _program_ 和 _trackedEntity_ 参数之一（零或一）。
+
+-   如果指定了 _programStatus_，则还必须指定 _program_。
+
+-   如果指定了 _followUp_，则还必须指定 _program_。
+
+-   如果指定了 _programStartDate_ 或 _programEndDate_，则还必须指定 _program_。
+
+查询与特定组织单位关联的所有注册
+看起来像这样：
+
+    /api/33/enrollments.json?ou=DiszpKrYNg8
+
+限制对作为特定活动一部分的注册的响应
+程序，您可以包含程序查询
+    范围：
+
+    /api/33/enrollments.json?ou=O6uvpzGd5pu&ouMode=DESCENDANTS&program=ur1Edk5Oe2n
+
+要将程序注册日期指定为查询的一部分，请执行以下操作：
+
+    /api/33/enrollments.json?&ou=O6uvpzGd5pu&program=ur1Edk5Oe2n
+      ＆programStartDate = 2013-01-01＆programEndDate = 2013-09-01
+
+限制对特定被跟踪实体的注册的响应
+您可以包含跟踪实体查询
+    范围：
+
+    /api/33/enrollments.json?ou=O6uvpzGd5pu&ouMode=DESCENDANTS&trackedEntity=cyl5vuJ5ETQ
+
+限制对特定被跟踪实体的注册的响应
+例如，您可以包含一个跟踪实体实例查询参数，在
+在这种情况下，我们已将其限制为可查看的可用注册
+当前的
+    用户：
+
+    /api/33/enrollments.json?ouMode=ACCESSIBLE&trackedEntityInstance=tphfdyIiVL6
+
+默认情况下，注册以 50 页大小的页面返回，以更改
+这您可以使用 page 和 pageSize 查询
+    参数：
+
+    /api/33/enrollments.json?ou=O6uvpzGd5pu&ouMode=DESCENDANTS&page=2&pageSize=3
+
+##### 回应格式 { #webapi_enrollment_query_response_format }
+
+此资源支持 JSON、JSONP、XLS 和 CSV 资源
+表示。
+
+-   json（应用程序/ json）
+
+-   jsonp（应用程序/ javascript）
+
+-   xml（应用程序/ xml）
+
+JSON/XML 中的响应采用对象格式，看起来像
+下列的。请注意，支持字段过滤，所以如果你想
+一个完整的视图，您可能希望将 `fields=*` 添加到查询中：
+
+```json
+{
+    "enrollments": [
+        {
+            "lastUpdated": "2014-03-28T05:27:48.512+0000",
+            "trackedEntity": "cyl5vuJ5ETQ",
+            "created": "2014-03-28T05:27:48.500+0000",
+            "orgUnit": "DiszpKrYNg8",
+            "program": "ur1Edk5Oe2n",
+            "enrollment": "HLFOK0XThjr",
+            "trackedEntityInstance": "qv0j4JBXQX0",
+            "followup": false,
+            "enrollmentDate": "2013-05-23T05:27:48.490+0000",
+            "incidentDate": "2013-05-10T05:27:48.490+0000",
+            "status": "ACTIVE"
+        }
+    ]
+}
+```
+
+### 大事记 { #webapi_events }
+
+本节关于发送和读取事件。
+
+    / api / 33 / events
+
+#### 发送事件 { #webapi_sending_events }
+
+DHIS2 支持三种事件： 没有注册的单一事件
+（也称为匿名事件），注册的单一事件
+和多个注册的事件。注册意味着
+数据链接到使用标识的跟踪实体实例
+某种标识符。
+
+要将事件发送到 DHIS2，您必须与 _events_ 资源进行交互。发送事件的方法类似于发送聚合数据值。您将需要一个可以使用 _programs_ 资源查找的 _program_、一个可以使用 _organizationUnits_ 资源查找的 _orgUnit_ 以及可以使用 _dataElements_ 资源查找的有效数据元素标识符列表。对于注册事件，需要 _tracked 实体实例_ 标识符，请在有关 _trackedEntityInstances_ 资源的部分中阅读如何获取此标识符。要将事件发送到具有多个阶段的程序，您还需要包含 _programStage_ 标识符，programStages 的标识符可以在 _programStages_ 资源中找到。
+
+XML 格式的没有注册示例有效负载的简单单个事件
+我们从“住院发病率和死亡率”发送事件的地方
+可以看到演示数据库中“Ngelehun CHC”设施的程序
+以下：
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<event program="eBAyeGv0exc" orgUnit="DiszpKrYNg8"
+  eventDate="2013-05-17" status="COMPLETED" storedBy="admin">
+  <coordinate latitude="59.8" longitude="10.9" />
+  <dataValues>
+    <dataValue dataElement="qrur9Dvnyt5" value="22" />
+    <dataValue dataElement="oZg33kd9taw" value="Male" />
+    <dataValue dataElement="msodh3rEMJa" value="2013-05-18" />
+  </dataValues>
+</event>
+```
+
+要执行一些测试，我们可以将 XML 有效负载保存为名为 _event.xml_ 的文件，并使用带有以下命令的curl 将其作为 POST 请求发送到 API 中的事件资源：
+
+```bash
+curl -d @event.xml "https://play.dhis2.org/demo/api/33/events"
+  -H "Content-Type:application/xml" -u admin:district
+```
+
+JSON格式的相同负载如下所示：
+
+```json
+{
+    "program": "eBAyeGv0exc",
+    "orgUnit": "DiszpKrYNg8",
+    "eventDate": "2013-05-17",
+    "status": "COMPLETED",
+    "completedDate": "2013-05-18",
+    "storedBy": "admin",
+    "coordinate": {
+        "latitude": 59.8,
+        "longitude": 10.9
+    },
+    "dataValues": [
+        {
+            "dataElement": "qrur9Dvnyt5",
+            "value": "22"
+        },
+        {
+            "dataElement": "oZg33kd9taw",
+            "value": "Male"
+        },
+        {
+            "dataElement": "msodh3rEMJa",
+            "value": "2013-05-18"
+        }
+    ]
+}
+```
+
+要发送此信息，您可以将其保存到名为 _event.json_ 的文件中，并使用curl，如下所示：
+
+```bash
+curl -d @event.json "localhost/api/33/events" -H "Content-Type:application/json"
+  -u admin:district
+```
+
+我们还支持同时发送多个事件。一个有效载荷
+XML 格式可能如下所示：
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<events>
+  <event program="eBAyeGv0exc" orgUnit="DiszpKrYNg8"
+    eventDate="2013-05-17" status="COMPLETED" storedBy="admin">
+    <coordinate latitude="59.8" longitude="10.9" />
+    <dataValues>
+      <dataValue dataElement="qrur9Dvnyt5" value="22" />
+      <dataValue dataElement="oZg33kd9taw" value="Male" />
+    </dataValues>
+  </event>
+  <event program="eBAyeGv0exc" orgUnit="DiszpKrYNg8"
+    eventDate="2013-05-17" status="COMPLETED" storedBy="admin">
+    <coordinate latitude="59.8" longitude="10.9" />
+    <dataValues>
+      <dataValue dataElement="qrur9Dvnyt5" value="26" />
+      <dataValue dataElement="oZg33kd9taw" value="Female" />
+    </dataValues>
+  </event>
+</events>
+```
+
+您将收到一份包含回复的导入摘要，该回复可以是
+检查以获取有关请求结果的信息，
+比如成功导入了多少值。 JSON 格式的负载
+格式如下：
+
+```json
+{
+    "events": [
+        {
+            "program": "eBAyeGv0exc",
+            "orgUnit": "DiszpKrYNg8",
+            "eventDate": "2013-05-17",
+            "status": "COMPLETED",
+            "storedBy": "admin",
+            "coordinate": {
+                "latitude": "59.8",
+                "longitude": "10.9"
+            },
+            "dataValues": [
+                {
+                    "dataElement": "qrur9Dvnyt5",
+                    "value": "22"
+                },
+                {
+                    "dataElement": "oZg33kd9taw",
+                    "value": "Male"
+                }
+            ]
+        },
+        {
+            "program": "eBAyeGv0exc",
+            "orgUnit": "DiszpKrYNg8",
+            "eventDate": "2013-05-17",
+            "status": "COMPLETED",
+            "storedBy": "admin",
+            "coordinate": {
+                "latitude": "59.8",
+                "longitude": "10.9"
+            },
+            "dataValues": [
+                {
+                    "dataElement": "qrur9Dvnyt5",
+                    "value": "26"
+                },
+                {
+                    "dataElement": "oZg33kd9taw",
+                    "value": "Female"
+                }
+            ]
+        }
+    ]
+}
+```
+
+您还可以使用GeoJson在事件上存储任何类型的几何图形。在此处可以看到使用GeoJson代替以前的经度和纬度属性的有效负载示例：
+
+```json
+{
+    "program": "eBAyeGv0exc",
+    "orgUnit": "DiszpKrYNg8",
+    "eventDate": "2013-05-17",
+    "status": "COMPLETED",
+    "storedBy": "admin",
+    "geometry": {
+        "type": "POINT",
+        "coordinates": [59.8, 10.9]
+    },
+    "dataValues": [
+        {
+            "dataElement": "qrur9Dvnyt5",
+            "value": "22"
+        },
+        {
+            "dataElement": "oZg33kd9taw",
+            "value": "Male"
+        },
+        {
+            "dataElement": "msodh3rEMJa",
+            "value": "2013-05-18"
+        }
+    ]
+}
+```
+
+作为导入摘要的一部分，您还将获得刚刚发送的事件的标识符_reference_，以及指向该事件的服务器位置的_href_ 元素。下表描述了每个元素的含义。
+
+ <table>
+ <caption> 事件资源格式 </caption>
+ <colgroup>
+ <col style="width: 13%" />
+ <col style="width: 8%" />
+ <col style="width: 8%" />
+ <col style="width: 30%" />
+ <col style="width: 38%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th> 参数 </th>
+ <th> </th>型
+ <th> 需要 </th>
+ <th> 选项（默认第一个） </th>
+ <th> 说明 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> 程序 </td>
+ <td> 字符串 </td>
+ <td> 真 </td>
+ <td> </td>
+ <td> 没有注册程序的单个事件的标识符 </td>
+ </tr>
+ <tr class="even">
+ <td> 组织单位 </td>
+ <td> 字符串 </td>
+ <td> 真 </td>
+ <td> </td>
+ <td> 事件发生的组织单位的标识符 </td>
+ </tr>
+ <tr class="odd">
+ <td> eventDate </td>
+ <td> 日期 </td>
+ <td> 真 </td>
+ <td> </td>
+ <td> 事件发生的日期 </td>
+ </tr>
+ <tr class="even">
+ <td> 完成日期 </td>
+ <td> 日期 </td>
+ <td> 假 </td>
+ <td> </td>
+ <td> 事件完成的日期。如果未提供，则选择当前日期作为事件完成日期 </td>
+ </tr>
+ <tr class="odd">
+ <td> 状态 </td>
+ <td> 枚举 </td>
+ <td> 假 </td>
+ <td> ACTIVE |已完成 |访问 |日程 |逾期 |跳过 </td>
+ <td> 事件是否完成 </td>
+ </tr>
+ <tr class="even">
+ <td> 由 </td> 存储
+ <td> 字符串 </td>
+ <td> 假 </td>
+ <td> 默认为当前用户 </td>
+ <td> 谁存储了这个事件（可以是用户名、系统名称等） </td>
+ </tr>
+ <tr class="odd">
+ <td> 坐标 </td>
+ <td> 双 </td>
+ <td> 假 </td>
+ <td> </td>
+ <td> 指事件发生的地理位置（纬度和经度） </td>
+ </tr>
+ <tr class="even">
+ <td> 数据元素 </td>
+ <td> 字符串 </td>
+ <td> 真 </td>
+ <td> </td>
+ <td> 数据元素的标识符 </td>
+ </tr>
+ <tr class="odd">
+ <td> 值 </td>
+ <td> 字符串 </td>
+ <td> 真 </td>
+ <td> </td>
+ <td> 此事件的数据值或度量 </td>
+ </tr>
+ </tbody>
+ </table>
+
+##### OrgUnit匹配 { #orgunit-matching }
+
+默认情况下，orgUnit 参数将在 ID 上进行匹配，您还可以使用参数 orgUnitIdScheme=SCHEME 选择 orgUnit id 匹配方案，其中选项为：_ID_、_UID_、_UUID_、_CODE_ 和 _NAME_。还有_ATTRIBUTE:_ 方案，它匹配_unique_ 元数据属性值。
+
+#### 更新事件 { #webapi_updating_events }
+
+要更新现有事件，有效负载的格式是相同的，但是
+您要发布到的 URL 必须将标识符添加到 URL 的末尾
+字符串并且请求必须是 PUT。
+
+有效载荷必须包含所有属性，即使是未修改的属性。
+以前存在但现在不存在的属性
+系统将删除任何更多的有效载荷。
+
+不允许更新已删除的事件。同样适用
+跟踪实体实例和注册。
+
+```bash
+curl -X PUT -d @updated_event.xml "localhost/api/33/events/ID"
+  -H "Content-Type: application/xml" -u admin:district
+```
+
+```bash
+curl -X PUT -d @updated_event.json "localhost/api/33/events/ID"
+  -H "Content-Type: application/json" -u admin:district
+```
+
+#### 删除活动 { #webapi_deleting_events }
+
+要删除现有事件，您只需要发送 DELETE 请求
+带有对您正在使用的服务器的标识符引用。
+
+```bash
+curl -X DELETE "localhost/api/33/events/ID" -u admin:district
+```
+
+#### 为用户分配事件 { #webapi_user_assign_event }
+
+可以将用户分配给事件。这可以通过在更新或创建事件时在有效负载中包含适当的属性来完成。
+
+      “ assignedUser”：“ <id>”
+
+id是指用户的if。一次只能为一个事件分配一个用户。
+
+必须先在程序阶段启用用户分配，然后才能将用户分配给事件。
+
+#### 获取事件 { #webapi_getting_events }
+
+要获取现有事件，您可以发出 GET 请求，包括
+像这样的标识符：
+
+```bash
+curl "http://localhost/api/33/events/ID" -H "Content-Type: application/xml" -u admin:district
+```
+
+#### 查询和阅读事件 { #webapi_querying_reading_events }
+
+本节介绍如何读出已存储在 DHIS2 实例中的事件。有关事件数据的更高级用途，请参阅事件分析部分。 `/api/events` 端点的输出格式将与用于向其发送事件的格式匹配（分析事件 api 不支持）。通过添加 .json/.xml 或设置适当的 _Accept_ 标头，支持 XML 和 JSON。默认情况下对查询进行分页，默认页面大小为 50 个事件，_field_ 过滤的工作原理与元数据相同，添加 _fields_ 参数并包含您想要的属性，即 _?fields=program,status_。
+
+ <table>
+ <caption> 事件资源查询参数 </caption>
+ <thead>
+ <tr class="header">
+ <th> 密钥 </th>
+ <th> </th>型
+ <th> 需要 </th>
+ <th> 说明 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> 程序 </td>
+ <td> 标识符 </td>
+ <td> 真（如果没有提供 programStage） </td>
+ <td> 程序标识符 </td>
+ </tr>
+ <tr class="even">
+ <td> programStage </td>
+ <td> 标识符 </td>
+ <td> 假 </td>
+ <td> 程序阶段标识符 </td>
+ </tr>
+ <tr class="odd">
+ <td> 程序状态 </td>
+ <td> 枚举 </td>
+ <td> 假 </td>
+ <td> 程序中事件的状态，可以是 ACTIVE |已完成 |取消 </td>
+ </tr>
+ <tr class="even">
+ <td> 跟进 </td>
+ <td> 布尔值 </td>
+ <td> 假 </td>
+ <td> 程序中是否考虑事件跟进，可以为真|错误或省略。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 跟踪实体实例 </td>
+ <td> 标识符 </td>
+ <td> 假 </td>
+ <td> 被跟踪实体实例的标识符 </td>
+ </tr>
+ <tr class="even">
+ <td> 组织单位 </td>
+ <td> 标识符 </td>
+ <td> 真 </td>
+ <td> 组织单元标识符 </td>
+ </tr>
+ <tr class="odd">
+ <td> ouMode </td>
+ <td> 枚举 </td>
+ <td> 假 </td>
+ <td> 组织单位选择模式，可以选择 |儿童 |后代 </td>
+ </tr>
+ <tr class="even">
+ <td> 开始日期 </td>
+ <td> 日期 </td>
+ <td> 假 </td>
+ <td> 仅此日期之后的事件 </td>
+ </tr>
+ <tr class="odd">
+ <td> 结束日期 </td>
+ <td> 日期 </td>
+ <td> 假 </td>
+ <td> 仅早于此日期的事件 </td>
+ </tr>
+ <tr class="even">
+ <td> 状态 </td>
+ <td> 枚举 </td>
+ <td> 假 </td>
+ <td> 事件状态，可以是ACTIVE |已完成 |访问 |预定 |逾期 |跳过 </td>
+ </tr>
+ <tr class="odd">
+ <td> lastUpdatedStartDate </td>
+ <td> 日期 </td>
+ <td> 假 </td>
+ <td> 过滤此日期之后更新的事件。不能与 <em> lastUpdatedDuration </em> 一起使用。 </td>
+ </tr>
+ <tr class="even">
+ <td> lastUpdatedEndDate </td>
+ <td> 日期 </td>
+ <td> 假 </td>
+ <td> 过滤截至此日期更新的事件。不能与 <em> lastUpdatedDuration </em> 一起使用。 </td>
+ </tr>
+ <tr class="odd">
+ <td> lastUpdatedDuration </td>
+ <td> 字符串 </td>
+ <td> 假 </td>
+ <td> 仅包括在给定持续时间内更新的项目。格式为 <value> <time-unit> ，其中支持的时间单位为“d”（天）、“h”（小时）、“m”（分钟）和“s”（秒）。不能与 <em> lastUpdatedStartDate </em> 和/或 <em> lastUpdatedEndDate </em> 一起使用。 </td>
+ </tr>
+ <tr class="even">
+ <td> skipMeta </td>
+ <td> 布尔值 </td>
+ <td> 假 </td>
+ <td> 排除响应的元数据部分（提高性能）</td>
+ </tr>
+ <tr class="odd">
+ <td> 页面 </td>
+ <td> 整数 </td>
+ <td> 假 </td>
+ <td> 页码 </td>
+ </tr>
+ <tr class="even">
+ <td> 页面大小 </td>
+ <td> 整数 </td>
+ <td> 假 </td>
+ <td> 每页的项目数 </td>
+ </tr>
+ <tr class="odd">
+ <td> 总页数 </td>
+ <td> 布尔值 </td>
+ <td> 假 </td>
+ <td> 指示是否在分页响应中包含总页数。 </td>
+ </tr>
+ <tr class="even">
+ <td> 跳过分页 </td>
+ <td> 布尔值 </td>
+ <td> 假 </td>
+ <td> 查询中是否跳过分页，返回所有事件。 </td>
+ </tr>
+ <tr class="odd">
+ <td> dataElementIdScheme </td>
+ <td> 字符串 </td>
+ <td> 假 </td>
+ <td> 用于导出的数据元素 ID 方案，有效选项为 UID、CODE 和 ATTRIBUTE：{ID} </td>
+ </tr>
+ <tr class="even">
+ <td> categoryOptionComboIdScheme </td>
+ <td> 字符串 </td>
+ <td> 假 </td>
+ <td> 用于导出的类别选项组合 ID 方案，有效选项为 UID、CODE 和
+属性：{ID} </td>
+ </tr>
+ <tr class="odd">
+ <td> orgUnitIdScheme </td>
+ <td> 字符串 </td>
+ <td> 假 </td>
+ <td> 用于导出的组织单元 ID 方案，有效选项为 UID、CODE 和
+属性：{ID} </td>
+ </tr>
+ <tr class="even">
+ <td> programIdScheme </td>
+ <td> 字符串 </td>
+ <td> 假 </td>
+ <td> 用于导出的程序 ID 方案，有效选项为 UID、CODE 和 ATTRIBUTE：{ID} </td>
+ </tr>
+ <tr class="odd">
+ <td> programStageIdScheme </td>
+ <td> 字符串 </td>
+ <td> 假 </td>
+ <td> 用于导出的程序阶段 ID 方案，有效选项为 UID、CODE 和 ATTRIBUTE：{ID} </td>
+ </tr>
+ <tr class="even">
+ <td> idScheme </td>
+ <td> 字符串 </td>
+ <td> 假 </td>
+ <td> 允许为数据元素、类别选项组合、组织单位、程序和程序设置 id 方案
+立即上台。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 订单 </td>
+ <td> 字符串 </td>
+ <td> 假 </td>
+ <td> 从 API 检索事件的顺序。用法：order=&lt;property&gt;:asc/desc - 默认为升序。
+ <p> 属性：事件 |程序|节目舞台 |招生|注册状态 |组织单位 |组织单位名称 |跟踪实体实例 |活动日期 |跟进 |状态 |到期日 |存储者 |创建 |最后更新 |完成者 |完成日期 </p>
+ <pre> <code> order=orgUnitName:DESC </code> </pre>
+ <pre> <code> order=lastUpdated:ASC </code> </pre> </td>
+ </tr>
+ <tr class="even">
+ <td> 事件 </td>
+ <td> 逗号分隔的字符串 </td>
+ <td> 假 </td>
+ <td> 使用 <em> event=id1;id2 </em> 将结果过滤到一组有限的 ID。 </td>
+ </tr>
+ <tr class="odd">
+ <td> skipEventId </td>
+ <td> 布尔值 </td>
+ <td> 假 </td>
+ <td> 跳过响应中的事件标识符 </td>
+ </tr>
+ <tr class="even">
+ <td> attributeCc (**) </td>
+ <td> 字符串 </td>
+ <td> 假 </td>
+ <td> 属性类别组合标识符（必须与 <em> 属性Cos </em> 组合） </td>
+ </tr>
+ <tr class="odd">
+ <td> 属性Cos (**) </td>
+ <td> 字符串 </td>
+ <td> 假 </td>
+ <td> 属性类别选项标识符，以 ; 分隔（必须与 <em> attributeCc </em> 结合） </td>
+ </tr>
+ <tr class="even">
+ <td> 异步 </td>
+ <td> 假 |真 </td>
+ <td> 假 </td>
+ <td> 指示导入是异步还是同步。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 包括已删除 </td>
+ <td> 布尔值 </td>
+ <td> 假 </td>
+ <td> 当为 true 时，软删除事件将包含在您的查询结果中。 </td>
+ </tr>
+ <tr class="even">
+ <td> 分配的用户模式 </td>
+ <td> 枚举 </td>
+ <td> 假 </td>
+ <td> 分配的用户选择模式，可以是 CURRENT |提供 |无 |任何。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 分配用户 </td>
+ <td> 逗号分隔的字符串 </td>
+ <td> 假 </td>
+ <td> 使用 <em>assignedUser=id1;id2 </em> 将结果过滤为分配给给定用户 ID 的有限事件集。仅当assignedUserMode 为PROVIDED 或null 时才会考虑此参数。 API 将出错，例如，如果assignedUserMode=CURRENT 和assignedUser=someId </td>
+ </tr>
+ </tbody>
+ </table>
+
+> **注意**
+>
+>如果查询既不包含`attributeCC`也不包含`attributeCos`，则服务器将为用户具有读取访问权限的所有属性选项组合返回事件。
+
+##### 例子 { #examples }
+
+查询具有特定组织单位的子级的所有事件：
+
+    /api/29/events.json?orgUnit=YuQRtpLP10I&ouMode=CHILDREN
+
+查询某个组织的所有后代的所有事件
+单位，暗示子层次结构中的所有组织单位：
+
+    /api/33/events.json?orgUnit=O6uvpzGd5pu&ouMode=后代
+
+使用特定程序和组织单位查询所有事件：
+
+    /api/33/events.json?orgUnit=DiszpKrYNg8&program=eBAyeGv0exc
+
+查询具有一定节目和组织单位的所有事件，
+按截止日期排序
+    上升：
+
+    /api/33/events.json?orgUnit=DiszpKrYNg8&program=eBAyeGv0exc&order=dueDate
+
+查询某节目中活动日期最新的10个活动
+和组织单位 - 按到期日降序分页和排序：
+
+    /api/33/events.json?orgUnit=DiszpKrYNg8&program=eBAyeGv0exc
+      ＆order = eventDate：desc＆pageSize = 10＆page = 1
+
+查询具有特定节目和组织单位的所有事件
+特定的跟踪实体实例：
+
+    /api/33/events.json?orgUnit=DiszpKrYNg8
+      ＆program = eBAyeGv0exc＆trackedEntityInstance = gfVxE3ALA9m
+
+查询某个程序和组织单位较旧的所有事件
+或等于
+    2014-02-03：
+
+    /api/33/events.json?orgUnit=DiszpKrYNg8&program=eBAyeGv0exc&endDate=2014-02-03
+
+查询具有一定节目阶段、组织单位和
+2014年被跟踪实体实例：
+
+    /api/33/events.json?orgUnit=DiszpKrYNg8&program=eBAyeGv0exc
+      ＆trackedEntityInstance = gfVxE3ALA9m＆startDate = 2014-01-01＆endDate = 2014-12-31
+
+查询与事件数据值关联的文件。在获取图像文件的特定情况下，可以提供附加参数来获取不同尺寸的图像。如果未提供尺寸，系统将返回原始图像。如果获取非图像文件（例如 pdf），该参数将被忽略。可能的尺寸值为_小(254 x 254)、中(512 x 512)、大(1024 x 1024) 或原始_。除上述值之外的任何值都将被丢弃，并返回原始图像。
+
+    / api / 33 / events / files？eventUid = hcmcWlYkg9u＆dataElementUid = C0W4aFuVm4P＆dimension = small
+
+检索具有指定组织单位和程序的事件，并使用 _Attribute:Gq0oWTf2DtN_ 作为
+标识符方案
+
+    /api/events?orgUnit=DiszpKrYNg8&program=lxAQ7Zs9VYR&idScheme=属性：Gq0oWTf2DtN
+
+检索具有指定组织单位和程序的事件，并使用 UID 作为标识符方案
+orgUnits，代码作为程序阶段的标识符方案，以及 _Attribute:Gq0oWTf2DtN_ 作为标识符
+具有指定属性的其余元数据的方案。
+
+    api/events.json?orgUnit=DiszpKrYNg8&program=lxAQ7Zs9VYR&idScheme=属性：Gq0oWTf2DtN
+      &orgUnitIdScheme=UID&programStageIdScheme=代码
+
+#### 事件网格查询 { #event-grid-query }
+
+除了上面的事件查询端点，还有一个事件网格
+查询终点，其中更紧凑的“网格”事件格式
+回。这可以通过与
+/api/events/query.json|xml|xls|csv 端点。
+
+    / api / 33 / events / query
+
+事件查询和读取中提到的大部分查询参数
+上面的部分在此处有效。但是，由于要返回的网格
+带有适用于所有行（事件）的特定列集，它
+必须指定程序阶段。混合是不可能的
+来自不同程序或程序阶段的事件返回。
+
+从单个程序阶段返回事件，也为新的事件打开
+功能 - 例如根据事件对事件进行排序和搜索
+数据元素值。 api/events/query 对此有支持。以下是
+一些例子
+
+返回仅包含选定数据元素的事件网格的查询
+对于一个程序阶段
+
+    /api/33/events/query.json?orgUnit=DiszpKrYNg8&programStage=Zj7UnCAulEk
+      ＆dataElement = qrur9Dvnyt5，fWIAEtYVEGk，K6uUAvq500H＆order = lastUpdated：desc
+      ＆pageSize = 50＆page = 1＆totalPages = true
+
+返回包含所有数据元素的事件网格的查询
+程序
+    阶段
+
+    /api/33/events/query.json?orgUnit=DiszpKrYNg8&programStage=Zj7UnCAulEk
+      ＆includeAllDataElements = true
+
+基于数据元素过滤事件的查询
+    价值
+
+    /api/33/events/query.json?orgUnit=DiszpKrYNg8&programStage=Zj7UnCAulEk
+      ＆filter = qrur9Dvnyt5：GT：20：LT：50
+
+除了过滤，上面的例子还说明了一个
+事情：没有提到要返回的数据元素的事实
+在网格中。发生这种情况时，系统默认返回只返回
+在程序阶段标记为“在报告中显示”的那些数据元素
+配置。
+
+我们还可以扩展上面的查询以返回一个排序的网格（asc|desc）
+基于数据元素
+    价值
+
+    /api/33/events/query.json?orgUnit=DiszpKrYNg8&programStage=Zj7UnCAulEk
+      ＆filter = qrur9Dvnyt5：GT：20：LT：50＆order = qrur9Dvnyt5：desc
+
+#### 事件过滤器 { #webapi_event_filters }
+
+要创建、读取、更新和删除事件过滤器，您
+可以与`/api/eventFilters` 资源交互。
+
+    / api / 33 / eventFilters
+
+##### 创建和更新事件过滤器定义 { #create-and-update-an-event-filter-definition }
+
+为了在系统中创建和更新事件过滤器，您将使用 _eventFilters_ 资源。 _POST_ 用于创建，_PUT_ 方法用于更新。事件过滤器定义在 Tracker Capture 应用程序中使用，以在跟踪器用户界面中显示相关的预定义“工作列表”。
+
+ <table>
+ <caption>请求有效负载</caption>
+ <colgroup>
+ <col style="width: 33%" />
+ <col style="width: 33%" />
+ <col style="width: 33%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>请求属性</th>
+ <th>说明</th>
+ <th>示例</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td>名称</td>
+ <td>过滤器的名称。 </td>
+ <td>“名称”：“我的工作清单” </td>
+ </tr>
+ <tr class="even">
+ <td>说明</td>
+ <td>过滤器的描述。 </td>
+ <td>“ description”：“用于列出分配给我的所有事件”。 </td>
+ </tr>
+ <tr class="odd">
+ <td>程序</td>
+ <td>程序的uid。 </td>
+ <td>“程序”：“ a3kGcGDCuk6” </td>
+ </tr>
+ <tr class="even">
+ <td>程序阶段</td>
+ <td>程序阶段的uid。 </td>
+ <td>“ programStage”：“ a3kGcGDCuk6” </td>
+ </tr>
+ <tr class="even">
+ <td> eventQueryCriteria </td>
+ <td>包含用于查询，排序和过滤事件的参数的对象。 </td>
+ <td>
+  “ eventQueryCriteria”：{
+    “ organisationUnit”：“ a3kGcGDCuk6”，
+    “ status”：“ COMPLETED”，
+    “创建日期”： {
+      “ from”：“ 2014-05-01”，
+      “至”：“ 2019-03-20”
+    }，
+    “ dataElements”：[“ a3kGcGDCuk6：EQ：1”，“ a3kGcGDCuk6”]，
+    “ filters”：[“ a3kGcGDCukuk：EQ：1”]，
+    “ programStatus”：“ ACTIVE”，
+    “ ouMode”：“已选择”，
+    “ assignedUserMode”：“已提供”，
+    “ assignedUsers”：[“ a3kGcGDCuk7”，“ a3kGcGDCuk8”]，
+    “ followUp”：否，
+    “ trackedEntityInstance”：“ a3kGcGDCuk6”，
+    “事件”：[“ a3kGcGDCuk7”，“ a3kGcGDCuk8”]，
+    “ fields”：“ eventDate，dueDate”，
+    “ order”：“ dueDate：asc，createdDate：desc”
+  }
+ </td>
+ </tr>
+ </tbody>
+ </table>
+
+ <table>
+ <caption>事件查询条件定义</caption>
+ <colgroup>
+ <col style="width: 33%" />
+ <col style="width: 33%" />
+ <col style="width: 33%" />
+ </colgroup>
+ <tbody>
+ <tr class="odd">
+ <td>跟进</td>
+ <td>用于基于注册followUp标志过滤事件。可能的值为true | false。 </td>
+ <td>“ followUp”：真</td>
+ </tr>
+ <tr class="even">
+ <td>组织单位</td>
+ <td>指定组织单位的uid </td>
+ <td>“ organizationUnit”：“ a3kGcGDCuk7” </td>
+ </tr>
+ <tr class="odd">
+ <td> ouMode </td>
+ <td>指定OU选择模式。可能的值是SELECTED |儿童|后裔|可访问性|捕获|所有</td>
+ <td>“ ouMode”：“已选择” </td>
+ </tr>
+ <tr class="even">
+ <td> AssignedUserMode </td>
+ <td>为事件指定分配的用户选择模式。可能的值为CURRENT |提供|无|任何。请参阅下表以了解每个值表示什么。如果设置为PROVIDED（或为null），则将考虑有效负载中的非空AssignedUsers。 </td>
+ <td>“ assignedUserMode”：“已提供” </td>
+ </tr>
+ <tr class="odd">
+ <td>已分配用户</td>
+ <td>指定事件的分配用户列表。与上面的PROVIDEDsignedUserMode一起使用。 </td>
+ <td>“ assignedUsers”：[“ a3kGcGDCuk7”，“ a3kGcGDCuk8”] </td>
+ </tr>
+ <tr class="even">
+ <td> displayOrderColumns </td>
+ <td>指定列</td>的输出顺序
+ <td>“ displayOrderColumns”：[“ eventDate”，“ dueDate”，“ program”] </td>
+ </tr>
+ <tr class="odd">
+ <td>订单</td>
+ <td>以逗号分隔值指定字段的排序/排序及其方向。单个项目的顺序为“ dataItem：direction”。 </td>
+ <td>“ order” =“ a3kGcGDCuk6：desc，eventDate：asc” </td>
+ </tr>
+ <tr class="even">
+ <td>数据过滤器</td>
+ <td>指定在列出事件时要应用的过滤器</td>
+ <td>“ dataFilters” = [{
+      “ dataItem”：“ abcDataElementUid”，
+      “ le”：“ 20”，
+      “ ge”：“ 10”，
+      “ lt”：“ 20”，
+      “ gt”：“ 10”，
+      “在”：[“印度”，“挪威”]，
+      “ like”：“ abc”，
+      “ dateFilter”：{
+        “ startDate”：“ 2014-05-01”，
+        “ endDate”：“ 2019-03-20”，
+        “ startBuffer”：-5，
+        “ endBuffer”：5
+        “ period”：“ LAST_WEEK”，
+        “ type”：“ RELATIVE”
+      }
+    }] </td>
+ </tr>
+ <tr class="odd">
+ <td>状态</td>
+ <td>任何有效的EventStatus </td>
+ <td>“ eventStatus”：“已完成” </td>
+ </tr>
+ <tr class="even">
+ <td>事件</td>
+ <td>指定事件列表</td>
+ <td>“事件” = [“ a3kGcGDCuk6”] </td>
+ </tr>
+ <tr class="odd">
+ <td>完成日期</td>
+ <td> DateFilterPeriod对象基于完成日期的日期过滤。 </td>
+ <td>
+  “ completedDate”：{
+    “ startDate”：“ 2014-05-01”，
+    “ endDate”：“ 2019-03-20”，
+    “ startBuffer”：-5，
+    “ endBuffer”：5
+    “ period”：“ LAST_WEEK”，
+    “ type”：“ RELATIVE”
+  }
+ </td>
+ </tr>
+ <tr class="even">
+ <td>事件日期</td>
+ <td> DateFilterPeriod基于事件日期的对象日期过滤。 </td>
+ <td>
+  “活动日期”： {
+    “ startBuffer”：-5，
+    “ endBuffer”：5
+    “ type”：“ RELATIVE”
+  }
+ </td>
+ </tr>
+ <tr class="odd">
+ <td>到期日期</td>
+ <td> DateFilterPeriod对象基于到期日期的日期过滤。 </td>
+ <td>
+  “截止日期”： {
+    “ period”：“ LAST_WEEK”，
+    “ type”：“ RELATIVE”
+  }
+ </td>
+ </tr>
+ <tr class="even">
+ <td> lastUpdatedDate </td>
+ <td> DateFilterPeriod对象基于最近更新的日期进行日期过滤。 </td>
+ <td>
+  “ lastUpdatedDate”：{
+    “ startDate”：“ 2014-05-01”，
+    “ endDate”：“ 2019-03-20”，
+    “ type”：“绝对”
+  }
+ </td>
+ </tr>
+
+ </tbody>
+ </table>
+
+ <table>
+ <caption> DateFilterPeriod对象定义</caption>
+ <colgroup>
+ <col style="width: 33%" />
+ <col style="width: 33%" />
+ <col style="width: 33%" />
+ </colgroup>
+ <tbody>
+ <tr class="odd">
+ <td>类型</td>
+ 指定日期期间类型是否为ABSOLUTE | <td>相关</td>
+ <td>“ type”：“ RELATIVE” </td>
+ </tr>
+ <tr class="even">
+ <td>周期</td>
+ <td>指定是否使用相对系统定义的时间段。仅在“类型”为相对时适用。 （有关支持的相对周期，请参见<a href="#webapi_date_relative_period_values">相对周期</a>）</td>
+ <td>“句点”：“ THIS_WEEK” </td>
+ </tr>
+ <tr class="odd">
+ <td>开始日期</td>
+ <td>绝对开始日期。仅当“类型”为绝对值时才适用</td>
+ <td>“ startDate”：“ 2014-05-01” </td>
+ </tr>
+ <tr class="even">
+ <td>结束日期</td>
+ <td>绝对结束日期。仅当“类型”为绝对值时才适用</td>
+ <td>“ startDate”：“ 2014-05-01” </td>
+ </tr>
+ <tr class="odd">
+ <td> startBuffer </td>
+ <td>相对的自定义开始日期。仅在“类型”为相对</td>时适用
+ <td>“ startBuffer”：-10 </td>
+ </tr>
+ <tr class="even">
+ <td> endBuffer </td>
+ <td>相对自定义结束日期。仅在“类型”为相对</td>时适用
+ <td>“ startDate”：+ 10 </td>
+ </tr>
+ </tbody>
+ </table>
+
+可用的分配用户选择模式在
+下表。
+
+ <table>
+ <caption>分配的用户选择模式（事件分配）</caption>
+ <colgroup>
+ <col style="width: 20%" />
+ <col style="width: 79%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>模式</th>
+ <th>说明</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td>当前</td>
+ <td>分配给当前登录的用户</td>
+ </tr>
+ <tr class="even">
+ <td>提供了</td>
+ <td>分配给“ assignedUser”参数中提供的用户</td>
+ </tr>
+ <tr class="odd">
+ <td>无</td>
+ <td>分配给任何用户。 </td>
+ </tr>
+ <tr class="even">
+ <td>任意</td>
+ <td>分配给任何用户。 </td>
+ </tr>
+ </tbody>
+ </table>
+
+下面显示了可用于创建/更新eventFilter的示例有效负载。
+
+```json
+{
+    "program": "ur1Edk5Oe2n",
+    "description": "Simple Filter for TB events",
+    "name": "TB events",
+    "eventQueryCriteria": {
+        "organisationUnit": "DiszpKrYNg8",
+        "eventStatus": "COMPLETED",
+        "eventDate": {
+            "startDate": "2014-05-01",
+            "endDate": "2019-03-20",
+            "startBuffer": -5,
+            "endBuffer": 5,
+            "period": "LAST_WEEK",
+            "type": "RELATIVE"
+        },
+        "dataFilters": [
+            {
+                "dataItem": "abcDataElementUid",
+                "le": "20",
+                "ge": "10",
+                "lt": "20",
+                "gt": "10",
+                "in": ["India", "Norway"],
+                "like": "abc"
+            },
+            {
+                "dataItem": "dateDataElementUid",
+                "dateFilter": {
+                    "startDate": "2014-05-01",
+                    "endDate": "2019-03-20",
+                    "type": "ABSOLUTE"
+                }
+            },
+            {
+                "dataItem": "anotherDateDataElementUid",
+                "dateFilter": {
+                    "startBuffer": -5,
+                    "endBuffer": 5,
+                    "type": "RELATIVE"
+                }
+            },
+            {
+                "dataItem": "yetAnotherDateDataElementUid",
+                "dateFilter": {
+                    "period": "LAST_WEEK",
+                    "type": "RELATIVE"
+                }
+            }
+        ],
+        "programStatus": "ACTIVE"
+    }
+}
+```
+
+##### 检索和删除事件过滤器 { #retrieving-and-deleting-event-filters }
+
+可以使用以下api检索特定的事件过滤器
+
+    GET /api/33/eventFilters/{uid}
+
+可以使用以下api检索所有事件过滤器。
+
+    获取 /api/33/eventFilters?fields=*
+
+可以使用以下api检索特定程序的所有事件过滤器
+
+    GET /api/33/eventFilters?filter=program:eq:IpHINAT79UW
+
+可以使用以下API删除事件过滤器
+
+    删除/ api / 33 / eventFilters / {uid}
+
+### 人际关系 { #relationships }
+
+关系是跟踪器中两个实体之间的链接。这些实体可以跟踪实体实例，注册和事件。
+
+有多个端点，可让您查看，创建，删除和更新关系。最常见的是/ api / trackedEntityInstances端点，您可以在其中将关系包括在有效负载中以创建，更新或删除它们（如果忽略它们）-类似于在同一端点中处理注册和事件的方式。如果在字段过滤器中请求，所有跟踪器端点，/ api / trackedEntityInstances，/ api / enrollments和/ api / events也会列出它们的关系。
+
+但是，关系的标准端点是/ api / relationships。该端点为关系提供所有正常的CRUD操作。
+
+列出所有关系要求您提供要列出以下所有关系的trackedEntityInstance，注册或事件的UID：
+
+    GET / api / relationships？tei = ABCDEF12345
+    GET / api / relationships？enrollment = ABCDEF12345
+    GET / api / relationships？event = ABCDEF12345
+
+该请求将返回您有权访问的任何关系的列表，其中包括您指定的trackedEntityInstance，注册或事件。每个关系都使用以下JSON表示：
+
+```json
+{
+    "relationshipType": "dDrh5UyCyvQ",
+    "relationshipName": "Mother-Child",
+    "relationship": "t0HIBrc65Rm",
+    "bidirectional": false,
+    "from": {
+        "trackedEntityInstance": {
+            "trackedEntityInstance": "vOxUH373fy5"
+        }
+    },
+    "to": {
+        "trackedEntityInstance": {
+            "trackedEntityInstance": "pybd813kIWx"
+        }
+    },
+    "created": "2019-04-26T09:30:56.267",
+    "lastUpdated": "2019-04-26T09:30:56.267"
+}
+```
+
+您还可以使用以下端点查看指定的关系：
+
+    GET /api/relationships/<id>
+
+要创建或更新关系，可以使用以下端点：
+
+    POST / api / relationships
+    PUT / api /关系
+
+并使用以下有效负载结构：
+
+```json
+{
+    "relationshipType": "dDrh5UyCyvQ",
+    "from": {
+        "trackedEntityInstance": {
+            "trackedEntityInstance": "vOxUH373fy5"
+        }
+    },
+    "to": {
+        "trackedEntityInstance": {
+            "trackedEntityInstance": "pybd813kIWx"
+        }
+    }
+}
+```
+
+要删除关系，可以使用以下端点：
+
+      删除/ api / relationships / <id>
+
+在示例有效负载中，我们使用trackedEntityInstances之间的关系。因此，有效负载的“从”和“到”属性包括“ trackedEntityInstance”对象。如果您的关系包括其他实体，则可以使用以下属性：
+
+```json
+{
+    "enrollment": {
+        "enrollment": "<id>"
+    }
+}
+```
+
+```json
+{
+    "event": {
+        "event": "<id>"
+    }
+}
+```
+
+### 更新策略 { #webapi_tei_update_strategies }
+
+支持所有 3 个跟踪器端点的两种更新策略：
+注册和事件创建。当您生成一个
+客户端的标识符，不确定它是否被创建
+在服务器上。
+
+ <table>
+ <caption>可用的跟踪器策略</caption>
+ <colgroup>
+ <col style="width: 24%" />
+ <col style="width: 75%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>参数</th>
+ <th>说明</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td>创建</td>
+ <td>仅创建，这是默认行为。 </td>
+ </tr>
+ <tr class="even">
+ <td> CREATE_AND_UPDATE </td>
+ <td>尝试匹配该ID（如果存在），然后更新（如果未创建）。 </td>
+ </tr>
+ </tbody>
+ </table>
+
+要更改参数，请使用策略参数：
+
+    POST / api / 33 / trackedEntityInstances？strategy = CREATE_AND_UPDATE
+
+### 跟踪器批量删除 { #webapi_tracker_bulk_deletion }
+
+Bulk deletion of tracker objects work in a similar fashion to adding and updating tracker objects, the only difference is that the `importStrategy` is _DELETE_.
+
+_示例：批量删除跟踪的实体实例：_
+
+```json
+{
+    "trackedEntityInstances": [
+        {
+            "trackedEntityInstance": "ID1"
+        },
+        {
+            "trackedEntityInstance": "ID2"
+        },
+        {
+            "trackedEntityInstance": "ID3"
+        }
+    ]
+}
+```
+
+```bash
+curl -X POST -d @data.json -H "Content-Type: application/json"
+  "http://server/api/33/trackedEntityInstances?strategy=DELETE"
+```
+
+_示例：批量删除注册：_
+
+```json
+{
+    "enrollments": [
+        {
+            "enrollment": "ID1"
+        },
+        {
+            "enrollment": "ID2"
+        },
+        {
+            "enrollment": "ID3"
+        }
+    ]
+}
+```
+
+```bash
+curl -X POST -d @data.json -H "Content-Type: application/json"
+  "http://server/api/33/enrollments?strategy=DELETE"
+```
+
+_示例：批量删除事件：_
+
+```json
+{
+    "events": [
+        {
+            "event": "ID1"
+        },
+        {
+            "event": "ID2"
+        },
+        {
+            "event": "ID3"
+        }
+    ]
+}
+```
+
+```bash
+curl -X POST -d @data.json -H "Content-Type: application/json"
+  "http://server/api/33/events?strategy=DELETE"
+```
+
+### 通过POST和PUT方法重复使用标识符和删除项目 { #webapi_updating_and_deleting_items }
+
+跟踪器端点 _/trackedEntityInstances_、_/enrollments_、_/events_ 支持 CRUD 操作。系统会跟踪使用过的标识符。因此，已创建然后删除的项目（例如活动、注册）无法再次创建或更新。如果尝试删除已删除的项目，系统将返回成功响应，因为删除已删除的项目意味着没有任何更改。
+
+系统不允许通过更新 (_PUT_) 或创建 (_POST_) 方法删除项目。因此，属性 _deleted_ 在 _PUT_ 和 _POST_ 方法中都会被忽略，并且在 _POST_ 方法中它默认设置为 _false_。
+
+### 导入参数 { #webapi_import_parameters }
+
+可以使用一组导入参数来自定义导入过程：
+
+ <table>
+ <caption> 导入参数 </caption>
+ <thead>
+ <tr class="header">
+ <th> 参数 </th>
+ <th> 值（默认第一个） </th>
+ <th> 说明 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> dataElementIdScheme </td>
+ <td> id |姓名 |代码 |属性：ID </td>
+ <td> 用于映射数据值的数据元素对象的属性。 </td>
+ </tr>
+ <tr class="even">
+ <td> orgUnitIdScheme </td>
+ <td> id |姓名 |代码 |属性：ID </td>
+ <td> 用于映射数据值的组织单位对象的属性。 </td>
+ </tr>
+ <tr class="odd">
+ <td> idScheme </td>
+ <td> id |姓名 |代码|属性：ID </td>
+ <td> 所有对象的属性，包括数据元素、组织单位和类别选项组合，用于映射数据值。 </td>
+ </tr>
+ <tr class="even">
+ <td> dryRun </td>
+ <td> 假 |真 </td>
+ <td> 是在服务器上保存更改还是只返回导入摘要。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 策略 </td>
+ <td> 创建 |更新 | CREATE_AND_UPDATE |删除 </td>
+ <td> 在服务器上保存所有对象、新对象或更新导入状态。 </td>
+ </tr>
+ <tr class="even">
+ <td> 跳过通知 </td>
+ <td> 真|假 </td>
+ <td> 指示是否发送已完成事件的通知。 </td>
+ </tr>
+ <tr class="odd">
+ <td> 跳过第一个 </td>
+ <td> 真|假 </td>
+ <td> 仅与 CSV 导入相关。指示 CSV 文件是否包含应跳过的标题行。 </td>
+ </tr>
+ <tr class="even">
+ <td> importReportMode </td>
+ <td> 已满，错误，调试 </td>
+ <td> 设置`ImportReport`模式，控制导入完成后返回多少。 `ERRORS` 仅包括 <em> ObjectReports </em> 用于有错误的对象。 `FULL` 为所有导入的对象返回一个 <em> ObjectReport </em>，并且 `DEBUG` 返回相同的加上对象的名称（如果可用）。 </td>
+ </tr>
+ </tbody>
+ </table>
+
+#### CSV导入/导出 { #webapi_events_csv_import_export }
+
+除了用于事件导入/导出的 XML 和 JSON 之外，在 DHIS2.17 中我们
+引入了对 CSV 格式的支持。对这种格式的支持建立在
+上一节已经描述过，所以这里我们只写
+CSV 特定部分是什么。
+
+要使用 CSV 格式，您必须使用 `/api/events.csv` 端点，或者在使用 `/api/events` 端点时添加 _content-type: text/csv_ 进行导入，并添加 _accept: text/csv_ 进行导出。
+
+CSV 中用于导出和导入的列的顺序
+如下：
+
+ <table>
+ <caption> CSV 列 </caption>
+ <thead>
+ <tr class="header">
+ <th> 索引 </th>
+ <th> 密钥 </th>
+ <th> </th>型
+ <th> 说明 </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> 1 </td>
+ <td> 事件 </td>
+ <td> 标识符 </td>
+ <td> 事件标识符 </td>
+ </tr>
+ <tr class="even">
+ <td> 2 </td>
+ <td> 状态 </td>
+ <td> 枚举 </td>
+ <td> 事件状态，可以是ACTIVE |已完成 |访问 |预定 |逾期 |跳过 </td>
+ </tr>
+ <tr class="odd">
+ <td> 3 </td>
+ <td> 程序 </td>
+ <td> 标识符 </td>
+ <td> 程序标识符 </td>
+ </tr>
+ <tr class="even">
+ <td> 4 </td>
+ <td> programStage </td>
+ <td> 标识符 </td>
+ <td> 程序阶段标识符 </td>
+ </tr>
+ <tr class="odd">
+ <td> 5 </td>
+ <td> 注册 </td>
+ <td> 标识符 </td>
+ <td> 注册标识符（程序实例） </td>
+ </tr>
+ <tr class="even">
+ <td> 6 </td>
+ <td> 组织单位 </td>
+ <td> 标识符 </td>
+ <td> 组织单元标识符 </td>
+ </tr>
+ <tr class="odd">
+ <td> 7 </td>
+ <td> eventDate </td>
+ <td> 日期 </td>
+ <td> 事件日期 </td>
+ </tr>
+ <tr class="even">
+ <td> 8 </td>
+ <td> 到期日期 </td>
+ <td> 日期 </td>
+ <td> 到期日 </td>
+ </tr>
+ <tr class="odd">
+ <td> 9 </td>
+ <td> 纬度 </td>
+ <td> 双 </td>
+ <td> 事件发生的纬度 </td>
+ </tr>
+ <tr class="even">
+ <td> 10 </td>
+ <td> 经度 </td>
+ <td> 双 </td>
+ <td> 事件发生的经度 </td>
+ </tr>
+ <tr class="odd">
+ <td> 11 </td>
+ <td> 数据元素 </td>
+ <td> 标识符 </td>
+ <td> 数据元素的标识符 </td>
+ </tr>
+ <tr class="even">
+ <td> 12 </td>
+ <td> 值 </td>
+ <td> 字符串 </td>
+ <td> 事件的值/度量 </td>
+ </tr>
+ <tr class="odd">
+ <td> 13 </td>
+ <td> 由 </td> 存储
+ <td> 字符串 </td>
+ <td> 事件由（默认为当前用户）存储 </td>
+ </tr>
+ <tr class="even">
+ <td> 14 </td>
+ <td> 提供其他地方 </td>
+ <td> 布尔值 </td>
+ <td> 这个值是不是在其他地方收集的 </td>
+ </tr>
+ <tr class="odd">
+ <td> 14 </td>
+ <td> 完成日期 </td>
+ <td> 日期 </td>
+ <td> 事件完成日期 </td>
+ </tr>
+ <tr class="even">
+ <td> 14 </td>
+ <td>已完成</td>
+ <td> 字符串 </td>
+ <td> 完成事件的用户的用户名 </td>
+ </tr>
+ </tbody>
+ </table>
+
+_2 个事件的示例，每个事件有 2 个不同的数据值：_
+
+```csv
+EJNxP3WreNP，COMPLETED，<pid>，<psid>，<enrollment-id>，<ou>，2016-01-01,2016-01-01 ,,, <de>，1 ,,
+EJNxP3WreNP，COMPLETED，<pid>，<psid>，<enrollment-id>，<ou>，2016-01-01,2016-01-01 ,,, <de>，2 ,,
+qPEdI1xn7k0，COMPLETED，<pid>，<psid>，<enrollment-id>，<ou>，2016-01-01,2016-01-01 ,,, <de>，3 ,,
+qPEdI1xn7k0，COMPLETED，<pid>，<psid>，<enrollment-id>，<ou>，2016-01-01,2016-01-01 ,,, <de>，4 ,,
+```
+
+#### 导入策略：SYNC { #webapi_sync_import_strategy }
+
+导入策略 SYNC 应仅用于内部同步
+任务而不是常规导入。 SYNC 策略允许所有 3
+操作：CREATE、UPDATE、DELETE 出现在有效载荷中
+同时。
+
+### 跟踪器所有权管理 { #webapi_tracker_ownership_management }
+
+从 2.30 开始引入了一个名为 Tracker Ownership 的新概念。现在，程序上下文中的跟踪实体实例将有一个所有者组织单位。配置为_PROTECTED_ 或_CLOSED_ 访问级别的程序将遵守所有权特权。只有属于被跟踪实体-计划组合的所属组织单位的用户才能够访问与该被跟踪实体的该计划相关的数据。
+
+#### 跟踪器所有权优先：打破常规 { #webapi_tracker_ownership_override_api }
+
+It is possible to temporarily override this ownership privilege for a program that is configured with an access level of _PROTECTED_. Any user will be able to temporarily gain access to the program related data, if the user specifies a reason for accessing the tracked entity-program data. This act of temporarily gaining access is termed as _breaking the glass_. Currently, the temporary access is granted for 3 hours. DHIS2 audits breaking the glass along with the reason specified by the user. It is not possible to gain temporary access to a program that has been configured with an access level of _CLOSED_. To break the glass for a tracked entity program combination, you can issue a POST request as shown:
+
+    / api / 33 / tracker / ownership / override？trackedEntityInstance = DiszpKrYNg8
+      ＆program = eBAyeGv0exc＆reason =耐心+显示+急诊+急诊
+
+#### 跟踪器所有权转移 { #webapi_tracker_ownership_transfer_api }
+
+可以转移被跟踪实体程序的所有权
+从一个组织单位到另一个组织单位。这将有助于患者
+转介或迁移。只有所有者（或破坏了
+glass）可以转让所有权。转移被跟踪的所有权
+entity-program 到另一个组织单位，你可以发出 PUT 请求
+如图所示：
+
+    / api / 33 / tracker /所有权/转让？trackedEntityInstance = DiszpKrYNg8
+      ＆program = eBAyeGv0exc＆ou = EJNxP3WreNP
+
+## 潜在重复 { #potential-duplicates }
+
+潜在的重复项是我们在重复数据删除功能中使用的记录。由于重复数据删除功能的性质，此API端点受到一定程度的限制。
+
+潜在的重复表示怀疑是重复的单个或一对记录。
+
+潜在重复项的有效负载如下所示：
+
+```json
+{
+    "teiA": "<id>",
+    "teiB": "<id>",
+    "status": "OPEN|INVALID|MERGED"
+}
+```
+
+您可以使用以下端点检索可能重复的列表：
+
+    GET /api/潜在重复项
+
+另外，您可以检查单个记录：
+
+    GET /api/潜在重复项/<id>
+
+要创建新的潜在重复项，可以使用以下端点：
+
+    POST / api / potentialDuplicates
+
+您提供的有效负载至少需要_teiA_才能成为有效的跟踪实体实例； _teiB_是可选的。如果设置了_teiB_，则还需要指向现有的跟踪实体实例。
+
+```json
+{
+    "teiA": "<id>",
+    "teiB": "<id>"
+}
+```
+
+您可以将潜在的重复标记为_invalid_，以告知系统潜在的重复已被调查并视为不是重复。为此，您可以使用以下端点：
+
+    PUT /api/potentialDuplicates/<id>/invalidation
+
+要硬删除潜在的重复项：
+
+    删除/ api / potentialDuplicates / <id>
+
+## 计划讯息 { #webapi_program_messages }
+
+程序消息可让您向跟踪的实体实例发送消息，
+与组织单位关联的联系地址、电话号码和
+电子邮件地址。您可以通过 `messages` 资源发送消息。
+
+    / api / 33 /消息
+
+### 发送程序信息 { #sending-program-messages }
+
+程序消息可以使用两个传递渠道发送：
+
+-   短信（SMS）
+
+-   电子邮件地址（EMAIL）
+
+程序消息可以发送给各种收件人：
+
+-   跟踪的实体实例：系统将查找值类型为 PHONE_NUMBER 或 EMAIL 的属性（取决于指定的传递渠道）并使用相应的属性值。
+
+-   组织单位：系统将使用为组织单位注册的电话号码或电子邮件信息。
+
+-   电话号码列表：系统将使用明确定义的电话号码。
+
+-   电子邮件地址列表：系统将使用明确定义的电子邮件地址。
+
+下面是使用 POST 请求发送消息的示例 JSON 负载。
+请注意，消息资源接受一个名为
+`programMessages` 可以包含任意数量的程序消息。
+
+    开机自检/ api / 33 / messages
+
+```json
+{
+    "programMessages": [
+        {
+            "recipients": {
+                "trackedEntityInstance": {
+                    "id": "UN810PwyVYO"
+                },
+                "organisationUnit": {
+                    "id": "Rp268JB6Ne4"
+                },
+                "phoneNumbers": ["55512345", "55545678"],
+                "emailAddresses": ["johndoe@mail.com", "markdoe@mail.com"]
+            },
+            "programInstance": {
+                "id": "f3rg8gFag8j"
+            },
+            "programStageInstance": {
+                "id": "pSllsjpfLH2"
+            },
+            "deliveryChannels": ["SMS", "EMAIL"],
+            "notificationTemplate": "Zp268JB6Ne5",
+            "subject": "Outbreak alert",
+            "text": "An outbreak has been detected",
+            "storeCopy": false
+        }
+    ]
+}
+```
+
+下表中说明了这些字段。
+
+ <table>
+ <caption>程序消息有效负载</caption>
+ <colgroup>
+ <col style="width: 21%" />
+ <col style="width: 21%" />
+ <col style="width: 31%" />
+ <col style="width: 26%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>字段</th>
+ <th>必需</th>
+ <th>说明</th>
+ <th>值</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td>收件人</td>
+ <td>是</td>
+ <td>程序消息的收件人。必须至少指定一个收件人。可以为邮件指定任意数量的收件人/类型。 </td>
+ <td>可以跟踪EntityInstance，organizationunit，phoneNumbers数组或emailAddresses数组。 </td>
+ </tr>
+ <tr class="even">
+ <td>程序实例</td>
+ <td>这或programStageInstance必需</td>
+ <td>程序实例/注册。 </td>
+ <td>注册ID。 </td>
+ </tr>
+ <tr class="odd">
+ <td>程序舞台实例</td>
+ <td>这个或programInstance必需</td>
+ <td>程序阶段实例/事件。 </td>
+ <td>事件ID。 </td>
+ </tr>
+ <tr class="even">
+ <td>交付渠道</td>
+ <td>是</td>
+ <td>交付渠道数组。 </td>
+ SMS | <td>电子邮件</td>
+ </tr>
+ <tr class="odd">
+ <td>主题</td>
+ <td>否</td>
+ <td>邮件主题。不适用于短信传送渠道。 </td>
+ <td>文本。 </td>
+ </tr>
+ <tr class="even">
+ <td>文字</td>
+ <td>是</td>
+ <td>消息文本。 </td>
+ <td>文本。 </td>
+ </tr>
+ <tr class="odd">
+ <td>商店复制</td>
+ <td>否</td>
+ <td>是否在DHIS2中存储程序消息的副本。 </td>
+ <td>否（默认）|真</td>
+ </tr>
+ </tbody>
+ </table>
+
+通过 SMS 向被跟踪对象发送消息的简约示例
+实体实例如下所示：
+
+```bash
+curl -d @message.json "https://play.dhis2.org/demo/api/33/messages"
+  -H "Content-Type:application/json" -u admin:district
+```
+
+```json
+{
+    "programMessages": [
+        {
+            "recipients": {
+                "trackedEntityInstance": {
+                    "id": "PQfMcpmXeFE"
+                }
+            },
+            "programInstance": {
+                "id": "JMgRZyeLWOo"
+            },
+            "deliveryChannels": ["SMS"],
+            "text": "Please make a visit on Thursday"
+        }
+    ]
+}
+```
+
+### 检索和删除程序消息 { #retrieving-and-deleting-program-messages }
+
+可以使用GET检索消息列表。
+
+    获取/api/33/消息
+
+要获取已发送跟踪器消息的列表，可以使用以下端点。必须提供 ProgramInstance 或 ProgramStageInstance uid。 GET /api/33/messages/scheduled/sent?programInstance={uid} GET /api/33/messages/scheduled/sent?programStageInstance={uid} 
+
+获取所有预定消息的列表
+
+    GET / api / 33 / messages / scheduled
+    GET / api / 33 / messages / scheduled？scheduledAt = 2020-12-12
+
+也可以使用GET检索一条特定的消息。
+
+    GET /api/33/messages/{uid}
+
+可以使用DELETE删除消息。
+
+    删除/ api / 33 / messages / {uid}
+
+### 查询程序信息 { #querying-program-messages }
+
+程序消息API支持基于
+请求参数。可以根据下面提到的过滤消息
+查询参数。所有请求都应使用 GET HTTP 动词
+检索信息。
+
+ <table>
+ <caption>查询程序消息API </caption>
+ <colgroup>
+ <col style="width: 25%" />
+ <col style="width: 75%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>参数</th>
+ <th> URL </th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td>程序实例</td>
+ <td> / api / 33 / messages？programInstance = 6yWDMa0LP7 </td>
+ </tr>
+ <tr class="even">
+ <td>程序舞台实例</td>
+ <td> / api / 33 / messages？programStageInstance = SllsjpfLH2 </td>
+ </tr>
+ <tr class="odd">
+ <td> trackedEntityInstance </td>
+ <td> / api / 33 / messages？trackedEntityInstance = xdfejpfLH2 </td>
+ </tr>
+ <tr class="even">
+ <td>组织单位</td>
+ <td> / api / 33 / messages？ou = Sllsjdhoe3 </td>
+ </tr>
+ <tr class="odd">
+ <td>处理日期</td>
+ <td> / api / 33 / messages？processedDate = 2016-02-01 </td>
+ </tr>
+ </tbody>
+ </table>

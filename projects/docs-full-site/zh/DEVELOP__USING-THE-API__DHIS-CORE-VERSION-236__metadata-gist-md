@@ -1,0 +1,614 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.36/src/developer/web-api/metadata-gist.md"
+revision_date: "2021-06-14"
+tags:
+    - Develop
+    - DHIS 核心版本 2.36
+---
+
+# 元数据要点 API { #gist_api }
+
+<!--DHIS2-SECTION-ID:gist_api-->
+
+元数据 Gist API 是一个 RESTful 只读 JSON API，用于获取和浏览元数据。此 API 中的项目包含元数据 API 中相同项目的要点。
+
+该 API 专门设计用于避免：
+
+-   由于包含部分嵌套对象图，响应负载较大
+-   请求的内存处理需要大量资源（例如内存过滤或对象图遍历）
+-   _n + 1_ 次数据库查询是渲染响应时对象图遍历的结果
+
+## 与元数据 API 的比较 { #gist_vs_metadata_api }
+
+<!--DHIS2-SECTION-ID:gist_vs_metadata_api-->
+
+标准元数据 API 是一个灵活而强大的 API，旨在服务于任何用例。这样做的缺点是，并非所有功能和组合都可以扩展，同时在存在大量项目的情况下保持良好的性能。特别是包含项目的列表，其中每个项目本身都有一个属性，该属性是复杂对象的大型集合，这已被证明是有问题的，因为它们快速引用整个对象图的很大一部分。
+
+添加 `/gist` API 是为了提供一个元数据 API，在这个 API 中，良好的扩展性是我们的首要任务。这样做的不利之处在于，技术上合理的功能限制更加明显，这意味着标准元数据 API 的所有功能都不适用 Gist API。
+
+The Gist API uses a divide and conquer strategy to avoid responses with large partial object graphs. Instead of including nested objects or lists it provides a `/gist` endpoint URI where this object or list can be viewed in isolation. **The `/gist` API refers to nested data using URIs rather than including it.** This means if a client is interested in this nested information more request are required but each of them is kept reasonable small and will scale well in context of huge number of potential items.
+
+已知差异：
+
+-   项目从不包含具有可识别对象或此类对象列表的字段
+-   默认情况下，项目不包括所有可用字段，而是取决于上下文和参数的子集
+-   列表不能在没有 pager 的情况下使用（因此没有 `pager` 参数）
+-   fields with collections are not paged using the `pager`-transformer but through a paged API endpoint for the particular collection property
+-   列表中的项目、集合属性大小或布尔转换器结果始终考虑对象共享（所考虑的项目集始终是用户可见的集）
+-   Gist 提供 `member(<id>)` 和 `not-member(<id>)` 集合字段转换器
+
+已知限制：
+
+-   只能包含持久化字段或合成字段（基于持久化字段的字段）
+-   过滤器只能应用于持久化字段
+-   订单只能应用于持久化字段
+-   类似过滤器始终不区分大小写
+-   令牌过滤器不可用
+-   顺序始终区分大小写
+-   `pluck` 转换器仅限于文本属性
+-   保存简单（不可识别）项目集合的字段并不总是包含在内，具体取决于它们的存储方式
+
+在可能的情况下，使用 `/gist` API 应被视为获取元数据信息的首选方式。
+
+## 端点 { #gist_endpoints }
+
+<!--DHIS2-SECTION-ID:gist_endpoints-->
+
+`/gist` API 有 3 种端点：
+
+-   `/api/<object-type>/gist`：该类型的所有已知和可见对象的分页列表（隐式 `auto=S`）
+-   `/api/<object-type>/<object-id>/gist`：按 ID 查看单个对象（隐式 `auto=L`）
+-   `/api/<object-type>/<object-id>/<field-name>/gist`：所有者对象字段集合中所有已知和可见项的分页列表（隐式 `auto=M`；如果是简单字段，则只显示字段值）。
+
+这些端点对应于标准元数据 API 的端点，没有 `/gist` 后缀，并与该 API 共享大部分参数及其选项。
+
+## 浏览数据{ #gist_browse }
+
+<!--DHIS2-SECTION-ID:gist_browse-->
+
+由于 `/gist` API 在响应中避免了深度嵌套的数据结构，因此引用的复杂对象或对象列表的详细信息以 URI 的形式提供给仅返回复杂对象或对象列表的 gist 端点。这些 URI 由项目的`apiEndpoints`字段提供，当此类引用存在时，该字段会自动添加到项目中。项目属性本身可能包含对象或集合的转换结果，例如其大小、空性、非空性、id(s) 或采摘属性（例如其名称）。
+
+要手动浏览数据，使用` absoluteUrls=true` 参数会很方便。现在可以在呈现 JSON 响应的浏览器中直接遵循要点部分之间的链接。
+
+## 参数 { #gist_parameters }
+
+<!--DHIS2-SECTION-ID:gist_parameters-->
+
+`/gist` API 的所有端点都接受相同的参数集。在端点上下文中没有意义的参数及其选项将被忽略。
+
+### 总览 { #overview }
+
+参数按字母顺序排列：
+
+-   `absoluteUrls`: `true` (默认) 在链接中使用相对路径，`false` 在链接中使用绝对 URL
+-   `auto`：`*` 字段选择器选择的字段的 `XS`、`S`、`M`、`L`、`XL` 范围
+-   `fields`：以逗号分隔的要包含的字段列表（默认为`*`）
+-   `filter`：逗号分隔的查询字段过滤器列表（可以多次使用）
+-   `headless`: `true` 在分页器中跳过包装结果（忽略 `total`），`false`（默认）在结果列表周围使用分页器包装器对象
+-   `inverse`: `true` 返回列表中**不**的项目，`false`（默认）返回列表中的项目
+-   `order`：查询顺序字段的逗号分隔列表（可以多次使用）
+-   `page`: `{1..n}` 页码
+-   `pageSize`: `{1..1000}` 页面上的项目数（默认为 50）
+-   `rootJunction`：`过滤器`的`AND`（默认）或`OR`组合
+-   `total`: `true` 将匹配总数添加到寻呼机，`false` (默认) 跳过匹配总数的计数
+-   `translate`: `true` （默认）翻译所有可翻译属性，`false` 跳过可翻译属性的翻译（对合成显示名称没有影响）
+
+### `absoluteUrls` 参数 { #gist_parameters_absoluteUrls }
+
+<!--DHIS2-SECTION-ID:gist_parameters_absoluteUrls-->
+
+By default, URIs in `apiEndpoints`, `href` and the `pager`'s`prev` and `next` members are relative, starting with `/<object-type>/` path.
+
+可以使用 `absoluteUrls` 参数将 URI 更改为绝对 URL。
+
+例如，`/api/users/rWLrZL8rP3K/gist?fields=id,href` 返回：
+
+```json
+{
+    "id": "rWLrZL8rP3K",
+    "href": "/users/rWLrZL8rP3K/gist"
+}
+```
+
+而 `/api/users/rWLrZL8rP3K/gist?fields=id,href&absoluteUrls=true` 返回：
+
+```json
+{
+    "id": "rWLrZL8rP3K",
+    "href": "http://localhost:8080/api/users/rWLrZL8rP3K/gist?absoluteUrls=true"
+}
+```
+
+如示例所示，`absoluteUrls`参数也被转发或转移到包含的 URL，因此允许按照提供的 URL 浏览响应。
+
+### `auto` 参数 { #the-auto-parameter }
+
+每个端点都会隐式地为`*`/`:all`字段选择器匹配的字段范围设置默认值：
+
+-   `/api/<object-type>/gist`：暗示 `auto=S`
+-   `/api/<object-type>/<object-id>/gist`：暗示 `auto=L`
+-   `/api/<object-type>/<object-id>/<field-name>/gist`：暗示`自动=M`
+
+`auto` 参数用于手动覆盖默认值，以使列表项包含更多或更少的字段。此设置再次充当默认值，可以使用显式转换在每个字段的基础上进一步覆盖。
+
+`auto` 的可能选项有（“T 恤尺寸”）：
+
+-   `XS`：仅包含 ID 和文本属性
+-   `S`：排除复杂（对象）属性，集合仅链接（不计数）
+-   `M`：复杂的包含作为参考 URL，集合作为计数和参考 URL
+-   `L`: like `M` but collections included as list of IDs (OBS! unbound in size)
+-   `XL`：类似于 `L`，但集合作为 ID 对象包含在内：`{ "id": <id> }`
+
+例如，`/api/users/gist` 将列出包含`id`、`surname`、`firstName`、`phoneNumber`、`email`、`lastUpdated` 字段的项目，而`/api/users/gist?auto=XS` 只列出`id`、`surname`、`firstName`、`phoneNumber`、`email`。使用 `/api/users/gist?auto=L`，还将包括`organisationUnits`、`dataViewOrganisationUnits`、`teiSearchOrganisationUnits` 和`userGroups`，每个列表/集合中都有成员的 ID 列表。
+
+### `fields` 参数 { #gist_parameters_fields }
+
+<!--DHIS2-SECTION-ID:gist_parameters_fields-->
+
+指定每个列表项要包含的字段列表。
+
+字段包含在提供顺序中的项目的结果 JSON 对象中。字段列表中的预设扩展为它在其出现的`字段`列表中的位置包含的字段。预设中的字段按从简单到复杂的顺序排列。
+
+如果没有提供 `fields` 参数，则假定`fields=*`。请注意，`*` 预置的字段也取决于 `auto` 参数
+
+要删除字段，请使用字段列表中的 `!<name>` 或 `-<name>`。例如，要删除用户的 userGroups，请使用
+
+    /api/users/gist?fields=*,!userGroups
+
+同样的原理也可以用于指定用于现场的变压器。例如，要包含用户的用户组的 ID，请使用：
+
+    /api/users/gist?fields=*,userGroups::ids
+
+当使用这样的字段预设时，重要的是要记住每个字段的最后一个声明优先于先前的声明。以相反的顺序
+
+    /api/users/gist?fields=userGroups::ids,*
+
+`userGroups` 不会显示 ID，因为 `*` 在其他字段中扩展为 `userGroups::none`，它取代了显式的 `userGroups::ids`。
+
+只要存在 1:1 的关系，`fields`参数确实允许列出嵌套对象的字段。例如，要将 `userCredentials` 添加到用户的 `id` 和 `name` 中，请使用
+
+    /api/users/gist?fields=*,userCredentials[id,用户名]
+
+这将创建以下形式的项目：
+
+```json
+{
+  ...
+  "userCredentials": {
+    "id": "Z9oOHPi3FHB",
+    "username": "guest"
+  }
+}
+```
+
+部分克服 1:1 限制并包含嵌套集合字段的方法是 `pluck` 转换器。例如，它可以通过以下方式包含用户的 `userGroups` 中的所有 `name` 字段：
+
+    /api/users/gist?fields=*,userGroups::pluck(名称)
+
+This lists the `userGroups` as:
+
+```json
+{
+    "userGroups": [
+        "_PROGRAM_Inpatient program",
+        "_PROGRAM_TB program",
+        "_DATASET_Superuser",
+        "_PROGRAM_Superuser",
+        "_DATASET_Data entry clerk",
+        "_DATASET_M and E Officer"
+    ]
+}
+```
+
+当请求单个字段时，例如`/api/users/gist?fields=surname`，响应是一个（仍然分页的）简单值列表：
+
+```json
+{
+  "pager": {
+    "page": 1,
+    "pageSize": 50
+  },
+  "users": [
+    "Kamara",
+    "Wakiki",
+    "Nana",
+    "Malai",
+    ...
+  ]
+}
+```
+
+当请求具有简单（非集合）值的特定所有者对象的单个字段时，例如`/api/users/rWLrZL8rP3K/gist?fields=surname`，响应仅包含纯 JSON 值：
+
+```json
+"Wakiki"
+```
+
+有关字段预设的更多详细信息，请参阅[字段](#gist_fields) 部分。
+
+### `filter` 参数 { #gist_parameters_filter }
+
+<!--DHIS2-SECTION-ID:gist_parameters_filter-->
+
+要过滤返回的项目列表，请添加一个或多个`过滤器`参数。
+
+Multiple filters can either be specified as comma seperated list of a single `filter` parameter or as multiple `filter` parameters each with a single filter.
+
+有两种类型的过滤器：
+
+-   一元：`<field>：<operator>`
+-   二进制：`<field>:<operator>:<value>`
+
+字段必须是列出的项类型的持久字段或直接引用对象的字段（1:1 关系）。
+
+可用的一元运算符有：
+
+-   `null`：字段为_null_（未定义）
+-   `!null`：字段_不为空_（已定义）
+-   `empty`：字段是一个_empty_集合
+-   `!empty`：字段是一个_非空_集合
+
+可用的二元运算符有：
+
+-   `eq`：字段_等于_值
+-   `!eq`, `neq`, `ne`: field is _not equal_ value
+-   `lt`：字段_小于_值
+-   `le`、`lte`：字段_小于或等于_值
+-   `gt`: field is _greater than_ value
+-   `ge`, `gte`: field is _greater than or equal to_ value
+-   `in`: field is a collection and value is an item _contained in_ the collection
+-   `!in`：字段是一个集合，值是一个_不包含在_集合中的项目
+
+如果`in`或`!in`过滤器的`<value>`是一个列表，则以`[value1,value2,...]`的形式给出，例如：`userGroups:in:[fbfJHSPpUQD,cYeuwXTCPkU]`。
+
+任何应用于具有数值的集合字段的 `>`、`>=`、`<`、`<=`、`==` 或 `!=` 比较都会将集合的大小与值进行比较，例如: `用户组:gt:0`。
+
+可用的二进制模式匹配运算符有：
+
+-   `like`, `ilike`: field _contains_ `<value>` or field _matches_ pattern `<value>` (when wildcards `*` or `?` in value)
+-   `!like`, `!ilike`: field does _not contain_ `<value>` or field does _not match_ pattern `<value>` (when wildcards `*` or `?` in value)
+-   `$like`、`$ilike`、`startsWith`：字段 _startswith_ `<value>`
+-   `!$like`, `!$ilike`: field does _not start with_ `<value>`
+-   `like$`、`ilike$`、`endsWith`：字段 _ends with_ `<value>`
+-   `!like$`、`!ilike$`：字段_不以_`<value>` 结尾
+
+The `like` and `!like` operators can be used by either providing a search term in which case a match is any value where the term occurs anywhere or they can be used by providing the search pattern using `*` as _any number of characters_ and `?` any single character.
+
+一些运算符具有多个别名以向后兼容标准元数据 API。对于 gist API 来说，任何类似的内容始终不区分大小写。
+
+例如，仅列出第二级组织使用
+
+    /api/organizationUnits/gist?filter=level:eq:2
+
+同样，当列出特定组织单元的`子级`时，可以过滤集合。要仅列出连接到程序的那些孩子，可以使用：
+
+    /api/organizationUnits/rZxk3S0qN63/children/gist?filter=程序:gt:0
+
+### `headless` 参数 { #gist_parameters_headless }
+
+<!--DHIS2-SECTION-ID:gist_parameters_headless-->
+
+默认情况下，返回列表的端点使用包含`寻呼机`和列表的信封包装项目，该列表根据列出的对象类型命名。
+
+例如 `/api/organizationUnits/gist` 返回：
+
+```json
+{
+  "pager": {
+    "page": 1,
+    "pageSize": 50,
+    "nextPage": "/organisationUnits/gist?page=2"
+  },
+  "organisationUnits": [
+    ...
+  ]
+}
+```
+
+在`headless=true`的情况下，对`/api/organisationUnits/gist?headless=true`的响应只是上例中的`[...]`列表部分。
+
+### `inverse` 参数 { #the-inverse-parameter }
+
+`inverse` 可以在 `/api/ <object-type> / <object-id> / <field-name> /gist` 形式的集合字段 gist 的上下文中使用，以不列出成员集合中包含的所有项目，但所有项目都**不是** 包含在成员集合中。
+
+例如，虽然
+
+    /api/organizationUnits/rZxk3S0qN63/children/gist
+
+将列出作为`rZxk3S0qN63`子级的所有组织单位
+
+    /api/organizationUnits/rZxk3S0qN63/children/gist?inverse=true
+
+将列出所有不是 `rZxk3S0qN63` 子级的组织单位。这将例如用于组成可以作为特定单元的子单元的所有单元的列表。
+
+过滤器和订单通常适用，这意味着它们过滤或排序未包含在成员集合中的项目。
+
+### `order` 参数 { #gist_parameters_order }
+
+<!--DHIS2-SECTION-ID:gist_parameters_order-->
+
+为了对项目列表进行排序，可以给出一个或多个顺序表达式。
+
+顺序表达式可以是一个持久化字段的字段名，也可以是一个字段名后跟有 `:asc`（升序，默认值）或 `:desc`（降序）的字段名。
+
+例如，要按名称字母顺序对组织单位进行排序，请使用：
+
+    /api/organizationUnits/gist?order=名称
+
+逆字母顺序将使用：
+
+    /api/organizationUnits/gist?order=name:desc
+
+要首先按级别排序组织单位，然后按名称排序，请使用：
+
+    /api/organizationUnits/gist?order=级别,名称
+
+这将从级别 1 的根开始。要从叶单元开始，请使用：
+
+    /api/organizationUnits/gist?order=level:desc,名称
+
+如果未指定顺序，结果列表将具有基于内部数据组织的稳定顺序。
+
+### `page` 参数 { #gist_parameters_page }
+
+<!--DHIS2-SECTION-ID:gist_parameters_page-->
+
+指在分页列表中查看的页面，以`1`开头的第一页。
+
+如果不存在`page`参数，则等于`page=1`。
+
+The `page` is always in relation to the `pageSize`. If a `page` is given beyond the number of existing matches an empty item list is returned.
+
+### `pageSize` 参数 { #gist_parameters_pageSize }
+
+<!--DHIS2-SECTION-ID:gist_parameters_pageSize-->
+
+指的是`页面`上的项目数。最多 1000 个项目。
+
+如果没有`pageSize`参数，则等于`pageSize=50`。
+
+### `rootJunction` 参数 { #gist_parameters_rootJunction }
+
+<!--DHIS2-SECTION-ID:gist_parameters_rootJunction-->
+
+`rootJunction` 参数可用于显式设置过滤器之间使用的逻辑连接点。可能的是：
+
+-   `AND`: all filters have to match an entry for it to be included in the results
+-   `OR`: any of the filters matches an entry for it to be included in the results
+
+默认为`与`。
+
+### `total` 参数 { #gist_parameters_total }
+
+<!--DHIS2-SECTION-ID:gist_parameters_total-->
+
+默认情况下，要点查询将**不**计算匹配总数，如果这些匹配超过`pageSize`限制。相反，我们选择加入总计数所涉及的额外成本。
+
+当不计算总匹配数（`total=false`）时，响应`pager`将假定存在`next`页面，以防找到`pageSize`项目。然而，当浏览到该页面时，这可能会被证明是错误的。此外，`寻呼机`中不包含表示总匹配数的`total`字段。
+
+例如，`/api/organisationUnits/gist` 返回一个`pager`：
+
+```json
+{
+    "pager": {
+        "page": 1,
+        "pageSize": 50,
+        "nextPage": "/organisationUnits/gist?page=2"
+    }
+}
+```
+
+当计算总匹配数（`total=true`）时，响应`pager`将包含`total`字段，其中包含实际的总匹配数，但这需要额外的数据库操作。
+
+对 `/api/organisationUnits/gist?total=true`的响应现在会返回这个 `pager`：
+
+```json
+{
+    "pager": {
+        "page": 1,
+        "pageSize": 50,
+        "total": 1332,
+        "nextPage": "/organisationUnits/gist?total=true&page=2",
+        "pageCount": 27
+    }
+}
+```
+
+### `translate` 参数 { #gist_parameters_translate }
+
+<!--DHIS2-SECTION-ID:gist_parameters_translate-->
+
+像`name`或`shortName`这样的字段可以被翻译（国际化）。
+
+默认情况下，只要请求要点的用户配置了界面语言，任何具有翻译的可翻译字段都会返回翻译后的结果。
+
+要返回普通的非翻译字段，请使用 `translate=false`。
+
+例如，`/api/organisationUnits/gist` 会返回如下项目：
+
+```json
+{
+  "name": "A translated name",
+  ...
+}
+```
+
+而 `/api/organizationUnits/gist?translate=false` 将返回如下项目：
+
+```json
+{
+  "name"
+  "Plain field name",
+  ...
+}
+```
+
+请注意，合成字段 `displayName` 和 `displayShortName` 始终返回独立于 `translate` 参数的翻译值。
+
+## 字段{ #gist_fields }
+
+<!--DHIS2-SECTION-ID:gist_fields-->
+
+默认包含的字段（没有 `fields` 参数）对应于 `fields=*`。这意味着显示的字段列表取决于对象类型、端点上下文以及`auto`参数。
+
+请注意，`/gist` API 总是排除某些客户通常不感兴趣的字段，例如`翻译`或`共享`字段。可以明确添加这些字段。
+
+当`fields`参数中没有明确提供名称时，字段列表是根据预设计算的。可以在字段列表中使用预设，例如字段名称。它根据对象类型、使用的端点和选择器扩展为零、一个或多个字段。
+
+### 字段预设 { #field-presets }
+
+-   `*` / `:all`：默认字段取决于上下文和 `auto` 参数
+-   `:identific`：`IdentifyingObject` 接口的所有持久化字段
+-   `:owner`：列出的类型是所有者的所有持久字段
+-   `:nameable`：`NameableObject` 接口的所有持久字段
+-   `:persisted`：字面上所有持久化字段
+
+### 场变压器 { #field-transformers }
+
+通过在转换器表达式后附加任何指示符`::`、`~`或`@`，可以将转换器或转换应用于字段。
+
+可用的变压器表达式有：
+
+-   `rename(<name>)`：将响应中的字段重命名为 `<name>`
+-   `size` => `number`: 集合字段中的项目数量
+-   `isEmpty` => `boolean`：集合字段为空
+-   `isNotEmpty` => `boolean`：集合字段非空
+-   `ids` => (array of) `string`: 对象的 ID 或集合项的 ID
+-   `id-objects` => array of `{ "id": <id> }`：作为对象的集合项的 ID
+-   `member(<id>)` => `boolean`：具有集合字段为 `<id>` 的成员
+-   `not-member(<id>)` => `boolean`：集合字段中没有包含 `<id>` 的成员
+-   `pluck(<field>)` => （数组）`string`：提取对象或每个集合项的单个文本属性
+
+一个字段可以接收`重命名`转换器和其他转换器之一，例如：
+
+    /api/organizationUnits/gist?fields=*,children::size~rename(child-count)
+
+现在，返回的项目不再有 `chilren` 成员，取而代之的是 `child-count` 成员。请注意，`rename` 也会影响 `apiEndpoints` 中给出的 URI 引用的成员名称。
+
+## 合成字段{ #gist_syntheticFields }
+
+<!--DHIS2-SECTION-ID:gist_syntheticFields-->
+
+The `/gist` API is tightly coupled to properties that exist the database. This means properties that aren't stored in the database usually aren't available. The exception to this are the "synthetic" properties which are dynamically computed on the basis of one or more database stored properties.
+
+合成属性可用于存在计算合成属性所需的持久属性的所有端点。
+
+除了在需要时自动添加的 `apiEndpoints` 属性外，默认情况下不包括所有其他合成属性，必须在 `fields` 列表中明确请求。
+
+### 总览 { #overview }
+
+按字母顺序排列的合成字段：
+
+-   `apiEndpoints`：包含浏览嵌套复杂对象或集合的链接
+-   `href`：链接到列表项本身（单个项目视图）
+-   `displayName`：翻译后的`name`（始终翻译）
+-   `displayShortName`：翻译后的`displayName`（始终翻译）
+
+### `href` 字段 { #gist_syntheticFields_href }
+
+<!--DHIS2-SECTION-ID:gist_syntheticFields_href-->
+
+`/gist` 响应中的每个项目都可以链接到自身。此链接在`href`属性中给出。
+
+要添加 `href` 字段，请使用（例如）：
+
+        /api/<object-type>/gist?fields=*,href
+
+### `displayName` 和 `displayShortName` 字段 { #gist_syntheticFields_displayName }
+
+<!--DHIS2-SECTION-ID:gist_syntheticFields_displayName-->
+
+根据定义，`displayName`是翻译后的`name`，而`displayShortName`是翻译后的`shortName`。
+
+要添加 `displayName` 或 `displayShortName` 将其添加到列表中（例如）：
+
+        /api/<object-type>/gist?fields=*,displayName
+        /api/<object-type>/gist?fields=*,displayShortName
+
+请注意，默认情况下，所有可翻译的属性（如`name`和`shortName`）也会被翻译。当 `translate=false` 用于禁用此 `displayName` 和 `displayShortName` 时保持翻译。
+
+### `apiEndpoints` 字段 { #gist_syntheticFields_apiEndpoints }
+
+<!--DHIS2-SECTION-ID:gist_syntheticFields_apiEndpoints-->
+
+此属性提供链接，以便进一步浏览复杂对象或项目列表，这些对象或项目列表以转换后的简单值（如项目计数）的形式包含在 `/gist`响应中。
+
+对于已转换为简单值的项目中的每个成员，`apiEndpoints`对象将具有一个同名成员。
+
+例如，`/api/users/gist?fields=id,userGroups::size,organisationUnits::size` 返回表单中的项目：
+
+```json
+{
+    "id": "rWLrZL8rP3K",
+    "userGroups": 0,
+    "organisationUnits": 1,
+    "apiEndpoints": {
+        "organisationUnits": "/users/rWLrZL8rP3K/organisationUnits/gist",
+        "userGroups": "/users/rWLrZL8rP3K/userGroups/gist"
+    }
+}
+```
+
+The list of `userGroups` and `organisationUnits` are included as their `size`. Each has a corresponding member in `apiEndpoints` with the path to browse the list.
+
+可以使用 `absoluteUrls` 参数将路径更改为 URL。
+
+    /api/users/gist?fields=id,userGroups::size,organizationUnits::size&absoluteUrls=true
+
+返回以下形式的项目：
+
+```json
+{
+    "id": "rWLrZL8rP3K",
+    "userGroups": 0,
+    "organisationUnits": 1,
+    "apiEndpoints": {
+        "organisationUnits": "http://{host}/api/users/rWLrZL8rP3K/organisationUnits/gist?absoluteUrls=true",
+        "userGroups": "http://{host}/api/users/rWLrZL8rP3K/userGroups/gist?absoluteUrls=true"
+    }
+}
+```
+
+## 例子 { #gist_examples }
+
+<!--DHIS2-SECTION-ID:gist_examples-->
+
+一些示例从简单的列表开始，一直到非常具体的用例的提示。
+
+最好始终提供明确的`字段`列表，因此本节将这样做。
+
+列出具有 ID 和名称的组织单位：
+
+    /api/organizationUnits/gist?fields=id,名称
+
+列出组织单位及其 ID、名称和总数：
+
+    /api/organizationUnits/gist?fields=id,name&total=true
+
+列出用户的 id 和用户名：
+
+    /api/users/gist?fields=id,userCredentials.用户名
+
+列出用户的 ID、用户名和上次登录日期：
+
+    /api/users/gist?fields=id,userCredentials[用户名,lastLogin]
+
+仅列出第二级组织单位及其 ID、名称和级别：
+
+    /api/organizationUnits/gist?fields=id,名称,level&filter=level:eq:2
+
+仅列出拥有 1 个以上子级的组织单位，并提供 ID、姓名和子级数量：
+
+    /api/organizationUnits/gist?fields=id,名称,children::size&filter=children:gt:1
+
+仅列出不是另一个机构`zFDYIgyGmXG` 下属机构的机构：
+
+    /api/organizationUnits/zFDYIgyGmXG/children/gist?fields=id,name&inverse=true
+
+列出用户并标记他们是否是特定用户组`NTC8GjJ7p8P`的成员，并在响应中将该字段命名为`is-member`：
+
+    /api/users/gist?fields=id,userCredentials.username,userGroups::member(NTC8GjJ7p8P)~rename(is-member)
+
+在 10 个项目的页面中列出所有用户的链接：
+
+    /api/users/gist?fields=href&absoluteUrls&pageSize=10

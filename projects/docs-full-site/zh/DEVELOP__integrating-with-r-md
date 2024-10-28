@@ -1,0 +1,273 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/dhis2-and-r-integration.md"
+revision_date: '2021-10-14'
+tags:
+- Develop
+---
+
+# DHIS2和R集成 { #rsetup } 
+
+## 介绍 { #rsetup_intro } 
+
+R 是免费提供的开源统计计算环境。右
+既指计算机编程语言，也指
+可用于创建和运行 R 脚本的软件。有
+[网络上的大量资源](http://cran.r-project.org/) 描述了
+R 的广泛功能集。
+
+R 是 DHIS2 的自然扩展，因为它提供了强大的统计功能
+例程、数据操作功能和可视化工具。这
+本章将描述如何在同一台服务器上设置 R 和 DHIS2，以及
+将提供如何从 DHIS2 检索数据的简单示例
+将数据库转换为 R 数据框并执行一些基本计算。
+
+## 安装R { #rsetup_install } 
+
+如果您在与 DHIS 相同的服务器上安装 R，您应该考虑
+使用综合 R 存档网络 (CRAN) 获取最新版本
+R 的分布。您需要做的就是添加以下内容
+你的`/etc/apt/source.list`文件。
+
+** deb \ <your R mirror\> / bin / linux / ubuntu \ <your Ubuntu distribution\> **
+
+您需要将 **\<your R mirror\>** 替换为列表中的一个
+[此处提供。](http://cran.r-project.org/mirrors.html)您还将
+需要将 **\<your Ubuntu distribution\>** 替换为
+您正在使用的发行版。
+
+完成此操作后，调用以下命令
+
+    sudo apt-get 更新
+    gpg --keyserver pgp.mit.edu --recv-keys 51716619E084DAB9
+    gpg --armor --export 51716619E084DAB9 | apt-key 添加 -
+    sudo apt-get install r-base
+
+此时，您应该已经在您的计算机上安装了功能性的 R
+机器。
+
+接下来，通过简单地从命令行触发`R`。
+
+```
+R版本3.4.4（2018-03-15）-“精益求精的人”
+版权所有（C）2018 The R Foundation for Statistical Computing
+平台：x86_64-pc-linux-gnu（64位）
+
+R是免费软件，并且绝对不提供保证。
+欢迎您在某些情况下重新分发它。
+输入“ license（）”或“ licence（）”以获取分发详细信息。
+
+  自然语言支持，但以英语语言环境运行
+
+R是与许多贡献者合作的项目。
+键入“ contributors（）”以获取更多信息，以及
+有关如何引用出版物中的R或R软件包的'citation（）'。
+
+对于某些演示，请键入“ demo（）”，对于在线帮助，请键入“ help（）”，或者
+用于HTML浏览器界面的“ help.start（）”。
+输入“ q（）”退出R。
+
+>
+```
+
+## 在DHIS2中使用PL / R { #rsetup_plr } 
+
+R 的过程语言是 PostgreSQL 核心的扩展
+它允许数据从数据库传递到 R，其中
+可以在R中进行计算。然后数据可以传回
+数据库以供进一步处理。在本例中，我们将创建一个
+函数计算一些不存在的汇总统计数据
+默认情况下使用 R 在 SQL 中。然后我们将在 DHIS2 中创建一个 SQL 视图来
+显示结果。在这种情况下使用 R 的优点是
+我们不需要编写任何大量的代码来返回
+这些汇总统计数据，但只需利用 R 的内置函数
+为我们做工作。
+
+首先，您需要安装[PL/R](http://www.joeconway.com/plr/)，
+详细描述了
+[此处。](http://www.joeconway.com/plr/doc/plr-install.html)。下列的
+来自 PL/R 站点的示例，我们将创建一些自定义聚合
+功能详细
+[此处。](http://www.joeconway.com/plr/doc/plr-aggregate-funcs.html) 我们
+将创建两个函数，返回中值和偏度
+值的范围。
+
+    创建或替换功能r_median（_float8）返回float为'
+      中位数（arg1）
+    '语言'plr';
+
+    CREATE AGGREGATE中位数（
+      sfunc = plr_array_accum，
+      basetype = float8，
+      stype = _float8，
+      finalfunc = r_median
+    ）;
+
+    创建或替换功能r_skewness（_float8）返回float为'
+      要求（e1071）
+      偏度（arg1）
+    '语言'plr';
+
+    创建总体偏斜度（
+      sfunc = plr_array_accum，
+      basetype = float8，
+      stype = _float8，
+      finalfunc = r_skewness
+    ）;
+
+接下来，我们将定义一个 SQL 查询，用于检索这两个
+将计算的新聚合函数（中值和偏度）
+使用 R。在这种情况下，我们只会从数据中获取一个指标
+在区一级进行集市，并根据
+值所属的地区的名称。这个查询很
+具体，但可以轻松适应您自己的数据库。
+
+    选择ou.shortname，avg（dv.value），
+    中值（dv.value），偏度（dv.value）来自aggregatedindicatorvalue dv
+    内连接周期p on p.periodid = dv.periodid
+    内部加入组织单位
+    dv.organisationunitid = ou.organisationunitid
+    dv.indicatorid = 112670
+    AND dv.level = 3
+    AND dv.periodtypeid = 3
+    AND p.startdate> ='2009-01-01'
+    GROUP BY ou.shortname;
+
+然后我们可以在DHIS2中以SQL视图的形式保存这个查询。一个被剪掉的
+结果的版本如下所示。
+
+
+![](resources/images/r/r_plr.PNG)
+
+在这个简单的示例中，我们展示了如何将 PL/R 与 DHIS2 结合使用
+数据库和 Web 界面，使用 R 显示一些汇总统计数据
+执行计算。
+
+## 将此DHIS2 Web API与R一起使用 { #rsetup_web_api } 
+
+DHIS2 有一个强大的 Web API，可以使用 R 轻松访问。在本节中，我们将说明一些示例
+将 DHIS2 元数据和分析 API 与 R 一起使用。Web API 使用基本 HTTP 身份验证（如中所述
+本文档的 Web API 部分）。使用两个 R 包“httr”和
+“readr”，我们将能够在 R 中使用 API 的输出。
+第一个例子，我们将从数据库中获取一些元数据。
+
+```
+# 我们需要这两个库
+require(httr)
+require(readr)
+#and this for the `%>%` operation
+require(magrittr)
+base.url<-"https://play.dhis2.org/dev/"
+url<-paste0(base.url, "api/me")
+用户名<- "admin"
+password<-"district"
+login<-GET(url, authenticate(username,password))
+#如果无法登录，则以错误停止
+if(login$status == 200L) { print("Logged in successfully!")} else {stop("Could not login")}
+
+
+
+
+mydata<-paste0(base.url,"api/reportTables/KJFbpIymTAo/data.csv") %>% #定义应用程序接口端点
+    GET(.,authenticate(username,password)) %>% #进行 HTTP 调用
+    content(., "text") %>% #读取响应
+    readr::read_csv() #解析 CSV
+head(mydata)
+```
+
+在此示例中，我们只是通过 API 检索在 DHIS2 中创建的报告表，并将 CSV 响应解析为 R 数据帧。
+
+在下一个代码示例中，我们将检索一些元数据，即列表
+数据元素及其唯一标识符。
+
+```
+
+#Get the list of data elements.关闭分页，只获取少量属性。
+require(httr)
+用户名<-"admin"
+password<-"district"
+base.url<-"https://play.dhis2.org/dev/"
+
+login<-function(username,password,base.url) {
+url<-paste0(base.url, "api/me")
+r<-GET(url,authenticate(username,password))
+if(r$status == 200L) { print("Logged in successfully!")} else {stop("Could not login")}
+}
+
+getDataElements<-function(base.url) {
+url<-paste0(base.url, "api/dataElements?fields=id,name,shortName")
+r<-content(GET(url,authenticate(username,password)),as="parsed")
+do.call(rbind.data.frame,r$dataElements)
+}
+
+login(username,password,base.url)
+data_elements<-getDataElements(base.url)
+head(data_elements)
+```
+
+现在，对象 `data_elements` 应包含系统中所有数据元素的数据帧。 
+
+```
+                                         名称编号
+2次急性弛缓性麻痹（死亡<5年）FTRrcoaog83
+210急性弛缓性麻痹（AFP）随访P3jJH5Tu5VC
+3急性弛缓性麻痹（AFP）新的FQ2o8UBlcrS
+4急性弛缓性麻痹（AFP）转诊M62VHgYT2n0
+5与设施uF1DLnZNlWe有关的其他说明
+6入学日期eMyVanycQSC
+```
+
+## 将此 DHIS2 Web API 与 datimutils 结合使用 { #r_datimutils }
+
+[`datimutils`](https://github.com/pepfar-datim/datimutils) 软件包是由 [ PEPFAR ](https://pepfar.gov) 开发的开源库，它提供了一系列有用的实用程序用于与 DHIS2 API 交互的函数。尽管该包是专门为与 DATIM（PEPFAR DHIS2 实例）交互而开发的，但我们不会尝试复制该包本身的文档，而是提供一些有关如何使用该库的实际示例。
+
+ Authentication with DHIS2 is handled via a special object `d2_default_session`. The name and parent environment of this object can be changed if needed. Consult the package documentation for details. 
+
+```  
+ loginToDATIM(username = "admin",password = "district",base_url = "https://play.dhis2.org/dev/")  
+ ```
+
+现在，我们的 R 环境中应该有一个名为 `d2_default_session` 的对象。随后的 API 调用可以使用该对象来处理身份验证，因此无需在每次函数调用时明确指定用户名和密码。
+
+`datimutils` 为大多数元数据 API 端点提供了一个函数，其设计旨在与 `tidyverse` 软件包无缝协作。例如，我们可以用以下命令获取一个特定的元数据对象： 
+
+```
+datimutils::getDataElements("hCVSHjcml9g",fields = "name,shortName,id")
+                                      名称 短名称 id
+1 ANC 时给予的 Albendazole（第 2 个孕期） ANC 时给予的 Albendazole hCVSHjcml9g
+ ``` 
+
+
+ `datimutils` 命令还可以使用列表来检索多个元数据对象。
+
+```
+> de_groups<-c("oDkJh5Ddh7d","zmWJAEjfv59")
+> datimutils::getDataElementGroups(de_groups,fields = "name,shortName,id")
+                            名称 短名 id
+1 急性弛缓性麻痹 (AFP) 急性弛缓性麻痹 (AFP) oDkJh5Ddh7d
+2 雅司病 雅司病 zmWJAEjfv59
+ ```
+
+ `datimutils` 命令是可管道传输的，因此可以与其他 `tidyverse` 命令链接在一起。
+
+```  
+
+ > datimutils::getMetadata("dataElementGroups", fields = "id,name,shortName") 
+ %>% dplyr::filter(grepl("ART",`shortName`)) 
+ %>% dplyr::select(name) 
+
+                     名称
+1 ART
+2 ART 注册人数
+3 ART 报名点
+4 ART 儿科一线治疗
+5 ART 分期
+6 ART 治疗
+7 首次接受抗逆转录病毒疗法
+8 接受抗逆转录病毒疗法的前一个月
+9 从抗逆转录病毒疗法转为常规抗逆转录病毒疗法
+10 转为接受常规抗逆转录病毒疗法  
+
+```
+
+有关 `datimutils` 软件包的更多信息，请查阅软件包文档。
+
