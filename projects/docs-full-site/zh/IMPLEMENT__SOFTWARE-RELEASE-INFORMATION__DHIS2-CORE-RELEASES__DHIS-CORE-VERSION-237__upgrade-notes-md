@@ -1,0 +1,79 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-releases/blob/master/releases/2.37/README.md"
+revision_date: '2023-08-30'
+tags:
+- 实施
+- DHIS 核心 2.37 版
+---
+
+# 2.37 升级说明{ #237-upgrade-notes } 
+
+> :警告：如果从早期版本升级，**请确保您已阅读[PREVIOUS RELEASE](../2.36/README.md)中的升级说明**。
+
+## 数据库 { #database } 
+
+## API{ #api } 
+
+- 删除了 `/api/userCredentials` API 端点。API 用户应改用 `/api/users` 和 `/api/userLookup` API 端点。
+- 删除了与图表 (`/api/charts`) 和报告表 (`/api/reportTables`) 相关的 API。用户应改用可视化 API (`/api/visualizations`)。其他引用图表和报告表的现有端点现在将引用 Visualization。
+
+## 当局{ #authorities } 
+
+- 现在需要使用现有的 `F_GENERATE_MIN_MAX_VALUES` 权限才能在数据管理应用程序中生成最小-最大值。以前需要使用 `F_PERFORM_MAINTENANCE`。
+- 创建数据审批级别需要`F_DATA_APPROVAL_LEVEL`权限。
+- 创建数据审批工作流需要 `F_DATA_APPROVAL_WORKFLOW` 授权。
+
+## 审核 { #audit } 
+
+在 2.38 中，我们将把审计的默认位置从数据库改为名为 `dhis-audits.log` 的日志文件。如果您不希望出现这种
+行为，建议在 `dhis.conf` 中添加这几行：
+
+```
+audit.database = on
+audit.logger = off
+```
+
+## 针对补丁的更改{ #patch-specific-changes } 
+
+### 2.37.5 { #2375 } 
+- 删除了返回 JSONP（`Accept=application/javascript`）的 `GET /systemSettings` 功能
+
+## 未来的应用程序接口变更{ #future-api-changes } 
+Please note that from 2.38 onwards several API endpoints slightly change
+their response root object to be in line with the majority of endpoints.
+The root object returned pre 2.38 will become the member named `response`
+of the root object returned by 2.38. Consumers can opt to either use
+`/api/37/...` to get the old behaviour or have to unpack to new response
+by doing `<root>.response` to resolve the old root from the 2.38 response.
+In case of error responses this also entails an HTTP status code change from `200 OK` to `409 Conflict`.
+
+受影响的端点有
+
+- 使用 `JSON`/`XML` 的 `POST /api/completeDataSetRegistrations` （仅非 `async` 受影响）。
+- 使用`JSON`/`XML`/`ADX`/`CSV`的`POST /api/dataValueSets` （仅非`async`受影响）
+- 用`JSON`/`XML`/`GML`/`CSV`发送`POST /api/metadata`（只影响非`async`）。
+- `POST /api/predictions` (only non `async` affected)
+- `PUT /api/predictions`（仅非 `async` 受影响）
+- `PUT /api/relationships/{id}`
+- 用 `JSON`/`XML` 输入 `PUT /api/users/{uid}`
+
+## 迁移（图表和报表）{ #migrations-chart-and-reporttable } 
+
+根据您更新的 DHIS2 版本，您可能会面临与删除 ReportTable 和 Chart 表相关的迁移问题/错误。
+故障可能是由 DHIS2 旧版本中仍然存在的表引起的。尽管它们已不再使用，但仍可能被引用。
+当迁移脚本尝试删除 ReportTable 和 Chart 表时，这将导致错误，因为这些遗留表中存在约束。
+有关此问题的更多详细信息，请访问 https://jira.dhis2.org/browse/DHIS2-12601。
+
+一旦发现并确认了这些问题，在尝试迁移到 DHIS2 2.37 之前，需要放弃一些遗留表。
+
+下面我们列出了需要在 PostgreSQL 实例中直接执行的 SQL 语句。这些 SQL 语句适用于起始 DHIS 2 版本介于 2.24 和 2.31（含）之间的情况。
+
+```
+DROP TABLE IF EXISTS charttranslations CASCADE；
+DROP TABLE IF EXISTS reporttabletranslations CASCADE；
+DROP TABLE IF EXISTS dashboarditem_reporttables CASCADE；
+DROP TABLE IF EXISTS dashboarditem_charts CASCADE；
+```
+
+如果语句执行成功，您就可以再次尝试升级。
+

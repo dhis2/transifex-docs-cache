@@ -1,8 +1,8 @@
 ---
 revision_date: '2024-10-25'
 tags:
-- Développement
 - Version Master de DHIS2 Central
+- Développement
 template: single.html
 ---
 
@@ -1987,8 +1987,135 @@ Lors de la création ou de la mise à jour de l'un de ces objets, vous pouvez in
   }
 }
 ```
+## Category Option { #category-option } 
 
-## Éléments de donnée { #data-elements } 
+### Merge category options { #category_option_merge }
+
+The category option merge endpoint allows you to merge a number of category options (sources) into a target category option.
+
+#### Autorisation { #authorisation } 
+
+The main authority required to perform a category option merge is `F_CATEGORY_OPTION_MERGE`.  
+Other authorities required relate to the general sharing and access of category options, `F_CATEGORY_OPTION_PUBLIC_ADD` and `F_CATEGORY_OPTION_DELETE`.
+
+#### Requête { #request } 
+
+Merge category options with a POST request:
+
+```
+POST /api/categoryOptions/merge
+```
+
+La charge au format JSON ressemble à ceci :
+
+```json
+{
+  "sources": [
+    "FbLZS3ueWbQ",
+    "dPSWsKeAZNw"
+  ],
+  "target": "rEq3Hkd3XXH",
+  "deleteSources": true
+}
+```
+
+Les propriétés JSON sont décrites dans le tableau suivant.
+
+Tableau : Fusion des champs de la charge
+
+| Champ             | Obligatoire | Valeur                                                                                                                                                                                   |
+|-------------------|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| sources           | Oui      | Array of identifiers of the category options to merge (the source category options)                                                                                                     |
+| cible            | Oui      | Identifier of the category option to merge the sources into (the target category option)                                                                                                |
+| deleteSources     | Non       | Whether to delete the source category options after the operation. Default is false.                                                                                                    |
+
+The merge operation will merge the source category options into the target category option. One or many source category options can be specified. Only one target should be specified.
+
+The merge operation will transfer all source category option metadata associations to the target category option.
+The following metadata get updated:
+
+
+| Métadonnées            | Propriété        | Mesure prise               |
+|---------------------|-----------------|----------------------------|
+| Catégorie            | categoryOptions | remove sources, add target |
+| CategoryDimension   | items           | remove sources, add target |
+| CategoryOptionCombo | categoryOptions | remove sources, add target |
+| CategoryOptionGroup | membres         | remove sources, add target |
+| Unité d'organisation    | categoryOptions | remove sources, add target |
+
+
+#### Validation { #validation } 
+
+Les contraintes et les codes d'erreur suivants s'appliquent.
+
+Tableau : Contraintes et codes d'erreur
+
+| Code d'erreur | Description                                               |
+|------------|-----------------------------------------------------------|
+| E1650      | At least one source category option must be specified     |
+| E1651      | Target category option must be specified                  |
+| E1652      | Target category option cannot be a source category option |
+| E1653      | Source/Target category option does not exist: `{uid}`     |
+
+
+#### Réponse { #response } 
+##### Succès { #success } 
+Voici un exemple de réponse après une opération réussie :
+
+```json
+{
+    "httpStatus": "OK",
+    "httpStatusCode": 200,
+    "status": "OK",
+    "response": {
+        "mergeReport": {
+            "mergeErrors": [],
+            "mergeType": "CATEGORY_OPTION",
+            "sourcesDeleted": [
+                "FbLZS3ueWbQ", "dPSWsKeAZNw"
+            ],
+            "message": "CATEGORY_OPTION merge complete"
+        }
+    }
+}
+```
+
+##### Failure { #failure } 
+Voici un exemple de réponse après une opération erronée :
+
+```json
+{
+    "httpStatus": "Conflict",
+    "httpStatusCode": 409,
+    "status": "WARNING",
+    "message": "One or more errors occurred, please see full details in merge report.",
+    "response": {
+        "mergeReport": {
+            "mergeErrors": [
+                {
+                    "message": "At least one source category options must be specified",
+                    "errorCode": "E1650",
+                    "args": []
+                },
+                {
+                    "message": "Target category option does not exist: `abcdefg1221`",
+                    "errorCode": "E1653",
+                    "args": [
+                        "Target",
+                        "abcdefg1221"
+                    ]
+                }
+            ],
+            "mergeType": "CATEGORY_OPTION",
+            "sourcesDeleted": [],
+            "message": "CATEGORY_OPTION merge has errors"
+        }
+    }
+}
+```
+
+
+## Éléments de données { #data-elements } 
 
 ### Merge data elements { #data_element_merge }
 
@@ -2408,7 +2535,7 @@ Les contraintes et les codes d'erreur suivants s'appliquent.
 
 Tableau : Contraintes et codes d'erreur
 
-| Code d'erreur | Description ;                                     |
+| Code d'erreur | Description                                     |
 |------------|-------------------------------------------------|
 | E1540      | Au moins un indicateur source doit être spécifié |
 | E1541      | L'indicateur cible doit être spécifié              |
@@ -2597,14 +2724,14 @@ Tableau : Paramètres de requête des unités d'organisation
 
 | Paramètre de requête | Options | Description |
 |---|---|---|
-| userOnly | faux | vrai | Unités d'organisation de saisie de données associées à l'utilisateur actuel. |
-| userDataViewOnly | faux | vrai | Unités d'organisation de visualisation de données associées à l'utilisateur actuel. |
-| userDataViewFallback | faux | vrai | Unités d'organisation de visualisation de données associées à l'utilisateur actuel, avec un retour aux unités d'organisation de saisie de données. |
+| userOnly | false | true | Unités d'organisation de saisie de données associées à l'utilisateur actuel. |
+| userDataViewOnly | false | true | Unités d'organisation de visualisation de données associées à l'utilisateur actuel. |
+| userDataViewFallback | false | true | Unités d'organisation de visualisation de données associées à l'utilisateur actuel, avec un retour aux unités d'organisation de saisie de données. |
 | query | chaîne | Requête sur les propriétés de nom, code et ID. |
 | niveau | entier | Unités d'organisation au niveau spécifié de la hiérarchie. |
 | maxLevel | entier | Unités d'organisation au niveau maximal ou à des niveaux plus élevés dans la hiérarchie. |
-| withinUserHierarchy | faux | vrai | Limite la recherche et l'extraction aux unités d'organisation qui se trouvent dans le champ de saisie de l'utilisateur. |
-| withinUserSearchHierarchy | faux | vrai | Limite la recherche et l'extraction aux unités d'organisation qui se trouvent dans le champ de recherche de l'utilisateur actuel. Remarque : Si "withinUserHierarchy" est défini sur "true", il devient prioritaire. |
+| withinUserHierarchy | false | true | Limite la recherche et l'extraction aux unités d'organisation qui se trouvent dans le champ de saisie de l'utilisateur. |
+| withinUserSearchHierarchy | false | true | Limite la recherche et l'extraction aux unités d'organisation qui se trouvent dans le champ de recherche de l'utilisateur actuel. Remarque : Si "withinUserHierarchy" est défini sur "true", il devient prioritaire. |
 | memberCollection | chaîne | Permet d'afficher le nombre de membres dans une collection ; renvoie au nom de la collection associée aux unités d'organisation. |
 | memberObject | UID | Permet d'afficher le nombre de membres dans une collection ; renvoie à l'identifiant de l'objet qui fait partie de la collection. |
 
@@ -2618,9 +2745,9 @@ Tableau : Paramètres de l'unité d'organisation
 
 | Paramètre de requête | Options | Description |
 |---|---|---|
-| includeChildren | faux | vrai | Inclut les subordonnées directs de l'unité d'organisation spécifiée, c'est-à-dire les unités qui lui sont directement inférieures dans la sous-hiérarchie. |
-| includeDescendants | faux | vrai | Inclut tous les descendants de l'unité d'organisation spécifiée, c'est-à-dire toutes les unités qui lui sont inférieures dans la hiérarchie. |
-| includeAncestors | faux | vrai | Inclut tous les ascendants de l'unité d'organisation spécifiée. |
+| includeChildren | false | true | Inclut les subordonnées directs de l'unité d'organisation spécifiée, c'est-à-dire les unités qui lui sont directement inférieures dans la sous-hiérarchie. |
+| includeDescendants | false | true | Inclut tous les descendants de l'unité d'organisation spécifiée, c'est-à-dire toutes les unités qui lui sont inférieures dans la hiérarchie. |
+| includeAncestors | false | true | Inclut tous les ascendants de l'unité d'organisation spécifiée. |
 | niveau | entier | Inclut les descendants de l'unité d'organisation spécifiée à un niveau précis de la sous-hiérarchie. Ce paramètre dépend de l'unité d'organisation, et commence par le premier niveau qui est directement inférieur à l'unité d'organisation. |
 
 ### Obtenir des unités d'organisation par option de catégorie{ #webapi_organisation_units_by_category_options }
@@ -3076,7 +3203,7 @@ Tableau : Paramètres de requête du formulaire
 |---|---|---|
 | pe | Période ISO | Période pour laquelle les valeurs de données du formulaire doivent être renseignées. |
 | ou | UID | Unité d'organisation pour laquelle les valeurs de données du formulaire doivent être renseignées. |
-| Métadonnées | faux | vrai | Détermine s'il faut inclure ou non des métadonnées sur chaque élément de données des sections du formulaire. |
+| Métadonnées | false | true | Détermine s'il faut inclure ou non des métadonnées sur chaque élément de données des sections du formulaire. |
 
 Pour récupérer le formulaire d'un ensemble de données, vous pouvez effectuer une requête GET comme suit :
 
@@ -3191,14 +3318,14 @@ Tableau : Format CSV des éléments de données
 | 2 | UID | Non | UID | Identifiant stable. Exactement 11 caractères alphanumériques, commençant par une lettre. Il est généré par le système s'il n'est pas spécifié. |
 | 3 | Code | Non || Code stable. Maximum 50 caractères. |
 | 4 | Nom court | Non | 50 premiers caractères du nom | S'il n'est pas spécifié, il est remplacé par les 50 premiers caractères du nom. Maximum 50 caractères. Unique. |
-| 5 | Description | Non || Description en texte libre. |
+| 5 | Description ; | Non || Description en texte libre. |
 | 6 | Nom du formulaire | Non || Maximum 230 caractères. |
 | 7 | Type de domaine | Non | AGRÉGÉ | TRACKER | Type de domaine pour l'élément de données ; il peut s'agir du domaine Agrégé ou du Tracker. Maximum 16 caractères. |
 | 8 | Type de valeur | Non | ENTIER | NOMBRE | UNITÉ_INTERVALLE | POURCENTAGE | ENTIER_POSITIF | ENTIER_NÉGATIF | ENTIER_ZÉRO_OU_POSITIF | FICHIER_RESSOURCE | COORDONNÉE | TEXTE | TEXTE_ LONG | LETTRE | NUMÉRO_DE TÉLÉPHONE | EMAIL | BOOLÉEN | VRAI_UNIQUEMENT | DATE | DATE ET HEURE | Type de valeur. Maximum 16 caractères. |
 | 9 | Type d'agrégation | Non | SOMME | MOYENNE | MOYENNE_DE LA SOMME_DES UNITÉS_D'ORGANISATION | NOMBRE | ÉCART-TYPE | VARIANCE | MIN | MAX | AUCUN | Type d'agrégation indiquant comment agréger les données dans les différentes dimensions. Maximum 16 caractères. |
 | 10 | Combinaison de catégories | Non | UID | UID de la combinaison de catégories. La combinaison de catégories par défaut sera utilisée si aucune n'est spécifiée. |
 | 11 | Url | Non || URL de la ressource de l'élément de données. Maximum 255 caractères. |
-| 12 | Le zéro est significatif | Non | faux | vrai | Indique si les valeurs nulles (zéro) seront stockées pour cet élément de données. |
+| 12 | Le zéro est significatif | Non | false | true | Indique si les valeurs nulles (zéro) seront stockées pour cet élément de données. |
 | 13 | Ensemble d'options | Non | UID | UID de l'ensemble d'options à utiliser pour les données. |
 | 14 | Ensemble d'options pour les commentaires | Non | UID | UID de l'ensemble d'options à utiliser pour les commentaires. |
 
@@ -3221,7 +3348,7 @@ Tableau : Format CSV de l'unité d'organisation
 | 3 | Code | Non || Code stable. Maximum 50 caractères. |
 | 4 | Parent | Non | UID | UID de l'unité d'organisation mère. |
 | 5 | Nom court | Non | 50 premiers caractères du nom | S'il n'est pas spécifié, il est remplacé par les 50 premiers caractères du nom. Maximum 50 caractères. Unique. |
-| 6 | Description ; | Non || Description en texte libre. |
+| 6 | Description | Non || Description en texte libre. |
 | 7 | Date d'ouverture | Non | 1970-01-01 | Date d'ouverture de l'unité d'organisation au format AAAA-MM-JJ. |
 | 8 | Date de fermeture | Non || Date de fermeture de l'unité d'organisation au format AAAA-MM-JJ, ignorer si l'unité est actuellement ouverte. |
 | 9 | Commentaire | Non || Commentaire en texte libre pour l'unité d'organisation. |
@@ -3740,7 +3867,7 @@ Tableau : Paramètres de requête
 
 | Nom | Obligatoire | Description |
 |---|---|---|
-| type | vrai | Le type de version de métadonnées à créer.<br> * BEST_EFFORT<br> * ATOMIQUE |
+| type | true | Le type de version de métadonnées à créer.<br> * BEST_EFFORT<br> * ATOMIQUE |
 
 Les utilisateurs peuvent sélectionner le type de métadonnées à créer. Le type de version des métadonnées régit la manière dont l'importateur traite la version en question. Ce type sera utilisé lors de l'importation des métadonnées. Il existe deux types de métadonnées.
 
@@ -3807,7 +3934,7 @@ Tableau : Paramètres du chemin d'accès
 
 | Nom | Obligatoire | Description |
 |---|---|---|
-| versionName | vrai | Paramètre de chemin d'accès de la forme "Version_<id\>" pour que l'API télécharge la version spécifique. |
+| versionName | true | Paramètre de chemin d'accès de la forme "Version_<id\>" pour que l'API télécharge la version spécifique. |
 
 ### Téléchargement des métadonnées de la version { #webapi_download_version_metadata } 
 
@@ -3862,7 +3989,7 @@ Tableau : Paramètres de requête
 
 | Nom | Obligatoire | Description |
 |---|---|---|
-| versionName | vrai | Le paramètre de requête VersionName est de la forme "Version_<id\>" . L'api télécharge cette version depuis le serveur distant et l'importe dans le système local. |
+| versionName | true | Le paramètre de requête VersionName est de la forme "Version_<id\>" . L'api télécharge cette version depuis le serveur distant et l'importe dans le système local. |
 
   - Cette API doit être utilisée avec la plus grande prudence. Sachez qu'il existe 
     une autre façon d'effectuer la synchronisation de manière complètement automatisée en 
@@ -5515,13 +5642,13 @@ Tableau : Paramètres d'importation
 | categoryIdScheme (Schéma de l'identifiant de catégorie) | uide &#124; nom &#124; code&#124; attribut:ID | Propriété de l'objet de catégorie à utiliser pour faire correspondre les données (ADX uniquement). |
 | categoryOptionIdScheme (Schéma d'identification des options de catégorie) | uide &#124; nom &#124; code&#124; attribut:ID | Propriété de l'objet d'option catégorie à utiliser pour faire correspondre les données (ADX uniquement). |
 | idScheme | uide &#124; nom &#124; code&#124; attribut:ID | Propriété de l'un des objets ci-dessus, s'ils ne sont pas spécifiés, à utiliser pour faire correspondre les données. |
-| preheatCache | faux | vrai | Indique s'il faut précharger les caches de métadonnées avant de commencer l'importation des données. Ceci permettra d'accélérer l'importation de grandes quantités de métadonnées. |
-| dryRun | faux | vrai | Détermine s'il faut sauvegarder les modifications sur le serveur ou renvoyer le récapitulatif de l'importation. |
+| preheatCache | false | true | Indique s'il faut précharger les caches de métadonnées avant de commencer l'importation des données. Ceci permettra d'accélérer l'importation de grandes quantités de métadonnées. |
+| dryRun | false | true | Détermine s'il faut sauvegarder les modifications sur le serveur ou renvoyer le récapitulatif de l'importation. |
 | importStrategy (stratégie d'importation) | CREATE (créer) | UPDATE (mettre à jour) | CREATE_AND_UPDATE (créer et mettre à jour) | DELETE (supprimer) | Détermine s'il faut sauvegarder les objets de tous les statuts d'importation, des nouveaux ou de ceux mis à jour, sur le serveur. |
-| skipExistingCheck (ignorer les contrôles) | faux | vrai | Ne contrôle pas les données existantes. Améliore les performances. À utiliser uniquement pour les bases de données vides ou lorsque les données à importer n'existent pas encore. |
-| skipAudit (ignorer l'audit) | faux | vrai | "Ignorer l'audit" signifie que les valeurs d'audit ne seront pas générées. Améliore les performances au détriment de la capacité à auditer les modifications. Nécessite l'autorité "F_SKIP_DATA_IMPORT_AUDIT". |
-| async | faux | vrai | Indique si l'importation doit être effectuée de manière asynchrone ou synchrone. La première option (asynchrone) est adapté aux importations très volumineuses car il garantit que la requête n’expire pas, bien qu’il entraîne une surcharge de performances. La deuxième (synchrone) est plus rapide mais nécessite que la connexion soit maintenue jusqu'à la fin du processus. |
-| force | faux | vrai | Indique si l'importation doit être forcée. L'importation de données peut être rejetée pour diverses raisons liées au verrouillage de l'ensemble des données, par exemple en raison de l'approbation, de la période de saisie des données, des jours d'expiration, etc. Pour passer outre ces verrouillages et forcer la saisie des données, il est possible d'utiliser l'importation de données en définissant force=true. Cependant, il faut être un \*superutilisateur\* pour que ce paramètre fonctionne. |
+| skipExistingCheck (ignorer les contrôles) | false | true | Ne contrôle pas les données existantes. Améliore les performances. À utiliser uniquement pour les bases de données vides ou lorsque les données à importer n'existent pas encore. |
+| skipAudit (ignorer l'audit) | false | true | "Ignorer l'audit" signifie que les valeurs d'audit ne seront pas générées. Améliore les performances au détriment de la capacité à auditer les modifications. Nécessite l'autorité "F_SKIP_DATA_IMPORT_AUDIT". |
+| async | false | true | Indique si l'importation doit être effectuée de manière asynchrone ou synchrone. La première option (asynchrone) est adapté aux importations très volumineuses car il garantit que la requête n’expire pas, bien qu’il entraîne une surcharge de performances. La deuxième (synchrone) est plus rapide mais nécessite que la connexion soit maintenue jusqu'à la fin du processus. |
+| force | false | true | Indique si l'importation doit être forcée. L'importation de données peut être rejetée pour diverses raisons liées au verrouillage de l'ensemble des données, par exemple en raison de l'approbation, de la période de saisie des données, des jours d'expiration, etc. Pour passer outre ces verrouillages et forcer la saisie des données, il est possible d'utiliser l'importation de données en définissant force=true. Cependant, il faut être un \*superutilisateur\* pour que ce paramètre fonctionne. |
 | dataSet (ensemble de données) | uid | Fournissez l'ID de l'ensemble de données pour l'importation CSV lorsque l'ID ne peut pas être fourni dans le fichier lui-même |
 
 Tous les paramètres sont facultatifs et peuvent être fournis en tant que paramètres de requête dans l'URL de la requête comme suit :
@@ -6017,7 +6144,7 @@ Tableau : Périodes ADX
 | Hebdomadaire Samedi | P7D | 07-10-2017/P7D | 07 octobre 2017-13 octobre 2017 |
 | Hebdomadaire Dimanche | P7D | 01-10-2017/P7D | 01 octobre 2017-07 octobre 2017 |
 | Bihebdomadaire | P14D | 02-10-2017/P14D | 02 octobre 2017-15 octobre 2017 |
-| Mensuel | P1M | 01-10-2017/P1M | 01 octobre 2017-31 octobre 2017 |
+| Mensuelle | P1M | 01-10-2017/P1M | 01 octobre 2017-31 octobre 2017 |
 | Bimensuel | P2M | 01-11-2017/P2M | 01 novembre 2017-31 décembre 2017 |
 | Trimestriel | P3M | 01-09-2017/P3M | 01 septembre 2017-31 décembre 2017 |
 | Semestriel | P6M | 01-01-2017/P6M<br>01-07-2017/P6M | 1er janvier 2017-30 juin 2017<br>1er juillet 2017-31 décembre 2017 |
@@ -6499,8 +6626,8 @@ Tableau : Paramètres de requête d'analyse des règles de validation
 | ou | Unité d’organisation | Identifiant |
 | startDate | Date de début de la période | Date |
 | endDate | Date de fin de la période | Date |
-| conserver | S'il faut conserver les violations dans le système | faux | vrai |
-| notification | S'il faut envoyer des notifications sur les violations | faux | vrai |
+| conserver | S'il faut conserver les violations dans le système | false | true |
+| notification | S'il faut envoyer des notifications sur les violations | false | true |
 
 Exemple de sortie :
 ```json
@@ -7025,11 +7152,11 @@ Tableau : Paramètres de requête d'enregistrement d'ensembles de données com
 | orgUnitIdScheme | id | name | code | attribute:ID | Propriété de l'unité d'organisation à utiliser pour mettre en correspondance les enregistrements complets. |
 | attributOptionComboIdScheme (Schéma de l'identifiant de la combinaison d'options d'attribut) | id | name | code | attribute:ID | Propriété de la combinaison d'options d'attribut à utiliser pour mettre en correspondance les enregistrements complets. |
 | idScheme | id | name | code | attribute:ID | Propriété de tous les objets, y compris les ensembles de données, les unités d'organisation et les combinaisons d'options d'attribut, à utiliser pour mettre en correspondance enregistrements complets. |
-| preheatCache | faux | vrai | Détermine s'il faut sauvegarder les modifications sur le serveur ou renvoyer le récapitulatif de l'importation. |
-| dryRun | faux | vrai | Si l'enregistrement s'applique aux sous-unités |
+| preheatCache | false | true | Détermine s'il faut sauvegarder les modifications sur le serveur ou renvoyer le récapitulatif de l'importation. |
+| dryRun | false | true | Si l'enregistrement s'applique aux sous-unités |
 | importStrategy (stratégie d'importation) | CREATE (créer) | UPDATE (mettre à jour) | CREATE_AND_UPDATE (créer et mettre à jour) | DELETE (supprimer) | Détermine s'il faut sauvegarder les objets de tous les statuts d'importation, des nouveaux ou de ceux mis à jour, sur le serveur. |
-| skipExistingCheck (ignorer les contrôles) | faux | vrai | Ne contrôle pas les enregistrements complets existants. Améliore les performances. À utiliser uniquement pour les bases de données vides ou lorsque les enregistrements à importer n'existent pas encore. |
-| async | faux | vrai | Indique si l'importation doit être effectuée de manière asynchrone ou synchrone. La première option (asynchrone) est adapté aux importations très volumineuses car il garantit que la requête n’expire pas, bien qu’il entraîne une surcharge de performances. La deuxième (synchrone) est plus rapide mais nécessite que la connexion soit maintenue jusqu'à la fin du processus. |
+| skipExistingCheck (ignorer les contrôles) | false | true | Ne contrôle pas les enregistrements complets existants. Améliore les performances. À utiliser uniquement pour les bases de données vides ou lorsque les enregistrements à importer n'existent pas encore. |
+| async | false | true | Indique si l'importation doit être effectuée de manière asynchrone ou synchrone. La première option (asynchrone) est adapté aux importations très volumineuses car il garantit que la requête n’expire pas, bien qu’il entraîne une surcharge de performances. La deuxième (synchrone) est plus rapide mais nécessite que la connexion soit maintenue jusqu'à la fin du processus. |
 
 Les éléments `idScheme` (schéma de l'identifiant), `dataSetIdScheme`  (schéma de l'identifiant de l'ensemble de données), `orgUnitIdScheme` (schéma de l'identifiant de l'unité d'organisation), `attributeOptionComboIdScheme` (schéma de l'identifiant de la combinaison d'options d'attribut),
 `dryRun` (essai) et `strategy` (stratégie) (notez la dénomination différente du paramètre `importStrategy` (stratégie d'importation))
@@ -8388,7 +8515,7 @@ Le point d'extrémité des audits de valeurs de données agrégées se trouve ic
 /api/audits/dataValue
 ```
 
-Tableau : Paramètres de requête des valeurs de données agrégées
+Tableau : Paramètres de requête pour les valeurs de données agrégées
 
 | Paramètre | Option | Description |
 |---|---|---|
@@ -8397,10 +8524,10 @@ Tableau : Paramètres de requête des valeurs de données agrégées
 | pe | Période ISO | Un ou plusieurs identifiants ISO de période |
 | ou | Identifiant de l'unité d'organisation | Un ou plusieurs identifiants d'unité d'organisation |
 | auditType | UPDATE | DELETE | Filtrer par un ou plusieurs types d'audit |
-| skipPaging | faux | vrai | Activer / désactiver la pagination |
-| pagination | faux \| vrai | Activer ou désactiver la pagination |
-| page | Nombre | Numéro de page (par défaut 1) |
-| pageSize | Nombre | Taille de la page (par défaut 50) |
+| skipPaging | false | true | Activer / désactiver la pagination |
+| pagination | false \| true | Activer ou désactiver la pagination |
+| page | Numéro | Numéro de page (par défaut 1) |
+| pageSize | Numéro | Taille de la page (par défaut 50) |
 
 Exemple : Obtenir les audits pour un ensemble de données `lyLU2wR22tC` et un type d'audit `CREATE` ou `UPDATE` :
 
@@ -8419,7 +8546,7 @@ Le point d'extrémité des audits de valeurs de données d'entités suivies se t
 /api/audits/trackedEntityDataValue
 ```
 
-Tableau : Paramètres de requête pour les ensembles de données d'entités suivies
+Tableau : Paramètres de requête pour les valeurs de données d'entités suivies
 
 | Paramètre | Option | Description |
 |---|---|---|
@@ -8427,14 +8554,14 @@ Tableau : Paramètres de requête pour les ensembles de données d'entités suiv
 | ou | Identifiant de l'unité d'organisation | Un ou plusieurs identifiants d'unité d'organisation de l'événement audité |
 | events | ID des événements | Un ou plusieurs identifiants d'évènement pour l'événement audité (séparés par des virgules) |
 | ps | ID de l'étape de programme | Une ou plusieurs étape(s) du programme de l'événement d'audit |
-| date de début | Date de début | Renvoie uniquement les enregistrements d'audit créés après cette date |
-| date de fin | Date de fin | Renvoie uniquement les enregistrements d'audit créés avant cette date |
+| startDate | Date de début | Renvoie uniquement les enregistrements d'audit créés après cette date |
+| endDate | Date de fin | Renvoie uniquement les enregistrements d'audit créés avant cette date |
 | ouMode | Mode de sélection de l'unité d'organisation | SELECTED \| DESCENDANTS |
 | auditType | UPDATE | DELETE | Filtrer par un ou plusieurs types d'audit |
-| skipPaging | faux | vrai | Activer / désactiver la pagination |
-| pagination | faux \| vrai | Détermine s'il faut activer ou désactiver la pagination |
-| page | Nombre | Numéro de page (par défaut 1) |
-| pageSize | Nombre | Taille de la page (par défaut 50) |
+| skipPaging | false | true | Activer / désactiver la pagination |
+| pagination | false \| true | Détermine s'il faut activer ou désactiver la pagination |
+| page | Numéro | Numéro de page (par défaut 1) |
+| pageSize | Numéro | Taille de la page (par défaut 50) |
 
 Exemple : Obtenir les audits pour les éléments de données `eMyVanycQSC` et `qrur9Dvnyt5` :
 
@@ -8461,10 +8588,10 @@ Tableau : Paramètres de requête pour les valeurs d'attributs d'entités suivie
 | tea | ID de l'attribut d'entité suivie | Un ou plusieurs identifiants d'attributs d'entités suivies |
 | trackedEntities | ID de l'entité suivie | Un ou plusieurs identifiants d'entités suivies (séparés par des virgules) |
 | auditType | UPDATE | DELETE | Filtrer par un ou plusieurs types d'audit |
-| skipPaging | faux | vrai | Activer / désactiver la pagination |
-| pagination | faux \| vrai | Détermine s'il faut activer ou désactiver la pagination |
-| page | Nombre | Numéro de page (par défaut 1) |
-| pageSize | Nombre | Taille de la page (par défaut 50) |
+| skipPaging | false | true | Activer / désactiver la pagination |
+| pagination | false \| true | Détermine s'il faut activer ou désactiver la pagination |
+| page | Numéro | Numéro de page (par défaut 1) |
+| pageSize | Numéro | Taille de la page (par défaut 50) |
 
 Exemple : Obtenir les audits pour l'attribut d'entité suivie `VqEFza8wbwA` :
 
@@ -8487,14 +8614,14 @@ Tableau : Paramètres de requête pour les audits d'entités suivies
 | Paramètre | Option | Description |
 |---|---|---|
 | trackedEntities | Uid d'entités suivies  | Un ou plusieurs identifiants d'entités suivies (séparés par des virgules) |
-| utiisateur | Utilisateur | Un ou plusieurs identifiants d'utilisateur |
+| user | Utilisateur | Un ou plusieurs identifiants d'utilisateur |
 | auditType | SEARCH | READ | Filtrer par un ou plusieurs types d'audit |
 | startDate | Date de début | Date de début des audits au format `aaaa-mm-jj`. |
 | endDate | Date de fin | Date de fin des audits au format `aaaa-mm-jj`. |
-| skipPaging | faux | vrai | Activer / désactiver la pagination |
-| pagination | faux \| vrai | Détermine s'il faut activer ou désactiver la pagination |
-| page | Nombre | Numéro de page (par défaut 1) |
-| pageSize | Nombre | Taille de la page (par défaut 50) |
+| skipPaging | false | true | Activer / désactiver la pagination |
+| pagination | false \| true | Détermine s'il faut activer ou désactiver la pagination |
+| page | Numéro | Numéro de page (par défaut 1) |
+| pageSize | Numéro | Taille de la page (par défaut 50) |
 
 Exemple : Obtenir les audits de type `READ` avec `startDate` 2018-03-01 et `endDate` 2018-04-24 avec une taille de page de 5 :
 
@@ -8517,14 +8644,14 @@ Tableau : Paramètres de requête pour les instances d'audit d'entités suivies
 | Paramètre | Option | Description |
 |---|---|---|
 | trackedEntities | Uid d'entités suivies  | Un ou plusieurs identifiants d'entités suivies (séparés par des virgules) |
-| utiisateur | Utilisateur | Un ou plusieurs identifiants d'utilisateur |
+| user | Utilisateur | Un ou plusieurs identifiants d'utilisateur |
 | auditType | SEARCH | READ | Filtrer par un ou plusieurs types d'audit |
 | startDate | Date de début | Date de début des audits au format `aaaa-mm-jj`. |
 | endDate | Date de fin | Date de fin des audits au format `aaaa-mm-jj`. |
-| skipPaging | faux | vrai | Activer / désactiver la pagination |
-| pagination | faux \| vrai | Détermine s'il faut activer ou désactiver la pagination |
-| page | Nombre | Numéro de page (par défaut 1) |
-| pageSize | Nombre | Taille de la page (par défaut 50) |
+| skipPaging | false | true | Activer / désactiver la pagination |
+| pagination | false \| true | Détermine s'il faut activer ou désactiver la pagination |
+| page | Numéro | Numéro de page (par défaut 1) |
+| pageSize | Numéro | Taille de la page (par défaut 50) |
 
 Exemple : Obtenir les audits de type `READ` avec `startDate` 2018-03-01 et `endDate` 2018-04-24 avec une taille de page de 5 :
 
@@ -8553,9 +8680,9 @@ Tableau : Paramètres de requête pour l'approbation des données
 | aoc | ID de la combinaison d'options d'attribut | Un ou plusieurs identifiants de combinaison d'options d'attribut |
 | startDate | Date de début | Date de début des approbations au format `aaaa-mm-jj`. |
 | endDate | Date de fin | Date de fin des approbations au format `aaaa-mm-jj`. |
-| skipPaging | faux | vrai | Activer / désactiver la pagination |
-| page | Nombre | Numéro de page (par défaut 1) |
-| pageSize | Nombre | Taille de la page (par défaut 50) |
+| skipPaging | false | true | Activer / désactiver la pagination |
+| page | Numéro | Numéro de page (par défaut 1) |
+| pageSize | Numéro | Taille de la page (par défaut 50) |
 
 Exemple : Obtenir les audits pour le flux d'approbation des données `i5m0JPw4DQi` :
 
@@ -9337,7 +9464,7 @@ Tableau : Attributs de visualisation
 | startDate | La date de début utilisée lors du filtrage. |
 | endDate | La date de fin utilisée lors du filtrage. |
 | sortOrder | L'ordre de tri de cette visualisation. Valeur entière. |
-| utiisateur | Un objet représentant le créateur de la visualisation. |
+| user | Un objet représentant le créateur de la visualisation. |
 | publicAccess (accès public) | Définit les autorisations pour l'accès public. |
 | displayDensity (afficher la densité) | La densité du texte affiché. |
 | fontSize (taille de la police) | La taille de la police du texte. |
@@ -9890,7 +10017,7 @@ Tableau : Attributs de la visualisation d'événements
 | startDate | La date de début utilisée lors du filtrage. |
 | endDate | La date de fin utilisée lors du filtrage. |
 | sortOrder | Ordre de tri de cette visualisation d'événement. Valeur entière. |
-| utiisateur | Un objet représentant le créateur de la visualisation. |
+| user | Un objet représentant le créateur de la visualisation. |
 | publicAccess (accès public) | Définit les autorisations pour l'accès public. |
 | displayDensity (afficher la densité) | La densité du texte affiché. |
 | fontSize (taille de la police) | La taille de la police du texte. |
@@ -10479,7 +10606,7 @@ Tableau : Champs d'interprétation
 | id | L'identifiant de l'interprétation. |
 | created | L'heure de création de l'interprétation. |
 | type | Le type d'objet analytique interprété. Options valides : VISUALISATION, CARTE, RAPPORT_D'ÉVÉNEMENT, GRAPHIQUE_D'ÉVÉNEMENT, VISUALISATION_D'ÉVÉNEMENT, RAPPORT_D'ENSEMBLE DE DONNÉES. |
-| utiisateur | Associer à l'utilisateur qui a créé l'interprétation. |
+| user | Associer à l'utilisateur qui a créé l'interprétation. |
 | visualisation | Associer à la visualisation si le type est VISUALISATION |
 | visualisation d'événements | Associer à la visualisation d'événements si le type est VISUALISATION_D'ÉVÉNEMENT |
 | carte | Associer à la carte si le type est CARTE. |
@@ -11010,17 +11137,17 @@ Tableau : Paramètres de requête
 | preAggregationMeasureCriteria | Non | Filtres pour les données/mesures, appliqués avant l'agrégation. | EQ &#124; GT &#124; GE &#124; LT &#124; LE |
 | startDate | Non | Date de début d’une plage de dates. Elle sera appliquée comme filtre, mais ne peut pas être utilisée avec une dimension ou un filtre de période. | Date |
 | endDate | Non | Date de fin d’une plage de dates. Elle sera appliquée comme filtre, mais ne peut pas être utilisée avec une dimension ou un filtre de période. | Date |
-| skipMeta | Non | Exclut la partie métadonnées de la réponse (améliore les performances) | faux | vrai |
-| skipData (ignorer les données) | Non | Excluez la partie données de la réponse. | faux | vrai |
-| skipRounding (ignorer l'arrondissement des valeurs) | Non | Évite l'arrondissement des valeurs de données, c'est-à-dire que les valeurs fournies sont très précise. | faux | vrai |
-| hierarchyMeta (métadonnées de la hiérarchie) | Non | Inclut les noms des unités d'organisation racines et le parcours hiérarchique des unités d'organisation dans les métadonnées. | faux | vrai |
-| ignoreLimit (Ignorer la limite) | Non | Ignore la limite de 50 000 enregistrements maximum dans la réponse - à utiliser avec précaution. | faux | vrai |
-| tableLayout (présentation du tableau) | Non | Utilise une source de données simples ou une présentation de tableau pour générer la réponse. | faux | vrai |
-| hideEmptyRows (cacher les lignes vides) | Non | Masque les lignes vides dans la réponse ; applicable lorsque la présentation du tableau est définie sur "vrai". | faux | vrai |
-| hideEmptyColumns (cacher les colonnes vides) | Non | Masque les colonnes vides dans la réponse ; applicable lorsque la présentation du tableau est définie sur "vrai". | faux | vrai |
+| skipMeta | Non | Exclut la partie métadonnées de la réponse (améliore les performances) | false | true |
+| skipData (ignorer les données) | Non | Excluez la partie données de la réponse. | false | true |
+| skipRounding (ignorer l'arrondissement des valeurs) | Non | Évite l'arrondissement des valeurs de données, c'est-à-dire que les valeurs fournies sont très précise. | false | true |
+| hierarchyMeta (métadonnées de la hiérarchie) | Non | Inclut les noms des unités d'organisation racines et le parcours hiérarchique des unités d'organisation dans les métadonnées. | false | true |
+| ignoreLimit (Ignorer la limite) | Non | Ignore la limite de 50 000 enregistrements maximum dans la réponse - à utiliser avec précaution. | false | true |
+| tableLayout (présentation du tableau) | Non | Utilise une source de données simples ou une présentation de tableau pour générer la réponse. | false | true |
+| hideEmptyRows (cacher les lignes vides) | Non | Masque les lignes vides dans la réponse ; applicable lorsque la présentation du tableau est définie sur "vrai". | false | true |
+| hideEmptyColumns (cacher les colonnes vides) | Non | Masque les colonnes vides dans la réponse ; applicable lorsque la présentation du tableau est définie sur "vrai". | false | true |
 | showHierarchy (afficher la hiérarchie) | Non | Affiche le parcours hiérarchique complet de l'unité d'organisation ainsi que le nom de l'unité d'organisation. | faux | vrai |
-| includeNumDen (inclure le numérateur et le dénominateur) | Non | Inclut dans la réponse, le numérateur et le dénominateur utilisés pour calculer la valeur. | faux | vrai |
-| includeMetadataDetails (inclure les détails des métadonnées) | Non | Inclut les détails des métadonnées dans la réponse générée pour les données brutes. | faux | vrai |
+| includeNumDen (inclure le numérateur et le dénominateur) | Non | Inclut dans la réponse, le numérateur et le dénominateur utilisés pour calculer la valeur. | false | true |
+| includeMetadataDetails (inclure les détails des métadonnées) | Non | Inclut les détails des métadonnées dans la réponse générée pour les données brutes. | false | true |
 | displayProperty (afficher la propriété) | Non | Affiche la propriété des métadonnées. | NAME &#124; SHORTNAME |
 | outputIdScheme (schéma d'identification de la sortie) | Non | Schéma d'identification utilisé pour les éléments de métadonnées dans la réponse à la requête. Il accepte des identifiants, des codes ou des attributs. | UID &#124; UUID &#124; CODE &#124; NAME &#124; ATTRIBUTE:<ID\> |
 | outputOrgUnitIdScheme (schéma d'identification de l'unité d'organisation de sortie)  | Non | Schéma d'identification utilisé pour les éléments de métadonnées dans la réponse à la requête. Ce paramètre remplace le "outputIdScheme" spécialement pour les unités d'organisation. Il accepte des identifiants, des codes ou des attributs. | UUID &#124; CODE &#124; NAME &#124; ATTRIBUTE:<ID\> |
@@ -11034,7 +11161,7 @@ Tableau : Paramètres de requête
 | order | Non | Spécifie l'ordre des lignes en fonction de la valeur. | ASC &#124; DESC |
 | timeField (champ de temps) | Non | Le champ de temps sur lequel baser l'agrégation des événements. Ceci s'applique uniquement aux éléments de données d'événements. Il peut s'agir d'une option prédéfinie ou de l'ID d'un attribut ou d'un élément de données ayant une valeur temporelle. | EVENT_DATE &#124; ENROLLMENT_DATE &#124; INCIDENT_DATE &#124; DUE_DATE &#124; COMPLETED_DATE &#124; CREATED &#124; LAST_UPDATED &#124; <Attribute ID\> &#124; <Data element ID\> |
 | orgUnitField | Non | Le champ d’unité d’organisation sur lequel baser l’agrégation des événements. ceci s'applique uniquement aux éléments de données d'événements. Il peut s'agir de l’ID d’un attribut ou d’un élément de données avec le type de valeur "Unité d’organisation". L'option par défaut consiste à omettre le paramètre de requête. | <Attribute ID\> &#124; <Data element ID\> &#124; REGISTRATION &#124; ENROLLMENT &#124; OWNER_AT_START &#124; OWNER_AT_END |
-| enhancedConditions (conditions améliorées)           | Non       | Active des conditions améliorées pour les dimensions/filtres | faux | vrai |
+| enhancedConditions (conditions améliorées)           | Non       | Active des conditions améliorées pour les dimensions/filtres | false | true |
 
 Le paramètre de requête *dimension* définit les dimensions à inclure dans la requête d'analyse. Un nombre quelconque de dimensions peut être spécifié. Le paramètre "dimension" doit être répété pour chaque dimension à inclure dans la réponse à la requête. La réponse à la requête peut éventuellement contenir des valeurs agrégées pour toutes les combinaisons des éléments de dimension spécifiés.
 
@@ -11585,7 +11712,7 @@ Tableau : Paramètres de requête pour la requête d'événement et l'analyse d
 | endDate | Oui | Date de fin des événements. | Les dates doivent être au format aaaa-MM-jj |
 | dimension | Oui | L'identifiant de dimension comprend les éléments de données, les attributs, les indicateurs de programme, les périodes, les unités d'organisation et les ensembles de groupes d'unités d'organisation. Le paramètre peut être répété autant de fois que nécessaire. Des filtres d'éléments peuvent être appliqués à une dimension selon le format <item-id\>:<operator\>:<filter\>. Les valeurs des filtres ne sont pas sensibles à la casse. | Les opérateurs peuvent être EQ &#124; GT&#124; GE&#124; LT&#124; LE&#124; NE &#124; COMME &#124; DANS |
 | filter | Non | L'identifiant de dimension comprend les éléments de données, les attributs, les périodes, les unités d'organisation et les ensembles de groupes d'unités d'organisation. Le paramètre peut être répété autant de fois que nécessaire. Des filtres d'éléments peuvent être appliqués à une dimension selon le format <item-id\>:<operator\>:<filter\>. Les valeurs des filtres ne sont pas sensibles à la casse. ||
-| hierarchyMeta (métadonnées de la hiérarchie) | Non | Inclut les noms des unités d'organisation racines et le parcours hiérarchique des unités d'organisation dans les métadonnées. | faux | vrai |
+| hierarchyMeta (métadonnées de la hiérarchie) | Non | Inclut les noms des unités d'organisation racines et le parcours hiérarchique des unités d'organisation dans les métadonnées. | false | true |
 | eventStatus | Non | Spécifie le statut des événements à inclure. | ACTIVE &#124; COMPLETED &#124; SCHEDULE &#124; OVERDUE &#124; SKIPPED. La séparation peut se faire par des virgules (*pour la requête uniquement*). |
 | programStatus | Non | Spécifie le statut d’inscription des événements à inclure. | ACTIVE &#124; COMPLETED &#124; CANCELLED. La séparation peut se faire par des virgules (*pour la requête uniquement*). |
 | relativePeriodDate (Date de la période relative) | chaîne | Non | Identifiant de date, par exemple : "2016-01-01". Il remplace la date de début de la période relative |
@@ -11602,8 +11729,8 @@ Tableau : Paramètres de requête pour l'analyse des requêtes d'événement un
 | ouMode | Non | The mode of selecting organisation units. Default is DESCENDANTS, meaning all sub units in the hierarchy. CHILDREN refers to immediate children in the hierarchy; SELECTED refers to the selected organisation units only. More details [here](#webapi_tracker_orgunit_scope) | DESCENDANTS, SUBORDONNÉES, SÉLECTIONNÉES |
 | asc | Non | Permet de trier les dimensions dans l'ordre croissant; peut concerner la date de l'événement, le nom et le code de l'unité d'organisation et tout identifiant d'élément. | `ouname` &#124; `programstatus` &#124; `eventstatus` &#124; `createdbydisplayname` &#124; `lastupdatedbydisplayname` &#124; `eventdate` &#124; `enrollmentdate` &#124; `incidentdate` &#124; `lastupdated` &#124; item identifier |
 | desc | Non | Permet de trier les dimensions dans l'ordre décroissant ; peut concerner la date de l'événement, le nom et le code de l'unité d'organisation et tout identifiant d'élément. | `ouname` &#124; `programstatus` &#124; `eventstatus` &#124; `createdbydisplayname` &#124; `lastupdatedbydisplayname` &#124; `eventdate` &#124; `enrollmentdate` &#124; `incidentdate` &#124; `lastupdated` &#124; item identifier |
-| coordinatesOnly (coordonnées uniquement) | Non | Indique s'il faut uniquement renvoyer les événements qui ont des coordonnées. | faux | vrai |
-| coordinateOuFallback (Coordonner le repli de l'uo) | Non | La géométrie de l'instance de programme est appliquée chaque fois que la géométrie de l'unité d'organisation est manquante. | faux | vrai |
+| coordinatesOnly (coordonnées uniquement) | Non | Indique s'il faut uniquement renvoyer les événements qui ont des coordonnées. | false | true |
+| coordinateOuFallback (Coordonner le repli de l'uo) | Non | La géométrie de l'instance de programme est appliquée chaque fois que la géométrie de l'unité d'organisation est manquante. | false | true |
 | dataIdScheme (schéma d'identification des données) | Non | Schéma d'identification à utiliser pour les données, plus spécifiquement pour les éléments de données et les attributs qui disposent d'un ensemble d'options ou de légendes. Ceci permet par exemple de renvoyer le nom de l'option au lieu du code, ou le nom de la légende au lieu de son ID, dans la réponse. | NAME &#124; CODE &#124; UID |
 | en-têtes | Non | Le nom des en-têtes à renvoyer dans la réponse. | Un ou plusieurs noms d'en-têtes séparés par une virgule |
 | page | Non | Le numéro de page. La page par défaut est 1. | Valeur numérique positive |
@@ -11622,16 +11749,16 @@ Tableau : Paramètres de requête pour l'analyse agrégée des événements uni
 |---|---|---|---|
 | value | Non | Il s'agit de l'identifiant de la dimension de valeur ; peut être un élément de données ou un attribut qui doit être de type numérique. | Identifiant d’élément de données ou d’attribut |
 | Type d'agrégation | Non | Type d'agrégation pour la dimension de valeur. Par défaut, il est définit sur AVERAGE (moyenne). | SUM &#124; AVERAGE &#124; AVERAGE_SUM_ORG_UNIT &#124; LAST &#124; LAST_AVERAGE_ORG_UNIT &#124; COUNT &#124; STDDEV &#124; VARIANCE &#124; MIN &#124; MAX |
-| showHierarchy (afficher la hiérarchie) | Non | Affiche le parcours hiérarchique complet de l'unité d'organisation ainsi que le nom de l'unité d'organisation. | faux | vrai |
+| showHierarchy (afficher la hiérarchie) | Non | Affiche le parcours hiérarchique complet de l'unité d'organisation ainsi que le nom de l'unité d'organisation. | false | true |
 | displayProperty (afficher la propriété) | Non | Affiche la propriété des métadonnées. | NAME &#124; SHORTNAME |
 | sortOrder | Non | Trie les enregistrements de la colonne de valeurs par ordre croissant ou décroissant. | ASC &#124; DESC |
 | limite | Non | Le nombre maximum d'enregistrements à renvoyer. Ne peut pas dépasser 10 000. | Valeur numérique positive |
 | outputType (type de sortie) | Non | Spécifie le type de sortie pour les données d'analyse. Il peut s'agir d'événements, d'inscriptions ou d'instances d'entité suivie. Les deux dernières options s'appliquent aux programmes avec inscription uniquement. | EVENT &#124; ENROLLMENT &#124; TRACKED_ENTITY_INSTANCE |
-| collapseDataDimensions (Dimensions des données regroupées) | Non | Réduit toutes les dimensions de données (éléments de données et attributs) en une seule dimension dans la réponse. | faux | vrai |
-| skipMeta | Non | Exclut la partie métadonnées de la réponse (améliore les performances). | faux | vrai |
-| skipData (ignorer les données) | Non | Excluez la partie données de la réponse. | faux | vrai |
-| skipRounding (ignorer l'arrondissement des valeurs) | Non | Évite d'arrondir les valeurs de données agrégées. | faux | vrai |
-| aggregateData (données agrégées) | Non | Produit des valeurs agrégées pour les dimensions de données (par opposition aux éléments de dimension). | faux | vrai |
+| collapseDataDimensions (Dimensions des données regroupées) | Non | Réduit toutes les dimensions de données (éléments de données et attributs) en une seule dimension dans la réponse. | false | true |
+| skipMeta | Non | Exclut la partie métadonnées de la réponse (améliore les performances). | false | true |
+| skipData (ignorer les données) | Non | Excluez la partie données de la réponse. | false | true |
+| skipRounding (ignorer l'arrondissement des valeurs) | Non | Évite d'arrondir les valeurs de données agrégées. | false | true |
+| aggregateData (données agrégées) | Non | Produit des valeurs agrégées pour les dimensions de données (par opposition aux éléments de dimension). | false | true |
 | orgUnitField | Non | Le champ d’unité d’organisation sur lequel baser l’agrégation des événements. ceci s'applique uniquement aux éléments de données d'événements. Il peut s'agir de l’ID d’un attribut ou d’un élément de données avec le type de valeur "Unité d’organisation". L'option par défaut consiste à omettre le paramètre de requête. | <Attribute ID\> &#124; <Data element ID\> &#124; REGISTRATION &#124; ENROLLMENT &#124; OWNER_AT_START &#124; OWNER_AT_END |
 
 
@@ -11644,7 +11771,7 @@ Tableau : Paramètres de requête pour les analyses d'événements en grappes u
 | clusterSize (taille des grappes) | Oui | Taille des grappes en mètres. | Valeur numérique positive |
 | coordinateField (champs de coordonnées) | Non | Champ à partir duquel les analyses d'événements géospatiaux sont effectuées. La valeur par défaut est " événement ". Il peut être défini comme identifiant d'attributs et d'éléments de données de type coordonnées. | EVENT &#124; <attribute-id\> &#124; <dataelement-id\> |
 | bbox | Oui | Zone de délimitation des événements à inclure dans la réponse au format "longitude minimale, latitude minimale, longitude maximale, latitude maximale". | Chaîne |
-| includeClusterPoints (Inclure les points d'assemblage) | Non | Inclut des informations sur les points sous-jacents pour chaque grappe. Faites attention si la grappe représente un très grand nombre de points. | faux | vrai |
+| includeClusterPoints (Inclure les points d'assemblage) | Non | Inclut des informations sur les points sous-jacents pour chaque grappe. Faites attention si la grappe représente un très grand nombre de points. | false | true |
 
 ### Analyse des requêtes d'événements { #webapi_event_query_analytics } 
 
@@ -12411,7 +12538,7 @@ Tableau : Paramètres de requête pour le point d'extrémité de la requête d'
 | ouMode | Non | The mode of selecting organisation units. Default is DESCENDANTS, meaning all sub units in the hierarchy. CHILDREN refers to immediate children in the hierarchy; SELECTED refers to the selected organisation units only. More details [here](#webapi_tracker_orgunit_scope) | DESCENDANTS, SUBORDONNÉES, SÉLECTIONNÉES |
 | asc | Non | Permet de trier les dimensions dans l'ordre croissant ; peut concerner la date d'inscription, la date d'incident, le nom et le code de l'unité d'organisation. | `ouname` &#124; `programstatus` &#124; `createdbydisplayname` &#124; `lastupdatedbydisplayname` &#124; `enrollmentdate` &#124; `incidentdate` &#124; `lastupdated` &#124; item identifier |
 | desc | Non | Permet de trier les dimensions dans l'ordre décroissant ; peut concerner la date d'inscription, la date d'incident, le nom et le code de l'unité d'organisation. | `ouname` &#124; `programstatus` &#124; `createdbydisplayname` &#124; `lastupdatedbydisplayname` &#124; `enrollmentdate` &#124; `incidentdate` &#124; `lastupdated` &#124; item identifier |
-| coordinatesOnly (coordonnées uniquement) | Non | Indique s'il faut uniquement renvoyer les inscriptions qui ont des coordonnées. | faux | vrai |
+| coordinatesOnly (coordonnées uniquement) | Non | Indique s'il faut uniquement renvoyer les inscriptions qui ont des coordonnées. | false | true |
 | en-têtes | Non | Le nom des en-têtes à renvoyer dans la réponse. | Un ou plusieurs noms d'en-têtes séparés par une virgule |
 | page | Non | Le numéro de page. La page par défaut est 1. | Valeur numérique positive |
 | pageSize | Non | La taille de la page. La taille par défaut est de 50 éléments par page. | Zéro ou valeur positive |
@@ -12840,20 +12967,20 @@ Tableau : Paramètres de requête pour le endpoint de l'ES
 | page                    | Non       | Le numéro de page. La valeur par défaut est 1.                                                                                                                                                                                                                                                                                                                                  | Valeur numérique positive.                                                                                                                                                                              |
 | pageSize                | Non       | La taille de la page. La valeur par défaut est 50 (ce qui signifie 50 éléments par page).                                                                                                                                                                                                                                                                                                   | Zéro ou valeur positive.                                                                                                                                                                      |
 | displayProperty (afficher la propriété)         | Non       | Affiche la propriété des métadonnées.                                                                                                                                                                                                                                                                                                                                         | NAME &#124; SHORTNAME                                                                                                                                                                                |
-| includeMetadataDetails (inclure les détails des métadonnées)  | Non       | Inclut les détails des métadonnées dans la réponse générée pour les données brutes.                                                                                                                                                                                                                                                                                                                            | faux | vrai                                                                                                                                                                                    |
+| includeMetadataDetails (inclure les détails des métadonnées)  | Non       | Inclut les détails des métadonnées dans la réponse générée pour les données brutes.                                                                                                                                                                                                                                                                                                                            | false | true                                                                                                                                                                                    |
 | outputIdScheme (schéma d'identification de la sortie)          | Non       | Schéma d'identification utilisé pour les éléments de métadonnées dans la réponse à la requête. Il accepte des identifiants, des codes ou des attributs.                                                                                                                                                                                                                                                            | UID &#124; UUID &#124; CODE &#124; NAME &#124; ATTRIBUTE:<ID\>                                                                                                                                       |
 | dataIdScheme (schéma d'identification des données)            | Non       | Schéma d'identification à utiliser pour les données, plus spécifiquement pour les éléments de données et les attributs qui disposent d'un ensemble d'options ou de légendes. Ceci permet par exemple de renvoyer le nom de l'option au lieu du code, ou le nom de la légende au lieu de son ID, dans la réponse.                                                                                                                    | NAME &#124; CODE &#124; UID                                                                                                                                                                          |
 | programStatus           | Non       | Spécifie le statut d'inscription des événements à inclure. *OBSOLÈTE , utilisez de préférence `enrollmentStatus`*.                                                                                                                                                                                                                                                                                   | ACTIVE &#124; COMPLETED &#124; CANCELLED. La séparation peut se faire par des virgules (*pour la requête uniquement*).                                                                                                                 |
 | enrollmentStatus        | Non       | Spécifie le statut d’inscription des événements à inclure.                                                                                                                                                                                                                                                                                                                           | ACTIVE &#124; COMPLETED &#124; CANCELLED. La séparation peut se faire par des virgules (*pour la requête uniquement*).                                                                                                                 |
 | eventStatus             | Non       | Spécifier le statut des événements à inclure.                                                                                                                                                                                                                                                                                                                                  | ACTIVE &#124; COMPLETED &#124; SCHEDULE &#124; OVERDUE &#124; SKIPPED. La séparation peut se faire par des virgules (*pour la requête uniquement*).                                                                                    |
-| coordinatesOnly (coordonnées uniquement)         | Non       | Indique s'il faut uniquement renvoyer les événements qui ont des coordonnées.                                                                                                                                                                                                                                                                                                                      | faux | vrai                                                                                                                                                                                    |
-| geometryOnly (géométrie Uniquement)            | Non       | Indique s'il faut uniquement renvoyer les événements qui ont des géométries.                                                                                                                                                                                                                                                                                                                       | faux | vrai                                                                                                                                                                                    |
+| coordinatesOnly (coordonnées uniquement)         | Non       | Indique s'il faut uniquement renvoyer les événements qui ont des coordonnées.                                                                                                                                                                                                                                                                                                                      | false | true                                                                                                                                                                                    |
+| geometryOnly (géométrie Uniquement)            | Non       | Indique s'il faut uniquement renvoyer les événements qui ont des géométries.                                                                                                                                                                                                                                                                                                                       | false | true                                                                                                                                                                                    |
 | userOrgUnit (unité d'organisation d'utilisateur)             | Non       | Identifiant de l’unité d’organisation de l'utilisateur.                                                                                                                                                                                                                                                                                                                                        | Tout identifiant de l’unité d’organisation.                                                                                                                                                                    | 
-| skipMeta                | Non       | Ignorer les métadonnées dans la réponse.                                                                                                                                                                                                                                                                                                                                            | faux | vrai                                                                                                                                                                                    |
-| skipData (ignorer les données)                | Non       | Ignorer les données dans la réponse.                                                                                                                                                                                                                                                                                                                                                | faux | vrai                                                                                                                                                                                    |
-| skipRounding (ignorer l'arrondissement des valeurs)            | Non       | Évite d'arrondir les données.                                                                                                                                                                                                                                                                                                                                             | faux | vrai                                                                                                                                                                                    |
-| skipHeaders (ignorer les en-têtes)             | Non       | Ignorer les en-têtes dans la réponse.                                                                                                                                                                                                                                                                                                                                             | faux | vrai                                                                                                                                                                                    |
-| totalPages              | Non       | Indiquez le nombre total de pages dans la réponse.                                                                                                                                                                                                                                                                                                                        | faux | vrai                                                                                                                                                                                    |
+| skipMeta                | Non       | Ignorer les métadonnées dans la réponse.                                                                                                                                                                                                                                                                                                                                            | false | true                                                                                                                                                                                    |
+| skipData (ignorer les données)                | Non       | Ignorer les données dans la réponse.                                                                                                                                                                                                                                                                                                                                                | false | true                                                                                                                                                                                    |
+| skipRounding (ignorer l'arrondissement des valeurs)            | Non       | Évite d'arrondir les données.                                                                                                                                                                                                                                                                                                                                             | false | true                                                                                                                                                                                    |
+| skipHeaders (ignorer les en-têtes)             | Non       | Ignorer les en-têtes dans la réponse.                                                                                                                                                                                                                                                                                                                                             | false | true                                                                                                                                                                                    |
+| totalPages              | Non       | Indiquez le nombre total de pages dans la réponse.                                                                                                                                                                                                                                                                                                                        | false | true                                                                                                                                                                                    |
 | displayProperty (afficher la propriété)         | Non       | Affiche la propriété des métadonnées.                                                                                                                                                                                                                                                                                                                                         | NAME &#124; SHORTNAME                                                                                                                                                                                |
 
 ## Dimensions { #webapi_dimensions }
@@ -14218,11 +14345,11 @@ Tableau : Paramètres de requête facultatifs des tableaux d'analyse
 
 | Paramètre de requête | Options | Description |
 |---|---|---|
-| Ignorer les tableaux de ressources | faux | vrai | Ignorer la génération des tableaux de ressources |
-| Ignorer l'agrégat | faux | vrai | Ignorer la génération de données agrégées et de données exhaustives |
-| Ignorer les événements | faux | vrai | Ignorer la génération de données d'événement |
-| ignorer l'inscription | faux | vrai | Ignorer la génération des données d'inscription |
-| Ignorer la propriété de l'unité d'Organisation  | faux | vrai | Ignorer la génération des données de propriété de l'unité d'organisation |
+| Ignorer les tableaux de ressources | false | true | Ignorer la génération des tableaux de ressources |
+| Ignorer l'agrégat | false | true | Ignorer la génération de données agrégées et de données exhaustives |
+| Ignorer les événements | false | true | Ignorer la génération de données d'événement |
+| ignorer l'inscription | false | true | Ignorer la génération des données d'inscription |
+| Ignorer la propriété de l'unité d'Organisation  | false | true | Ignorer la génération des données de propriété de l'unité d'organisation |
 | années précédentes | entier | Nombre de dernières années de données à inclure |
 
 > **Note**
@@ -15321,6 +15448,7 @@ L'exemple échangera des données en utilisant l'environnement de jeu DHIS 2, et
 * Dans l'instance **cible**, naviguez jusqu'à l'application *Saisie de données*, sélectionnez l'unité d'organisation _Sierra Leone_, l'ensemble de données _Échange de données_ et la période _Janvier 2022_. On observe que les valeurs des données échangées sont visibles dans le formulaire.
 
 En résumé, dans cet exemple, les enregistrements de données d'événements ont été agrégés du niveau de l'établissement au niveau national, dans la hiérarchie des unités d'organisation, et des données d'événements aux données mensuelles à l'aide d'indicateurs de programme. Les données ont été échangées avec une instance DHIS 2 cible en utilisant la propriété `code` pour référencer les métadonnées.
+
 
 
 # I18n { #i18n } 
@@ -16490,6 +16618,7 @@ Pour chaque flux de travail, indique les niveaux d'approbation des données que 
 les autorisations dont il dispose à chaque niveau :
 
     /api/me/dataApprovalWorkflows
+
 
 
 # Paramètres et configuration { #settings-and-configuration } 
@@ -20474,6 +20603,7 @@ All merging is based on data already persisted in the database, which means the 
 service is not validating that data again. This means if data was already invalid, it will not be
 reported during the merge. The only validation done in the service relates to relationships, as
 mentioned in the previous section.
+
 
 
 # Adresses électronique { #email } 

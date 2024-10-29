@@ -1,0 +1,298 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs-implementation/blob/master/content/maintenance_use/tracker-aggregate-integration.md"
+revision_date: '2021-11-16'
+tags:
+- 实施
+---
+
+# 整合跟踪器和汇总数据{ #integrating-tracker-and-aggregate-data } 
+本指南介绍了将跟踪计划收集的数据与综合数据相结合的不同方法，以便对其进行分析和使用。在 DHIS2 中，跟踪数据和汇总数据是分开收集和存储的，但在许多情况下，将这两类数据结合起来是有用的： 
+
+* 通过跟踪计划和综合数据集收集的数据可能是互补的。例如，如果跟踪系统被用作免疫接种电子登记册，那么在计算免疫接种覆盖率时，就需要将通过跟踪系统收集的服务数据与通常作为综合（年度）数据提供的人口估计数结合起来。
+* 在许多情况下，跟踪器的实施是分阶段进行的，首先在某些类型的卫生设施或按地理区域实施。因此，同样的数据可能在某些地点通过追踪器收集，而在其他地点则作为汇总数据收集，要获得完整的数据概览，就需要将追踪器数据和汇总数据结合起来。这种有区别的或混合的方法也可能是永久性的。
+* 通过跟踪器收集的数据可能与既定的综合报告有部分重叠。例如，疟疾相关活动月度报告可能既包括疟疾病例信息，也包括蚊帐发放等预防活动信息。如果疟疾病例登记采用跟踪器，则疟疾月度报告可根据跟踪器数据部分完成，但仍需提供预防活动的汇总报告。
+* 当在一个计划领域（免疫接种、艾滋病等）引入跟踪系统时，如果之前已经收集了综合数据，要确保数据在一段时间内具有可比性，就必须将综合数据和跟踪系统数据结合起来，以便进行纵向数据分析。
+* DHIS2 中的某些数据质量检查仅适用于汇总数据。因此，要对跟踪数据进行这些检查，就必须首先将其汇总并作为汇总数据元素存储。
+
+有几种适合不同目的的方法可以实现这一目标。这些方法各有利弊。在[下一节](替代方法)中，介绍了将跟踪器数据和汇总数据结合起来的三种总体方法，随后是[选择一种方法](#选择一种方法)一节，概述了每种方法在适当情况下的注意事项和示例。然后，针对将跟踪器数据保存为聚合数据值的方法，提供了[操作指南](#How-to-saving-aggregated-tracker-data-as-aggregate-data-values)。
+
+## 替代方法{ #alternative-approaches } 
+跟踪数据和汇总数据可通过以下方式在 DHIS2 中进行合并：
+
+- 在同一图表、表格、地图或仪表板中并排显示跟踪数据和汇总数据；
+- 通过汇总指标将汇总数据和跟踪数据结合起来；
+- 将跟踪器数据计算出的值保存为综合数据值。
+
+本节概述了这三种方法以及各自的优缺点。
+
+### 并列显示跟踪器和汇总数据{ #showing-tracker-and-aggregate-data-side-by-side } 
+通过将汇总数据和跟踪器数据纳入相同的数据展示台图表或表格中，可以同时显示和分析汇总数据和跟踪器数据。此外，还可在事件报告和事件展示台应用程序中创建跟踪器数据的可视化，并将其与仪表盘上汇总数据的可视化结合起来。任何可以访问 DHIS2 分析应用程序中两类数据的用户都可以使用这种方法。
+
+<!-- TODO: Example screenshot -->
+
+> **Advantages:**
+>
+> * easy to set up
+> * works well for presenting and analysing complimentary data
+> * detailed data can be included (e.g. line lists of cases)
+>
+> **Disadvantages:**
+>
+> * limited dimensionality in analysis of tracker data, i.e. for showing age/sex disaggregations
+> * not fully integrated/comparable with aggregated data, for example the same disaggregations cannot be applied in a single visualisation even if available in the underlying data
+> * requires the tracker and aggregate data to be in the same DHIS2 instance
+
+### 通过综合指标合并数据{ #combining-data-through-aggregate-indicators } 
+综合指标可基于综合数据和跟踪数据，也可分别或合并为一个综合指标。跟踪数据元素、被跟踪实体属性和计划指标均可纳入综合指标的计算。
+
+这种方法在多种情况下都很有用： 
+
+* 不同的医疗机构通过综合数据集和跟踪器计划收集相同的数据，即一些医疗机构收集综合数据，另一些医疗机构通过跟踪器收集个人数据。
+* 同一数据可作为不同时期的汇总数据值和跟踪器数据值提供，例如，目前通过跟踪器收集的数据在前几年是作为汇总数据收集的。
+* 当需要根据综合数据制定指标时，即通过跟踪器收集的服务数据与作为综合数据的分母相结合。 
+
+<!-- TODO: Example screenshot -->
+
+> **Advantages:**
+>
+> * relatively easy to set up
+> * can potentially hide some of the complexity of integrating aggregate and tracker data to end users
+> 
+> **Disadvantages:**
+>
+> * tracker data cannot be analysed with disaggregations such as age/sex as separate data dimensions
+> * difficult to manage in cases where there may be overlapping data
+> * requires the tracker and aggregate data to be in the same DHIS2 instance
+
+### 将跟踪器数据汇总保存为汇总数据{ #saving-aggregates-of-tracker-data-as-aggregate-data } 
+跟踪数据可汇总为每周或每月的数值，这些数值可作为汇总数据元素值保存在 DHIS2 中。这与医疗卫生机构每月统计登记册以编制月度报告时通常采用的人工方法一致。可定义计划指标，根据跟踪数据生成与总体数据元素相对应的总体数字。计划指标值应与总体值相同（例如，*新发和复发肺结核病例通知数*或*1 岁以下儿童卡介苗接种数*）。数据传输可以根据需要临时进行，也可以作为常规流程的一部分，在固定的时间间隔内（自动）传输数据（如下图所示）。
+
+![Example: Information flow between a DHIS2 instance with tracker programmes, and a DHIS2 HMIS instance with aggregate data.](resources/images/tracker_agg_information_flow.jpg)
+
+![Example: Aggregate data set (in the data entry app) which has been automatically filled by the data pushed from tracker program indicators.](resources/images/tracker_agg_dataset_example.png)
+
+将数据从计划指标实际转移到综合数据元素的方法有多种。其中包括 
+
+* 手动或通过脚本查询 [DHIS2 API](#webapi) 导出程序指标值，然后使用 [Import/export app](#import_export) 或 API 将其导入 DHIS2；
+* 使用脚本自动从应用程序接口导出和导入数据；
+* 使用 DHIS2 社区开发的几个应用程序之一（可从 [DHIS2 App Hub](apps.dhis2.org) 上获取）来导出和导入数据；
+* 设置 [预测器](#manage_predictor)，可按计划将程序指标值例行转移到汇总数据元素中。
+
+下文将进一步详细介绍这种方法，重点是如何使用脚本实现流程自动化。
+
+> **Advantages:**
+>
+> * data can be analysed with all the same dimensionality as aggregate data (see example screenshot below)
+> * data can still be combined with detailed tracker data (i.e. the first approach)
+> * ensures that there is no overlap in tracker and aggregate data
+> * works when tracker and aggregate data are collected in separate DHIS2 instances
+> * may improve efficiencies and reduce load on the DHIS2 server from analytics, since requests for pre-aggregated data is often less demanding than on-the-fly aggregation of tracker data
+>
+> **Disadvantages:**
+>
+> * more complex to set up, and may require more ongoing maintenance
+> * generally requires external tools/scripts to move data via the API
+> * a mapping of data between tracker and aggregate data must be developed and maintained
+> * if data is moved between two DHIS2 instances, organisation units must also be harmonised and kept in sync across the instances
+
+<!-- TODO - the two screenshots below should perhaps be merged into one, highlighting the "dimensionality" -->
+
+![Example: TB Case Surveillance to aggregate quarterly TB report for TB notifications. Program indicator data values from tracker data (data elements/disaggregation can be produced, but not pivoted by dimensions as gender, age group)](resources/images/tracker_agg_pt.png)
+
+![Example: Aggregate dashboard output (with ability to pivot male/female as a data dimension)](resources/images/tracker_agg_dashboard.png)
+
+## 选择方法{ #choosing-an-approach } 
+如上所述，这三种方法各有利弊。对于一个实施方案来说，可能需要几种方法。例如，某些跟踪器数据可能需要经常更新（如每日接种疫苗的儿童人数），同时每月将总体计划指标值转换为总体数据元素值，以便与尚未使用跟踪器的机构进行比较，或与总体数据难以直接完成的额外维度（如年龄/性别分类）进行比较。
+
+前两种方法使用 DHIS2 内置的标准应用程序，实施起来都比较简单。虽然配置汇总指标（第二种方法）必须由有权限配置此类指标的系统管理员完成，但任何有权限使用 DHIS2 分析应用程序和数据本身的用户都可以使用这些方法。然而，这些方法的一个主要局限是要求跟踪器和汇总数据位于 DHIS2 的同一实例中。 
+
+第三种方法是将跟踪器中的数据保存为汇总数据值，这种方法在分析方面有一些优势。不过，这也是唯一适合将跟踪器数据与 DHIS2 独立实例中的汇总数据整合在一起的方法。许多国家都有一个成熟、稳定的 DHIS2 实例，主要用于在集成环境（如卫生管理信息系统，HMIS）中获取各卫生项目的汇总数据。在实施 DHIS2 追踪器进行个人层面的数据收集时，一般建议在专门用于追踪器部署的单独 DHIS2 实例中进行。通过维护单独的跟踪器和 DHIS2 总实例，系统管理员可以更好地管理性能，DHIS2 更新可以独立进行，并且可以应用数据管理原则，确保跟踪器采集的个人身份数据可以根据国家政策和管理框架得到保护。
+
+如果存在通过 DHIS2 数据进行例行汇总报告的系统，那么通过追踪器利用个人数据收集来自动向例行 HMIS "报告 "汇总数据显然是有好处的。另一种方法通常是由卫生机构手动完成，因为这种汇总对各个卫生机构的管理非常重要，而且汇总数据的例行报告通常是强制性的。通过 DHIS2 追踪器获取个人层面的数据有可能提高向常规 HMIS 汇总报告的数据质量，同时还能根据需要对个人层面的追踪器数据进行特别分析。
+
+从技术上讲，有几种方法可以做到这一点。在下面的 "如何操作 "部分，重点介绍将跟踪器数据自动迁移到汇总数据值所需的步骤。 
+
+## 操作方法：将汇总的跟踪器数据保存为汇总数据值{ #how-to-saving-aggregated-tracker-data-as-aggregate-data-values } 
+本节介绍将跟踪器数据保存为数据元素总值的推荐方法。虽然需要外部工具或脚本作为传输数据的一部分，但它尽可能利用了 DHIS2 的现有功能，因此脚本可以相对简单。这里所概述的也是 DHIS2 的[世卫组织配置包](dhis2.org/who)所采用的方法，其中包括在相关的跟踪方案和汇总数据集之间映射变量。下文]（#dhis2-digital-data-packages-and-linking-tracker-and-aggregate-data）将对此进行更详细的讨论。
+
+建议将此处描述的方法作为将跟踪器数据保存为汇总数据值的长期自动解决方案。从技术上讲，还有其他几种方法可以完成数据的汇总和迁移，包括使用预测器、导出数据并使用其他软件（如 excel）进行转换，或通过定制的 DHIS2 应用程序（包括[DHIS2 应用程序集线器](apps.dhis2.org)中提供的一些应用程序）。这些工具和方法虽然没有在本指南中介绍，但在许多情况下仍然适用，包括与此处概述的方法相结合。例如，如果只需要不时地进行临时数据传输，或者在跟踪器实施的早期阶段，数据传输主要是为了测试，而配置仍在变化之中。 
+
+### 实施方面的考虑{ #implementation-considerations } 
+将通过跟踪器收集的数据与现有的汇总报告流程（即 HMIS）相结合，需要做出与数据管理相关的决策，并影响数据访问、系统维护等。在此介绍一些关键的注意事项。
+
+#### 数据传输{ #data-transfer } 
+与数据传输有关的主要考虑因素有两个：
+
+**How often should aggregated data be transferred from tracker to aggregate data values?** When the transfer is automated, the frequency of the transfer can be anything from daily to only once per reporting/aggregation period (e.g. weekly, monthly, quarterly). More frequent updates means that data becomes available as aggregate data values and can be used and analysed more quickly, and are kept up to date as new and updated information comes in. Whether or not this is useful depends on the tracker programme in question. For example, having daily updated data over the course of a reporting period may be useful information if made available to facility-level staff, but is less useful if the purpose of the aggregation is primarily to facilitate and automate routine HMIS reporting to higher levels.
+
+**How far back in time should data be added and updated?** Together with a decision on how frequently to transfer data, it must be decided for how far back (how many periods) data should be updated, and whether or not to transfer data for the current period (for which data will not be complete, see previous point). This decision may have to be aligned with potentially existing practices around aggregate data, such as when or how it is validated and whether or not it is at some point locked for editing, discussed further below. Related to this is the question of whether to differentiate between migrating new data values and making updates to previously reported values.
+
+在讨论这些问题时需要考虑到，跟踪数据在许多情况下是根据纸质登记簿追溯输入的，而不是在提供服务或接触病人时直接输入的。此外，数据的更正和编辑可能会在实际事件发生后相当长的一段时间内进行，例如，在随访过程中发现前一次就诊的数据有误。
+
+除非有充分的理由不这样做，否则建议更新和编辑的时间越早越好，因为有合理的机会对基础跟踪数据进行添加和更新。这样可以确保使用的是最正确和最新的信息，尽管这可能需要修改 HMIS 数据管理标准，如数据验证和锁定。
+
+#### 数据质量和验证{ #data-quality-and-validation } 
+确保数据质量是跟踪数据和汇总数据的关键问题，而将两者联系起来则会在这一领域带来新的潜在难题。有一些工具和方法可以减少跟踪数据收集过程中出现错误的几率。然而，错误总是有可能发生的。在基于跟踪器的汇总数据仍在定期更新的期间内（如上一节所述），跟踪器数据中的更正也会自动流向汇总数据。不过，有两种情况必须决定如何处理数据更正： 
+
+**如果在跟踪器中发现并纠正了错误**，在数据例行迁移的时间段和/或汇总数据经过验证和/或锁定之后。可能的解决方法包括
+
+* 处理汇总数据中的差异（如果误差较小）；
+* 对受影响期间的数据进行临时转移；
+* 手动修正汇总数据。
+
+**如果在汇总数据中发现数据质量问题**。这种情况出现的可能性较小，因为只有在汇总信息时，或在数据明显不完整的情况下，跟踪器数据中相对较大或系统性的错误才会显现出来。可能的解决方法包括 
+
+* 在跟踪器中修正源数据，然后重新传输数据（如有可能）；
+* 纠正/编辑汇总数据（如有可能），并接受差异。
+
+在汇总跟踪数据时，另一个相关的数据质量问题涉及数据的及时性和完整性，这是汇总报告（如在 HMIS 中）的关键数据质量指标。当通过 DHIS2 直接报告汇总数据时，用户点击一个按钮来表示特定数据集（报告表）已完整报告。以此为基础计算数据的及时性（在规定期限内提交）和完整性。根据跟踪数据生成汇总数据时，无法获得完整性和及时性信息。关于这个问题，可以考虑几种方法：
+
+* 在某些情况下，没有完整性和及时性数据是不成问题的。跟踪器数据一般没有完整性和及时性信息，从跟踪器生成的汇总数据值也可以以同样的方式查看。例如，如果数据传输的主要目的是为了方便进行数据分析，增加维度，或为了使用汇总数据的分析工具，就会出现这种情况。 
+* 如果数据是某一例行报告数据集的子集，而其他部分直接作为汇总数据输入，则跟踪数据的完整性信息可作为整个数据集完整性的一部分进行核实和报告。
+* 完整性和及时性信息可由负责提交汇总数据的用户手动管理。这可以作为验证流程的一部分，由用户（在汇总数据输入应用程序中）验证数据，然后确认数据是否完整。虽然这可以增加一个额外的验证步骤，但也会耗费更多资源，而且真正的数据验证在某种程度上需要一定程度的人工统计，这在一定程度上违背了自动汇总跟踪器数据的初衷。
+* 开发一个脚本或工具相对容易，只要报告了一定数量（即指定数量的数据元素值）的数据，就能自动将数据集标记为完整。这对于识别已报告*部分*数据的医疗机构非常有效，但这一自动流程无法确定报告是否真正意义上的*完整*。
+
+一般来说，当跟踪器数据被用于生成综合数据值时，这是一种数据二次使用的形式，超出了数据收集的主要目的。重要的是，要向用户明确说明如何管理数据验证和更正问题，如何处理 "完整性 "等问题，并明确界定数据的 "真实来源"。
+
+#### 数据访问和所有权{ #data-access-and-ownership } 
+在 DHIS2 中，跟踪数据和汇总数据的访问都是通过基于用户组的共享来控制的。因此，跟踪数据的共享和由跟踪数据生成的汇总数据值的共享可以是不同的，在这两类数据被托管在不同的 DHIS2 实例中的常见情况下，相同的用户可能根本无法进入系统。这样做有一定的好处，例如，在不影响隐私/安全的情况下，汇总数据值可以比跟踪数据得到更广泛的共享。与此同时，它要求在两个不同的实例中设置适当的数据共享，还可能要求用户访问两个不同的系统。(可以使用 [OpenID Connect]（#install_oidc_configuration）允许用户在两个实例中共享用户名和密码）。
+
+与数据*访问*相关的是数据所有权问题，这个问题也与数据质量和验证有关。需要制定明确的程序，说明谁负责和 "拥有 "跟踪器以及从跟踪器生成的综合数据值。在涉及多个卫生计划的情况下，这一点尤为重要。例如，如果一个免疫接种跟踪计划将数据输入一个综合的 HMIS 数据集，而该数据集由一个单独的 HMIS 单位负责。
+
+#### 保养 { #maintenance } 
+这里描述的方法要求具备技术能力，既能初步开发和配置数据传输解决方案，又能在 DHIS2 服务器基础设施发生变化时进行必要的持续维护。此外，如果跟踪器实例或 HMIS 总体实例中的元数据发生变化，则可能需要对计划指标与总体数据元素的映射进行相应更新。
+
+#### 过渡期{ #transition-period } 
+当追踪器数据汇总的目的是为了取代已有的汇总报告（如现有的 HMIS 常规报告）时，计划在一段时间内（如 6 个月）保持并行报告通常是有用的。在这段时间内，应将跟踪器生成的总数与现有手工报告程序生成的总数进行比较。虽然两者不可能完全相同，但这种比较是有用的，因为它们
+
+* 应引发对差异来源的讨论，例如，在（任一数据源中）存在数据质量问题时。
+* 当跟踪器数据的完整性和质量与人工报告相同或更好时，为决策提供信息，以便停止并行报告。
+
+从技术上讲，这可以通过在聚合实例中设置一个具有独立数据元素的独立 "影子 "数据集来实现，这样就可以保存两个并行的聚合数据集，并在其中进行比较。或者，也可以在跟踪器实例中保留汇总数据集的副本，用于比较。
+
+### 假设和关键步骤{ #assumptions-and-key-steps } 
+当跟踪数据和汇总数据在不同的 DHIS2 实例中管理时（一般建议这样做），在两个实例之间 迁移数据需要相同的组织单位，或至少有一套共享的标识符。因为在建立新的 DHIS2 实例时，组织单位通常会被重复使用，这在初期可能不成问题。但是，随着时间的推移，要在两个或更多的 DHIS2 实例中保持组织单位的同步，就需要谨慎的管理，不管是人工处理还是通过自动流程来处理变更。即将发布的实施指南将进一步详细讨论这个问题。就本指南而言，先决条件是两个实例中的组织单位是统一的，并有一套共享的标识符。如果跟踪数据被迁移到同一 DHIS2 实例中的汇总数据值，同步组织单位就不是问题。
+
+从概念上讲，将跟踪器数据集合迁移到集合数据值所涉及的步骤包括
+
+1. 使用代码建立计划指标与相应数据元素和类别选项组合之间的映射关系。
+2. 将计划指标值导出为集合 * 数据值集 *
+3. 导入*数据值集*作为数据元素的集合值
+
+以下各节将解释 (1) 如何在计划指标和数据元素之间建立映射关系，(2) 与导入/导出数据值相关的 DHIS2 应用程序接口，以及 (3) 自动导入和导出过程中的注意事项。
+
+### 将计划指标与综合数据要素进行映射{ #mapping-program-indicators-with-aggregate-data-elements } 
+要从跟踪数据中生成综合数据值，必须为每个数据点定义计划指标。每个数据值都对应一个数据元素和一个类别选项组合（如适用）。因此，需要使用标识符进行映射，以指定哪个计划指标与哪个特定数据元素（以及类别选项组合）相关。虽然这里没有详细讨论，但映射也可以包括属性选项组合。
+
+![使用程序指标将跟踪器数据映射到汇总数据的说明](resources/images/tracker_agg_mapping.png)
+
+建议使用 *codes* 作为这种映射的标识符，这里介绍的就是这种标识符。
+
+> **Note**
+> While the approach described here is based on the mapping of data being done in the source system (through program indicators), it could in other scenarios be done in the target system where the data is imported, or in a middleware or interoperability layer in between.
+
+#### 数据元素编码{ #coding-data-elements } 
+由于数据元素和类别选项组合代码将作为属性添加到计划指标中，因此第一步是为数据元素和类别选项组合创建和/或添加代码。这项工作应在保存汇总数据值的 DHIS2 实例中进行。如果数据元素和类别选项组合已经有代码，则可以使用这些代码。也可以定义自定义属性并将其分配给数据元素，以便进行映射，但在本指南中，我们将使用内置的数据元素代码。
+
+虽然严格来说没有必要，但最好还是将数据元素添加到数据集中（如果尚未添加）。该数据集（或多个数据集）定义了要传输数据的周期类型（如每周、每月），导入时将根据该周期类型验证汇总的跟踪器数据。此外，这些分配的数据可作为随后计算数据完整性的基础。
+
+#### 编码计划指标{ #coding-program-indicators } 
+计划指标有一个固定属性，专门用于类别选项组合（和属性选项组合）标识符，该标识符在计划指标值作为数据值集导出时使用。
+
+<!-- TODO: Update to screenshot with "blank" fields-->
+![Program indicator fields for category option combination and attribute option combination](resources/images/tracker_agg_coc_aoc_export.png)
+
+但是，默认情况下没有相应的字段来指定数据元素的标识符（即代码）。原则上，*可以*使用计划指标本身的代码，但这在多个计划指标链接到同一数据元素（具有不同类别选项组合）的常见情况下会失效。因此，建议创建一个分配给计划指标的[属性]（#about_attribute）。
+
+The custom attribute should be of the type `Text`. It should *not* be mandatory, since not all program indicators will be linked to aggregate data elements. It should *not* be unique, since multiple program indicators may point to the same data element code. And it should be applied to "Program indicator" only, since it is not relevant elsewhere. Other properties like name, description and code can be defined according to the metadata naming convention of the particular implementation. The screenshot below shows how the custom attribute included in the WHO metadata packages is configured. If this custom attribute has already been imported into the DHIS2 instance in question, it can be re-used.
+
+![Example showing how a custom attribute for linking program indicators and aggregate data elements can be defined.](resources/images/tracker_agg_custom_attribute_definition.png)
+
+自定义属性分配给计划指标后，在维护应用程序中添加或编辑计划指标时，它将作为新字段/属性出现。需要创建和/或修改每个要将数据传输到汇总数据元素的计划指标，以包含相应数据元素的代码和类别选项组合代码。
+
+将需要迁移的计划指标添加到计划指标组中，有助于管理大量的计划指标。例如，迁移数据的脚本可以针对计划指标组中的所有计划指标，从而简化配置。
+
+### 用于导出和导入数据值集的 DHIS2 Web API{ #dhis2-web-api-for-export-and-import-of-datavaluesets } 
+一旦完成程序指标与相应数据元素和类别选项组合之间的映射，就可以将聚合程序指标数据作为`dataValueSet`从分析 API 端点导出，然后作为聚合数据值导入。如简介中所述，出于本指南的目的，我们假设组织单位是相同的，或者在要导入和导出数据的 DHIS2 实例中具有共同的标识符。
+
+#### 出口{ #export } 
+要从 DHIS2 Web API 导出数据，使用`/api/analytics/dataValueSet`端点，[开发人员文档](https://docs.dhis2.org/en/develop/using-the -api/dhis-core-version-master/analytics.html#webapi_analytics_data_value_set_format）。端点可以以`JSON`或`XML`表示形式返回数据。它需要指定三个参数：
+
+* 数据 (dx) - 要导出数据的计划指标。
+* 期间 (pe)--要导出数据的期间，应与要迁移数据的汇总数据元素的期间类型相匹配。
+* 组织单位 (ou) - 要导出数据的组织单位。
+
+这些参数的格式详见 [开发人员文档](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/analytics.html#webapi_analytics_dimensions_and_items)。
+
+除了指定查询的数据、期间和组织单位维度外，还需要指定保存数据元素代码的自定义属性应用于导出的数据值集中的数据值的标识符。这是通过将可选的`outputIdScheme`参数设置为指向自定义属性的 UID 来完成的。没有此属性的对象（例如组织单位）将退回到使用 UID。
+
+因此，完整的应用程序接口调用可以如下所示：
+```
+/api/analytics/dataValueSet.json?dimension=dx:Uvn6LCg7dVU;OdiHJayrsKo&dimension=pe:LAST_MONTH
+&dimension=ou:lc3eMKXaEfw&outputIdScheme=ATTRIBUTE:vudyDP7jUy5
+```
+
+该查询将返回一个包含汇总数据值的文件（本例中为 JSON 格式）。
+
+正如 `/analytics/dataValueSet` API 端点的文档中所指定的那样，当使用基于属性的标识符方案进行导出时（如本指南中所示），存在产生重复数据值的风险。如果已为多个程序指示器分配了相同的数据元素组合和类别选项组合代码，就会发生这种情况。布尔查询参数`duplicatesOnly`可用于调试目的以仅返回重复的数据值，建议在程序指示器和聚合数据元素之间的映射发生任何更改后进行此检查。
+```
+/api/analytics/dataValueSet.json?dimension=dx:Uvn6LCg7dVU;OdiHJayrsKo
+ &dimension=pe:LAST_MONTH&dimension=ou:lc3eMKXaEfw&duplicatesOnly=true
+```
+
+由于导出依赖于分析 API，因此只包括[分析表](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/maintaining-the-system/scheduling.html#scheduling_analytics_table) 中的数据。因此，举例来说，如果分析表安排在每天午夜更新，而传输安排在每天 23:00，则不会包含当天的数据。
+
+#### 进口{ #import } 
+如上所述，当具有聚合数据值的文件已使用适当的参数从`/api/analytics/dataValueSet`端点导出时，它可以直接导入到数据要迁移到的 DHIS2 实例中。出于测试目的，可以使用 [导入/导出应用程序](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/maintaining-the-system/importexport-app.html) 或通过 DHIS2 Web API 导入数据文件。在这里，我们展示了如何使用 API。
+
+导入数据值集的应用程序接口端点是"/api/dataValueSets"，[开发人员文档](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/data.html#webapi_data_values) 有更详细的说明。与此相关的是不同的[导入参数](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/data.html#webapi_data_values_import_parameters)，必须根据我们的目的进行调整，如本文所述：
+
+* `dataElementIdScheme` and `categoryOptionComboIdScheme` must be set to `code`, since we use codes to map values from Program indicators to aggregate data elements and category option combinations.
+*  `orgUnitIdScheme` must be set to whatever is appropriate for each particular case.
+* `dryRun` makes it possible to get an import summary without actually importing data, and can be useful for testing.
+* `importStrategy` should in most cases be set to `CREATE_AND_UPDATE`, which means that new data values will be imported and existing ones updated. In some cases, it *may* be relevant to set this to only `CREATE` or `UPDATE`, for example if a decision is made not to update existing data after a certain time period, but allow new data to be added. This was discussed in further detail under [implementation considerations](#implementation-considerations)
+
+这是一个示例，说明在使用 API 导入数据时如何指定适当的参数：
+
+```
+/api/dataValueSets/dataElementIdScheme=CODE&categoryOptionComboIdScheme=CODE&importStrategy=CREATE_AND_UPDATE&dryRun=false
+```
+
+### 编写脚本，自动进行数据迁移{ #writing-scripts-to-automate-data-migration } 
+在不久的将来，我们将提供一个模板脚本，用于在同一实例内或在不同的 DHIS2 实例间自动完成从跟踪器到汇总表的数据例行迁移。无论是采用该模板，还是开发定制工具或脚本来执行迁移，都应遵循某些建议。 
+
+* 将执行导出和导入的脚本与迁移数据的配置分开。这样可以更方便地修改配置，而不会在脚本逻辑中引入错误的危险，并可轻松拥有多个配置（即每个跟踪程序一个配置）。 
+* 脚本应生成包含关键事件和信息的日志，如何时触发脚本、导入结果摘要（成功时）或错误详情（失败时）。
+* 应建立一个系统，在出现错误时通知负责数据迁移的人员，例如通过服务器上配置的电子邮件服务器，或使用 DHIS2 本身的消息传送功能（可通过 Web API 访问）。
+* 由于数据导出依赖于分析端点，因此脚本触发分析并在该过程结束后执行导出可能很有用。 
+
+### DHIS2 数字数据包及链接跟踪器和汇总数据{ #dhis2-digital-data-packages-and-linking-tracker-and-aggregate-data } 
+已开发了 DHIS2 数字数据包，以支持
+DHIS2 数字数据包既支持汇总报告和分析，也支持跟踪数据采集和设施级分析。更多信息请访问 [dhis2.org/who](https://dhis2.org/who)。
+
+汇总数字数据包（包括标准汇总仪表板）可用于结核病、艾滋病毒、疟疾、生殖健康、新生儿和儿童保健以及疾病监测等卫生计划。汇总数据包包括
+
+1. 数据集、数据元素和类别选项集（发送跟踪器数据的 "目标）
+2. 符合 ADX 标准的元数据代码，可将数据值从跟踪器映射到总体 "目标"。
+
+此外，跟踪数据包正在为越来越多的使用案例开发，如免疫电子登记、结核病病例监测、艾滋病和综合疾病报告。跟踪数据包旨在采集可汇总并提交至相应汇总数据集的数据，我们已将以下内容纳入跟踪数字数据包：
+
+1. 程序指标配置为产生与数字数据包总体数据中包含的数据元素和分类相对应的数据值。
+2. 汇总数据元素代码 "的自定义属性。
+3. 每个计划指标的属性均由综合数字数据包中的数据元素代码和类别选项组合代码填充。
+
+### 摘要{ #summary } 
+将跟踪器数据迁移到汇总数据值的步骤：
+
+1. 定义要生成和传输数据的变量列表。
+2. 确保与数据相关联的总体数据元素存在并有代码。
+3. 确保分配给这些数据元素的类别选项组合有代码。
+4. 创建分配给计划指标的自定义属性。
+5. 确保存在产生综合数据值的计划指标，并为其分配相应数据元素和类别选项组合的代码。
+6. 使用托管跟踪器数据的 DHIS2 实例中的`/api/analytics/dataValueSet`Web API 端点将程序指标值导出为数据值集。
+7. 将数据值集导入到将保存聚合数据的 DHIS2 实例中的`/api/dataValueSet`Web API 端点。
+
+### 已知问题{ #known-issues } 
+- 在早期的 2.33-36 版本中存在一个错误，导致用户界面无法显示自定义属性（[Jira 8755](https://jira.dhis2.org/browse/DHIS2-7230)）。最新发布的 DHIS2 补丁解决了这个问题
+- 有一个错误（[Jira 8868](https://jira.dhis2.org/browse/DHIS2-8868)），当自定义属性分配给程序指示器时，会导致元数据依赖性导出工具失败。
+

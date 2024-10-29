@@ -1,0 +1,194 @@
+---
+edit_url: "https://github.com/dhis2-metadata/CVC_AGG/blob/master/docs/cvc_agg-installation.md"
+revision_date: '2022-10-06'
+tags:
+- Implementar
+---
+
+# Aggregate Package Installation Guide { #cvc-agg-installation }
+
+## Visão Geral { #overview } 
+
+This document is intended to guide administrators through the process of installing the COVID-19 vaccination standard configuration package for DHIS2 for aggregate reporting. Good understanding of DHIS2 is required.
+
+Os pacotes para configuração do DHIS2 consistem em um ficheiro de metadados no formato [JSON] (https://en.wikipedia.org/wiki/JSON) que pode ser importado para uma instância do DHIS2, além da documentação que o acompanha. O pacote fornece conteúdo padrão predefinido, de acordo com as recomendações da OMS. Este documento trata de pacotes completos que incluem configurações de colecta de dados (conjuntos de dados, elementos de dados, regras de validação), bem como análises e painéis ( gráficos, mapas e tabelas dinâmicas favoritos). Isso se destina ao uso onde não há colecta de dados configurada no DHIS2 ou se a substituição / revisão de conteúdo existente estiver alinhada às recomendações da OMS.
+
+Os pacotes de configuração consistem em 4 componentes principais:
+
+* conjuntos de dados com elementos de dados;
+* conjunto de indicadores;
+* resultados analíticos(tabela dinâmica, visualizador de dados e SIG favoritos); e
+* Conjunto de painéis.
+
+Esses componentes estão todos vinculados, ou seja, os indicadores são baseados nos elementos de dados incluídos, os resultados analíticos são baseadas nos indicadores incluídos e os painéis são feitos dos resultados analíticos incluídos.
+
+## Instalação { #installation } 
+
+A instalação do módulo consiste em duas etapas:
+
+1. [Preparando] (# preparando-o-arquivo-de-metadados) um arquivo de metadados com os metadados DHIS2.
+2. [Importando] (# importando-um-arquivo-de-metadados-para-o-dhis2) um arquivo de metadados no DHIS2.
+3. [Configurando] (# configuração-adicional) os metadados importados.
+4. [Executando] (# exemplos-de-outras-modificações) modificações específicas do pacote.
+
+This section deals with the first two steps of preparing and importing the metadata file into DHIS2, whilst the configuration procedure is discussed in the next section. It is recommended to first read through both sections before starting the installation and configuration process in DHIS2. In addition to the general steps described here, some of the configuration packages have annexes to the installation guide, describing particular issues. These are listed in the appropriate section [here](https://dhis2.org/who-package-downloads).
+
+O procedimento descrito neste documento deve ser testado em um ambiente de teste / preparado antes de ser repetido ou transferido para uma instância de produção do DHIS2.
+
+Vários pacotes de configuração
+
+Some configuration packages have overlapping metadata, for example indicators. This means that in some situations, changes to metadata to configuration packages that have been imported previously may be overwritten when importing a different package. This can be avoided by importing "new only" metadata rather than "new and updates", but note that with either approach manual modifications will be needed. At a minimum, you must ensure that metadata used by multiple programmes are [shared](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/users-roles-and-groups.html#mgt_usergroup) with the appropriate user groups for both programmes.
+
+## Requisitos  { #requirements } 
+
+Para instalar o pacote de configuração, é necessária uma conta de utilizador administrador no DHIS2, com autoridades para adicionar / editar objetos de metadados (públicos), incluindo (mas não limitado a):
+
+* elementos de dados (incluindo categorias)
+* Conjuntos de dados
+* indicadores 
+* tipos de indicadores 
+* painel
+* visualizador de dados, tabela dinâmica e mapas favoritos
+
+A lista completa de objetos incluídos no módulo (para os quais o administrador precisa de autoridades para gerir) pode ser encontrada especificamente no documento de referência do pacote de configuração dos Metadados .
+
+Nos casos em que são necessárias modificações no ficheiro de metadados .json do pacote de configuração [(veja abaixo)](https://who.dhis2.org/documentation/installation_guide_complete.html#preparing-the_metadata-file), a [text editor](https://en.wikipedia.org/wiki/Text_editor) é necessário - essas modificações não devem ser feitas com um editor de texto como o Microsoft Word.
+
+The configuration package can be installed in DHIS2 through the DHIS2 Health App, or manually through a .json file with DHIS2 metadata using the [Import/Export](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/maintaining-the-system/importexport-app.html) app of DHIS2. The procedure described in the rest of this section applies to the process of manually importing metadata.
+
+A [Configuração](https://who.dhis2.org/documentation/installation_guide_complete.html#configuration) a secção se aplica a ambos os métodos.
+
+## Preparando o ficheiro de metadados { #preparing-the-metadata-file } 
+
+**NOTA**:Se estiver a instalar o pacote em uma nova instância do DHIS2, poderá pular a seção "Preparando o arquivo de metadados" e passar imediatamente para a seção "[Importando um ficheiro de metadados para o DHIS2](# importando-um-ficheiro-de-metadados-para-o-DHIS2).”
+
+Embora nem sempre seja necessário, muitas vezes pode ser vantajoso fazer certas modificações no arquivo de metadados antes de importá-lo para o DHIS2.
+
+## Dimensão padrão dos dados { #default-data-dimension } 
+
+Nas versões anteriores do DHIS2, o UID da dimensão de dados padrão era gerado automaticamente. Portanto, embora todas as instâncias do DHIS2 tenham uma opção de categoria padrão, categoria de elemento de dados, combinação de categorias e combinação de opções de categoria, os UIDs desses padrões podem ser diferentes. Versões posteriores do DHIS2 possuem UIDs codificados permanentemente para a dimensão padrão, e esses UIDs são usados ​​nos pacotes de configuração.
+
+Para evitar erros ao importar os metadados, é aconselhável procurar e substituir o ficheiro .json inteiro para todas as ocorrências desses objetos padrão, substituindo UIDs do ficheiro .json pelos UIDs do base de dados no qual o ficheiro será importado. A Tabela 1 mostra os UIDs que devem ser substituídos, bem como os pontos de extremidade da API para identificar os UIDs existentes.
+
+|Objecto|UID|API endpoint|
+|--|--|--|
+|Category|GLevLNI9wkl|../api/categories.json?filter=name:eq:default|
+|Category option|xYerKDKCefk|../api/categoryOptions.json?filter=name:eq:default|
+|Category combination|bjDvmb4bfuf|../api/categoryCombos.json?filter=name:eq:default|
+|Category option combination|HllvX50cXC0|../api/categoryOptionCombos.json?filter=name:eq:default|
+
+Por exemplo, se importar um pacote de configuração para [https://play.dhis2.org/demo](https://play.dhis2.org/demo), o UID da combinação de opções de categoria padrão pode ser identificado por meio de [https://play.dhis2.org/demo/api/categoryOptionCombos.json?filter=name:eq:default](https://play.dhis2.org/demo/api/categoryOptionCombos.json?filter=name:eq:default) as `bRowv6yZOF2`. Pode procurar e substituir todas as ocorrências de `HllvX50cXC0` with `bRowv6yZOF2` no arquivo .json. Observe que essa operação de pesquisa e substituição deve ser feita com um editor de texto sem formatação, não com um processador de texto como o Microsoft Word.
+
+## Tipos de indicadores { #indicator-types } 
+
+O tipo de indicador é outro tipo de objeto que pode criar conflito de importação, porque alguns nomes são usados ​​em base de dados DHIS2 diferentes (por exemplo, "Porcentagem"). Como os tipos de indicadores são definidos simplesmente por seu fator e se são ou não números simples sem denominador, eles são inequívocos e podem ser substituídos por uma pesquisa e substituição de UIDs. Isso evita possíveis conflitos de importação e cria tipos de indicadores duplicados. A Tabela 2 mostra os UIDs que podem ser substituídos, bem como os pontos de captura da API para identificar os UIDs existentes. 
+
+|Objecto|UID|API endpoint|
+|--|--|--|
+|Apenas numerador (número)|kHy61PbChXr|../api/indicatorTypes.json?filter=number:eq:true&filter=factor:eq:1|
+|Percentagem|hmSnCXmLYwt|../api/indicatorTypes.json?filter=number:eq:false&filter=factor:eq:100|
+
+**Nota 1**: substituindo os UIDs conforme descrito e importando o ficheiro .json, o nome (incluindo quaisquer traduções) dos tipos de indicadores em questão será atualizado para aqueles incluídos nos pacotes de configuração.
+
+**Nota 2**: Uma abordagem alternativa para reutilizar os tipos de indicadores existentes é importar os incluídos no pacote de configuração e remover os existentes que se sobrepõem. Isso exigiria que todos os indicadores que usam esses tipos de indicadores existentes fossem atualizados para os tipos de indicadores importados recentemente, antes que os tipos de indicadores possam ser excluídos.
+
+## Importando um ficheiro de metadados para o DHIS2 { #importing-a-metadata-file-into-dhis2 } 
+
+The .json metadata file is imported through the [Import/Export](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/maintaining-the-system/importexport-app.html) app of DHIS2. It is advisable to use the "dry run" feature to identify issues before attempting to do an actual import the metadata. If "dry run" reports any issues or conflicts, see the [import conflicts](https://who.dhis2.org/documentation/installation_guide_complete.html#handling-import-conflicts) section below.
+
+Se o "modo ensaio"/"validar "a importação funciona sem erros, tente importar os metadados. Se a importação for bem-sucedida sem erros, você poderá prosseguir para [configurar](https://who.dhis2.org/documentation/installation_guide_complete.html#configuration) o módulo. Em alguns casos, conflitos ou problemas de importação não são mostrados durante a "modo ensaio", mas aparecem quando a importação real é tentada. Nesse caso, o resumo da importação listará todos os erros que precisam ser resolvidos.
+
+### Manipulando conflitos de importação { #handling-import-conflicts } 
+
+**NOTA** Se estiver a importar para uma nova instância DHIS2, não precisará se preocupar com conflitos de importação, pois não há nada no banco de dados para o qual esteja importando para entrar em conflito. Siga as instruções para importar os metadados e prossiga para a seção "[Configuração adicional] (# configuração adicional)".
+
+Existem vários conflitos diferentes que podem ocorrer, embora o mais comum seja o fato de existirem objetos de metadados no pacote de configuração com um nome, nome curto e / ou código que já existe no base de dados de destino. Existem algumas soluções alternativas para esses problemas, com diferentes vantagens e desvantagens. Qual é o mais apropriado dependerá, por exemplo, do tipo de objeto para o qual ocorre um conflito.
+
+#### Alternativa 1 { #alternative-1 } 
+
+Renomeie o objeto existente para o qual existe um conflito. A vantagem dessa abordagem é que não há necessidade de modificar o ficheiro .json, pois as alterações são feitas pela interface do utilizador do DHIS2. É provável que seja menos propenso a erros. Isso também significa que o pacote de configuração é deixado como está, o que pode ser uma vantagem, por exemplo, quando material de treinamento e documentação com base no pacote de configuração serão usados.
+
+#### Alternativa 2 { #alternative-2 } 
+
+Renomeie o objeto para o qual existe um conflito no ficheiro .json. A vantagem dessa abordagem é que os metadados DHIS2 existentes são deixados como estão. Isso pode ser um fator quando houver material ou documentação de treinamento, como POPs de dicionários de dados vinculados ao objeto em questão, e não envolve nenhum risco de confundir os usuários modificando os metadados com os quais eles estão familiarizados. Ao mesmo tempo, modificar o objeto do ficheiro .json significa que o uso da documentação e do material de treinamento associados pode se tornar mais complicado.
+
+Observe que, para as alternativas 1 e 2, a modificação pode ser tão simples quanto adicionar um pequeno pré/pós-correção ao nome, para minimizar o risco de confusão.
+
+#### Alternativa 3 { #alternative-3 } 
+
+Uma terceira e mais complicada abordagem é modificar o ficheiro .json para reutilizar os metadados existentes. Por exemplo, nos casos em que já existe um indicador para um determinado conceito (por exemplo, "cobertura ANC 1"), esse indicador pode ser removido do ficheiro .json e todas as referências ao seu UID substituídas pelo indicador correspondente já no banco de dados. A grande vantagem disso (que não se limita aos casos em que há um conflito direto de importação) é evitar a criação de metadados duplicados no banco de dados. No entanto, geralmente não é recomendado por vários motivos:
+
+* requer conhecimento especializado da estrutura de metadados detalhados do DHIS2
+* a abordagem não funciona para todos os tipos de objec tos. Em particular, certos tipos de objectos têm dependências que são complicadas de resolver dessa maneira, por exemplo, relacionadas a desagregações.
+* como alternativa 2, significa que o resultado da instalação não está totalmente de acordo com a configuração padrão, e o material e o registro de treinamento ativado para a configuração podem não ser utilizados sem alterações.
+* futuras actualizações do pacote de configuração serão complicadas.
+
+## Configuração Adicional { #additional-configuration } 
+
+Depois que todos os metadados forem importados com sucesso, o módulo deverá ser utilizado com apenas alguns pequenos ajustes adicionais. Além disso, dependendo inteiramente da instância DHIS2 na qual o módulo foi importado, algumas configurações e modificações adicionais podem ser necessárias ou vantajosas. Esta seção examinará primeiro as etapas de configuração necessárias e mencionará alguns dos outros tipos de modificação ou configuração que podem ser relevantes.
+
+## Configuração recomendada { #required-configuration } 
+
+Antes que os pacotes de configuração possam ser usados ​​para colecta de dados, são necessárias duas etapas.
+
+* Atribua o (s) conjunto (s) de dados às unidades organizacionais apropriadas
+* Partilhe o  conjunto (s) de dados com grupos de utilizadores apropriados
+* Adicione seu utilizador (s) aos grupos de utilizadores apropriados
+
+Os conjuntos de dados devem ser atribuídos às unidades da organização (unidades sanitárias) que devem reportar sobre esse conjunto de dados específico.
+
+O conjunto de dados e as opções de categoria também devem ser partilhados com o  grupo (s) de utilizadores relevante  do pessoal responsável por fazer a entrada de dados para esses conjuntos de dados.
+
+### Partilha { #sharing } 
+
+Primeiro, você terá que usar a funcionalidade * Partilha * do DHIS2 para configurar quais utilizadores (grupos de utilizadores) devem ver os metadados e dados associados ao programa, bem como quem pode registrar / inserir dados no programa. A partilha deve ser configurada para o seguinte:
+
+* Elementos de dados / grupos de elementos de dados
+* Indicadores / grupos de indicadores
+* Conjunto de dados 
+* Painéis
+
+Existem três grupos de utilizadores que suportam o pacote:
+
+* COVAC access
+* COVAC admin
+* COVAX capture
+
+Recomendamos o seguinte acesso
+
+|Objecto|Grupo de usuários|||
+|--|--|--|--|
+||_COVAC access_|_COVAC admin_|_COVAX capture_|
+|_Data Elements/Data element group_|Metadados: pode ver <br> Dados: pode ver|Metadados: pode editar e visualizar <br> Dados: pode visualizar|Metadados: pode ver <br> Dados: pode ver|
+|_Indicators/Indicator group_|Metadados: pode ver <br> Dados: pode ver|Metadados: pode editar e visualizar <br> Dados: pode visualizar|Metadados: pode ver <br> Dados: pode ver|
+|_Data sets_|Metadados: pode ver <br> Dados: pode ver|Metadados: pode editar e visualizar <br> Dados: pode visualizar|Metadata : can view <br> Data: can capture and can view|
+|_Dashboards_|Metadados: pode ver <br> Dados: pode ver|Metadados: pode editar e visualizar <br> Dados: pode visualizar|Metadados: pode ver <br> Dados: pode ver|
+
+### Metadado duplicados { #duplicated-metadata } 
+
+Mesmo quando os metadados foram importados com sucesso sem nenhum conflito de importação, pode haver duplicações nos metadados - seja um gráfico, indicador, elemento de dados ou categoria de elemento de dados que já exista. Como foi observado na seção acima, sobre a resolução de conflitos, é importante ter em mente que as decisões sobre a alteração dos metadados no DHIS2 também precisam levar em consideração outros documentos e recursos que, de maneiras diferentes, estão associados aos metadados existentes, e os metadados que foram importados pelo pacote de configuração. Resolver duplicações é, portanto, não apenas uma questão de "limpar a base de dados", mas também garantir que isso seja feito sem, por exemplo, romper o potencial de integração com outros sistemas, a possibilidade de usar material de treinamento, interromper POPs, etc. seja dependente do contexto.
+
+Uma coisa importante a ter em mente é que o DHIS2 possui ferramentas que podem ocultar algumas das complexidades de possíveis duplicações em metadados. Por exemplo, onde existem categorias de elementos de dados duplicados, essas duplicações podem ser ocultadas aos utilizadores finais por meio de conjuntos de grupos de opções de categoria ou determinados objetos de metadados podem ser ocultados para grupos de utilizadores por meio do partilha.
+
+Recomenda-se não remover ou substituir os indicadores incluídos nos pacotes de configuração, mesmo que o mesmo indicador já exista, para que os resultados analíticos (que são baseadas exclusivamente em indicadores) possam ser mantidas. Isso permitirá que o material de treinamento baseado nos pacotes de configuração seja reutilizado.
+
+## Exemplos de outras modificações { #examples-of-other-modifications } 
+
+Além da configuração necessária, há várias outras modificações e configurações que podem ser relevantes, dependendo da situação específica. Não será possível fornecer orientações e recomendações que abranjam todos os diferentes cenários, mas uma breve discussão de alguns problemas comuns é apresentada aqui.
+
+### Traduções { #translations } 
+
+Talvez seja necessário adicionar traduções adicionais, se forem necessários outros idiomas além dos incluídos.
+
+### Adição de variáveis ​​adicionais { #adding-additional-variables } 
+
+Os pacotes de configuração incluem os principais elementos e indicadores de dados recomendados. No entanto, em alguns casos, pode ser necessário adicionar variáveis ​​adicionais para atender às necessidades de informações específicas do país. Eles podem ser adicionados aos conjuntos de dados incluídos.
+
+### Atualizando o layout dos formulários de relatório { #updating-layout-of-reporting-forms } 
+
+Para facilitar o trabalho do pessoal que faz a entrada de dados no DHIS2, às vezes é desejável adicionar um formulário de entrada de dados personalizado que corresponda ao formato dos formulários em papel usados ​​no nível primário.
+
+## Manutenção { #maintenance } 
+
+Nenhuma manutenção específica é necessária para os pacotes de configuração, pois são compostos de objetos de metadados DHIS2 padrão. No entanto, antes de atualizar para novas versões do DHIS2, é importante testar todas as funcionalidades do sistema em geral em um servidor de temporariedade / teste antes de atualizar qualquer instância de produção do sistema.
+

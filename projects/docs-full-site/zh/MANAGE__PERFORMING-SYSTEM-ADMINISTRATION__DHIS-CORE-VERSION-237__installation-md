@@ -1,0 +1,1940 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.37/src/sysadmin/installation.md"
+revision_date: '2023-03-22'
+tags:
+- DHIS 核心 2.37 版
+- 管理
+---
+
+# 安装 { #installation } 
+
+安装章节提供了有关如何在以下位置安装DHIS2的信息
+各种环境，包括在线中央服务器，离线本地
+网络，独立应用程序和称为DHIS2的自包含程序包
+生活。
+
+## 介绍 { #install_introduction } 
+
+DHIS2 可在有 Java JDK 的所有平台上运行，其中包括大多数流行的操作系统，如 Windows、Linux 和 Mac。
+系统，如 Windows、Linux 和 Mac。DHIS2 可在 PostgreSQL
+数据库系统上运行。DHIS2 打包成一个标准的 Java Web 档案（WAR 文件
+(WAR 文件），因此可在 Tomcat 和 Jetty 等任何 Servlet 容器上运行。
+Jetty 等 Servlet 容器上运行。
+
+DHIS2 团队推荐 Ubuntu 18.04 LTS 操作系统、PostgreSQL
+数据库系统和 Tomcat Servlet 容器作为安装服务器的首选环境。
+服务器安装环境。
+
+本章提供了设置上述技术堆栈的指南。
+但是，应将其作为起步和运行的指南，而不是
+作为上述环境的详尽文档。我们提到
+到官方的Ubuntu，PostgreSQL和Tomcat文档进行深入了解
+阅读。
+
+The `dhis2-tools` Ubuntu package automates many of the tasks described in
+the guide below and is recommended for most users, especially those who
+are not familiar with the command line or administration of servers. It
+is described in detail in a separate chapter in this guide.
+
+## 服务器规格 { #install_server_specifications } 
+
+DHIS2是数据库密集型应用程序，需要您的服务器
+具有适当数量的RAM，CPU核心数量和快速磁盘。
+这些建议应被视为经验法则，而不是
+确切的措施。 DHIS2在RAM的数量和数量上线性扩展
+CPU内核，因此您负担得起的费用越多，应用程序的性能就会越好。
+
+- * RAM：*小型实例至少2 GB，中型实例至少12 GB，大型实例至少64 GB。
+- * CPU内核：*小实例4个CPU内核，中型或大型实例8个CPU内核或更多。
+- *磁盘：*建议将SSD用作存储设备。最低要求
+  读取速度为150 Mb / s，200 Mb / s好，350 Mb / s或更高
+  理想。就磁盘空间而言，建议至少100 GB，但是
+  将完全取决于其中包含的数据量
+  数据值表。 Analytics（分析）表格需要大量
+  磁盘空间。提前计划并确保您的服务器可以升级
+  根据需要具有更多的磁盘空间。
+
+## 软件需求 { #install_software_requirements } 
+
+更高版本的DHIS2需要以下软件版本才能运行。
+
+- Java JDK 或 JRE 版本为 8 或 11 的操作系统。建议使用 Linux。
+- Java JDK。建议使用 OpenJDK。 
+    - 对于 DHIS 2 版本 2.35 或更高版本，建议使用 JDK 11，需要 JDK 8 或更高版本。 
+    - 如果 DHIS 2 的版本早于 2.35，则需要 JDK 8。
+- PostgreSQL 数据库版本 9.6 或更高。建议使用更高的 PostgreSQL 版本，如第 13 版。
+- PostGIS数据库扩展版本2.2或更高版本。
+- Tomcat Servlet容器版本8.5.50或更高版本，或其他Servlet API
+  3.1兼容的servlet容器。
+- 仅群集设置（可选）：Redis数据存储版本4或更高版本。
+
+## 服务器设置 { #install_server_setup } 
+
+本节介绍如何在以下平台上建立 DHIS2 服务器实例
+Ubuntu 18.04 64 位上设置 DHIS2 服务器实例，将 PostgreSQL 作为数据库系统，将 Tomcat 作为
+Servlet 容器。本指南并不是一个分步指南
+本身，而是作为在服务器上部署 DHIS2 的参考。
+在服务器上部署的参考。有许多可能的部署策略，它们
+会因操作系统和数据库以及其他因素而有所不同。
+其他因素而有所不同。术语 *invoke* 是指在终端中执行给定命令。
+终端中执行指定命令。
+
+For this guide we assume that 8 Gb RAM is allocated for PostgreSQL and 8
+GB RAM is allocated for Tomcat/JVM, and that a 64-bit operating system
+is used. *If you are running a different configuration please adjust the
+suggested values accordingly\!*
+
+我们建议可用内存
+大致平分给数据库和 JVM。切记
+将部分物理内存留给操作系统，以便其执行任务。
+例如 2 GB 左右。标记为
+标记为*可选*的步骤，如性能调整步骤，可在稍后阶段完成。
+阶段完成。
+
+### 创建一个用户来运行DHIS2 { #install_creating_user } 
+
+您应该创建一个专用用户来运行DHIS2。
+
+> **重要**
+>
+>您不应以root用户等特权用户身份运行DHIS2服务器。
+
+通过调用以下命令创建一个名为dhis的新用户：
+
+```sh
+sudo useradd -d / home / dhis -m dhis -s / bin / false
+```
+
+然后为您的帐户调用设置密码：
+
+```sh
+须藤密码
+```
+
+确保设置了一个安全密码，该密码至少包含15个随机字符。
+
+### 创建配置目录 { #install_creating_config_directory } 
+
+首先为DHIS2配置创建合适的目录
+文件。此目录还将用于应用程序，文件和日志文件。
+示例目录可以是：
+
+```sh
+mkdir / home / dhis / config
+chown dhis：dhis / home / dhis / config
+```
+
+DHIS2将寻找一个名为* DHIS2 \ _HOME *的环境变量来
+找到DHIS2配置目录。该目录将是
+在本安装指南中称为* DHIS2 \ _HOME *。我们将定义
+在安装过程的后续步骤中使用环境变量。
+
+### 设置服务器时区和语言环境 { #install_setting_server_tz } 
+
+可能需要重新配置服务器的时区以匹配
+DHIS2服务器将覆盖的位置的时区。
+如果您使用的是虚拟专用服务器，则默认时区可能不会
+对应于您的DHIS2位置的时区。您可以轻松地
+通过调用以下内容并按照以下说明重新配置时区
+说明。
+
+```sh
+sudo dpkg-重新配置tzdata
+```
+
+PostgreSQL对语言环境敏感，因此您可能必须安装
+地区优先。要检查现有的语言环境并安装新的语言环境（例如
+挪威）：
+
+```sh
+语言环境-a
+须藤locale-gen nb_NO.UTF-8
+```
+
+### PostgreSQL安装 { #install_postgresql_installation } 
+
+通过以下方式安装PostgreSQL
+    调用：
+
+```sh
+sudo apt-get install postgresql-12 postgresql-12-postgis-3
+```
+
+通过调用以下命令创建一个名为* dhis *的非特权用户：
+
+```sh
+须藤-u postgres createuser -SDRP dhis
+```
+
+在提示符下输入安全密码。通过调用创建数据库：
+
+```sh
+须藤-u postgres createdb -O dhis dhis2
+```
+
+通过调用`exit`返回您的会话现在您有一个PostgreSQL用户
+称为* dhis *和一个名为* dhis2 *的数据库。
+
+* PostGIS *扩展是多种GIS /映射功能所必需的
+工作。 DHIS 2将尝试在安装过程中安装PostGIS扩展
+启动。如果DHIS 2数据库用户没有创建权限
+您可以使用* postgres *用户从控制台创建扩展
+使用以下命令：
+
+```sh
+sudo -u postgres psql -c“创建扩展名postgis;” dhis2
+```
+
+退出控制台，并使用* \\ q *并返回到先前的用户
+*出口*。
+
+### PostgreSQL性能调优 { #install_postgresql_performance_tuning } 
+
+调整PostgreSQL是实现高性能系统所必需的，但是
+在使DHIS2运行方面是可选的。 PostgreSQL已配置
+并通过* postgresql.conf *文件进行了调整，该文件可以像
+这个：
+
+```sh
+须藤nano /etc/postgresql/12/main/postgresql.conf
+```
+
+并设置以下属性：
+
+```属性
+max_connections = 200
+```
+
+确定PostgreSQL允许的最大连接数。
+
+```属性
+shared_buffers = 3200MB
+```
+
+确定应专门分配多少内存
+PostgreSQL缓存。此设置控制共享内核的大小
+应该为PostgreSQL保留的内存。应该设置为
+PostgreSQL专用内存的40％。
+
+```properties
+work_mem = 24MB
+```
+
+确定用于内部排序和哈希的内存量
+操作。此设置是针对每个连接，针对每个查询的，因此需要大量内存
+如果将其提高得太高，可能会被消耗掉。正确设置该值
+对于DHIS2聚合性能至关重要。
+
+```properties
+maintenance_work_mem = 1024MB
+```
+
+确定PostgreSQL可用于维护的内存量
+创建索引，运行真空，添加外部文件等操作
+键。增大此值可能会提高索引创建的性能
+在分析生成过程中。
+
+```properties
+temp_buffers = 16MB
+```
+
+设置每个数据库会话使用的最大临时缓冲区数量。 
+会话。这些是会话本地缓冲区，仅用于访问临时表。 
+表。 
+
+```属性
+Effective_cache_size = 8000MB
+```
+
+估计磁盘可用于磁盘缓存的内存量
+操作系统（不是分配）和PostgreSQL用于isdb.no
+确定查询计划是否适合内存。设置它
+高于实际可用价值会导致质量不佳
+性能。此值应包含shared \ _buffers
+设置。 PostgreSQL有两层缓存：第一层使用
+内核共享内存，并由shared \ _buffers设置控制。
+PostgreSQL将第二层委托给操作系统磁盘缓存
+可用的内存大小可以通过
+有效\ _cache \ _size设置。
+
+```属性
+checkpoint_completion_target = 0.8
+```
+
+设置WAL写过程中用于缓冲的内存。
+增大此值可能会提高大量写入系统的吞吐量。
+
+```属性
+sync_commit =关
+```
+
+指定事务提交是否将等待WAL记录
+是否将其写入磁盘，然后再返回客户端。设定这个
+关闭将大大提高性能。这也意味着那里
+交易之间的轻微延迟被报告为成功
+客户端，它实际上是安全的，但是数据库状态不能为
+已损坏，这是性能密集型和
+像DHIS2这样的重写入系统。
+
+```属性
+wal_writer_delay = 10000毫秒
+```
+
+指定WAL写操作之间的延迟。将此设置为较高
+价值可能会提高大量写入系统的性能，因为
+一次刷新到磁盘就可以执行许多写操作。
+
+```属性
+random_page_cost = 1.1
+```
+
+*仅SSD。*设置查询计划程序对非连续获取的磁盘页面的成本的估计。较低的值将导致系统比顺序扫描更喜欢索引扫描。对于在SSD上运行的数据库或在内存中大量缓存的数据库，较低的值有意义。默认值为4.0，这对于传统磁盘而言是合理的。
+
+```属性
+max_locks_per_transaction = 96
+```
+
+指定为每个事务分配的对象锁的平均数量。设置该参数主要是为了允许完成涉及大量表的升级例程。
+
+通过调用以下命令来重新启动PostgreSQL：
+
+```sh
+sudo /etc/init.d/postgresql重新启动
+```
+
+### Java安装 { #install_java_installation } 
+
+DHIS 2 推荐使用的 Java JDK 是 OpenJDK 11（2.35 及更高版本）。您可以使用以下命令安装它：
+
+```
+sudo apt-get install openjdk-11-jdk
+```
+
+如果您喜欢 OpenJDK 8（适用于 2.35 之前的版本），可以使用此命令进行安装：
+
+```
+须藤apt-get install openjdk-8-jdk
+```
+
+通过调用以下命令来验证安装是否正确：
+
+```
+Java版本
+```
+
+### DHIS2配置 { #install_database_configuration } 
+
+The database connection information is provided to DHIS2 through a
+configuration file called `dhis.conf`. Create this file and save it in
+the `DHIS2\_HOME` directory. As an example this location could be:
+
+```sh
+/home/dhis/config/dhis.conf
+```
+
+与上述设置相对应的PostgreSQL配置文件具有
+这些属性：
+
+```properties
+# ----------------------------------------------------------------------
+# Database connection
+# ----------------------------------------------------------------------
+
+# JDBC driver class
+connection.driver_class = org.postgresql.Driver
+
+# Database connection URL
+connection.url = jdbc:postgresql:dhis2
+
+# Database username
+connection.username = dhis
+
+# Database password
+connection.password = xxxx
+
+# ----------------------------------------------------------------------
+# Server
+# ----------------------------------------------------------------------
+
+# Enable secure settings if deployed on HTTPS, default 'off', can be 'on'
+# server.https = on
+
+# Server base URL
+# server.base.url = https://server.com
+```
+
+强烈建议启用`server.https`设置并使用加密的HTTPS协议部署DHIS 2。此设置将启用例如安全cookie。启用此设置后，需要进行HTTPS部署。
+
+`server.base.url`设置是指最终用户通过网络访问系统的URL。
+
+Note that the configuration file supports environment variables. This
+means that you can set certain properties as environment variables and
+have them resolved, e.g. like this where `DB\_PASSWD` is the
+name of the environment variable:
+
+```属性
+connection.password = $ {DB_PASSWD}
+```
+
+请注意，此文件包含您的DHIS2数据库的密码（以明文形式）
+文本，因此需要对其进行保护，以防止未经授权的访问。去做这个，
+调用以下命令，以确保仅允许* dhis *用户读取它：
+
+```sh
+chmod 600 dhis.conf
+```
+
+### Tomcat和DHIS2安装 { #install_tomcat_dhis2_installation } 
+
+要安装Tomcat Servlet容器，我们将利用Tomcat用户
+通过调用打包：
+
+```sh
+须藤apt-get install tomcat8-user
+```
+
+This package lets us easily create a new Tomcat instance. The instance
+will be created in the current directory. An appropriate location is the
+home directory of the `dhis` user:
+
+```sh
+cd / home / dhis /
+须藤tomcat8-instance-create tomcat-dhis
+须藤chown -R dhis：dhis tomcat-dhis /
+```
+
+This will create an instance in a directory called `tomcat-dhis`. Note
+that the `tomcat8-user` package allows for creating any number of DHIS2
+instances if that is desired.
+
+接下来编辑文件 `tomcat-dhis/bin/setenv.sh` 并添加以下几行。
+
+* `JAVA_HOME` sets the location of the JDK installation.
+* `JAVA_OPTS` 将参数传递给 JVM。
+    * `-Xms` 将内存初始分配到 Java 堆内存空间。
+    * `-Xmx` 设置分配给 Java 堆内存空间的最大内存。这应反映您希望为服务器上的 DHIS 2 软件应用程序分配多少内存。
+* `DHIS2_HOME` sets the location of the `dhis.conf` configuration file for DHIS 2.
+
+Check that the path the Java binaries are correct as they might vary from system to system, e.g. on AMD systems you might see
+`/java-11-openjdk-amd64`. Note that you should adjust these values to your environment.
+
+```sh
+JAVA_HOME='/usr/lib/jvm/java-11-openjdk-amd64/'
+JAVA_OPTS='-Xms4000m -Xmx7000m'
+DHIS2_HOME='/home/dhis/config'
+```
+
+The Tomcat configuration file is located in
+`tomcat-dhis/conf/server.xml`. The element which defines the connection
+to DHIS is the *Connector* element with port 8080. You can change the
+port number in the Connector element to a desired port if necessary. 
+The `relaxedQueryChars` attribute is necessary to allow certain characters 
+in URLs used by the DHIS2 front-end.
+
+```xml
+<Connector port="8080" protocol="HTTP/1.1"
+  connectionTimeout="20000"
+  redirectPort="8443"
+  relaxedQueryChars="[]" />
+```
+
+The next step is to download the DHIS2 WAR file and place it into the
+_webapps_ directory of Tomcat. You can download DHIS2 WAR files from the following location: 
+
+```sh
+https://releases.dhis2.org/
+```
+
+将 WAR 文件移到 Tomcat 的 `webapps` 目录中。我们要调用
+我们要调用 WAR 文件 `ROOT.war` 以使其直接在 `localhost` 中可用，而无需上下文路径
+无需上下文路径：
+
+```sh
+mv dhis.war tomcat-dhis / webapps / ROOT.war
+```
+
+DHIS2 should never be run as a privileged user. After you have modified
+the `setenv.sh file`, modify the startup script to check and verify that the
+script has not been invoked as root.
+
+```sh
+＃！/ bin / sh
+设置-e
+
+如果[“ $（id -u）” -eq“ 0”];然后
+  回声“此脚本不能以root用户身份运行” 1>＆2
+  1号出口
+科幻
+
+导出CATALINA_BASE =“ / home / dhis / tomcat-dhis”
+/usr/share/tomcat8/bin/startup.sh
+回显“ Tomcat启动”
+```
+
+### 运行DHIS2 { #install_running_dhis2 } 
+
+DHIS2现在可以通过调用来启动：
+
+    须藤-u dhis tomcat-dhis / bin / startup.sh
+
+> **重要**
+>
+>绝对不要以root或其他特权用户身份运行DHIS2服务器。
+
+DHIS2可以通过调用来停止：
+
+    须藤-u dhis tomcat-dhis / bin / shutdown.sh
+
+要监视Tomcat的行为，日志是该日志的主要来源
+信息。可以使用以下命令查看日志：
+
+    尾巴-f tomcat-dhis / logs / catalina.out
+
+假设WAR文件名为ROOT.war，您现在可以访问
+DHIS2实例位于以下URL：
+
+    http://localhost:8080
+
+## 文件存储配置 { #install_file_store_configuration } 
+
+DHIS2能够捕获和存储文件。默认情况下，文件将
+被存储在*文件*中运行DHIS2的服务器的本地文件系统上
+目录位于* DHIS2 \ _HOME *外部目录位置下。
+
+您还可以配置DHIS2以将文件存储在基于云的存储中
+提供者。 AWS S3是当前唯一受支持的提供商。启用
+基于云的存储，您必须定义以下附加属性
+在您的* dhis.conf *文件中：
+
+```属性
+＃文件存储提供者。当前支持“文件系统”和“ aws-s3”。
+filestore.provider ='aws-s3'
+
+＃本地文件系统上外部目录中的目录，AWS S3上存储桶
+filestore.container =文件
+
+＃以下配置仅适用于云存储（AWS S3）
+
+＃数据中心位置。可选，但出于性能原因建议使用。
+filestore.location = eu-west-1
+
+＃AWS S3上的用户名/访问密钥
+filestore.identity = xxxx
+
+＃AWS S3上的密码/密钥（敏感）
+filestore.secret = xxxx
+```
+
+此配置是反映默认设置的示例，应为
+根据您的需要进行了更改。换句话说，如果
+您计划使用默认值。如果您想使用外部
+提供者，需要定义最后一个属性块，以及
+* provider *属性设置为受支持的提供程序（仅当前
+AWS S3）。
+
+> **注意**
+>
+>如果您在dhis.conf中配置了云存储，则上传的所有文件
+>或系统生成的文件将使用云存储。
+
+对于生产系统，文件存储的初始设置应为
+被仔细考虑为在存储提供商之间移动文件，而
+保持数据库引用的完整性可能很复杂。保持
+请记住，文件存储的内容可能包含敏感内容，
+以及完整的信息，并保护对文件夹以及
+建议在生产中确保备份计划到位
+实施。
+
+> **注意**
+>
+> AWS S3是唯一受支持的提供商，但可能会有更多提供商
+>将来添加，例如Google Cloud Store和Azure Blob存储。
+>让我们知道您是否还有其他提供商的用例。
+
+## Google服务帐户配置 { #install_google_service_account_configuration } 
+
+DHIS2可以连接到各种Google服务API。例如，
+DHIS2 GIS组件可以利用Google Earth Engine API加载地图
+层。为了提供API访问令牌，您必须设置一个Google
+服务帐户并创建私钥：
+
+  - 创建一个Google服务帐户。请咨询[Google身份
+    平台]（https://developers.google.com/identity/protocols/OAuth2ServiceAccount#overview）
+    文档。
+
+  - 访问[Google云控制台]（https://console.cloud.google.com）
+    并转到API Manager \>凭据\>创建凭据\>
+    服务帐户密钥。选择您的服务帐户和JSON作为密钥
+    键入并单击创建。
+
+  - 将JSON密钥重命名为* dhis-google-auth.json *。
+
+下载密钥文件后，将* dhis-google-auth.json *文件放入
+DHIS2 \ _HOME目录（与* dhis.conf *文件相同的位置）。
+例如，此位置可能是：
+
+    /home/dhis/config/dhis-google-auth.json
+
+## OpenID Connect（OIDC）配置 { #install_oidc_configuration } 
+
+DHIS2 支持用于单点登录（SSO）的 OpenID Connect（OIDC）身份层。OIDC 是一种标准身份验证协议，用户可通过身份提供商（IdP）（如谷歌）登录。用户成功登录其 IdP 后，将自动登录 DHIS2。
+
+本节提供了与 OIDC 提供商一起使用 DHIS2 的一般信息，以及完整的配置示例。
+
+DHIS2 OIDC "授权码 "验证流程：
+
+1. 用户尝试登录 DHIS2 并点击登录页面上的 OIDC 提供商按钮。
+
+2. DHIS2 会将浏览器重定向到 IdP 的登录页面。
+
+3. 如果尚未登录，系统会提示用户输入凭据。身份验证成功后，IdP 会响应重定向，返回 DHIS2 服务器。重定向包括为用户生成的唯一授权码。
+
+4. DHIS2 服务器会在内部将用户的授权代码连同自己的客户 ID 和客户秘密凭证一起发回给 IdP 服务器。
+
+5. IdP 向 DHIS2 服务器返回 ID 令牌。DHIS2 服务器对令牌进行验证。
+
+6. DHIS2 服务器根据 ID 令牌中的映射要求（默认为电子邮件）查找 DHIS2 内部用户，授权用户并完成登录过程。
+
+### 将 OIDC 与 DHIS2 结合使用的要求：{ #requirements-for-using-oidc-with-dhis2 } 
+
+#### IdP 服务器账户{ #idp-server-account } 
+
+您必须在 DHIS2 支持的在线身份供应商 (IdP) 或独立服务器上拥有一个管理员账户。
+
+目前支持并测试了以下 IdP：
+
+* 谷歌
+* Azure AD
+* WSO2
+* Okta（请参阅单独的教程：[此处](#configure-openid-connect-with-okta))
+
+还有一个**通用提供商**配置，可支持 "任何 "兼容 OIDC 的提供商。
+
+#### DHIS2 用户账户{ #dhis2-user-account } 
+
+您必须在 DHIS2 服务器中明确创建用户，然后他们才能登录身份供应商。目前不支持从 Active Directory 等外部目录导入用户。OIDC 标准不支持使用外部身份存储对用户进行供应和管理。
+
+#### 用户的IdP声明和映射 { #idp-claims-and-mapping-of-users } 
+
+要使用 OIDC 登录 DHIS2，必须在 IdP 中配置特定用户，然后将其映射到 DHIS2 中预先创建的用户账户。OIDC 使用一种方法，依靠声明与其他应用程序共享用户账户属性。声明包括电子邮件、电话号码、姓名等用户账户属性。DHIS2 依靠 IdP 索赔将 IdP 中的用户账户映射到 DHIS2 服务器中的用户账户。默认情况下，DHIS2 希望 IdP 传递 _email_ 声明。根据 IdP 的不同，您可能需要配置 DHIS2 以使用不同的 IdP 声明。
+
+如果使用 Google 或 Azure AD 作为 IdP，默认行为是使用 _email_ 索赔将 IdP 身份映射到 DHIS2 用户账户。
+
+> **注**
+>
+> 为了使 DHIS2 用户能够使用 IdP 登录，用户配置文件的复选框必须选中：必须选中 *External authentication only OpenID or LDAP*（外部身份验证仅限 OpenID 或 LDAP），并且 *OpenID* 字段必须与 IdP 返回的请求（映射请求）相匹配。电子邮件是 Google 和 Azure AD 使用的默认声明。
+
+### 为OIDC配置身份提供者 { #configure-the-identity-provider-for-oidc } 
+
+本主题提供了有关配置身份提供者 (IdP) 在 DHIS2 中使用 OIDC 的一般信息。这是一个多步骤过程中的一个步骤。每个 IdP 的配置方法略有不同。关于如何创建和配置 OIDC 应用程序，请查阅 IdP 自己的文档。在此，我们将 DHIS2 服务器称为 OIDC "应用程序"。
+
+#### 重定向网址 { #redirect-url } 
+
+所有 IdP 都需要一个指向 DHIS2 服务器的重定向 URL。 
+您可以使用以下模式构建它：
+
+```
+(协议）：/（您的 DHIS2 主机）/oauth2/code/PROVIDER_KEY
+```
+
+使用 Google IdP 时的示例：
+
+```
+https://mydhis2-server.org/oauth2/code/google
+```
+
+配置 IdP 说明的外部链接：
+
+* [Google](https://developers.google.com/identity/protocols/oauth2/openid-connect)
+* [Azure AD 教程](https://medium.com/xebia-engineering/authentication-and-authorization-using-azure-active-directory-266980586ab8)
+
+
+### Google{ #example-setup-for-google } 设置示例 
+
+1. 注册一个账户并登录。例如，对于 Google，您可以访问 Google [developer console](https://console.developers.google.com)。
+2. 在 Google 开发人员控制面板中，点击 "创建新项目"。
+3. 请按照说明创建 OAuth 2.0 客户端 ID 和客户秘密。
+4. Set your "Authorized redirect URL" to: `https://mydhis2-server.org/oauth2/code/google`
+5. 复制并妥善保管 "客户 ID "和 "客户秘密"。
+
+> **Tip**
+>
+> When testing on a local DHIS2 instance running for example on your laptop, you can use localhost as the redirect URL, like this: `https://localhost:8080/oauth2/code/google`
+> *Remember to also add the redirect URL in the Google developer console*
+
+#### Google dhis.conf 示例：{ #google-dhisconf-example } 
+```properties
+
+# Enables OIDC login
+oidc.oauth2.login.enabled = on
+
+# Client id, given to you in the Google developer console
+oidc.provider.google.client_id = my client id
+
+# Client secret, given to you in the Google developer console
+oidc.provider.google.client_secret = my client secret
+
+# [Optional] Authorized redirect URI, the same as set in the Google developer console 
+# If your public hostname is different from what the server sees internally, 
+# you need to provide your full public url, like the example below.
+oidc.provider.google.redirect_url = https://mydhis2-server.org/oauth2/code/goole
+
+# [Optional] Where to redirect after logging out.
+# If your public hostname is different from what the server sees internally, 
+# you need to provide your full public url, like the example below. 
+oidc.logout.redirect_url = https://mydhis2-server.org
+
+```
+
+### Azure AD 设置示例{ #example-setup-for-azure-ad } 
+
+Make sure your Azure AD account in the Azure portal is configured with a redirect URL like: `(protocol):/(host)/oauth2/code/PROVIDER_KEY`. 
+To register your DHIS2 server as an "application" in the Azure portal, follow these steps:
+
+> **注**
+>
+> PROVIDER_KEY 是配置密钥的 "名称 "部分，例如"oidc.provider.PROVIDER_KEY.tenant = My Azure SSO
+> 如果要配置多个 Azure 提供商，可以使用这种名称形式：(azure.0)、(azure.1) 等。
+> 重定向 URL 示例：https://mydhis2-server.org/oauth2/code/azure.0
+
+1. 搜索并选择*应用程序注册*。
+2. 点击*新注册*。
+3. 在 *Name* 字段中，输入 DHIS2 实例的描述性名称。
+4. 在 *重定向 URI* 字段中，输入上文指定的重定向 URL。
+5. 点击*注册*。
+
+#### Azure AD dhis.conf 示例：{ #azure-ad-dhisconf-example } 
+```properties
+
+# Enables OIDC login
+oidc.oauth2.login.enabled = on
+
+# First provider (azure.0):
+
+# Alias, or name that will show on the login button in the DHIS2 login screen.
+oidc.provider.azure.0.tenant = organization name
+
+# Client id, given to you in the Azure portal
+oidc.provider.azure.0.client_id = my client id
+
+# Client secret, given to you in the Azure portal
+oidc.provider.azure.0.client_secret = my client secret
+
+# [Optional] Authorized redirect URI, the as set in Azure portal 
+# If your public hostname is different from what the server sees internally, 
+# you need to provide your full public url, like the example below.
+oidc.provider.azure.0.redirect_url = https://mydhis2-server.org/oauth2/code/azure.0
+
+# [Optional] Where to redirect after logging out.
+# If your public hostname is different from what the server sees internally, 
+# you need to provide your full public URL, like the example below.
+oidc.logout.redirect_url = https://mydhis2-server.org
+
+# [Optional], defaults to 'email'
+oidc.provider.azure.0.mapping_claim = email
+
+# [Optional], defaults to 'true'
+oidc.provider.azure.0.support_logout = true
+
+
+# Second provider (azure.1):
+
+oidc.provider.azure.1.tenant = other organization name
+...
+```
+
+### 通用提供商{ #generic-providers } 
+
+通用提供程序可用于配置与 "Spring Security "兼容的 "任何 "标准 OIDC 提供程序。
+
+在下面的示例中，我们将使用提供商密钥`helseid`配置挪威政府 _HelseID_ OIDC 提供商。
+
+已定义的提供程序将作为按钮出现在登录页面上，默认名称为提供程序的密钥、 
+或 `display_alias` 的值（如果已定义）。提供程序的关键字是任意的，可以是任何字母数字字符串、 
+除了特定提供程序使用的保留名称（`google`、`azure.0,azure.1...`、`wso2`）。
+
+> **Note**
+> The generic provider uses the following hardcoded configuration defaults:
+> **(These are not possible to change)**
+> * Client Authentication, `ClientAuthenticationMethod.BASIC`: [rfc](https://tools.ietf.org/html/rfc6749#section-2.3)
+> * Authenticated Requests, `AuthenticationMethod.HEADER`: [rfc](https://tools.ietf.org/html/rfc6750#section-2) 
+
+#### 通用 (helseid) dhis.conf 示例：{ #generic-helseid-dhisconf-example } 
+
+```properties
+
+# Enables OIDC login
+oidc.oauth2.login.enabled = on
+
+# Required variables:
+oidc.provider.helseid.client_id = CLIENT_ID
+oidc.provider.helseid.client_secret = CLIENT_SECRET
+oidc.provider.helseid.mapping_claim = helseid://claims/identity/email
+oidc.provider.helseid.authorization_uri = https://helseid.no/connect/authorize
+oidc.provider.helseid.token_uri = https://helseid.no/connect/token
+oidc.provider.helseid.user_info_uri = https://helseid.no/connect/userinfo
+oidc.provider.helseid.jwk_uri = https://helseid.no/.well-known/openid-configuration/jwks
+oidc.provider.helseid.end_session_endpoint = https://helseid.no/connect/endsession
+oidc.provider.helseid.scopes = helseid://scopes/identity/email
+
+# [Optional] Authorized redirect URI, the as set in Azure portal 
+# If your public hostname is different from what the server sees internally, 
+# you need to provide your full public url, like the example below.
+oidc.provider.helseid.redirect_url = https://mydhis2-server.org/oauth2/code/helseid
+
+# [Optional], defaults to 'true'
+oidc.provider.helseid.enable_logout = true
+
+# [Optional] Where to redirect after logging out.
+# If your public hostname is different from what the server sees internally, 
+# you need to provide your full public URL, like the example below.
+oidc.logout.redirect_url = https://mydhis2-server.org
+
+# [Optional] PKCE support, see: https://oauth.net/2/pkce/), default is 'false'
+oidc.provider.helseid.enable_pkce = true
+
+# [Optional] Extra variables appended to the request. 
+# Must be key/value pairs like: "KEY1 VALUE1,KEY2 VALUE2,..."
+oidc.provider.helseid.extra_request_parameters = acr_values lvl4,other_key value2
+
+# [Optional] This is the alias/name displayed on the login button in the DHIS2 login page
+oidc.provider.helseid.display_alias = HelseID
+
+# [Optional] Link to an url for a logo. (Can use absolute or relative URLs)
+oidc.provider.helseid.logo_image = ../security/btn_helseid.svg
+# [Optional] CSS padding for the logo image
+oidc.provider.helseid.logo_image_padding = 0px 1px
+```
+
+### JWT 承载令牌验证{ #jwt-bearer-token-authentication } 
+
+在配置 OIDC 时，可为基于 API 的客户端启用*JWT 承载令牌*身份验证。 
+DHIS2 Android 客户端就是这种类型的客户端，如果启用了 OIDC 登录，就必须使用 JWT 身份验证。
+
+> **注**
+>
+> DHIS2 目前仅支持使用 JWT 进行身份验证的 OAuth2 授权代码授予流（也称为 "三脚 OAuth"）。
+> 在使用 JWT 标记时，DHIS2 目前仅支持将 Google 用作 OIDC 提供商
+
+
+### 要求 { #requirements } 
+* 如上所述配置 Google OIDC 提供商 
+* Disable the config parameter ```oauth2.authorization.server.enabled``` by setting it to 'off'
+* Enable the config parameter ```oidc.jwt.token.authentication.enabled``` by setting it to 'on'
+* 按照 [此处](https://developers.google.com/identity/protocols/oauth2/native-app#creatingcred) 的说明生成 Android OAuth2 客户端_id
+
+### JWT 身份验证示例{ #jwt-authentication-example } 
+
+以下`dhis.conf`部分显示了如何为基于 API 的客户端启用 JWT 身份验证的示例。
+
+```properties
+
+# Enables OIDC login
+oidc.oauth2.login.enabled = on
+
+# Minimum required config variables:
+oidc.provider.google.client_id = my_client_id
+oidc.provider.google.client_secret = my_client_secret
+
+# Enable JWT support
+oauth2.authorization.server.enabled = off
+oidc.jwt.token.authentication.enabled = on
+
+# Define client 1 using JWT tokens
+oidc.provider.google.ext_client.0.client_id = JWT_CLIENT_ID
+
+# Define client 2 using JWT tokens
+oidc.provider.google.ext_client.1.client_id = JWT_CLIENT_ID
+
+```
+
+> **注**
+>
+> 请参阅链接，了解将 Okta 设置为通用 OIDC 提供商的单独教程。 
+> [link](../tutorials/configure-oidc-with-okta.md)
+
+## LDAP配置 { #install_ldap_configuration } 
+
+DHIS2能够使用LDAP服务器进行用户身份验证。
+对于LDAP身份验证，要求在
+每个LDAP条目的DHIS2数据库。 DHIS2用户将用于代表
+权限/用户角色。
+
+要设置LDAP身份验证，您需要配置LDAP服务器URL，
+管理员用户以及LDAP搜索库和搜索过滤器。这个
+配置应在主DHIS 2配置文件中完成
+（dhis.conf）。 LDAP用户或条目通过区分来标识
+名称（此后为DN）。一个示例配置如下所示：
+
+```属性
+＃LDAP服务器网址
+ldap.url = ldaps：//domain.org：636
+
+＃LDAP管理器条目专有名称
+ldap.manager.dn = cn = johndoe，dc = domain，dc = org
+
+＃LDAP管理员输入密码
+ldap.manager.password = xxxx
+
+＃LDAP基本搜索
+ldap.search.base = dc = domain，dc = org
+
+＃LDAP搜索过滤器
+ldap.search.filter =（cn = {0}）
+```
+
+LDAP配置属性说明如下：
+
+- * ldap.url：*要对其进行身份验证的LDAP服务器的URL
+  反对。强烈建议使用SSL /加密，以便
+  确保身份验证的安全性。例如，URL是
+  * ldaps：//domain.org：636 *，其中ldaps是指协议，
+  * domain.org *是指域名或IP地址，* 636 *
+  指端口（LDAPS默认为636）。
+- * ldap.manager.dn：*绑定到LDAP管理器用户是必需的
+  用于用户身份验证过程的LDAP服务器。这个性质
+  指该条目的DN。即这不是将
+  登录DHIS2时需要认证，而不是
+  绑定到LDAP服务器以进行身份验证。
+- * ldap.manager.password：* LDAP管理器用户的密码。
+- * ldap.search.base：*的搜索基础或专有名称
+  搜索基础对象，它定义目录中的位置
+  LDAP搜索从此开始。
+- * ldap.search.filter：*用于匹配条目中DN的过滤器
+  LDAP目录。 {0}变量将由DHIS2替换
+  用户名，或者为用户定义的LDAP标识符
+  使用提供的用户名。
+
+DHIS2将使用提供的用户名/密码并尝试进行身份验证
+针对LDAP服务器条目，然后从中查找用户角色/权限
+相应的DHIS2用户。这意味着用户必须具有
+LDAP目录中的匹配条目以及DHIS2用户，以便
+登录。
+
+在身份验证期间，DHIS2将尝试使用以下方式绑定到LDAP服务器：
+配置的LDAP服务器URL以及管理员DN和密码。一旦
+绑定完成后，它将使用以下命令在目录中搜索条目
+配置的LDAP搜索库和搜索过滤器。
+
+配置的过滤器中的{0}变量将在替换之前
+应用过滤器。默认情况下，它将被提供的
+用户名。您还可以在相关的
+DHIS2用户帐户。可以通过DHIS2用户模块用户来完成
+通过设置“ LDAP标识符”，在添加或编辑屏幕中找到界面
+属性。设置后，LDAP标识符将替换为{0}
+过滤器中的变量。 LDAP通用名称时，此功能很有用
+不适合或由于某种原因不能用作DHIS2用户名。
+
+## 加密配置 { #install_encryption_configuration } 
+
+DHIS2允许对数据进行加密。启用它需要一些额外的功能
+设定。为了提供加密算法的安全性，您必须设置一个
+通过* dhis.conf *配置文件输入密码
+* encryption.password *属性：
+
+```属性
+加密密码= xxxx
+```
+
+* encryption.password *属性是加密时使用的密码（密钥）
+和解密数据库中的数据。请注意，密码不得为
+一旦设置好并加密了数据，就可以更改，因为数据可以
+然后不再被解密。
+
+密码必须至少为** 24个字符长**。混合数字
+建议使用大小写字母。加密密码
+必须保密。
+
+> **重要**
+>
+>如果丢失或更改了加密密码，则无法恢复加密的数据。如果密码丢失，则加密的数据也会丢失。相反，如果
+>密码已泄露。因此，应考虑将密码存储在安全的地方。
+
+请注意，加密支持取决于* Java Cryptography Extension *（JCE）策略文件是否可用。这些包含在OpenJDK和Oracle JDK 8 Update 144或更高版本的所有版本中。
+
+## 读取副本数据库配置 { #install_read_replica_configuration } 
+
+DHIS 2允许利用主数据库的只读副本
+（主DHIS 2数据库）。只读副本的目的是为了增强
+数据库读取查询的性能并扩展容量
+超越了单个数据库的限制。大量读取操作，例如
+因为分析和事件查询将从中受益。
+
+The configuration requires that you have created one or more replicated
+instances of the master DHIS 2 database. PostgreSQL achieves this
+through a concept referred to as *streaming replication*. Configuring
+read replicas for PostgreSQL is not covered in this guide.
+
+只读副本可以在* dhis.conf *配置文件中定义。您
+每个DHIS 2实例最多可以指定5个只读副本。每个读取副本
+用1到5之间的数字表示。JDBC连接URL必须
+每个副本定义。可以指定用户名和密码。如果
+否，将使用主数据库的用户名和密码
+代替。
+
+* dhis.conf *中只读副本的配置如下所示。
+每个副本都使用配置键* readN *前缀指定，
+其中N表示副本号。
+
+```属性
+＃读取副本1的配置
+
+＃数据库连接URL，用户名和密码
+read1.connection.url = jdbc：postgresql：//127.0.0.11/dbread1
+read1.connection.username = dhis
+read1.connection.password = xxxx
+
+＃读取副本2的配置
+
+＃数据库连接URL，用户名和密码
+read2.connection.url = jdbc：postgresql：//127.0.0.12/dbread2
+read2.connection.username = dhis
+read2.connection.password = xxxx
+
+＃读取副本3的配置
+
+＃数据库连接URL，后退到主用户名和密码
+read3.connection.url = jdbc：postgresql：//127.0.0.13/dbread3
+```
+
+请注意，您必须重新启动servlet容器才能更改
+生效。 DHIS 2将自动在
+读取副本。副本的顺序没有任何意义。
+
+## Web服务器群集配置 { #install_web_server_cluster_configuration } 
+
+本节介绍如何设置DHIS 2应用程序以在
+簇。
+
+### 群集概述 { #install_cluster_configuration_introduction } 
+
+集群是提高系统可扩展性和可用性的常用技术。
+可用性的常用技术。集群是指设置多个网络服务器，如
+Tomcat 实例，让它们为一个应用程序服务。集群
+可以*扩展*应用程序，即可以添加新的服务器来提高性能。
+以提高性能。它还允许*高
+可用性*，因为系统可以容忍实例宕机，而不会
+使用户无法访问系统。
+
+有一些方面需要配置才能运行DHIS 2
+在集群中。
+
+* 每个DHIS 2实例必须指定DHIS 2实例的其他成员
+* dhis.conf *中的群集。
+
+* 必须安装Redis数据存储，并且必须提供连接信息
+为* dhis.conf *中的每个DHIS 2应用程序实例提供。
+
+* DHIS 2 实例和服务器必须共享相同的 *files* 文件夹，用于 
+应用程序和文件上传，通过* AWS S3云文件存储*选项
+或共享的网络驱动器。
+
+* 必须将负载平衡器（如nginx）配置为分发Web请求
+跨集群实例。
+
+### DHIS 2实例群集配置 { #install_cluster_configuration } 
+
+设置多个Tomcat实例时，需要进行
+实例彼此了解。这种认识将使DHIS 2能够保持
+本地数据（休眠）同步并处于一致状态。
+在一个实例上完成更新后，在另一个实例上缓存
+必须通知实例，以便实例可以无效并避免
+变得陈旧。
+
+DHIS 2群集设置基于每个设备的手动配置
+实例。对于每个DHIS 2实例，必须指定公共
+*主机名*以及其他参与实例的主机名
+在集群中。
+
+使用* cluster.hostname *指定服务器的主机名
+配置属性。参与其中的其他服务器
+使用* cluster.members *配置指定集群
+属性。该属性需要一个逗号分隔值列表，其中
+每个值的格式均为* host：port *。
+
+主机名必须对网络上的参与服务器可见
+为集群工作。您可能需要允许传入和
+防火墙中配置的端口号上的传出连接。
+
+服务器的端口号是使用* cluster.cache.port *指定的
+配置属性。用于注册表接收的远程对象端口
+调用使用* cluster.cache.remote.object.port *指定。指定
+端口号通常仅在具有多个群集时才有用
+同一服务器上的实例，或者是否需要显式指定端口
+匹配防火墙配置。在单独运行集群实例时
+服务器，通常适合使用默认端口号并省略
+端口配置属性。如果省略，则将4001分配为
+监听器端口和一个随机空闲端口将被分配为远程端口
+对象端口。
+
+*node.id* 配置属性可用于为实例提供明确的标识字符串。请注意，管理员必须确保节点 ID 在整个群集中是唯一的。DHIS2 不会强制执行唯一性，即使群集中有多个实例使用相同的节点 ID，也会继续启动。 
+
+下面介绍了两个Web服务器群集的示例设置。
+对于主机名为* 193.157.199.131 *的*服务器A *，可以执行以下操作
+在* dhis.conf *中指定：
+
+```properties
+# Cluster configuration for server A
+
+# Hostname for this web server
+cluster.hostname = 193.157.199.131
+
+# Ports for cache listener, can be omitted
+cluster.cache.port = 4001
+cluster.cache.remote.object.port = 5001
+
+# List of Host:port participating in the cluster
+cluster.members = 193.157.199.132:4001
+
+#node identification (optional). 
+node.id = nodeA1
+```
+
+对于主机名为* 193.157.199.132 *的*服务器B *，可以执行以下操作
+在* dhis.conf *中指定（注意如何省略端口配置）：
+
+```properties
+# Cluster configuration for server B
+
+# Hostname for this web server
+cluster.hostname = 193.157.199.132
+
+# List of servers participating in cluster
+cluster.members = 193.157.199.131:4001
+
+#node identification (optional). 
+node.id = nodeB1
+```
+
+您必须重新启动每个Tomcat实例，以使更改生效。
+现在已使两个实例相互了解，DHIS 2将
+确保其缓存保持同步。
+
+要了解哪个节点充当群集领导者，可以访问 `/api/36/cluster/leader` Web API 端点。更多信息，请参阅网络 API 文档。
+
+
+### Redis共享数据存储集群配置 { #install_cluster_configuration_redis } 
+
+在集群设置中，* Redis *实例是必需的，它将处理
+共享用户会话，应用程序缓存和群集节点领导力。
+
+为了获得最佳性能，* Redis键空间事件*用于_generic命令_
+和_expired events_需要在Redis服务器中启用。如果你是
+使用由云平台管理的Redis服务器（例如* AWS ElastiCache for Redis *
+或* Azure Cache for Redis *），则必须启用键空间事件通知
+使用相应的云控制台界面。如果要设置独立
+Redis服务器，启用密钥空间事件通知可以在
+通过添加或取消注释以下行来* redis.conf *文件：
+
+```
+notify-keyspace-events Egx
+```
+
+如果* redis.enabled *配置，DHIS2将连接到Redis
+* dhis.conf *中的property设置为* true *以及以下属性：
+
+- * redis.host *：指定Redis服务器在何处运行。默认为* localhost *。必选
+
+- * redis.port *：指定Redis服务器正在侦听的端口。默认为* 6379 *。可选的。
+
+- * redis.password *：指定身份验证密码。如果不需要密码，可以将其留空。
+
+- * redis.use.ssl *：指定Redis服务器是否启用了SSL。默认为false。可选的。默认为* false *。
+
+启用Redis后，DHIS2将自动分配
+运行实例作为集群的领导者。领导者实例将
+用于执行应运行的作业或计划任务
+仅由一个实例。您可以选择配置
+* dhis.conf *中的* leader.time.to.live.minutes *属性以设置
+领导人选举经常需要举行。它也给
+指示另一个实例接管需要多长时间
+在先前的领导者变得不可用之后成为领导者。的
+默认值为2分钟。请注意，在集群中分配领导者
+仅在启用Redis的情况下完成。 * dhis.conf *的示例片段
+启用Redis和领导者选举时间的配置文件
+配置如下所示。
+
+```属性
+＃Redis配置
+
+redis.enabled = true
+
+redis.host = 193.158.100.111
+
+redis.port = 6379
+
+redis.password = <your password>
+
+redis.use.ssl = false
+
+＃可选，默认为2分钟
+Leader.time.to.live.minutes = 4
+```
+
+### 文件文件夹配置 { #files-folder-configuration } 
+
+DHIS 2将在应用程序本身之外存储几种类型的文件，
+例如应用程序，保存在数据输入中的文件和用户头像。部署时
+在群集中，这些文件的位置必须在所有实例之间共享。
+在本地文件系统上，位置为：
+
+```
+{DHIS2_HOME} /文件
+```
+
+Here, `DHIS2_HOME` refers to the location of the DHIS 2 configuration file
+as specified by the DHIS 2 environment variable, and `files` is the file
+folder immediately below.
+
+有两种方法可以实现共享位置：
+
+* 使用* AWS S3云文件存储*选项。文件将存储在
+S3存储桶，由群集中的所有DHIS 2实例自动共享。
+请参阅*文件存储配置*部分以获取指导。
+* 设置一个在所有DHIS 2实例之间共享的共享文件夹，并且
+集群中的服务器。在Linux上，可以使用* NFS *（网络文件系统）来实现
+这是一个分布式文件系统协议。注意只有`files`
+subfolder under `DHIS2_HOME` should be shared, not the parent folder. 
+
+### 负载均衡器配置 { #install_load_balancing } 
+
+设置了Tomcat实例集群，这是路由的常用方法
+传入Web请求到参与
+集群正在使用*负载均衡器*。负载均衡器将确保
+负载在群集实例之间平均分配。它也会
+检测实例是否不可用，如果是，则停止例程
+对该实例的请求，而是使用其他可用实例。
+
+负载平衡可以通过多种方式实现。一个简单的方法是
+使用* nginx *，在这种情况下，您将定义一个* upstream *元素，
+枚举后端实例的位置，以后再使用
+* proxy *位置块中的元素。
+
+```text
+http {
+
+  # Upstream element with sticky sessions
+
+  upstream dhis_cluster {
+    ip_hash;
+    server 193.157.199.131:8080;
+    server 193.157.199.132:8080;
+  }
+
+  # Proxy pass to backend servers in cluster
+
+  server {
+    listen 80;
+
+    location / {
+      proxy_pass   http://dhis_cluster/;
+    }
+  }
+}
+```
+
+DHIS 2在一定程度上将用户会话的服务器端状态保持不变。
+使用“粘性会话”是避免复制
+服务器会话状态，方法是将请求从同一客户端路由到
+同一台服务器。上游元素中的* ip \ _hash *指令可确保
+这个。
+
+请注意，为简洁起见，已省略了几条说明
+上面的例子。请查阅反向代理部分以获取详细指南。
+
+## ActiveMQ Artemis 配置{ #webapi_amqp_configuration } 
+
+默认情况下，DHIS2 将在启动时启动 ActiveMQ Artemis 的嵌入式实例。对于大多数使用情况，您不需要做任何事情。如果您想使用现有的 ActiveMQ Artemis 服务来代替嵌入式实例，您可以使用下表中的配置属性来更改 `dhis.conf` 文件中的默认配置。
+
+| 物业                  | 值（默认为第一位） | 描述                                                  |
+| ------------------------- | --------------------- | ------------------------------------------------------------ |
+| amqp.mode                 | EMBEDDED\| 本地    | 默认的`EMBEDDED`模式会在 DHIS2 实例启动时启动内部 AMQP 服务。如果要连接到外部 AMQP 服务，请将模式设置为`NATIVE`。 |
+| amqp.host                 | 127.0.0.1             | 要绑定的主机。                                             |
+| amqp.port                 | 15672                 | 如果 mode 为`EMBEDDED`，则嵌入式服务器将绑定到此端口。如果模式为`NATIVE`，客户端将使用此端口进行连接。 |
+| amqp.username             | 来宾                 | 使用`NATIVE`模式时要连接的用户名。               |
+| amqp.password             | 来宾                 | 如果使用`NATIVE`模式连接到的密码。               |
+| amqp.embedded.persistence | 错误| 真正         | 如果 mode 为`EMBEDDED`，则此属性控制内部队列的持久性。 |
+
+
+## 监控 { #monitoring } 
+
+DHIS 2可以导出Prometheus兼容的度量标准以监视DHIS2实例。 DHIS2监视基础结构旨在公开与应用程序运行时相关的指标以及其他与应用程序相关的信息。
+
+与基础架构相关的指标（例如主机指标，Tomcat或Postgres）不会直接由应用程序监视引擎公开，因此必须分别收集它们。该应用程序当前公开的指标是：
+
+- DHIS 2 API（响应时间，调用次数等）
+- JVM（堆大小，垃圾回收等）
+- 休眠（查询，缓存等）
+- C3P0数据库池
+- 应用正常运行时间
+- 中央处理器
+
+可以使用以下属性在`dhis.conf`中启用监视（所有属性默认为`off`）：
+
+```属性
+monitoring.api.enabled =开
+monitoring.jvm.enabled =开
+monitoring.dbpool.enabled =开
+monitoring.hibernate.enabled =关
+monitoring.uptime.enabled =开
+monitoring.cpu.enabled =开
+```
+
+推荐使用Prometheus和Grafana收集和可视化这些指标的方法。
+
+有关更多信息，请参见[监控基础结构]（https://github.com/dhis2/wow-backend/blob/master/guides/monitoring.md）页面和[Prometheus and Grafana安装]（https：// docs .dhis2.org / master / en / dhis2_system_administration_guide / monitoring.html）一章。
+
+## 系统配置 { #install_system_configuration } 
+
+本节介绍各种系统配置属性。
+
+```properties
+system.read_only_mode = on | off
+```
+
+将系统设置为只读模式。当您在只读副本数据库上运行 DHIS 2 时，这很有用，以避免 DHIS 2 执行数据库写入操作。可以是`开`或`关`。默认为`关闭`。
+
+```properties
+system.session.timeout = (seconds)
+```
+
+以秒为单位设置用户会话超时。默认为 3600 秒（1 小时）。
+
+```properties
+system.sql_view_table_protection = on | off
+```
+
+启用或禁用 SQL 视图的敏感数据库表保护。这将禁止通过 SQL 视图查询包含敏感数据的数据库表。不建议禁用。可以是`开`或`关`。默认为`开`。
+
+```properties
+system.program_rule.server_execution = on | off
+```
+
+启用或禁用服务器端项目规则的执行。这是指具有分配值、发送消息或安排要发送的消息的操作的项目规则。可以是`开`或`关`。默认为`开`。
+
+## 反向代理配置 { #install_reverse_proxy_configuration } 
+
+反向代理是代表服务器运行的代理服务器。使用
+反向代理与Servlet容器结合使用是可选的，但
+有很多优点：
+
+  - 可以将请求映射并传递到多个servlet容器。
+    这提高了灵活性，并使其更易于运行
+    同一台服务器上的DHIS2实例。这也使得
+    在不影响客户端的情况下更改内部服务器设置。
+
+  - DHIS2应用程序可以作为非root用户在端口上运行
+    不同于80，这减少了会话的后果
+    劫持。
+
+  - 反向代理可以充当单个SSL服务器并进行配置
+    检查恶意内容请求，日志请求和
+    响应并提供不敏感的错误消息，这将
+    提高安全性。
+
+### 基本的Nginx设置 { #install_basic_nginx_setup } 
+
+由于以下原因，我们建议使用[nginx]（http://www.nginx.org）作为反向代理
+其低内存占用和易用性。要安装，请调用
+以下：
+
+    须藤apt-get install nginx
+
+现在可以使用以下命令启动，重新加载和停止nginx
+命令：
+
+    sudo /etc/init.d/nginx开始
+    须藤/etc/init.d/nginx重新加载
+    sudo /etc/init.d/nginx停止
+
+现在我们已经安装了 nginx，接下来将继续配置
+将请求定期代理到 Tomcat 实例。
+运行在 `http://localhost:8080`。要配置 nginx，可以通过调用
+配置文件：
+
+    须藤nano /etc/nginx/nginx.conf
+
+nginx配置围绕代表以下内容的块层次结构构建
+http，服务器和位置，其中每个块都从父级继承设置
+块。以下代码段将nginx配置为通过代理
+（重定向）来自端口80的请求（该端口是nginx监听的端口
+默认情况下）到我们的Tomcat实例。包括以下配置
+在nginx.conf中：
+
+```text
+http {
+  gzip on; # Enables compression, incl Web API content-types
+  gzip_types
+    "application/json;charset=utf-8" application/json
+    "application/javascript;charset=utf-8" application/javascript text/javascript
+    "application/xml;charset=utf-8" application/xml text/xml
+    "text/css;charset=utf-8" text/css
+    "text/plain;charset=utf-8" text/plain;
+
+  server {
+    listen               80;
+    client_max_body_size 10M;
+
+    # Proxy pass to servlet container
+
+    location / {
+      proxy_pass                http://localhost:8080/;
+      proxy_redirect            off;
+      proxy_set_header          Host               $host;
+      proxy_set_header          X-Real-IP          $remote_addr;
+      proxy_set_header          X-Forwarded-For    $proxy_add_x_forwarded_for;
+      proxy_set_header          X-Forwarded-Proto  http;
+      proxy_buffer_size         128k;
+      proxy_buffers             8 128k;
+      proxy_busy_buffers_size   256k;
+      proxy_cookie_path         ~*^/(.*) "/$1; SameSite=Lax";
+    }
+  }
+}
+```
+
+现在，您可以通过* http：// localhost *访问DHIS2实例。自从
+已经设置了反向代理，我们可以通过使Tomcat来提高安全性
+只监听本地连接。在* / conf / server.xml *中，您可以添加一个
+连接器元素的* address *属性值为* localhost *
+对于HTTP 1.1像这样：
+
+```xml
+<Connector address="localhost" protocol="HTTP/1.1" />
+```
+
+### 使用nginx {#install_enabling_ssl_on_nginx}启用SSL { #install_enabling_ssl_on_nginx } 
+
+为了提高安全性，建议配置服务器
+运行DHIS2以通过加密连接与客户端进行通信
+并使用受信任的证书向客户端标识自己。这个可以
+通过SSL（一种加密通信协议）来实现
+在TCP / IP上运行。首先，安装所需的* openssl *库：
+
+    须藤apt-get install openssl
+
+要配置nginx使用SSL，你需要从SSL提供商处获得适当的SSL证书。
+证书。证书费用因加密强度不同而有很大差异。
+取决于加密强度。Rapid SSL
+Online](http://www.rapidsslonline.com)提供的经济实惠的证书应该能满足大多数需求。要
+生成 CSR（证书签名请求），你可以调用下面的
+命令。当系统提示你输入*通用名称*时，请输入你的网站的
+您要保护的网站的完全合格域名。
+    确保安全。
+
+    openssl req -new -newkey rsa：2048 -nodes -keyout server.key -out server.csr
+
+收到证书文件（.pem或.crt）后，您将
+需要将其与生成的server.key文件放在一起
+nginx可以到达的位置。一个好的位置可以是
+与您的nginx.conf文件所在的目录相同。
+
+下面是一个nginx 服务器块，其中的证书文件名为
+server.crt 和 server.key。由于 SSL 连接通常发生在端口
+443 (HTTPS)，我们会将该端口 (443) 上的请求传递给运行在``上的 DHIS2 实例。
+上运行。第一个服务器块将重写
+所有连接到 80 端口的请求，并强制使用 HTTPS/SSL。这
+这也是必要的，因为 DHIS2 在内部使用了大量的重定向
+这些重定向必须传递给 HTTPS。切记将
+*\<server-ip\>* 替换为服务器的 IP。这些块应替换
+上一节中的内容。
+
+```text
+http {
+  gzip on; # Enables compression, incl Web API content-types
+  gzip_types
+    "application/json;charset=utf-8" application/json
+    "application/javascript;charset=utf-8" application/javascript text/javascript
+    "application/xml;charset=utf-8" application/xml text/xml
+    "text/css;charset=utf-8" text/css
+    "text/plain;charset=utf-8" text/plain;
+
+  # HTTP server - rewrite to force use of SSL
+
+  server {
+    listen     80;
+    rewrite    ^ https://<server-url>$request_uri? permanent;
+  }
+
+  # HTTPS server
+
+  server {
+    listen               443 ssl;
+    client_max_body_size 10M;
+
+    ssl                  on;
+    ssl_certificate      server.crt;
+    ssl_certificate_key  server.key;
+
+    ssl_session_cache    shared:SSL:20m;
+    ssl_session_timeout  10m;
+
+    ssl_protocols              TLSv1 TLSv1.1 TLSv1.2;
+    ssl_ciphers                RC4:HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers  on;
+
+    # Proxy pass to servlet container
+
+    location / {
+      proxy_pass                http://localhost:8080/;
+      proxy_redirect            off;
+      proxy_set_header          Host               $host;
+      proxy_set_header          X-Real-IP          $remote_addr;
+      proxy_set_header          X-Forwarded-For    $proxy_add_x_forwarded_for;
+      proxy_set_header          X-Forwarded-Proto  https;
+      proxy_buffer_size         128k;
+      proxy_buffers             8 128k;
+      proxy_busy_buffers_size   256k;
+      proxy_cookie_path         ~*^/(.*) "/$1; SameSite=Lax";
+    }
+  }
+}
+```
+
+请注意最后一个`https`标头值，该值是通知
+servlet容器，该请求通过HTTPS发出。为了
+Tomcat还需要使用HTTPS正确生成`Location` URL头
+在Tomcat`server.xml`文件中向连接器添加其他两个参数：
+
+```xml
+<Connector scheme="https" proxyPort="443" />
+```
+
+### 使用Nginx启用缓存 { #install_enabling_caching_ssl_nginx } 
+
+要求提供报告，图表，地图和其他与分析相关的资源
+通常会花费一些时间来响应，并且可能会占用大量服务器
+资源。为了缩短响应时间，请减少
+服务器并隐藏潜在的服务器停机时间，我们可以引入缓存代理
+在我们的服务器设置中。缓存的内容将存储在目录中
+/ var / cache / nginx，最多将分配250 MB的存储空间。 Nginx的
+将自动创建此目录。
+
+```text
+http {
+  ..
+  proxy_cache_path  /var/cache/nginx  levels=1:2  keys_zone=dhis:250m  inactive=1d;
+
+
+  server {
+    ..
+
+    # Proxy pass to servlet container and potentially cache response
+
+    location / {
+      proxy_pass                http://localhost:8080/;
+      proxy_redirect            off;
+      proxy_set_header          Host               $host;
+      proxy_set_header          X-Real-IP          $remote_addr;
+      proxy_set_header          X-Forwarded-For    $proxy_add_x_forwarded_for;
+      proxy_set_header          X-Forwarded-Proto  https;
+      proxy_buffer_size         128k;
+      proxy_buffers             8 128k;
+      proxy_busy_buffers_size   256k;
+      proxy_cookie_path         ~*^/(.*) "/$1; SameSite=Lax";
+      proxy_cache               dhis;
+    }
+  }
+}
+```
+
+> **重要**
+>
+>请注意，服务器端缓存会缩短DHIS2安全性
+>从某种意义上说是功能，这些请求命中了服务器端缓存
+>将直接从DHIS2控制范围之外的缓存中提供
+>和servlet容器。这意味着请求URL可以是
+>猜测并由未经授权的用户从缓存中检索报告。
+>因此，如果您捕获敏感信息，请设置服务器端
+>不建议使用缓存。
+
+### 使用Nginx进行速率限制 { #install_rate_limiting } 
+
+DHIS 2中的某些Web API调用,如`analytics` API,是计算密集型的。因此，最好对这些API进行速率限制，以允许系统的所有用户充分利用服务器资源。速率限制可以通过`nginx`实现。有多种实现速率限制的方法，这旨在记录基于nginx的方法。
+
+The below nginx configuration will rate limit the `analytics` web API, and has the following elements at the *http* and *location* block level (the configuration is shortened for brevity):
+
+```text
+http {
+  ..
+  limit_req_zone $binary_remote_addr zone=limit_analytics:10m rate=5r/s;
+
+  server {
+    ..
+
+    location ~ ^/api/(\d+/)?analytics(.*)$ {
+      limit_req    zone=limit_analytics burst=20;
+      proxy_pass   http://localhost:8080/api/$1analytics$2$is_args$args;
+      ..
+    }
+  }
+}
+```
+
+配置的各个元素可以描述为：
+
+- * limit_req_zone $ binary_remote_addr *：速率限制是针对每个请求IP进行的。
+- * zone = limit_analytics：20m *：Analytics API的速率限制区域，最多可容纳10 MB的请求IP地址。
+- * rate = 20r / s *：每个IP每秒被授予5个请求。
+- *location ~ ^/api/(\d+/)?analytics(.\*)$*：对分析 API 端点的请求有速率限制。
+- *burst=20*：最多 20 个请求的突发将排队等候，并在稍后时间提供服务；更多请求将导致`503`。
+
+有关完整说明，请查阅[nginx文档]（https://www.nginx.com/blog/rate-limiting-nginx/）。
+
+### 使用Nginx使资源可用 { #install_making_resources_available_with_nginx } 
+
+在某些情况下，希望公开发布某些资源
+无需身份验证即可在Web上使用。一个例子是
+当您想在Web API中进行与数据分析相关的资源时
+在Web门户中可用。以下示例将允许访问
+基本的图表，地图，报告，报告表和文档资源
+通过将* Authorization * HTTP标头注入
+请求。它将从请求中删除Cookie标头，
+从响应中获取Set-Cookie标头，以避免更改
+当前登录的用户。建议为此创建一个用户
+目的仅给出所需的最低权限。授权
+值可以通过Base64编码，并在用户名后附加一个
+冒号和密码，并以“ Basic”作为前缀，更准确地说是“ Basic”
+base64 \ _encode（username：password）“。它将检查使用的HTTP方法
+用于请求并返回* 405方法不允许*（如果不是GET，则为其他方法）
+检测到。
+
+为此类公共用户设置一个单独的域可能是有利的
+使用这种方法时。这是因为我们不想更改
+已登录用户访问公共帐户时的凭据
+资源。例如，当您的服务器部署在somedomain.com上时，
+您可以在api.somedomain.com上设置专用的子域，并指向URL
+从您的门户到此子域。
+
+```text
+http {
+  ..
+
+  server {
+    listen       80;
+    server_name  api.somedomain.com;
+
+    location ~ ^/(api/(charts|chartValues|reports|reportTables|documents|maps|organisationUnits)|dhis-web-commons/javascripts|images|dhis-web-commons-ajax-json|dhis-web-mapping|dhis-web-visualizer) {
+    if ($request_method != GET) {
+        return 405;
+      }
+
+      proxy_pass         http://localhost:8080;
+      proxy_redirect     off;
+      proxy_set_header   Host               $host;
+      proxy_set_header   X-Real-IP          $remote_addr;
+      proxy_set_header   X-Forwarded-For    $proxy_add_x_forwarded_for;
+      proxy_set_header   X-Forwarded-Proto  http;
+      proxy_set_header   Authorization      "Basic YWRtaW46ZGlzdHJpY3Q=";
+      proxy_set_header   Cookie             "";
+      proxy_hide_header  Set-Cookie;
+    }
+  }
+}
+```
+
+
+### 使用nginx{ #install_block_android_versions } 阻止特定的安卓应用程序版本 
+
+在某些情况下，系统管理员可能希望根据 DHIS2 应用程序的版本来阻止某些 Android 客户端。例如，如果现场用户尚未将其 Android 应用程序版本更新到特定版本，系统管理员希望阻止其访问以强制更新；或者完全相反的情况，系统管理员希望阻止应用程序的新版本，因为它们尚未经过测试。这可以通过在 `nginx` 配置文件中使用特定的 *User-Agent* 规则轻松实现。
+
+```text
+http {
+
+  server {
+    listen       80;
+    server_name  api.somedomain.com;
+
+    # Block the latest Android App as it has not been tested
+    if ( $http_user_agent ~ 'com\.dhis2/1\.2\.1/2\.2\.1/' ) {
+        return 403;
+    }
+
+    # Block Android 4.4 (API is 19) as all users should have received new tablets
+    if ( $http_user_agent ~ 'com\.dhis2/.*/.*/Android_19' ) {
+        return 403;
+    }
+  }
+}
+```
+
+> **Note**
+> For the implementation of the method described above note the following: 
+> * Before version 1.1.0 the *User-Agent* string was not being sent.
+> * From version 1.1.0 to 1.3.2 the *User-Agent* followed the pattern Dhis2/AppVersion/AppVersion/Android_XX
+> * From version 2.0.0 and above the *User-Agent* follows the pattern com.dhis2/SdkVersion/AppVersion/Android_XX
+> * Android_XX refers to the Android API level i.e. the Android version as listed [here](https://developer.android.com/studio/releases/platforms).
+> * nginx uses [PCRE](http://www.pcre.org/) for Regular Expression matching .
+
+## DHIS2配置参考 { #install_dhis2_configuration_reference } 
+
+下面介绍了* dhis.conf *配置文件的完整配置选项集。配置文件应放置在* DHIS2 \ _HOME *环境变量指向的目录中。
+
+> **注意**
+>
+>您不应尝试直接使用此配置文件，而应将其用作可用配置选项的参考。许多属性是可选的。
+
+```properties
+# ----------------------------------------------------------------------
+# Database connection for PostgreSQL [Mandatory]
+# ----------------------------------------------------------------------
+
+# Hibernate SQL dialect
+connection.dialect = org.hibernate.dialect.PostgreSQLDialect
+
+# JDBC driver class
+connection.driver_class = org.postgresql.Driver
+
+# Database connection URL
+connection.url = jdbc:postgresql:dhis2
+
+# Database username
+connection.username = dhis
+
+# Database password (sensitive)
+connection.password = xxxx
+
+# Max size of connection pool (default: 40)
+connection.pool.max_size = 40
+
+# ----------------------------------------------------------------------
+# Database connection for PostgreSQL [Optional]
+# ----------------------------------------------------------------------
+
+# Minimum number of Connections a pool will maintain at any given time (default: 5).
+connection.pool.min_size=5
+
+# Initial size of connection pool (default : 5)
+#Number of Connections a pool will try to acquire upon startup. Should be between minPoolSize and maxPoolSize
+connection.pool.initial_size=5
+
+#Determines how many connections at a time will try to acquire when the pool is exhausted.
+connection.pool.acquire_incr=5
+
+#Seconds a Connection can remain pooled but unused before being discarded. Zero means idle connections never expire. (default: 7200)
+connection.pool.max_idle_time=7200
+
+#Number of seconds that Connections in excess of minPoolSize should be permitted to remain idle in the pool before being culled (default: 0)
+connection.pool.max_idle_time_excess_con=0
+
+#If this is a number greater than 0, dhis2 will test all idle, pooled but unchecked-out connections, every this number of seconds. (default: 0)
+connection.pool.idle.con.test.period=0
+
+#If true, an operation will be performed at every connection checkout to verify that the connection is valid. (default: false)
+connection.pool.test.on.checkout=false
+
+#If true, an operation will be performed asynchronously at every connection checkin to verify that the connection is valid. (default: true)
+connection.pool.test.on.checkin=true
+
+#Defines the query that will be executed for all connection tests. Ideally this config is not needed as postgresql driver already provides an efficient test query. The config is exposed simply for evaluation, do not use it unless there is a reason to.
+connection.pool.preferred.test.query=select 1
+
+#Configure the number of helper threads used by dhis2 for jdbc operations. (default: 3)
+connection.pool.num.helper.threads=3
+
+# ----------------------------------------------------------------------
+# Server [Mandatory]
+# ----------------------------------------------------------------------
+
+# Base URL to the DHIS 2 instance
+server.base.url = https://play.dhis2.org/dev 
+
+# Enable secure settings if system is deployed on HTTPS, can be 'off', 'on'
+server.https = off
+
+# ----------------------------------------------------------------------
+# System [Optional]
+# ----------------------------------------------------------------------
+
+# System mode for database read operations only, can be 'off', 'on'
+system.read_only_mode = off
+
+# Session timeout in seconds, default is 3600
+system.session.timeout = 3600
+
+# SQL view protected tables, can be 'on', 'off'
+system.sql_view_table_protection = on
+
+# Disable server-side program rule execution, can be 'on', 'off'
+system.program_rule.server_execution = on
+
+# ----------------------------------------------------------------------
+# Encryption [Optional]
+# ----------------------------------------------------------------------
+
+# Encryption password (sensitive)
+encryption.password = xxxx
+
+# ----------------------------------------------------------------------
+# File store [Optional]
+# ----------------------------------------------------------------------
+
+# File store provider, currently 'filesystem' and 'aws-s3' are supported
+filestore.provider = filesystem
+
+# Directory / bucket name, folder below DHIS2_HOME on file system, 'bucket' on AWS S3
+filestore.container = files
+
+# Datacenter location (not required)
+filestore.location = eu-west-1
+
+# Public identity / username
+filestore.identity = dhis2-id
+
+# Secret key / password (sensitive)
+filestore.secret = xxxx
+
+# ----------------------------------------------------------------------
+# LDAP [Optional]
+# ----------------------------------------------------------------------
+
+# LDAP server URL
+ldap.url = ldaps://300.20.300.20:636
+
+# LDAP manager user distinguished name
+ldap.manager.dn = cn=JohnDoe,ou=Country,ou=Admin,dc=hisp,dc=org
+
+# LDAP manager user password (sensitive)
+ldap.manager.password = xxxx
+
+# LDAP entry distinguished name search base
+ldap.search.base = dc=hisp,dc=org
+
+# LDAP entry distinguished name filter
+ldap.search.filter = (cn={0})
+
+# ----------------------------------------------------------------------
+# Node [Optional]
+# ----------------------------------------------------------------------
+
+# Node identifier, optional, useful in clusters
+node.id = 'node-1'
+
+# ----------------------------------------------------------------------
+# Monitoring [Optional]
+# ----------------------------------------------------------------------
+
+# DHIS2 API monitoring
+monitoring.api.enabled = on
+
+# JVM monitoring
+monitoring.jvm.enabled = on
+
+# Database connection pool monitoring
+monitoring.dbpool.enabled = on
+
+# Hibernate monitoring, do not use in production
+monitoring.hibernate.enabled = off
+
+# Uptime monitoring
+monitoring.uptime.enabled = on
+
+# CPU monitoring
+monitoring.cpu.enabled = on
+
+# ----------------------------------------------------------------------
+# Analytics [Optional]
+# ----------------------------------------------------------------------
+
+# Analytics server-side cache expiration in seconds
+analytics.cache.expiration = 3600
+
+# Analytics unlogged tables. Accepts on/off. It's `off` by default. If enabled, this will boost the analytics table export process significantly.
+# But this comes with a cost: "unlogged" tables cannot be replicated. It means that clustering won't be possible. Also, analytics tables will be automatically truncated if PostgreSQL is suddenly reset (abrupt reset/crash). If PostgreSQL is reset gracefully, it won't impact any table. The analytics tables will remain in place accordingly.
+analytics.table.unlogged = on
+
+# ----------------------------------------------------------------------
+# System telemetry [Optional]
+# ----------------------------------------------------------------------
+
+# System monitoring URL
+system.monitoring.url = 
+
+# System monitoring username
+system.monitoring.username = 
+
+# System monitoring password (sensitive)
+system.monitoring.password = xxxx
+```
+
+## 变更日志 { #install_changelog } 
+
+当某些实体在系统中更改时，DHIS2将条目写入更改日志。实体分为两类：_Aggregate_和_tracker_。 _aggregate_类别包括对汇总数据值的更改。 _tracker_类别包括对项目实例，项目临时所有权项，跟踪的实体属性值和跟踪的实体数据值的更改。
+
+The changelog for both categories are enabled by default. You can control whether to enable or disable the changelog by category through the `dhis.conf` configuration file using the properties described below. Property options are `on` (default) and `off`.
+
+更改日志的好处是能够查看已对数据执行的更改。禁用更改日志的好处是，通过避免将更改日志项写入数据库的成本以及较少使用的数据库存储，可以对性能进行较小的改进。建议启用变更日志，如果禁用它，则应格外小心。
+
+```属性
+＃汇总变更日志，可以为“ on”，“ off”
+changelog.aggregate =开启
+
+＃Tracker changelog，可以为“ on”，“ off”
+changelog.tracker =开
+```
+
+## 应用程序日志记录 { #install_application_logging } 
+
+本节介绍DHIS 2中的应用程序日志记录。
+
+### 日志文件 { #log-files } 
+
+DHIS2应用程序日志输出定向到多个文件和位置。首先，将日志输出发送到标准输出。 Tomcat Servlet容器通常将标准输出输出到“ logs”下的文件：
+
+     <tomcat-dir> /logs/catalina.out
+
+其次，将日志输出写入到DHIS2 \ _HOME环境变量定义的DHIS2主目录下的“ logs”目录中。有一个主日志文件用于所有输出，而单独的日志文件用于各种输出
+后台进程。主文件还包括后台进程日志。日志文件的上限为50 Mb，并且日志内容会连续添加。
+
+     <DHIS2_HOME> /logs/dhis.log
+     <DHIS2_HOME> /logs/dhis-analytics-table.log
+     <DHIS2_HOME> /logs/dhis-data-exchange.log
+     <DHIS2_HOME> /logs/dhis-data-sync.log
+
+### 日志配置 { #log-configuration } 
+
+要覆盖默认日志配置，您可以指定一个名为
+属性，其名称为 `log4j2.configurationFile` ，值指向
+[Log4j 版本 2］(https://logging.apache.org/log4j/2.x/manual/configuration.html)
+配置文件，如下所示：
+
+```属性
+-配置文件=/home/dhis/config/log4j2.properties
+```
+
+可以设置Java系统属性，例如通过* JAVA \ _OPTS *环境变量或tomcat启动脚本中。
+
+覆盖日志配置的第二种方法是在* dhis.conf *配置文件中指定日志记录属性。支持的属性是：
+
+```属性
+＃日志文件的最大大小，默认为'100MB'
+logging.file.max_size = 250MB
+
+＃最大滚动日志归档文件数，默认为0
+logging.file.max_archives = 2
+```
+
+DHIS2最终将逐步淘汰到标准out / catalina.out的日志记录，因此建议依赖DHIS2 \ _HOME下的日志。
+
+## 使用PostgreSQL数据库 { #install_working_with_the_postgresql_database } 
+
+管理DHIS2实例时的常见操作是转储和
+恢复数据库。假设您要转储数据库（副本）
+从安装部分进行设置，您可以调用以下命令：
+
+    pg_dump dhis2 -U dhis -f dhis2.sql
+
+第一个参数（dhis2）引用数据库的名称。的
+第二个参数（dhis）指向数据库用户。最后一个论点
+（dhis2.sql）是副本的文件名。如果您要压缩
+您可以立即复制文件：
+
+    pg_dump dhis2 -U dhis | gzip> dhis2.sql.gz
+
+要在另一个系统上还原此副本，您首先需要创建一个
+如安装部分所述清空数据库。你还需要
+如果您创建了压缩版本，则将副本打包。您可以
+调用：
+
+    psql -d dhis2 -U dhis -f dhis2.sql
+
