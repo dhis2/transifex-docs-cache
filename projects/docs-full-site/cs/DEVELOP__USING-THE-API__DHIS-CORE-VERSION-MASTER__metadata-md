@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/metadata.md"
-revision_date: '2024-07-29'
+revision_date: '2024-10-25'
 tags:
-- Hlavní verze jádra DHIS
 - Vývoj
+- Hlavní verze jádra DHIS
 ---
 
 # Metadata { #webapi_metadata }
@@ -1617,6 +1617,133 @@ following payload to change the style:
   }
 }
 ```
+## Category Option { #category-option } 
+
+### Merge category options { #category_option_merge }
+
+The category option merge endpoint allows you to merge a number of category options (sources) into a target category option.
+
+#### Authorisation { #authorisation } 
+
+The main authority required to perform a category option merge is `F_CATEGORY_OPTION_MERGE`.  
+Other authorities required relate to the general sharing and access of category options, `F_CATEGORY_OPTION_PUBLIC_ADD` and `F_CATEGORY_OPTION_DELETE`.
+
+#### Request { #request } 
+
+Merge category options with a POST request:
+
+```
+POST /api/categoryOptions/merge
+```
+
+Užitná zátěž ve formátu JSON vypadá takto:
+
+```json
+{
+  "sources": [
+    "FbLZS3ueWbQ",
+    "dPSWsKeAZNw"
+  ],
+  "target": "rEq3Hkd3XXH",
+  "deleteSources": true
+}
+```
+
+Vlastnosti JSON jsou popsány v následující tabulce.
+
+Tabulka: Sloučit pole datového obsahu
+
+| Pole             | Požadované | Hodnota                                                                                                                                                                                   |
+|-------------------|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| zdroje           | Ano      | Array of identifiers of the category options to merge (the source category options)                                                                                                     |
+| cíl            | Ano      | Identifier of the category option to merge the sources into (the target category option)                                                                                                |
+| deleteSources     | Ne       | Whether to delete the source category options after the operation. Default is false.                                                                                                    |
+
+The merge operation will merge the source category options into the target category option. One or many source category options can be specified. Only one target should be specified.
+
+The merge operation will transfer all source category option metadata associations to the target category option.
+The following metadata get updated:
+
+
+| Metadata            | Vlastnictví        | Action taken               |
+|---------------------|-----------------|----------------------------|
+| Kategorie            | categoryOptions | remove sources, add target |
+| CategoryDimension   | items           | remove sources, add target |
+| CategoryOptionCombo | categoryOptions | remove sources, add target |
+| CategoryOptionGroup | members         | remove sources, add target |
+| OrganisationUnit    | categoryOptions | remove sources, add target |
+
+
+#### Validation { #validation } 
+
+Platí následující omezení a chybové kódy.
+
+Tabulka: Omezení a chybové kódy
+
+| Chybový kód | Popis                                               |
+|------------|-----------------------------------------------------------|
+| E1650      | At least one source category option must be specified     |
+| E1651      | Target category option must be specified                  |
+| E1652      | Target category option cannot be a source category option |
+| E1653      | Source/Target category option does not exist: `{uid}`     |
+
+
+#### Odpověď { #response }
+##### Success { #success } 
+Sample success response looks like:
+
+```json
+{
+    "httpStatus": "OK",
+    "httpStatusCode": 200,
+    "status": "OK",
+    "response": {
+        "mergeReport": {
+            "mergeErrors": [],
+            "mergeType": "CATEGORY_OPTION",
+            "sourcesDeleted": [
+                "FbLZS3ueWbQ", "dPSWsKeAZNw"
+            ],
+            "message": "CATEGORY_OPTION merge complete"
+        }
+    }
+}
+```
+
+##### Failure { #failure } 
+Sample error response looks like:
+
+```json
+{
+    "httpStatus": "Conflict",
+    "httpStatusCode": 409,
+    "status": "WARNING",
+    "message": "One or more errors occurred, please see full details in merge report.",
+    "response": {
+        "mergeReport": {
+            "mergeErrors": [
+                {
+                    "message": "At least one source category options must be specified",
+                    "errorCode": "E1650",
+                    "args": []
+                },
+                {
+                    "message": "Target category option does not exist: `abcdefg1221`",
+                    "errorCode": "E1653",
+                    "args": [
+                        "Target",
+                        "abcdefg1221"
+                    ]
+                }
+            ],
+            "mergeType": "CATEGORY_OPTION",
+            "sourcesDeleted": [],
+            "message": "CATEGORY_OPTION merge has errors"
+        }
+    }
+}
+```
+
 
 ## Datové prvky { #data-elements } 
 

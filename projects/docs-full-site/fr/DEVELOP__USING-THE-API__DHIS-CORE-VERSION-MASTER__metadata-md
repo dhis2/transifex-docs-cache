@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/metadata.md"
-revision_date: '2024-07-29'
+revision_date: '2024-10-25'
 tags:
-- Version Master de DHIS2 Central
 - Développement
+- Version Master de DHIS2 Central
 ---
 
 # Metadata { #webapi_metadata }
@@ -1423,8 +1423,135 @@ Lors de la création ou de la mise à jour de l'un de ces objets, vous pouvez in
   }
 }
 ```
+## Category Option { #category-option } 
 
-## Éléments de donnée { #data-elements } 
+### Merge category options { #category_option_merge }
+
+The category option merge endpoint allows you to merge a number of category options (sources) into a target category option.
+
+#### Autorisation { #authorisation } 
+
+The main authority required to perform a category option merge is `F_CATEGORY_OPTION_MERGE`.  
+Other authorities required relate to the general sharing and access of category options, `F_CATEGORY_OPTION_PUBLIC_ADD` and `F_CATEGORY_OPTION_DELETE`.
+
+#### Requête { #request } 
+
+Merge category options with a POST request:
+
+```
+POST /api/categoryOptions/merge
+```
+
+La charge au format JSON ressemble à ceci :
+
+```json
+{
+  "sources": [
+    "FbLZS3ueWbQ",
+    "dPSWsKeAZNw"
+  ],
+  "target": "rEq3Hkd3XXH",
+  "deleteSources": true
+}
+```
+
+Les propriétés JSON sont décrites dans le tableau suivant.
+
+Tableau : Fusion des champs de la charge
+
+| Champ             | Obligatoire | Valeur                                                                                                                                                                                   |
+|-------------------|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| sources           | Oui      | Array of identifiers of the category options to merge (the source category options)                                                                                                     |
+| cible            | Oui      | Identifier of the category option to merge the sources into (the target category option)                                                                                                |
+| deleteSources     | Non       | Whether to delete the source category options after the operation. Default is false.                                                                                                    |
+
+The merge operation will merge the source category options into the target category option. One or many source category options can be specified. Only one target should be specified.
+
+The merge operation will transfer all source category option metadata associations to the target category option.
+The following metadata get updated:
+
+
+| Métadonnées            | Propriété        | Mesure prise               |
+|---------------------|-----------------|----------------------------|
+| Catégorie            | categoryOptions | remove sources, add target |
+| CategoryDimension   | items           | remove sources, add target |
+| CategoryOptionCombo | categoryOptions | remove sources, add target |
+| CategoryOptionGroup | membres         | remove sources, add target |
+| Unité d'organisation    | categoryOptions | remove sources, add target |
+
+
+#### Validation { #validation } 
+
+Les contraintes et les codes d'erreur suivants s'appliquent.
+
+Tableau : Contraintes et codes d'erreur
+
+| Code d'erreur | Description                                               |
+|------------|-----------------------------------------------------------|
+| E1650      | At least one source category option must be specified     |
+| E1651      | Target category option must be specified                  |
+| E1652      | Target category option cannot be a source category option |
+| E1653      | Source/Target category option does not exist: `{uid}`     |
+
+
+#### Réponse { #response } 
+##### Succès { #success } 
+Voici un exemple de réponse après une opération réussie :
+
+```json
+{
+    "httpStatus": "OK",
+    "httpStatusCode": 200,
+    "status": "OK",
+    "response": {
+        "mergeReport": {
+            "mergeErrors": [],
+            "mergeType": "CATEGORY_OPTION",
+            "sourcesDeleted": [
+                "FbLZS3ueWbQ", "dPSWsKeAZNw"
+            ],
+            "message": "CATEGORY_OPTION merge complete"
+        }
+    }
+}
+```
+
+##### Failure { #failure } 
+Voici un exemple de réponse après une opération erronée :
+
+```json
+{
+    "httpStatus": "Conflict",
+    "httpStatusCode": 409,
+    "status": "WARNING",
+    "message": "One or more errors occurred, please see full details in merge report.",
+    "response": {
+        "mergeReport": {
+            "mergeErrors": [
+                {
+                    "message": "At least one source category options must be specified",
+                    "errorCode": "E1650",
+                    "args": []
+                },
+                {
+                    "message": "Target category option does not exist: `abcdefg1221`",
+                    "errorCode": "E1653",
+                    "args": [
+                        "Target",
+                        "abcdefg1221"
+                    ]
+                }
+            ],
+            "mergeType": "CATEGORY_OPTION",
+            "sourcesDeleted": [],
+            "message": "CATEGORY_OPTION merge has errors"
+        }
+    }
+}
+```
+
+
+## Éléments de données { #data-elements } 
 
 ### Merge data elements { #data_element_merge }
 
@@ -1844,7 +1971,7 @@ Les contraintes et les codes d'erreur suivants s'appliquent.
 
 Tableau : Contraintes et codes d'erreur
 
-| Code d'erreur | Description ;                                     |
+| Code d'erreur | Description                                     |
 |------------|-------------------------------------------------|
 | E1540      | Au moins un indicateur source doit être spécifié |
 | E1541      | L'indicateur cible doit être spécifié              |
@@ -2033,14 +2160,14 @@ Tableau : Paramètres de requête des unités d'organisation
 
 | Paramètre de requête | Options | Description |
 |---|---|---|
-| userOnly | faux | vrai | Unités d'organisation de saisie de données associées à l'utilisateur actuel. |
-| userDataViewOnly | faux | vrai | Unités d'organisation de visualisation de données associées à l'utilisateur actuel. |
-| userDataViewFallback | faux | vrai | Unités d'organisation de visualisation de données associées à l'utilisateur actuel, avec un retour aux unités d'organisation de saisie de données. |
+| userOnly | false | true | Unités d'organisation de saisie de données associées à l'utilisateur actuel. |
+| userDataViewOnly | false | true | Unités d'organisation de visualisation de données associées à l'utilisateur actuel. |
+| userDataViewFallback | false | true | Unités d'organisation de visualisation de données associées à l'utilisateur actuel, avec un retour aux unités d'organisation de saisie de données. |
 | query | chaîne | Requête sur les propriétés de nom, code et ID. |
 | niveau | entier | Unités d'organisation au niveau spécifié de la hiérarchie. |
 | maxLevel | entier | Unités d'organisation au niveau maximal ou à des niveaux plus élevés dans la hiérarchie. |
-| withinUserHierarchy | faux | vrai | Limite la recherche et l'extraction aux unités d'organisation qui se trouvent dans le champ de saisie de l'utilisateur. |
-| withinUserSearchHierarchy | faux | vrai | Limite la recherche et l'extraction aux unités d'organisation qui se trouvent dans le champ de recherche de l'utilisateur actuel. Remarque : Si "withinUserHierarchy" est défini sur "true", il devient prioritaire. |
+| withinUserHierarchy | false | true | Limite la recherche et l'extraction aux unités d'organisation qui se trouvent dans le champ de saisie de l'utilisateur. |
+| withinUserSearchHierarchy | false | true | Limite la recherche et l'extraction aux unités d'organisation qui se trouvent dans le champ de recherche de l'utilisateur actuel. Remarque : Si "withinUserHierarchy" est défini sur "true", il devient prioritaire. |
 | memberCollection | chaîne | Permet d'afficher le nombre de membres dans une collection ; renvoie au nom de la collection associée aux unités d'organisation. |
 | memberObject | UID | Permet d'afficher le nombre de membres dans une collection ; renvoie à l'identifiant de l'objet qui fait partie de la collection. |
 
@@ -2054,9 +2181,9 @@ Tableau : Paramètres de l'unité d'organisation
 
 | Paramètre de requête | Options | Description |
 |---|---|---|
-| includeChildren | faux | vrai | Inclut les subordonnées directs de l'unité d'organisation spécifiée, c'est-à-dire les unités qui lui sont directement inférieures dans la sous-hiérarchie. |
-| includeDescendants | faux | vrai | Inclut tous les descendants de l'unité d'organisation spécifiée, c'est-à-dire toutes les unités qui lui sont inférieures dans la hiérarchie. |
-| includeAncestors | faux | vrai | Inclut tous les ascendants de l'unité d'organisation spécifiée. |
+| includeChildren | false | true | Inclut les subordonnées directs de l'unité d'organisation spécifiée, c'est-à-dire les unités qui lui sont directement inférieures dans la sous-hiérarchie. |
+| includeDescendants | false | true | Inclut tous les descendants de l'unité d'organisation spécifiée, c'est-à-dire toutes les unités qui lui sont inférieures dans la hiérarchie. |
+| includeAncestors | false | true | Inclut tous les ascendants de l'unité d'organisation spécifiée. |
 | niveau | entier | Inclut les descendants de l'unité d'organisation spécifiée à un niveau précis de la sous-hiérarchie. Ce paramètre dépend de l'unité d'organisation, et commence par le premier niveau qui est directement inférieur à l'unité d'organisation. |
 
 ### Obtenir des unités d'organisation par option de catégorie{ #webapi_organisation_units_by_category_options }
@@ -2512,7 +2639,7 @@ Tableau : Paramètres de requête du formulaire
 |---|---|---|
 | pe | Période ISO | Période pour laquelle les valeurs de données du formulaire doivent être renseignées. |
 | ou | UID | Unité d'organisation pour laquelle les valeurs de données du formulaire doivent être renseignées. |
-| Métadonnées | faux | vrai | Détermine s'il faut inclure ou non des métadonnées sur chaque élément de données des sections du formulaire. |
+| Métadonnées | false | true | Détermine s'il faut inclure ou non des métadonnées sur chaque élément de données des sections du formulaire. |
 
 Pour récupérer le formulaire d'un ensemble de données, vous pouvez effectuer une requête GET comme suit :
 
@@ -2627,14 +2754,14 @@ Tableau : Format CSV des éléments de données
 | 2 | UID | Non | UID | Identifiant stable. Exactement 11 caractères alphanumériques, commençant par une lettre. Il est généré par le système s'il n'est pas spécifié. |
 | 3 | Code | Non || Code stable. Maximum 50 caractères. |
 | 4 | Nom court | Non | 50 premiers caractères du nom | S'il n'est pas spécifié, il est remplacé par les 50 premiers caractères du nom. Maximum 50 caractères. Unique. |
-| 5 | Description | Non || Description en texte libre. |
+| 5 | Description ; | Non || Description en texte libre. |
 | 6 | Nom du formulaire | Non || Maximum 230 caractères. |
 | 7 | Type de domaine | Non | AGRÉGÉ | TRACKER | Type de domaine pour l'élément de données ; il peut s'agir du domaine Agrégé ou du Tracker. Maximum 16 caractères. |
 | 8 | Type de valeur | Non | ENTIER | NOMBRE | UNITÉ_INTERVALLE | POURCENTAGE | ENTIER_POSITIF | ENTIER_NÉGATIF | ENTIER_ZÉRO_OU_POSITIF | FICHIER_RESSOURCE | COORDONNÉE | TEXTE | TEXTE_ LONG | LETTRE | NUMÉRO_DE TÉLÉPHONE | EMAIL | BOOLÉEN | VRAI_UNIQUEMENT | DATE | DATE ET HEURE | Type de valeur. Maximum 16 caractères. |
 | 9 | Type d'agrégation | Non | SOMME | MOYENNE | MOYENNE_DE LA SOMME_DES UNITÉS_D'ORGANISATION | NOMBRE | ÉCART-TYPE | VARIANCE | MIN | MAX | AUCUN | Type d'agrégation indiquant comment agréger les données dans les différentes dimensions. Maximum 16 caractères. |
 | 10 | Combinaison de catégories | Non | UID | UID de la combinaison de catégories. La combinaison de catégories par défaut sera utilisée si aucune n'est spécifiée. |
 | 11 | Url | Non || URL de la ressource de l'élément de données. Maximum 255 caractères. |
-| 12 | Le zéro est significatif | Non | faux | vrai | Indique si les valeurs nulles (zéro) seront stockées pour cet élément de données. |
+| 12 | Le zéro est significatif | Non | false | true | Indique si les valeurs nulles (zéro) seront stockées pour cet élément de données. |
 | 13 | Ensemble d'options | Non | UID | UID de l'ensemble d'options à utiliser pour les données. |
 | 14 | Ensemble d'options pour les commentaires | Non | UID | UID de l'ensemble d'options à utiliser pour les commentaires. |
 
@@ -2657,7 +2784,7 @@ Tableau : Format CSV de l'unité d'organisation
 | 3 | Code | Non || Code stable. Maximum 50 caractères. |
 | 4 | Parent | Non | UID | UID de l'unité d'organisation mère. |
 | 5 | Nom court | Non | 50 premiers caractères du nom | S'il n'est pas spécifié, il est remplacé par les 50 premiers caractères du nom. Maximum 50 caractères. Unique. |
-| 6 | Description ; | Non || Description en texte libre. |
+| 6 | Description | Non || Description en texte libre. |
 | 7 | Date d'ouverture | Non | 1970-01-01 | Date d'ouverture de l'unité d'organisation au format AAAA-MM-JJ. |
 | 8 | Date de fermeture | Non || Date de fermeture de l'unité d'organisation au format AAAA-MM-JJ, ignorer si l'unité est actuellement ouverte. |
 | 9 | Commentaire | Non || Commentaire en texte libre pour l'unité d'organisation. |
@@ -3176,7 +3303,7 @@ Tableau : Paramètres de requête
 
 | Nom | Obligatoire | Description |
 |---|---|---|
-| type | vrai | Le type de version de métadonnées à créer.<br> * BEST_EFFORT<br> * ATOMIQUE |
+| type | true | Le type de version de métadonnées à créer.<br> * BEST_EFFORT<br> * ATOMIQUE |
 
 Les utilisateurs peuvent sélectionner le type de métadonnées à créer. Le type de version des métadonnées régit la manière dont l'importateur traite la version en question. Ce type sera utilisé lors de l'importation des métadonnées. Il existe deux types de métadonnées.
 
@@ -3243,7 +3370,7 @@ Tableau : Paramètres du chemin d'accès
 
 | Nom | Obligatoire | Description |
 |---|---|---|
-| versionName | vrai | Paramètre de chemin d'accès de la forme "Version_<id\>" pour que l'API télécharge la version spécifique. |
+| versionName | true | Paramètre de chemin d'accès de la forme "Version_<id\>" pour que l'API télécharge la version spécifique. |
 
 ### Téléchargement des métadonnées de la version { #webapi_download_version_metadata } 
 
@@ -3298,7 +3425,7 @@ Tableau : Paramètres de requête
 
 | Nom | Obligatoire | Description |
 |---|---|---|
-| versionName | vrai | Le paramètre de requête VersionName est de la forme "Version_<id\>" . L'api télécharge cette version depuis le serveur distant et l'importe dans le système local. |
+| versionName | true | Le paramètre de requête VersionName est de la forme "Version_<id\>" . L'api télécharge cette version depuis le serveur distant et l'importe dans le système local. |
 
   - Cette API doit être utilisée avec la plus grande prudence. Sachez qu'il existe 
     une autre façon d'effectuer la synchronisation de manière complètement automatisée en 
