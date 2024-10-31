@@ -1,0 +1,224 @@
+---
+edit_url: "https://github.com/dhis2-metadata/RMS0-Rapid_Mortality_Surveillance/blob/master/docs/rms_events_installation.md"
+revision_date: "2022-07-01"
+---
+
+# Rapid Mortality Surveillance - Event Package Installation Guide { #rms-events-installation }
+
+## 安装 { #installation }
+
+模块的安装包括以下几个步骤：
+
+1. [Preparing the metadata file with DHIS2 metadata](#preparing-the-metadata-file).
+2. [Importing the metadata file into DHIS2](#importing-metadata).
+3. [Configuring the imported metadata](#configuration).
+4. [Adapting the program after import](#adapting-the-program)
+
+It is recommended to first read through each section of the installation guide before starting the installation and configuration process in DHIS2. Identify applicable sections depending on the type of your import:
+
+1. import into a blank DHIS2 instance
+2. import into a DHIS2 instance with existing metadata.
+
+The steps outlined in this document should be tested in a test/staging DHIS2 instance and only then applied to a production environment.
+
+## 要求 { #requirements }
+
+In order to install the module, an administrator user account on DHIS2 is required.
+
+Great care should be taken to ensure that the server itself and the DHIS2 application are well secured, access rights to collected data should be defined. Details on securing a DHIS2 system is outside the scope of this document, and we refer to the [DHIS2 documentation](https://docs.dhis2.org/).
+
+## Metadata files { #metadata-files }
+
+尽管并非总是必要，但在将元数据文件导入DHIS2之前对其进行某些修改通常可能是有利的。
+
+## 准备元数据文件 { #preparing-the-metadata-file }
+
+It is required to apply some changes to the metadata file before it can be imported. The scope of work may vary from package to package.
+
+### 默认数据维度 { #default-data-dimension }
+
+In early versions of DHIS2, the UIDs of the default data dimensions were auto-generated. Thus, while all DHIS2 instances have a default category option, data element category, category combination and category option combination, the UIDs of these defaults can be different. Later versions of DHIS2 have hardcoded UIDs for the default dimension, and these UIDs are used in the configuration packages.
+
+To avoid conflicts when importing the metadata, it is advisable to search and replace the entire .json file for all occurrences of these default objects, replacing UIDs of the .json file with the UIDs from the instance in which the file will be imported. Table 1 shows the UIDs which should be replaced, as well as the API endpoints to identify the existing UIDs
+
+| 目的 | 用户标识 | API endpoint |
+| --- | --- | --- |
+| 类别 | `GLevLNI9wkl` | `../api/categories.json?filter=name:eq:default` |
+| 类别选项 | `xYerKDKCefk` | `../api/categoryOptions.json?filter=name:eq:default` |
+| Category combination | `bjDvmb4bfuf` | `../api/categoryCombos.json?filter=name:eq:default` |
+| Category option combination | `HllvX50cXC0` | `../api/categoryOptionCombos.json?filter=name:eq:default` |
+
+Identify the UIDs of the default dimesions in your instance using the listed API requests and replace the UIDs in the json file with the UIDs from the instance.
+
+> **NOTE**
+>
+> Note that this search and replace operation must be done with a plain text editor, not a word processor like Microsoft Word.
+
+### Visualizations using Root Organisation Unit UID { #visualizations-using-root-organisation-unit-uid }
+
+Visualizations, event reports, report tables and maps that are assigned to a specific organisation unit level or organisation unit group, have a reference to the root (level 1) organisation unit. Such objects, if present in the metadata file, contain a placeholder `<OU_ROOT_UID>`. Use the search function in the .json file editor to possibly identify this placeholder and replace it with the UID of the level 1 organisation unit in the target instance.
+
+### Option codes { #option-codes }
+
+According to the DHIS2 naming conventions, the metadata codes use capital letters, underscores and no spaces. Some exceptions that may occur are specified in the corresponding package documentation. All codes included in the metadata objects in the current version of the package were adjusted to match the naming conventions. It may occur that the codes used in the earlier versions of the package used lower case characters. If data values in the existing implementations contain lower case codes, it is important to update those values directly in the database.
+
+The table below contains all option sets where codes were changed to upper case in the metadata package. Before importing metadata into the instance, check whether the option sets in the existing system match those in the package .json and use the same upper case option codes.
+
+| Option set name       | Option set UID |
+| --------------------- | -------------- |
+| GEN - Manner of death | `A7mNd2r3ZJe`  |
+| Yes/No                | `ZH8H5hGkXww`  |
+| Sex (with unknown)    | `rlYDq7U043q`  |
+
+The table below contains metadata elements that use an affected option set:
+
+| Metadata object | 名称                          | 用户标识           |
+| --------------- | ----------------------------- | ------------- |
+| 数据元素    | GEN - Manner of Death         | `BfNZcj99yz4` |
+| 数据元素    | GEN - Sex (with unknown)      | `LOU9t0aR0z7` |
+| 数据元素    | RMS - Died in health facility | `CBAs12YL4g7` |
+
+> **Important**
+>
+> During the import, the existing option codes will be overwritten with the updated upper case codes. In order to update the data values for existing data in the database, it is necessary to update the values stored in the database using database commands. Make sure to map existing old option codes and new option codes before replacing the values. Use staging instance first, before making adjustments on the production server.
+
+For data element values, use:
+
+     ```SQL
+     UPDATE programstageinstance
+     SET eventdatavalues = jsonb_set(eventdatavalues, '{"<affected data element uid>","value"}', '"<new value>"')
+     WHERE eventdatavalues @> '{"<affected data element uid>":{"value": "<old value>"}}'::jsonb
+     AND programstageid=<database_programsatgeid>;
+     ```
+
+For tracked entity attribute values, use:
+
+    ```SQL
+    UPDATE trackedentityattributevalue
+    SET value = <new value>
+    WHERE trackedentityattributeid=<affected trackedentityattribute database_id> AND value=<old value>;
+    ```
+
+> **Example**
+>
+> To replace the option code 'yes' with 'YES' for existing data values (data element RMS - Died in health facility `CBAs12YL4g7`) in the programstage with the id=1510410385 (example id), the command will be configured as follows:
+>
+>     ```SQL
+>     UPDATE programstageinstance
+>     SET eventdatavalues = jsonb_set(eventdatavalues, '{"CBAs12YL4g7","value"}', '"YES"')
+>     WHERE eventdatavalues @> '{"CBAs12YL4g7":{"value": "yes"}}'::jsonb
+>     AND programstageid=1510410385;
+>     ```
+
+Option codes are also used in program rule expressions, program indicators, etc. If you are updating code options in your system, make sure you update the codes in all affected metadata objects.
+
+### Sort order for options { #sort-order-for-options }
+
+Check whether the sort order `sortOrder` of options in your system matches the sort order of options included in the metadata package. This only applies when the json file and the target instance contain options and option sets with the same UID.
+
+After import, make sure that the sort order for options within an option set starts at 1. There should be no gaps (eg. 1,2,3,5,6) in the sort order values.
+
+排序顺序可在维护应用程序中调整。
+
+1. 转到适用的选项集
+2. 打开 "选项 "部分
+3. 使用 "按名称排序"、"按代码/数值排序 "或 "手动排序"。
+
+## 导入元数据 { #importing-metadata }
+
+使用 [Import/Export](#import_export) DHIS2 应用程序导入元数据包。建议在尝试实际导入元数据之前使用 "模拟运行 "功能来发现问题。如果 "模拟运行 "报告了任何问题或冲突，请参阅下面的[导入冲突]（#处理-导入-冲突）部分。如果 "试运行"/"验证 "导入无误，请尝试导入元数据。如果导入成功且无任何错误，则可以继续[配置](#configuration) 模块。在某些情况下，"模拟运行 "时不会显示导入冲突或问题，但在尝试实际导入时会显示。在这种情况下，导入摘要将列出需要解决的任何错误。
+
+### 处理导入冲突 { #handling-import-conflicts }
+
+可能会发生多种冲突，但最常见的是配置包中的元数据对象的名称、简称和/或代码已经存在于目标数据库中。这些问题有几种不同的解决方案，各有利弊。例如，哪种方案更合适取决于发生冲突的对象类型。
+
+> **注意**
+>
+> 如果将软件包导入新的 DHIS2 实例，由于目标数据库中没有元数据，因此不会出现导入冲突。导入元数据后，进入"[配置](#configuration) "部分。
+
+#### 备选方案1 { #alternative-1 }
+
+重命名 DHIS2 数据库中存在冲突的现有对象。这种方法的优点是无需修改 .json 文件，而是通过 DHIS2 的用户界面进行更改。这可能更不容易出错。这也意味着配置包保持原样，例如在发布包更新时，这可能是一个优势。培训材料和文档中也经常会引用原始软件包对象。
+
+#### 备选方案2 { #alternative-2 }
+
+重命名.json文件中存在冲突的对象。这种方法的优点是现有的DHIS2元数据保持不变。当存在培训材料或文档（例如链接到所讨论对象的数据字典的SOP）时，这可能是一个因素，并且不存在通过修改用户熟悉的元数据而使用户感到困惑的风险。
+
+请注意，对于备选项1和2，修改可以简单到在名称中添加一个小的前缀/后缀，以最大程度地减少混乱的风险。
+
+#### 备选3 { #alternative-3 }
+
+第三种也是更复杂的方法是修改.json文件以重新使用现有的元数据。例如，在某个概念的某个选项集已经存在的情况下（例如“性别”），可以从.json文件中删除该选项集，并且对其UID的所有引用都将替换为数据库中已经存在的相应选项集。这样做的最大优点（不限于直接导入冲突的情况）是避免在数据库中创建重复的元数据。执行这种类型的修改时，需要考虑一些关键因素：
+
+-   它需要有关DHIS2详细元数据结构的专业知识
+-   该方法不适用于所有类型的对象。特别地，某些类型的对象具有依赖关系，这种依赖关系以这种方式难以解决，例如与分解有关。
+-   将来对配置包的更新将很复杂。
+
+## 组态 { #configuration }
+
+成功导入所有元数据后，需要执行一些步骤，模块才能正常运行。
+
+### 分享中 { #sharing }
+
+首先，您必须使用 DHIS2 的_共享_功能来配置哪些用户（用户组）应查看与程序相关的元数据和数据，以及谁可以在程序中注册/输入数据。默认情况下，共享配置如下：
+
+-   程序
+-   计划阶段
+-   仪表板
+-   可视化、地图、事件报告和报告表格
+
+有关共享的更多信息，请参阅 [DHIS2 文档](#sharing)。
+
+软件包包括以下核心用户组：
+
+-   RMS 访问
+-   RMS 管理员
+-   RMS 数据采集
+
+默认情况下，会为这些用户组分配以下权限：
+
+| 目的 | 用户组 |  |  |
+| --- | --- | --- | --- |
+|  | _RMS访问_ | _RMS admin_ | _RMS 数据采集_ |
+| _*程序*_ | 元数据：可查看<br> 数据：可查看 | 元数据：可编辑和查看<br> 数据：无法访问 | 元数据：可查看<br> 数据：可采集和查看 |
+| _*仪表盘*_ | 元数据：可查看 | 元数据：可编辑和查看 | 无访问权限 |
+
+用户会根据其在系统中的角色被分配到相应的用户组。软件包中其他对象的共享可能会根据设置进行调整。更多信息请参阅 [DHIS2 共享文档](#sharing)。
+
+### 用户角色 { #user-roles }
+
+用户将需要用户角色才能参与DHIS2中的各种应用程序。建议以下最低角色：
+
+1. 跟踪器数据分析：可以查看事件分析并访问仪表板，事件报告，事件可视化器，数据可视化器，数据透视表，报告和地图。
+2. 跟踪器数据捕获：可以添加数据值，更新跟踪的实体，跨组织单位搜索跟踪的实体以及访问跟踪器捕获
+
+有关配置用户角色的更多信息，请参阅 [DHIS2 文档](https://docs.dhis2.org/)。
+
+### 组织单位 { #organisation-units }
+
+程序和数据集必须分配给现有层级中的组织单位，以便通过跟踪捕获/捕获应用程序进行访问。
+
+### 重复的元数据{ #duplicated-metadata }
+
+> **注意**
+>
+> 本节仅适用于导入已有元数据的 DHIS2 数据库。如果您使用的是新的 DHIS2 实例，请跳过本节，转到[调整程序](#adapting-the-program)。如果您正在使用任何依赖于当前元数据的第三方应用程序，请考虑到此次更新可能会破坏它们。
+
+即使成功导入了元数据而没有任何导入冲突，元数据中也可能存在重复项-数据元素，跟踪的实体属性或已存在的选项集。正如上面有关解决冲突的部分所述，要牢记的一个重要问题是，在DHIS2中更改元数据的决定还需要考虑与现有元数据有不同关联的其他文档和资源。 ，以及通过配置包导入的元数据。因此，解决重复项不仅是“清理数据库”的问题，而且还要确保做到这一点，例如，不破坏与其他系统的集成，使用培训材料的可能性，破坏SOP等。这将非常很大程度上取决于上下文。
+
+需要牢记的重要一点是，DHIS2 有一些工具可以隐藏元数据中潜在重复的一些复杂问题。例如，在存在重复选项集的情况下，可以通过[共享]（#sharing）为用户组隐藏这些选项集。
+
+## 调整计划{ #adapting-the-program }
+
+Once the program has been imported, you might want to make certain modifications to the program. Examples of local adaptations that _could_ be made include:
+
+-   向表单添加其他变量。
+-   根据国家惯例修改数据元素/选项名称。
+-   向变量和/或数据输入表单添加翻译。
+-   根据本地案例定义修改程序指标
+
+但是，如果您决定更改或删除任何包含的表格/元数据，强烈建议格外小心。修改可能会破坏功能，例如程序规则和程序指示器。
+
+## 删除元数据{ #removing-metadata }
+
+为了保持实例整洁并避免出错，建议删除实例中不必要的元数据。

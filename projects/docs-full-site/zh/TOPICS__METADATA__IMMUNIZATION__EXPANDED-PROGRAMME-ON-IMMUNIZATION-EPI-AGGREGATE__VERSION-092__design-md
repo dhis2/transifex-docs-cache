@@ -1,0 +1,145 @@
+---
+edit_url: "https://github.com/dhis2-metadata/IMM_AGG/blob/master/docs/imm_agg-design-0.9.2.md"
+revision_date: "2022-11-21"
+tags:
+    - 版本 0.9.2
+    - 元数据
+---
+
+# 免疫 HMIS 模块设计{ #imm-agg-design-092 }
+
+## 介绍 { #introduction }
+
+本文件介绍了 DHIS2 中免疫接种模块的设计，该模块经过优化，可与国家 HMIS 系统相集成。已将扩大免疫规划（EPI）报告纳入 HMIS 的国家最广泛使用该模块。该模块包括标准指标和仪表板，以支持世界卫生组织[免疫计划管理人员卫生机构数据分析和使用指南]（https://www.who.int/publications/m/item/analysis-and-use-of-health-facility-data-guidance-for-immunization-programme-managers）建议的核心免疫计划分析。该模块包含汇总的月度数据集，可根据系统成熟度灵活使用：
+
+-   用于直接向 DHIS2 进行例行报告，设施数据仍基于纸质（数据录入可在设施或地区一级进 行）；或
+-   通过将 DHIS2 追踪器或其他系统中的个人层面电子数据汇总到支持数据分析框架所需的预定义汇总维度来填充。
+
+## 总览 { #overview }
+
+用于汇总报告的免疫接种配置包包含表 1 所述的单一数据集。
+
+| 名称 | 周期性 | 目的 |
+| :-- | :-- | :-- |
+| 免疫接种 | 每月 | 报告免疫接种活动（包括外展活动）、免疫接种后的不良事件、库存和冷链。 |
+
+请注意，本数据集是使用 DHIS2 的自定义表单设计的，特别是为了适应本数据集中的库存部分。如果使用分段表单，库存部分会超出大多数没有高分辨率显示器的用户的屏幕宽度，导致他们在该部分输入数据时不得不向左/右滚动。
+
+## 数据集结构和设计{ #data-set-structure-and-design }
+
+本节将介绍免疫数据集（报告表）的主要部分（表格），并解释其配置。
+
+### 外联会议{ #outreach-session }
+
+![Outreach sessions](resources/images/IMM_AGG_image1.png "Outreach sessions")
+
+-   本部分已配置为单个数据元素。此处无需分类。
+
+### 儿童疫苗接种{ #vaccinations-children }
+
+![Vaccinations - children](resources/images/IMM_AGG_image2.png "Vaccinations - children")
+
+\*注意：这不是完整的表格。请查看 DHIS2 中的完整表格。
+
+-   This section has been configured using an age disaggregation `(<1, >=1)` for each data element within the section
+-   通过采用分类结构，本节中的数据元素从 34 个减少到 17 个
+-   在分析中，我们可以根据需要快速添加年龄细分数据并进行透视。我们还可以看到，总数对于确定某种疫苗的总接种剂量非常有用。
+
+![Age category options](resources/images/IMM_AGG_image3.png "Age category options")
+
+### 接种疫苗 - 育龄妇女{ #vaccinations-women-of-childbearing-age }
+
+![Vaccinations - women of childbearing age](resources/images/IMM_AGG_image4.png "Vaccinations - women of childbearing age")
+
+\*注意：这不是完整的表格。请查看 DHIS2 中的完整表格。
+
+-   本部分使用孕妇分类（怀孕、其他）进行配置。
+-   通过采用分类结构，该部分的数据元素从 10 个减少到 5 个。
+-   在分析过程中，我们可以快速添加怀孕状态的细目，并根据需要进行透视。我们还可以看到，总数对于确定某种疫苗的总接种剂量非常有用。
+
+![Pregnant/other category options](resources/images/IMM_AGG_image5.png "Pregnant/other category options")
+
+### 免疫接种后的不良事件{ #adverse-events-following-immunisation }
+
+![Adverse Events Following Immunisation](resources/images/IMM_AGG_image6.png "Adverse Events Following Immunisation")
+
+-   本部分已配置为单个数据元素。此处无需分类。
+
+### 库存{ #stock }
+
+![Stock](resources/images/IMM_AGG_image7.png "Stock")
+
+\*注意：这不是完整的表格。请查看 DHIS2 中的完整表格。
+
+-   存量部分采用了 "扁平 "结构（即未进行分类，该部分仅由单个数据元素组成）。
+-   由于 "已用 "栏 = `（起始余额 + 已收）- (VVM + 冻结 + 过期 + 破损 + 缺失 + 期末余额)`，因此需要这种结构。
+-   使用两个单独的类别选项（即起始余额、收到/VVM、冻结、过期、破损、遗失、期末余额） 也不合适，因为其中一些选项不适用于本节中的几个数据元素。因此，对主题关联数据元素采用不同的结构并非最有效的方法。
+-   虽然使用这种结构会大大增加数据元素的数量，但使用类别选项组合将所有这些项 目相加，在这种结构中是行不通的，因为在查看 "已使用 "一栏时，总数并不能提供任 何有意义的信息。
+
+### 冷链{ #cold-chain }
+
+![Cold Chain](resources/images/IMM_AGG_image8.png "Cold Chain")
+
+-   本部分已配置为单个数据元素。此处无需分类。
+
+## 验证规则{ #validation-rules }
+
+### 疫苗接种{ #vaccinations }
+
+免疫接种计划使用一套验证规则，将接种数据集中三个部分的数据结合起来：
+
+1. a. 儿童 b. 育龄妇女
+2. 库存
+
+The validation rule is essentially the same across the various vaccines that are administered: _Vaccine doses given <= Vaccine doses used and wasted_
+
+让我们以 BCG 为例来应用这一规则。
+
+1. 疫苗接种剂量 = 卡介苗接种剂量 < 1 年 + 卡介苗接种剂量 ≥ 1 年
+2. Vaccine doses used and wasted = `(BCG starting balance + BCG received) - (BCG VVM + BCG frozen + BCG expired + BCG broken + BCG missing + BCG ending balance)`
+
+所提供的疫苗剂量摘自_疫苗接种 - 儿童部分_。
+
+![Vaccinations - children](resources/images/IMM_AGG_image9.png "Vaccinations - children")
+
+使用和浪费的疫苗剂量取自_库存_部分
+
+![Validation failure example](resources/images/IMM_AGG_image10.png "Validation failure example]")
+
+在这种情况下，如果我们进行验证，就会出现违规行为
+
+![Violation message](resources/images/IMM_AGG_image11.png "Violation message")
+
+从根本上说，我们接种的疫苗不能超过我们所能获得的数量。在这里，我们一开始接种了 25 支疫苗（起始余额 = 10 支，接种 = 15 支），浪费了 9 支疫苗。根据这一信息，我们在设施内只能接种 16 种疫苗，因此当我们输入卡介苗接种总数 20 时，就会发现违规。
+
+如果我们一开始就有更多的存货，就不会再有这个问题，验证也就通过了。
+
+![Correct data example](resources/images/IMM_AGG_image12.png "Correct data example")
+
+![验证](resources/images/IMM_AGG_image13.png "验证")
+
+同样的逻辑也适用于_接种疫苗--儿童_和_接种疫苗--育龄妇女_部分中的所有疫苗接种。
+
+### 消耗品{ #consumables }
+
+For consumables (items including safety boxes, ADS, etc.) validation rules are applied directly within the stock section. _Consumable waste <= consumption_
+
+我们可以以安全箱为例应用这一规则。
+
+1. 消耗性废物 = `（丢失的安全箱 + 破损的安全箱） `
+2. Consumable consumption = `(Safety boxes starting balance + Safety boxes received) - Safety boxes ending balance`
+
+与用于疫苗接种的验证规则相比，这里使用的逻辑更容易理解。这些规则可确保我们使用的消耗品数量不超过设施内的可用数量。
+
+## 免疫接种产出{ #immunisation-outputs }
+
+总体一揽子计划中包括的免疫接种产出包括
+
+-   指标
+-   分析产出
+    -   图表
+    -   数据透视表
+    -   地图
+-   仪表板
+    -   免疫接种
+    -   免疫地图

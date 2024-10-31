@@ -1,0 +1,961 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs-implementation/blob/master/content/chis_implementation/06_dhis2_configuration.md"
+revision_date: '2022-04-20'
+tags:
+- 实施
+---
+
+# 可持续 CHIS DHIS2 设计与建筑{ #sustainable-chis-dhis2-design-and-architecture } 
+
+一个可持续的社区信息系统需要精心设计，以满足相关利益方的信息需求，并具有足够的灵活性，能够随着系统信息需求的变化而发展。结构方面的考虑很重要，这样 CHIS 就不会是独立的，而是能够与其他系统对话。这就需要一个精心设计的数据模型，以保证设想中的 CHIS 的输出和结果。本章讨论了使用 DHIS2 建立健全的 CHIS 体系结构和设计的注意事项。本章在编写时考虑了以下假设：
+
+- 领导数据模型设计的人员对 DHIS 数据模型（汇总、事件和跟踪器）有广泛的工作知 识
+- 领导推广工作的人员对国家基础设施有广泛的了解，并有类似的推广经验
+
+## CHIS 系统设计、开发、测试和部署流程：  { #chis-system-design-develop-test-and-deploy-process } 
+
+在 DHIS2 中设计 CHIS 的过程包括九个步骤。
+
+### 1.绘制当前状态业务流程图{ #1-mapping-current-state-business-processes } 
+
+DHIS2中最糟糕的CHIS配置通常是将当前的社区卫生项目业务流程简单地数字化到DHIS2中，而不对其进行任何优化修改。为了避免这种错误，在 DHIS2 中设计功能完善的 CHIS 的第一步是对社区卫生项目 M&E 数据流的现状进行彻底的映射。绘制现状图的主要目标是
+
+1. 将保健工作者报告工具统一为尽可能少的工具（1 或 2）。
+2. 在全国范围内实现统一报告工具的标准化。
+3. 找出行之有效的方法。
+4. 找出哪些地方做得不好，以及如何加以改进。
+
+绘制当前业务流程图主要有两个步骤。
+
+1. 汇编目前所有的数据收集表格。为每份表格确定
+    - 该数据收集表的数据要素和指标是什么？这些是否在 CHIS M&E 框架中？如果没有，我们是否仍应采集？
+    - 谁负责采集数据，完成采集需要多长时间？
+    - 填写报告表的频率是多少？
+    - 填写数据收集表时有哪些常见错误或困难？
+    - 数据收集表中内置了哪些工作辅助工具或工作流程支持工具？它们有用吗？是否需要更多？
+    - 绘制从收集点到中央层面的电子或纸质数据流图
+        - 数据是针对哪个组织单位采集的？
+        - 汇总点是什么？谁来进行汇总？
+2. 汇编目前所有的数据分析/数据使用工具。为每个工具确定
+    - 所提供数据的粒度如何？
+        * 汇总的组织级别（即社区、设施、地区或国家级别）
+        * 汇总的周期级别（如：日、周、月等）
+    - 根据该工具做出了哪些决定或采取了哪些行动？
+    - 该工具存在哪些问题？
+    - 如何解决这些问题？
+
+### 2.将业务流程转化为 DHIS2 的注意事项{ #2-considerations-in-translating-business-process-to-dhis2 } 
+
+在 DHIS2 中转换社区数据流是设计过程中最关键的一步。必须考虑九个关键要素。它们是
+
+1. 数据汇总逻辑
+2. 报告期和报告频率
+3. 组织结构
+4. 纵向保健计划与 HMIS 的关系
+5. 合作伙伴报告
+6. 输出：内部和外部
+7. 基础设施方面的考虑
+8. 数据采集技术考虑因素 = 工具选择
+9. 安全
+
+#### 数据聚合逻辑{ #logic-of-data-aggregation } 
+
+**从现有的设施系统**扩展到社区保健工作者，需要确保数据汇总的逻辑与现有的社区保健信息系统保持同步。在设计汇总时，可能会出现五种典型情况。
+
+1. ** 卫生保健工作者汇总数据报告**：如果综合数据是在机构层面收集的，而卫生保健工作者也提交综合数据，则机构和卫生保健工作者的总和值需要代表一个有意义的数字。例如
+    - 情况 1 - 保健社工全权负责报告该地区所有登记产前检查的孕妇。该数据元素应由所有保健社工报告，其总数应作为医疗机构的报告数：即医疗机构登记产前检查的孕妇人数 = 保健社工 1+ 保健社工 2...
+    - 情况 2 - 如果社区保健员要报告社区服务的这一数据元素，而设施也提供类似的服务，那么所提供服务的总计数就是社区保健员 + 设施的总和：即登记接受产前护理的孕妇人数 = 设施 + 社区保健员 1+ 社区保健员 2...
+
+    > **Note**
+    > 
+    > It is generally considered a best practice to have separate data sets for facilities and CHWs. Meaning, the CHW should not be submitting data via the facility data set. This is to minimize potential for double counting of patient between facility and CHW, and it enables better performance monitoring of CHWs and facilities.
+
+2. ** 基于病例（追踪）的数据报告，病例位置[不]{.ul}重要**：如果机构正在收集综合数据，而保健工作者要收集基于姓名/病例的数据，则应在机构层面对所有病例/姓名进行汇总。这意味着，即使由卫生保健工作者收集数据，也应将病例登记为设施的跟踪实体。
+
+    > For example, if there are 10 records of individual ANC cases captured by the CHW in the ANC tracker program for one month, then the facility value for ANC cases is 10. In DHIS2, this process of aggregation is automated.
+    >
+    > An example organizational hierarchy:
+    >
+    > - Facility (Org unit level)
+    >   - ANC Case 1 (Tracked entity)
+    >   - ANC Case 2 (Tracked entity)
+    >   - ANC Case 3
+    >   - etc.
+
+3. 在病例地点非常重要的情况下，**基于病例（追踪器）的数据报告**：在病例所在地（如村庄、社区等）对流行病学疾病控制（如疟疾活动病例检测）或上门推广服务（如免疫接种活动）非常重要的情况下，最好将病例登记到反映其居住地（即其生活所在地）的最低一级组织单位的追踪程序中。在这种情况下，医疗机构的汇总报告通常是一个单独的数据集，只记录在医疗机构发生的汇总病例。在流行病控制计划中，设施通常也会进行个案报告。
+
+    > For example, in a malaria program where CHW are performing active case detection to villages of people who test positive for malaria the individual case should be enrolled against the village. This allows CHWs to know the location of cases for active case detection. Example organizational hierarchy below:
+
+    > - Facility (Org unit level)
+    >   - Village (Org unit level)
+    >       - Malaria Case 1 (Tracked entity)
+    >       - Malaria Case 2 (Tracked entity)
+    >       - etc.
+
+4. **案例与保健社工的关联非常重要时，基于案例（跟踪器）的数据报告：** 在将特定案例与提供服务的保健社工关联起来非常重要的情况下（例如：健康教育计划），案例可根据实际配置为组织单位的保健社工注册到跟踪器程序中。为了适应 CHW 的高流动性，CHW 的组织单位代表 CHW 的职位而不一定是 CHW 的具体名称是非常重要的，这意味着作为组织单位工作的实际 CHW 可以更改，而无需更改组织单位本身的名称。
+
+    > For example, in a HIV/AIDs education program where a CHW will provide young women with STI education, contraceptives, and counseling and testing it may be very important to associate an individual case with a specific CHW. The example organizational hierarchy is below:
+    >
+    > - Facility (Org unit level)
+    >   - CHW 1 (org unit level)
+    >       - Girl 1 (Tracked entity)
+    >       - Girl 2
+    >   - CHW 2
+    >       - Girl 3 (tracked entity)
+
+5. **设计新的 CHIS**时，如果不需要将其输入现有设施的 HIS，那么就可以留出空间，使定义的汇总逻辑相对独立，而不需要与设施的汇总同步。例如，为某一特定活动或事件从头开始建立 CHIS，则相对独立于设施的汇总逻辑。
+
+
+#### 报告期/频率{ #reporting-periodsfrequency } 
+
+当社区保健工作者的报告期与下一级机构的报告期不同时，这一点很重要。卫生保健工作者的报告频率应与医疗机构的报告频率相同或更高。医疗机构的报告频率不应高于 CHW 的报告频率。例如
+
+CHW 数据元素：
+
+- 今天分发的蚊帐数量（每日报告）
+- 本周分发的蚊帐数量（每周报告一次）
+
+设施数据元素：
+
+- 本月分发的蚊帐数量
+
+在第一种情况（a）中，30 份每日报告将构成每月蚊帐分发总量：分发的蚊帐总数 = 设施（月） + 卫生保健工作者第 1 天 + 卫生保健工作者第 2 天 ... .+ 卫生保健工作者第 30 天
+
+在第二种情况 (b) 中，4 份周报将构成每月蚊帐分发总量。分发的蚊帐总数 = 设施（月） + 第 1 周 + 卫生保健工作者第 2 周 ... .+ 卫生保健工作者第 4 周
+
+如果 CHW 和设施的报告周期相同，则我们必须确保汇总逻辑必须匹配，如上文所述。
+
+#### 组织单位和层次结构{ #organization-units-and-hierarchy } 
+
+另一个重要的考虑因素是如何在报告层级中增加社区保健工作者。考虑到社区保健员的规模和数量，这将成为社区保健信息服务系统设计的基本决定之一。
+
+组织树表示位于一个层次结构中的行政或地理分区。例如
+
+> - Country, HQ \[L1\]
+> - 省、区（行政单位）\[L2\]
+> - Facility, clinic, hospital (providing services) （提供服务） （[L3
+
+在上面这个例子中，组织单位的层次结构是按照行政和地理划分的。然后将层次结构划分为组织单位，如省、区或单个设施。组织单位驱动：数据录入；安全：捕获和输出；分析：通过层次结构汇总/滚动数据**（黄金法则：汇总应始终有意义）**。
+
+**如果配置得当，组织层次结构应使用户能够了解：**
+
+1. **数据与何处**相关（即病人个人、家庭、村庄、医疗机构、社区卫生站等）。
+2. **What** the data means. Is the data able to be aggregated up the hierarchy in a meaningful way? Is data captured at that organizational unit meaningful to that level?
+3. **何时**采集数据。分配给数据集或计划的时间段应能向上汇总到更大的时间段。例如，不能将社区层面每月报告的数据元素汇总到其上级机构的每周数据元素中。
+4. **谁**采集数据并提供服务。这对社区卫生计划尤为重要，因为我们需要了解社区保健员个人采取的行动和提供的服务。这可以在层次结构中进行配置。
+
+
+> Important
+> 
+> **Every hierarchy should pass the CHIS hierarchy test:**
+>
+> 1. Does it enable data to be captured against an organizational unit that represents where and who the data is associated? 
+> 2. Does the organizational hierarchy enable security and access controls? 
+> 3. Does the aggregation produce the desired outputs: indicators, analytics, dashboards, maps, etc. 
+> 4. Is the data able to be associated with a single CHW? (Not necessary, but highly recommended) 
+
+根据不同国家的经验，我们认为组织层次结构可分为以下几种情况：
+
+##### 情况 1 - 一名或多名儿童保健工作者在特定村庄工作（但不在其他村庄工作）。  { #case-1-one-or-more-chw-work-in-specific-villages-but-not-in-other-villages } 
+
+> - Country （国家）
+> - 地区 （[L2\]
+> - Facilities \[L3\]设施
+> - Village \[L4\]村庄
+> - CHW 1 （[L5 or Tracked Entity\] ）。
+> - CHW 2 （[L5 或跟踪实体］
+> - Village （村庄） （L4
+> - CHW 3 （L5 或跟踪实体］
+> - CHW 4 （L5 或跟踪实体］
+
+它通过测试了吗？
+
+1. 它是否能够根据一个组织单位来获取数据，该组织单位代表了数据的关联地点和关联人员？
+*Yes, data can be captured at CHW level \[L5\], which is only present under one Village \[L4\]. This represents that data was collected by the specific Health Worker and that it belongs to one specific Village unequivocally.*
+2. 组织层次结构能否实现安全和访问控制？
+*是的，每个保健工作者都将被分配到自己的组织单位，这是最低一级的单位。这意味着他/她只能看到自己收集的数据*。
+3. 汇总是否能产生所需的产出：指标、分析、仪表盘、地图等。
+*是的，每一级的汇总将把数据积累到保健工作者、村庄、设施、地区......*
+4. 数据是否能与单个 CHW 关联？(非必要，但强烈建议）
+*Yes, data can always be associated to the level where it was captured, which in this case is the CHW.*
+
+是的，它通过了测试。
+
+**如果您考虑将 CHW 表示为一个跟踪实体**：在这种情况下，如果计划需要，可以将 CHW 表示为跟踪实体。但是，如果 CHW 还负责报告不同类型的跟踪实体（如疟疾病例或库存短缺），则不建议将其表示为跟踪实体。在这种情况下，卫生保健工作者应作为一个组织单位来表示。
+
+如果 CHW 需要与跟踪的实体相关联，建议进行配置。
+
+> - Country \[L1\]
+>   - Regions \[L2\]
+>       - Facilities \[L3\]
+>           - Village \[L4\]
+>               - CHW 1 \[L5\]
+>                   - Malaria Case \[Tracked Entity\]
+>                   - Malaria Case \[Tracked Entity\]
+
+
+##### 案例 2 - 卫生保健工作者在多个村庄/社区工作。保健工作者不共享村庄。 { #case-2-chw-works-in-several-villagescommunities-chws-do-not-share-villages } 
+
+> - Country （国家）
+> - 地区 （[L2\]
+> - Facilities \[L3\]设施
+> - Chw 1 （[L4］
+> - Village A （L5 或 Tracked Entity）。
+> - Village B （L5 或 Tracked Entity］
+> - Chw 2 （L4）
+> - Village C （L5 或 Tracked Entity）
+> - Village D （L5 或 Tracked Entity）
+
+
+它通过测试了吗？
+
+1. 它是否能够根据一个组织单位来获取数据，该组织单位代表了数据的关联地点和关联人员？
+*Yes, data can be captured at Village level \[L5\], which is only present under one CHW \[L4\]. This represents that data was collected in the specific Village and that it belongs to one specific Health Worker unequivocally.*
+2. 组织层次结构能否实现安全和访问控制？
+*Yes, every health worker will be assigned to its own organization unit \[L4\], being able to see data that belongs to that organization unit and its children \[L5\]. In this case children are Villages in which the health worker works, hence, s/he will be able to access only to data that him/herself has collected.*
+3. 汇总是否能产生所需的产出：指标、分析、仪表盘、地图等。
+*是的，每一级的汇总将把数据累积到村庄、保健工作者、设施、地区......*
+4. 数据是否能与单个 CHW 关联？(非必要，但强烈建议）
+*Yes, data can always be associated to the Health Worker level \[L4\].*
+
+是的，它通过了网络或安卓系统的测试，但不能用于短信数据采集。
+
+**如果你正在考虑将村庄作为一个被追踪的实体来表示：** 可能有计划或行政方面的原因需要将村庄作为一个被追踪的实体来表示，比如村庄会因为季节性人口迁移而不断变化（行政方面的原因），或者需要通过某种推广或教育计划来追踪村庄（计划方面的原因）。举例来说，如果一个村庄的病人也需要通过与村庄的关系进行跟踪和关联，就会产生问题。DHIS2 目前无法根据两种不同类型的追踪实体之间的关系建立追踪实体分析。因此，建议如果需要跟踪病人并将其与一个村庄联系起来，那么村庄应继续作为一个组织单位。示例如下：
+
+如果村庄需要与被跟踪的实体相关联，建议使用此配置。
+
+> - Country （国家）
+> - 地区 （[L2\]
+> - Facilities \[L3\]设施
+> - CHW 1\[L4\]
+> - Village A \[L5\]（村庄 A
+> - Patient 1 （[跟踪实体］
+> - Patient 2 （病人 2）
+> - Patient 3 （病人3）
+
+##### 案例 3 - CHW 在一个以上的村庄/社区工作{ #case-3-chw-works-in-more-than-one-villagecommunity } 
+> - Country \[L1\]
+>   - Regions \[L2\]
+>       - Facilities \[L3\]
+>           - Village A \[L4\]
+>               - CHW 1 \[L5\]
+>               - CHW 2 V-A \[L5\]
+>           - Village B \[L4\]
+>               - CHW 2 V-B \[L5\]
+>               - CHW 3 \[L5\]
+
+它通过测试了吗？
+
+1. 它是否能够根据一个组织单位来获取数据，该组织单位代表了数据的关联地点和关联人员？
+*Yes, data can be captured at CHW level \[L5\], which is under one or more Villages \[L4\]. This represents that data was collected by the specific Health Worker and that it belongs to one specific Village unequivocally.*
+2. 组织层次结构能否实现安全和访问控制？
+*是的，每个保健工作者都将被分配到自己的组织单位，这是最低一级的单位。这意味着他/她只能看到自己收集的数据*。
+3. 汇总是否能产生所需的产出：指标、分析、仪表盘、地图等。
+*不，我们可以按村庄、设施、地区等进行汇总。但是，由于社区保健员在不同的村庄重复工作（例子中的社区保健员 2），我们无法使用层次结构按社区保健员汇总数据*。
+4. 数据是否能与单个 CHW 关联？(非必要，但强烈建议）
+*Yes, data can always be associated to the CHW level \[L5\].*
+
+不，它不能通过测试，因为由于名称重复，无法汇总 CHW 工作。这也不适用于 SMS。
+
+##### 案例 4 -- 多个社区保健员在一个村庄工作。  { #case-4-multiple-chws-works-in-single-village } 
+
+> - Country （国家）
+> - 地区 （[L2\]
+> - Facilities \[L3\]设施
+> - CHW 1 （[L4\]
+> - Village A HW1 （[L5\]
+> - 村 B HW1 （[L5\]
+> - CHW 2 （L4）
+> - Village B HW2 （村庄 B）
+
+这能通过测试吗？
+
+1. 它是否能够根据一个组织单位来获取数据，该组织单位代表了数据的关联地点和关联人员？
+*Yes, data can be captured at Village level \[L5\], which is only under the CHW \[L4\]. This represents that data was collected in the specific Village and that it belongs to one specific Health Worker unequivocally.*
+2. 组织层次结构能否实现安全和访问控制？
+*Yes, every CHW will be assigned to its own organization unit \[L4\], being able to see data that belongs to that organization unit and its children \[L5\]. In this case children are Villages in which the health worker works, hence, s/he will be able to access only to data that him/herself has collected.*
+3. 汇总是否能产生所需的产出：指标、分析、仪表盘、地图等。
+*No, aggregation at each level will accumulate data into health worker, facilities, regions... but we cannot aggregate data by Village using the hierarchy (see Village B).*
+4. 数据是否能与单个 CHW 关联？(非必要，但强烈建议）
+*Yes, data can always be associated to the Health Worker level \[L4\].*
+
+不，它没有通过测试。村庄数据无法汇总。这也不适用于 SMS。
+
+##### 案例 5 - CHW 作为用户被分配到一个村庄，但在层次结构中没有代表。  { #case-5-chw-is-assigned-to-a-village-as-a-user-but-not-represented-in-the-hierarchy } 
+
+> - Country （国家）
+> - 地区 （[L2\]
+> - Facilities \[L3\]设施
+> - Village A\[L4\]
+> - Village B\[L4\]
+
+这能通过测试吗？
+
+1. 它是否能够根据一个组织单位来获取数据，该组织单位代表了数据的关联地点和关联人员？
+*Partially, data can be captured at Village level \[L4\] but there is no organization unit to relate to the Health Worker.*
+2. 组织层次结构能否实现安全和访问控制？
+*Partially, as long as the Health Worker is allowed to access all data in the Village to which s/he is assigned.*
+3. 汇总是否能产生所需的产出：指标、分析、仪表盘、地图等。
+*部分，只要我们不需要按卫生工作者进行汇总。各级汇总将把数据累积到村庄、设施、地区......*。
+4. 数据是否能与单个 CHW 关联？(非必要，但强烈建议）
+*No, CHW is not present in the Hierarchy and we cannot filter data by Health Worker using the hierarchy.*
+
+部分（前 3 个问题，但不是第 4 个问题）。层次结构中没有定义单个 CHW 的工作，因此无法在分析中查看。可以定制分析方法来实现这一点，但这些分析方法需要大量的开发和维护工作。
+
+##### 情况 6 - 社区数据以设施或更高级别汇总形式提交。 { #case-6-community-data-is-submitted-as-aggregate-at-facility-or-higher-level } 
+
+> - Country （国家）
+> - 地区 （[L2\]
+> - Facilities \[L3\] ← Aggregated village data
+
+这能通过测试吗？
+
+1. 它是否能够根据一个组织单位来获取数据，该组织单位代表了数据的关联地点和关联人员？
+*No, we cannot register data against the community or the village.*
+2. 组织层次结构能否实现安全和访问控制？
+*No, all village and community data will be accessible from all users assigned to the Facility level \[L3\]*
+3. 汇总是否能产生所需的产出：指标、分析、仪表盘、地图等。
+*No, aggregation at each level will start accumulating at facility level, we cannot have data aggregated by village or community.*
+4. 数据是否能与单个 CHW 关联？(非必要，但强烈建议）
+*No, CHW is not present in the Hierarchy and we cannot filter data by Health Worker using the hierarchy.*
+
+不，它没有通过测试。单个社区的数据无法分类。
+
+##### 案例 7 - 将一名保健工作者作为类别选择的代表{ #case-7-representing-a-chw-as-category-option } 
+
+在 CHW 人数少于 250 人的小型 CHIS 中，可以将配置 CHW 作为类别选项。这种配置将满足测试要求。下图说明了该选项如何将一个村庄与许多 CHW 联系起来：
+
+![](resources/images/chis_figure21.png)
+
+*图 4.1：* 按类别选项代表 CHW 时的关系可能性。
+
+这能通过测试吗？
+
+1. 它是否能够根据一个组织单位来获取数据，该组织单位代表了数据的关联地点和关联人员？
+*Yes, data can be captured at Village level \[L4\] and we can relate it to the Health Worker using the Health Worker Category as a filter.*
+2. 组织层次结构能否实现安全和访问控制？
+*Partially, if the Health Worker is allowed to access all data in the Village to which s/he is assigned.*
+3. 汇总是否能产生所需的产出：指标、分析、仪表盘、地图等。
+*是的，每个级别的汇总将把数据累积到村庄、设施、地区......使用类别作为过滤器，可按卫生工作者对数据进行区分*。
+4. 数据是否能与单个 CHW 关联？(非必要，但强烈建议）
+*Yes, data is linked to the Health Worker through the Category Option selected in Data Entry.*
+
+是的，它通过了测试。但是，**这种配置对于有许多保健医生的大型 CHIS 来说是不可扩展的**。如果没有自定义应用程序，目前也无法启用短信或安卓数据采集功能。
+
+##### 保持组织层次结构整洁{ #keeping-the-organizational-hierarchy-clean } 
+
+DHIS2 不支持多个组织层次。要实现大规模的数据挖掘，每个层级都应代表单一类型的报告单位。单个层级上不同类型的报告单位几乎不可能在 DHIS2 中执行分析。例如
+
+> **Bad**
+> 
+> - Facility \[Org unit level\]
+>   - CHW 1 \[Org unit level\]
+>   - Village 1
+>   - CHW 2
+>   - Village 2
+>   - Borehole 1
+>   - Borehole 2
+>   - Village 3
+>   - Village 4
+>   - Borehole 3
+>   - Borehole 4
+>   - Borehole 5
+
+> **Good**
+> 
+> - Facility \[Org unit level\]
+>   - CHW 1 \[Org unit level\]
+>       - Village 1 \[Org unit level\]
+>           - Borehole 1 \[Tracked Entity\]
+>           - Borehole 2
+>       - Village 2
+>           - Borehole 3
+>   - CHW 2
+>       - Village 3
+>           - Borehole 4
+>           - Borehole 5
+>       - Village 4
+
+> **Warning**
+>
+> If CHWs are included in the hierarchy it is best practice to name the organizational unit with the position and not the actual name of the CHW. For example, if Peter Banda is a CHW working as a CHW under Choma Health Facility; his organizational unit would be named, "Ndola CHW 01," and not "Peter Banda CHW." In this example if Peter leaves the role of a CHW then a new CHW can be trained to replace him and can then fill the organizational unit Choma CHW 01. If 20% of CHWs need to be replaced annually and the name of the CHW is the name of the organizational unit they represent then 20% of the CHIS organizational unit will have to be changed annually.
+
+##### 规模--对于层次结构来说，多大才算大？  { #scale-how-big-is-too-big-for-the-hierarchy } 
+
+如果将社区保健员或单个社区纳入分级体系，并将 CHIS 推广到全国范围，那么 CHIS/HMIS 很有可能包含数以万计的组织单位。只要组织单位定义明确、组织有序，就很有可能出现数量庞大的组织单位。例如，赞比亚的 CHIS 系统就包含近 45,000 个组织单位，代表了全国所有的村庄。
+
+在处理上述多种情况时，可以在 DHIS2 中将 CHW 创建为一个组织单位，也可以将其创建为组织单位的用户。在每种情况下，都必须考虑和评估国家或项目的完整组织层次结构，以确保层次结构易于管理，一般不超过 7-8 级。
+
+#### 纵向保健计划与 HMIS{ #vertical-health-program-vis-a-vis-hmis } 
+
+如果引入社区保健员来报告卫生项目的具体数据（疟疾、艾滋病、婴儿喂养习惯、避孕咨询等），而这些数据需要纳入医疗机构报告系统/常规 HMIS，在这种情况下，需要在 DHIS2 中反映的医疗机构数据集中进行添加。
+
+#### 合作伙伴报告{ #partner-reporting } 
+
+如果引入 CHW 是为了报告合作伙伴正在实施的特定项目（而不是常规的设施 HIS），在这种情况下，应定义和遵循特定项目的数据集和数据流，这些数据集和数据流将独立于常规的 HIS。
+
+#### 输出：内部和外部{ #outputs-internal-and-external } 
+
+[仪表板、可视化、内部报告、捐赠者报告、其他机构报告]{.ul}--CHIS 系统设计的关键要素之一是系统的预期产出和分析。虽然这是设计任何级别信息系统的一般经验法则，但在 CHIS 中，当数据规模非常大并对 CHW 的工作量产生直接影响时，这就成为一个关键的考虑因素。
+
+#### 基础设施考虑因素{ #infrastructure-considerations } 
+
+- **后端基础设施和主机--本地 DHIS 与云 DHIS：** 规模--如果要使用短信进行移动报告，则服务器主机对 CHIS 至关重要。如果服务器托管在国外的云端，基于短信的报告将无法运行，因为这将涉及国际短信。因此，服务器必须托管在国内。
+- **短信网关的设置和维护：** 要启用基于短信的报告功能，首先需要与短信网关集成。应联系当地/国家的网关提供商，并检查 API 以实现集成。
+- **免费与用户付费：** 如果短信对发送者/卫生保健工作者免费，则需要移动服务提供商或网关服务提供商提供免费服务。在这种情况下，费用需要由卫生部统一承担，并向保健工作者提供免费服务。
+- ** 通话时间管理和工人报销：** 如果使用移动电话（短信或互联网）向社区保健工 作人员报告，则应按计划使用和管理通话时间。必须为社区保健工作者制定有效的报销制度，因为如果社区保健工作者不能及时收到他们所花的钱，他们可能会抵制使用手机。
+- **评估网络连接和电力供应：** 在启动社区保健工作者使用移动电话进行报告时，需要考虑评估网络覆盖情况，尤其是在农村和边境地区。网络供电的时间通常不固定，在确定报告程序时需要加以考虑。通常情况下，卫生保健工作者必须应对时断时续的电力供应，这不仅妨碍了报告工作，也妨碍了他们为手机和其他设备充电。
+- **设备所有权和使用情况：**
+    - 在向保健工作者提供设备（电话、桌子等）时，必须明确设备的 "所有权 "以及维护、保养和丢失的责任。在设备归机构还是归个人所有以及各自的责任方面，经常会出现混淆。
+    - 但是，如果希望社区保健工作者使用个人设备进行报告，则更有必要澄清通话时间/数据成本问题以及补偿机制。
+
+#### 数据采集的技术考虑因素 即工具选择{ #technology-considerations-for-data-acquisition-ie-tool-selection } 
+
+| | **文件** | **短信/USSD** | **简单电话** | **智能手机** | **第三方集成** | **计算机** |
+|:- |:- |:- |:- |:- |:- |:- |
+| **何时使用** | 始终是一种选择，尤其是在数据数字化并非优先事项的情况下 | 源数据数字化是优先事项，报告负担很轻，没有移动互联网或无法提供手机。 | 源数据数字化是优先事项，报告负担较重，社区保健工作者使用智能手机的能力较低，移动互联网可用 | 将源头数据数字化是优先事项，报告、移动互联网可用，保健工作者能够使用智能手机。 | 优先考虑源数据数字化，实施数据收集解决方案 | 根据计算机的可用程度将数据数字化 |
+| **可扩展性**（地域、服务、用户、领域） | 可在所有三个要素中进行扩展 | 技术上易于扩展，但在添加新元素时需要对用户进行培训 | 易于扩大地域和用户规模，但无法提高报告要求 | 在地域、用户和数据增加方面易于扩展 | 管理集成是一项持续性任务；跨用户扩展最简单，而服务和域的扩展则需要在集成方法中构建 | 易于在所有 3 个方面进行扩展 |
+| **数据粒度** | 有可能进行更深入的分解设计 | 不建议用于非常分类的数据或长表格 | 不建议用于非常细分的数据或多阶段跟踪计划。 | 可以设计更深入的分解和复杂的跟踪程序。 | 整合方法应包含所有捕捉到的报告内容 | 可以进行更深入的分类设计 |
+| **可持续性** （初始成本、持续成本） | 初始和持续印刷；培训费用 | 低成本解决方案；但在短信发送量极大的情况下，成本可能会变得很高；培训是一项成本；向保健工作者提供报告奖励 | 初始和持续培训费用；采购；持续互联网费用；对社区保健工作者的报告奖励 | 初始和持续培训费用；采购；持续互联网费用；对社区保健工作者的报告奖励 | 系统集成成本高昂 | 初始培训费用；持续的硬件维护 |
+| **人的能力** | 需要有关表格和表格与登记簿逻辑的培训 | 需要对 SMS 的形式和逻辑进行培训。预计短信短码和 USSD 超时错误会出现重大问题。 | 表格培训、使用应用程序进行报告的培训。保健工作者应能够排除应用程序和电话的基本故障 | 表格培训、使用应用程序报告的培训。保健工作者需要能够排除基本的应用程序和电话问题 | 不需要对保健工作者进行培训，因为整合工作是在服务器一级进行的 | 表格培训：表格与寄存器逻辑培训 |
+
+*图 4.3：* 数据采集概念化
+
+#### 安全{ #security } 
+
+DHIS2 本身就是一个非常安全的软件。此外，许多国家对数据安全都有严格的法律规定，尤其是在患者层面的数据安全方面。在 DHIS2 中开发 CHIS 之前，请确保您了解与数据安全有关的所有国家法律和政策。在 DHIS2 中应用 CHIS 时，一般有以下几个考虑因素：
+
+- 如果 CHW 正在跟踪单个病人，则应确保 CHW 只能查看分配给他们的病人。
+- 确保用户只能查看与其角色、操作和决策相关的数据。不要让用户访问超出其需要的数据。
+- 访问数据应始终受到至少一级访问控制的保护。(例如，密码、PIN 码等）简单地刷一下移动设备来 "解锁 "并不被视为访问控制。
+- 短信、USSD 和 J2ME 有可能通过移动信号截获未加密数据。有一些措施可以防止这种情况。详情请联系 DHIS2 核心团队。
+- 服务器应位于安全的环境中。
+- 用户对 DHIS2 应用程序或功能的访问权限不应超过其职责所需的权限。
+- DHIS2 中的共享和隐私设置可大大提高安全性，但必须小心管理。更多信息请参阅《DHIS2 用户手册》。
+
+### 3.开发分析输出模拟和原型（反馈机制）{ #3-develop-mock-ups-and-prototypes-of-analytics-outputs-feedback-mechanisms } 
+
+所有信息系统都应为数据使用而设计。建筑师在建造一栋大楼之前，不会先通过制作蓝图和模型或原型来确切了解大楼的外观和功能。同样，对于 CHIS 来说，在系统配置之前，所有利益相关者分析、反馈机制和仪表板都必须设计好，并有模型和原型。
+
+在第二章中，这些指南介绍了识别利益相关者的过程，在第三章中介绍了为利益相关者选择反馈机制的过程。在了解了数据使用框架（谁需要数据以及如何展示数据）之后，最后一步就是创建这些反馈机制的模型和原型。
+
+模型是反馈机制的比例模型。例如，下面是一个地区 ICCM 仪表板的模型。该模型是在配置数据库之前开发的。
+
+*图 4.4：* CHIS 地区仪表板原型![](resources/images/chis_figure22.jpg)
+
+
+然后利用该模型：
+
+- 确保系统中包含利益相关方所需的所有数据元素和指标。
+- 考虑到分析的粒度，所有指标都可以在所显示的分析中呈现。例如，上述柱形图的模型是社区卫生站（CHP）级别的每周计数。这就意味着，我们能够根据所需的频率（每周）计算出社区卫生站一级的这些指标。相反，如果我们只有每月在设施层面获取的数据元素来创建该指标，我们就无法计算出足够精细的指标（每周和社区卫生站层面）。
+- 指导实时分析和反馈机制的实际开发。
+
+### 4.在 DHIS2 中绘制 CHIS 数据流{ #4-drawing-chis-data-flow-in-dhis2 } 
+
+这一进程的目标是
+
+1. 明确 DHIS2 中 CHIS 的理想状态
+2. 制定如何协调并行或冗余的现有数据流
+3. 解决标准操作程序过于繁琐或不明确的问题
+4. 制定如何将多个报告层级合并为一个层级。
+5. 确定可纳入 DHIS2 数据采集工具的工作辅助工具或工作流程支持。
+6. 开发新的数据流图/线框
+
+### 5.制定报告准则{ #5-developing-reporting-guidelines } 
+
+From the assessment and system design chapters, data flow from beginning to end is clearly defined. To develop data capture guidelines, start with the first event of the data flow and move upwards including all events, whether they utilize paper, mobile applications, or computers. **For each point at which data is captured or transmitted the exact process and responsibilities for how that event is achieved needs to be defined.**
+
+对于数据流中的每个步骤，按图 4.4 中的格式定义每个事件。
+
+------------------------------------------ ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| **活动** | ***Event name*** |
+| :- | :- |
+| 数据集/报告工具 |  数据集或报告工具的名称 |
+| 传播或进入方式 |  说明所使用的应用程序和使用的设备，或概述数据录入的书面记录。(如果事件仅为数据采集，而非传输或输入 DHIS2，则删除此项）。 |
+| 负责人 |  这是最终负责完成该活动的人员/角色。 |
+| 周期性 |  事件发生的频率。例如，"每月"、"每周 "或 "每季度 |
+| 活动截止日期 |  事件应在何时完成。例如，"当前月的第 10^^ 日"、"当前周星期二 17:00 之前 "或 "新季度第一个月的第 5^^ 日之前"。 |
+| 数据传输或输入奖励 |  什么是报告奖励，如何提供奖励？(如果适用） |
+| 进行数据质量检查 |  概述在此活动中进行的检查。这不包括数据提交后进行的质量检查。 |
+| 使用报告工具 | 必要的报告工具（如登记册、报告表、应用程序、电话等）如何存储、访问和补充？ |
+| 叙述 |  叙述用长篇文字描述事件。它非常具体。其中可包括最佳做法、填写纸质登记表的说明、订购或制作新登记表的说明、使用手机的说明等。从实际出发，思考哪些因素可能会成为数据提交的瓶颈。 |
+
+*图 4.5：* 数据采集 SOP
+
+#### 关于数据采集指南的常见问题{ #frequent-questions-on-data-capture-guidelines } 
+
+如果我的 CHIS 有从 CHW 或社区级别到设施或地区级别的文件跟踪，该怎么办？
+
+有些社区保健信息系统没有在社区保健员或社区一级提交数据。在这种情况下，纸质记录或登记册在社区一级制作，然后实际运送到设施或更高一级。协议必须包括**所有的CHIS活动，即使是纸质记录，因为一个报告阶段的及时性和质量直接影响到下一个阶段的成功。
+
+能否使数据采集指南符合 CHIS 用户的角色？
+
+您可能更习惯于看到基于计划角色的 SOP，而这些数据采集指南则是基于数据流的。许多国家和项目都会将数据采集指南纳入按利益相关者角色/职位（如保健社工、保健社工主管、地区卫生官员等）划分的更大范围的项目 SOP 中。只要为利益相关者执行的每项活动提供足够详细的信息，就可以将数据采集指南纳入这种格式。
+
+如果我的 CHIS 在 CHW 一级使用无纸化患者登记，该怎么办？
+
+在某些 CHIS 中，CHW 可能会通过 DHIS2 追踪器应用程序或安卓手机或功能手机上的类似应用程序，完全无纸化地追踪个别患者。在这种情况下，最初记录信息的纸质登记簿将不复存在，也不会产生定期的汇总报告。在这种情况下，最好将患者与保健医生的互动以及患者数据的采集视为单一事件，纳入数据采集指南。请牢记这些因素：
+
+- 在某些情况下，追踪器的使用会大大增加社区保健工作者的报告负担，因此在患者数量较多的情况下，患者追踪器可能会成为一种负担。但是，如果将跟踪应用程序配置为 CHW 的工作辅助工具，采用程序规则和跳转逻辑，则可减轻报告负担、提高数据质量并支持 CHW 服务的提供。
+- 跟踪器将提供更精细的数据，并已证明适合在社区一级的疾病消除、流行病控制、扩大免疫计划、转诊跟踪和新生儿跟踪中使用。
+- 在社区层面，只有在有针对性的行动需要从单一被跟踪实体获取数据时，才应使用跟踪器。数据采集指南中还应规定对这些数据的具体回应。
+
+### 6.开发 CHIS 元数据字典{ #6-develop-chis-meta-data-dictionary } 
+
+元数据字典用于描述所有元数据属性。这样，系统用户和管理员就能了解每个元数据项的含义和目的。
+
+### 7.执行 DHIS2 配置{ #7-perform-dhis2-configuration } 
+
+编译元数据字典后的最后一步是实际进行 DHIS2 系统配置。DHIS2 网站（[[www.dhis2.org/documentation]{.ul}](http://www.dhis2.org/documentation)）上有详细的 DHIS2 配置步骤指南。
+
+### 8.填充原型数据库并测试{ #8-populate-prototype-database-and-test } 
+
+在部署之前，对 CHIS 进行彻底测试至关重要。测试有几个目标：
+
+- 测试指标计算 - 应将模拟数据或遗留数据导入原型数据库，以测试所有指标计算是否正确。
+- 使用验收（分析）--测试所有利益相关者是否对分析、仪表盘和反馈机制的用户体验感到满意。
+- 用户验收（数据录入）--测试所有进行数据录入的利益相关者是否对数据录入的用户体验感到满意。还需要测试任何跳转逻辑、验证、警报、工作流程支持或工作辅助工具是否有效，用户是否满意。
+- 错误捕捉和报告。几乎所有的新数据库都会出现故障或错误。如果您对数据库进行了全面测试，那么大部分错误都会被发现。最好在大规模部署 CHIS 之前解决所有错误。可通过 DHIS2 JIRA（[[http://jira.dhis2.org]{.ul}](http://jira.dhis2.org)）报告错误。
+
+> Important
+> 
+> **Have a "sandbox" database for testing**
+> It is a very good idea to have a cone of your production database to perform testing in. Any change you make to your productions database should be tested first in your "sandbox" prior to being done in your production.
+
+> Important
+>
+> **DHIS2 version updates**
+> It is best to keep up to date on versions of DHIS2. There is a new version of DHIS2 released every four months. Typically, it is best to keep one or two versions behind the latest releases. If you do not keep up with the releases then you may find it difficult to find people to support your version of DHIS2 when you do have serious problems. Upgrades need to be planned well in advance. The same testing process outlined here for a new database can be employed when you have upgraded. Please remember that something almost always breaks or stops working when you upgrade a large production database so please be plan and test thoroughly before upgrading.
+
+### 9.部署{ #9-deploy } 
+
+部署 CHIS 的方法有很多种。部署策略取决于许多因素，如培训策略、CHIS 的规模等。一般来说，有两种部署策略，即 "大爆炸和分阶段推出"。这两种策略最终花费的资源往往相同。
+
+1. "大爆炸"--这种部署策略通常用于能够或必须快速完成开发、测试和用户初步培训的情况。通常情况下，CHIS 的规模较小，初期需要大量的实施支持人员。这种策略适用于需要快速应对危机的情况，如疾病爆发时需要社区数据来控制疫情。由于这种策略的仓促性，在部署后会发现一些技术问题，这些问题可能会妨碍系统的使用。
+2. 分阶段推出--这是最典型的 CHIS 部署方法，即逐个地区进行部署。根据 CHIS 的规模，这种方法可能需要数年时间，但其结果将是一个更加稳定、经过充分测试的 CHIS。
+
+## 为 CHIS 提供分层技术支持{ #tiered-technical-support-to-chiss } 
+
+要为 CHIS 提供支持，中央技术单位必须能够捕捉、编目和处理所有支持请求、系统错误和缺陷（也称为 "错误"）。大多数大型信息系统都需要多层次的支持系统。多层次意味着简单的问题可以由较低层次的主管人员处理，而较困难或复杂的问题则会逐层上移，直到找到能够处理这些问题的人为止。以下是 CHIS 分层支持系统的模型，并附有该层级可能要解决的问题示例。
+
+![](resources/images/chis_figure23.png)
+
+*图 4.6*：CHIS 分级支持系统模型
+
+绝大多数需要支持的问题都是简单的问题，第一级支持人员应该能够解决这些问题。通常情况下，第一级支持人员是保健工作者的直接主管。这一级人员应该能够解决简单的硬件和软件问题。如果保健社工的主管无法解决问题，就必须将问题上报给更高一级。
+
+第二级请求通常由地区一级或国家以下一级的信息系统官员处理，他们接受过管理 系统配置问题以及与用户界面、数据导入和导出有关的所有高级问题的培训。
+
+第三级请求通常由中央级 IT 支持人员处理。他们应能对任何后端维护请求作出回应。
+
+许多拥有大规模 CHIS 的国家的层级会多于三个。而规模较小的项目可能层级较少。无论有多少层，任何用户都必须能直接通过其 DHIS2 实例、电话或电子邮件提交支持请求。根据层级的组成方式，用户可以使用信息应用程序向 "中央技术支持 "用户组发送信息，也可以向其子国家技术支持组发送信息。技术支持 "用户组通常由中央级技术人员组成。同样，他们也可以直接打电话或发电子邮件给技术团队。一旦向技术团队发出支持请求，技术团队应在短时间内（如 12 小时）确认收到请求。
+
+*最佳做法*
+
+在 DHIS2 中设立 24 小时技术支持热线和支持台用户组，由中央级 HMIS 支持人员负责。当系统用户在使用系统时遇到困难，如果他们觉得没有渠道获得技术支持，他们最终可能会放弃使用该系统。24 小时免费技术支持热线和支持台可以让用户感受到支持，并在第一时间解决问题。此外，有电脑的 CHIS 用户可以使用 DHIS2 信使向支持台用户组发送支持请求。以下是南非在 DHIS2 信使系统中建立的支持台使用指南。
+
+![](resources/images/chis_figure24.png)
+![](resources/images/chis_figure25.png)
+
+
+## 提高 CHIS 可持续性的若干设计准则{ #some-design-guidelines-for-more-sustainable-chis } 
+
+在本节中，我们将讨论一些设计准则，以开发更具可持续性的 CHIS。这些指导原则的一个贯穿性主题是，我们努力将重点从供应方方法转移到需求方方法上，这种方法以人为本，注重减轻社区保健工作者的数据负担，并为他们的日常工作增加价值。这些设计指南包括
+
+1. 以参与式设计方法为基础建立 CHIS
+2. 以建筑设计思维为核心
+3. 根据数据管理和标准的总体框架设计 CHIS
+4. 设计 CHIS 以支持地方行动，而不是让高层进行更多的控制和监督
+5. 根据现有基础设施条件建立 CHIS，这必然是混合性质的
+6. 规划系统的渐进式发展，而不是寻求 "一刀切 "的设计方法
+
+现对这些准则进行更详细的讨论。
+
+### 参与式设计方法{ #participatory-design-approach } 
+
+参与式设计方法假定最终用户不只是被动的数据提供者和 "无中生有 "的系统接受者，而是与设计和开发团队一起积极参与系统的共同建设。虽然传统上有各种方法（讲故事、焦点小组、访谈、模拟设计等）来实现参与式设计，但这些方法都是在假设共用地点、单一系统、主要位于单一组织环境的基础上开发的。然而，由于 CHIS 的规模、先前的计算机化经验、文化水平和极端多样性等环境各不相同，因此需要对这些技术进行敏感的调整和扩展。
+
+基于网络的系统的出现意味着设计者和开发者在地理和文化上与用户的距离更远了，这对使用传统的参与式设计技术提出了进一步的挑战。需要根据现有的环境条件来定制适当的方法来实现参与式设计，这也可能涉及到在线方法的使用，以及一些共同定位的手段。鉴于所讨论的一些挑战，这当然说起来容易做起来难，但必须成为项目规划过程中不可或缺的一部分。
+
+> **示例**
+>
+> **案例研究：印度的参与式设计**
+> 正在印度农村开展的一个 HISP 项目旨在建立以病人为中心的初级卫生保健系统。该项目由奥斯陆大学和印度的 HISP 团队以及印度昌迪加尔医学教育研究院（PGIMER）的公共卫生团队合作开展。通过这种合作，创建了系统设计所需的多学科专业知识。
+> 
+> 为确保社区保健员的积极参与，在一家农村诊所建立了 "生活实验室"，该诊所是 PGIMER 的指定研究区域。生活实验室已成为设计研究小组与社区保健工作者和医生合作的场所，以了解他们的日常挑战和需求。通过将生活实验室设在诊所内，社区保健工作者也对该系统产生了强烈的主人翁感，因为他们认为自己是该系统演变过程中不可或缺的一部分，而且双方可以相互理解对方的观点。开发团队可以深入了解社区保健工作者的世界，而这是他们使用传统设计方法所无法获得的。
+>
+> 例如，在一次讨论中，社区保健工作者说他们希望系统能生成主要登记簿。这是一个新颖的见解，因为假定的方法将主要登记册视为既定情况，并根据现有的数据收集格式开始设计。这种见解以一种新颖的方式构建了系统的设计结构，在完成设计后，为社区保健员提供了更多价值，并提高了他们的工作满意度。 
+
+从这段摘录中得到的重要启示是，有必要在代表 CHW 工作环境的背景下开发设计方法。生活实验室就是这样一种方法，肯定还会有其他方法。在不同的环境中，需要构建适当的方法来实现这些情景化设计过程。
+
+### 建筑思维是设计的核心{ #architectural-thinking-at-the-core-of-design } 
+
+简单地说，建筑思维意味着一种系统和整体思维，旨在确保现有的不同系统能够以相对无缝的方式 "相互对话"。这种 "相互对话 "不仅仅是一个需要技术解决方案的技术问题，还涉及复杂的制度挑战，即如何让卫生项目和人员相互对话。这无疑比制定技术解决方案更具挑战性，需要作为首要工作来做。
+
+架构思维的另一个特点是，系统开发被视为一种长期和渐进的方法，因此不应基于静态和一次性思维做出决定。这里的含义是，不要在某一点上做出决定，以免将来无法做出其他选择，因为这些选择可能会出现，而且会更受欢迎。
+
+例如，决定使用专有平台可能会妨碍未来与其他系统建立互操作性。这就需要一种前瞻性的思维方式，既要预测未来的信息需求，又要掌握技术发展趋势，以及未来会出现什么样的新机遇。系统设计应确保我们能够应对这些挑战，并能在机遇来临时充分利用它们。
+
+> **示例**
+> 
+> **案例研究：生活实验室中的协作设计**
+>
+> 以生活实验室项目中的另一个例子为例，设计的出发点是首先了解 CHW 目前参与的不同系统。
+>
+> 儿童保健工作者要处理 9 个不同的系统（计算机和纸质），其中涉及 22 个主要登记册和 30 份月度报告，它们之间有很多重叠和冗余。在对冗余数据进行映射的过程中，列出了这些登记册中的所有数据元素，确定了现有的重复数据，并创建了一份包含所有非重复数据元素的综合清单。这份清单随后被用来制定元数据定义，以便在 DHIS2 数据库中进行定制。此外，还根据国家 MDDS（元数据和数据标准）调整了这些元数据，以确保可扩展性。通过这种方式，确定了不同系统之间的联系，确保了数据收集层面的联系，从而能够生成初级登记册，这也是保健工作者的主要关注点。
+> 
+> 这一过程是由社区保健员和系统设计者共同完成的，他们作为一个团队可以找出不需要或未使用的内容，而这些内容是设计者无法单独完成的。这一过程还确保了所设计的社区卫生信息服务系统能够与社区卫生服务人员的日常工作实践相结合，其主要目的是通过减轻社区卫生服务人员的工作负担为他们提供附加值。此外，设计该系统的目的是为了在未来进行扩展，例如与国家标准接轨，生成所有向上报告所需的报告，并支持地方行动。
+
+从这段摘录中得到的一个重要启示是，系统设计不仅仅是创造作为解决方案的技术人工制品，而应立足于保健工作者的日常工作实践和使用的人工制品。
+
+### 支持地方行动的设计{ #design-to-support-local-action } 
+
+当地行动是指保健社工开展的所有工作，包括与保健社工履行的记录、报告和跟踪职能有关的所有信息相关工作。当地行动是指保健社工进行记录和报告，以及对数据进行当地分析，并采取措施改善保健服务的提供。虽然分析是社区保健员工作的一个重要方面，也是我们积极寻求加强的一个方面，但我们不应忽视社区保健员必须履行的记录和报告职能。期望她加強採取行動的職能，卻忽略了記錄和匯報的職能，對她並不公平，因為她會受到前輩的譴責。
+
+设计过程的一个重要方面是，从社区保健员的角度了解他们认为哪些是相关的当地行动（涵盖她的三大职能），以及她需要社区保健信息系统提供哪些产出来支持她的不同职能。
+
+从上述生活实验室的例子来看，社区保健工作者的主要需求是支持生成初级登记册，因为这将大大减轻他们的工作负担，并腾出时间提供更有效的护理。这种方法也体现了采取整体系统方法而非狭隘的特定计划和独立方法的优势。采用整体方法的好处是可以影响社区保健工作者的所有不同角色和所有保健计划。相反，孤立的单打独斗式方法会加剧各自为政的局面，带来的益处也很有限。
+
+第 3 章提供了更多有关当地使用的具体例子，因此我们在此不再赘述。建议读者阅读该章，了解更多关于加强本地使用的具体方法。
+
+### 采用混合方法{ #adopt-hybrid-approaches } 
+
+混合方法是指那些能够适应多种环境、政治条件和基础设施的方法。这是确保可扩展性和可持续性的关键。从设计上讲，社区条件是多变的、多重的和相对动态的。社区信息服务系统的设计过程必须是混合性质的，并能够适应这种多重性。混合方法包括技术、机构和项目管理方法。
+
+例如，建立一个完全依赖互联网连接运行的系统，只能满足单一环境的要求，即存在持续可靠的互联网供应，而无法在不满足这一条件的环境中发挥作用。这样的系统不可能以可扩展的方式取得成功，因为理想的互联网条件不可能在全省，甚至是一个地区内的所有分区都具备。因此，一种方法是设计一种混合系统，可以在互联网可用或不可用的地区运行。允许离线输入数据，然后在互联网可用时与服务器进行数据同步，是处理这些多重环境的一个切实可行的解决方案。DHIS2 就采用了这种功能，从而使其在多种环境和设置中得到广泛应用。
+
+> **Example**
+>
+> **Case Study: Different approaches in South Africa and Cuba**
+> Different political settings also call for hybrid approaches.
+> The HISP project in South Africa, experienced great success with bottom up, participatory approaches in the changing post-apartheid environment of where enhancing health worker environment was at the core of the health reform agenda.
+>
+> This same approach when transferred to the HISP project in Cuba turned out to be dramatically unsuccessful as the environment was extremely top down, driven by the office of the President. In hindsight, in this environment, HISP should have first obtained buy-in from the top, used this buy-in to create spaces to work with participatory design approaches at the field level, and gradually build ownership using that approach. In the absence of top-down approval, the bottom were fearful of engaging with the alien approach of bottom up design of HISP, and reacted by rejecting the project.
+
+这次讨论给我们的启示是，首先要分析特定的环境条件，然后确定可行的设计和实施方 法。在设计和实施过程中，要始终保持开放的态度，随机应变，不要固守某种在不同环境和时间框架下可能行之有效的方法。
+
+### 根据现有优势设计 CHIS{ #design-chis-based-on-existing-strengths } 
+
+HISP 的 CHIS 设计方法一直强调现有的安装基础、现有的工作实践和 CHIS 历史的重要性，并寻求随着时间的推移加以培养或发展。这种方法的依据是，所有系统都有历史和过去，都有根深蒂固的系统和人类行为及态度，这些都是永远无法抹去的。
+
+这种 HISP 方法与北美管理顾问在九十年代流行的 "白板 "方法相反，是通过 "业务流程再造 （BPR）"的方法实施的。这种 "白板 "方法已被 CHIS 的设计者在对现有情况不敏感的情况下采用，但并没有取得多大的成功，例如 2000 年初埃塞俄比亚在卫生部门改革过程中采用了这种方法。
+
+业务流程重新设计（BPR）系统开发的主要假设是基于 "白板 "方法，即
+
+1. 寻求 "抹去 "现有流程和系统，从零开始，创造一片净土。
+
+2. 假定社区保健工作者现有的工作方法和态度是不合理的、不现代的，需要被淘汰，并用更现代、更合理的技术和工艺取而代之。
+
+> **Exampel**
+>
+> **Case Study: CHIS design in Mocambique**
+> A HISP project was introducing DHIS in the community health system in Mozambique While conducting training at the community level, various strengths of the CHWs were seen.
+>
+> 1. CHWs had strong abilities to multi-task, developed through decades of working in extremely resource constrained environments. For example, they could engage in providing care in addition to doing administrative tasks at the same time.
+> 2. CHWs were very strongly linked to multiple local and non-work environments, such as the church. So, when the printer of the health facility was not working, they would go to the nearby church to print out the urgently required report.
+>
+> Instead of seeing the practices of the CHWs as being irrational and impediments to the introduction of new systems, it was recognized that these should be seen as potentials that should be leveraged upon to support the system introduction.
+> 
+> This exposed the limitations of existing approaches to design and implementation using the "clean slate" approach.
+
+这次讨论给我们的启示是，在系统设计过程中需要认真考虑历史，历史带来的积极和消极潜力是什么，以及如何随着时间的推移逐步利用和培养积极潜力。
+
+## CHIS{ #interoperability-with-dhis2-in-chis } 中与 DHIS2 的互操作性 
+
+### 为什么要实现互操作性？ { #why-interoperability } 
+
+社区环境有其特殊性，如互联网覆盖率低、基础设施不均衡、系统多为人工操作等，因此很难部署一个完整的网络系统。此外，还可能存在多个现有系统，由不同的利益相关者拥有，发挥着不同的功能，而且用户接受度很高。因此，亟需通过互操作性找到其他方法，将数据导入 DHIS2，以便进行所需的汇总，创建分析仪表板，并跟踪以病人为基础的护理。互操作性的目的是在不干扰两个系统的情况下共享数据。相比之下，整合则是将两个系统合二为一，只保留一个系统，而不再需要另一个系统。一般来说，系统所有者都不愿意放弃自己的系统，因此，在建立社 区卫生信息系统时，整合往往会遇到阻力。
+
+总之，互操作性可用于应对以下用例：
+
+- ODK 和 CommCare 等系统正被用于各种情况下收集个人和总体数据，这需要与 DHIS 互操作。
+- 由于移动电话便于携带，且移动网络覆盖范围（比互联网）更广，因此可以使用移动电话收集数据，并通过短信进行传输。然后，需要将这些短信数据导入 DHIS2 并进一步处理。
+- 在人工系统占主导地位的情况下，可使用 Excel 表输入数据，然后将这些 Excel 文件送入 DHIS2 进行进一步处理。
+- 以社区为基础的数据也可以在医院系统中收集，居民可以到医院接受转诊治疗。这些医院数据通常是在电子病历系统中收集的，因此也需要与 DHIS2 进行互操作。
+
+我们提供了代表上述条件的用例，然后从技术角度概述了如何与 DHIS2 实现互操作性。针对每个使用案例，我们还就如何在其他情况下实现互操作性提供了一些技术指导。
+
+## 互操作性使用案例{ #use-cases-of-interoperability } 
+
+### 开放数据工具包 (ODK) -- DHIS2{ #open-data-kit-odk-dhis2 } 
+
+印度钦奈国家流行病学研究所正在 DHIS2 上建立一个发烧监测系统。其目的是记录一个地区报告的所有发烧病例，以了解这些发烧病例背后的流行病学模式。为此，他们需要使用 ODK 采集基于姓名的发烧监测数据。每个病例都会记录所需的人口信息和发烧详情。然后需要将这些数据推送到 DHIS2，以便进一步跟踪、生成热点并创建所需的报告和通过仪表板显示的指标。因此，在 ODK 和 DHIS2 之间建立互操作性是系统开发过程中的一项核心任务。
+
+### CommCare - DHIS2{ #commcare-dhis2 } 
+
+在尼泊尔，海伦-凯勒研究所（HKI）正在使用 DHIS2 作为营养跟踪系统。DHIS2 系统从尼泊尔选定地区的家庭人口普查中提取数据，获取有关人口统计和选定营养参数的个人数据。根据这些数据开展干预活动，并在个人层面监测对营养参数需求的影响。为了收集这些计划数据，香港国际使用了 CommCare。CommCare的计划数据需要与DHIS2中基于人口普查的数据进行互操作。此外，DHIS2 还用于其他各种数据报告格式，以满足其他计划的需要。因此，有必要建立一个共同的数据仓库，以便对多个计划数据和营养数据进行跨领域指标分析，并通过具有吸引力且易于使用的仪表板进行显示。
+
+### Excel导入 -- DHIS2{ #excel-import-dhis2 } 
+
+在 CHIS 的背景下，使用 Excel 表来收集社区层面的数据是一种常见的使用案例，而所讨论的使用案例则与基于病例的疟疾综合管理有关。该项目在印度奥迪沙邦实施，由于互联网可用性较低，因此需要使用 Excel 以姓名格式收集疟疾病例数据。包含姓名数据的 Excel 文件通过电子邮件或笔式驱动器等定期发送给上级部门。在中央层面，Excel 文件被转换成 CSV 格式，并通过数据导入应用程序手动导入 DHIS2。然后，DHIS2 能够自动汇总到 HMIS 的更高层次。因此，DHIS2 既包含基于名称的数据，也包含汇总数据。因此，有必要将这些 Excel 表中的数据发送到 DHIS2，以监测和维护数据质量，并实现病人整个纵向记录的不同要素之间的连接。这里的挑战是开发一种将 Excel 数据导入 DHIS2 的方法。
+
+### 短信数据导入 -- DHIS2{ #sms-data-import-dhis2 } 
+
+使用短信报告是社区卫生环境中另一种常见的数据收集和传输手段。世卫组织印度办事处在印度 34 个农村地区开展了为期一周的密集活动，在活动中使用了基于短信的系统，以支持其低剂量药物的大规模管理。之所以选择短信而非网络传输，是因为许多社区保健员没有资源使用智能手机，因此不了解其使用方法。此外，之所以选择短信，是因为只需收集少数几个要素的数据（如访问的家庭数量、用药的男性、女性和儿童以及观察到的副作用）。在这项活动中，社区保健员将挨家挨户施药，在手机上记录数据，然后通过短信将数据发送给 DHIS2，DHIS2 将接收到这些数据，并建立动态仪表板，按天和地域监控覆盖范围。
+
+### 开放式 MRS 和 DHIS2 互操作性{ #open-mrs-and-dhis2-interoperability } 
+
+OpenMRS 是为印度喜马偕尔邦地区医院定制综合医院管理系统 EMR 的平台。该系统收集病人在医院不同就诊阶段的个人数据，包括挂号、收费、门诊、住院、化验、药房等。这些个人层面的数据需要汇总（按医院、科室、时间等），然后发送到 DHIS2，在那里可以编制发病率和死亡率的汇总报告，生成医院管理和行政指标（如平均住院时间和病床占用率），并对该邦不同医院的情况进行比较。仅靠 OpenMRS 系统是不可能做到这一点的，因此技术任务包括在两个应用程序之间建立互操作性，并确保在预定的时间间隔内同步两个数据库。
+
+在介绍了与 DHIS2 的互操作性的这些不同用例之后，下一节将讨论实现互操作性的技术方 法，包括实施互操作性解决方案的指导原则。
+
+## 互操作性技术方法{ #technical-approach-for-interoperability } 
+
+### 对于 ODK 和 CommCare 案例{ #for-odk-and-commcare-cases } 
+
+两个案例都采用了类似的建立互操作性的过程。我们设计了一个工具（数据马达），用于请求 CommCare/ODK 应用程序提供数据。数据通过该池从应用程序接口（API）中提取，并再次通过应用程序接口（API）推送到 DHIS2 应用程序。下图描述了这一过程。
+
+![ODK.jpg](resources/images/chis_figure26.jpg)
+
+
+*图 4.6：* DHIS2 与 CommCare 和 ODK 的互操作性模型
+
+#### 实施准则{ #guidelines-for-implementation } 
+
+1. 确定需要从数据收集系统中共享的 "**数据点**"。
+2. 找出它们在系统数据模型中的位置，以便从中**提取**。
+3. Find out where they fit in the data model of the system into which they are to be **pushed**.
+    - 就 DHIS2 而言，它们是数据元素、时期和组织单位。
+    - 在 ODK 和 CommCare 中，这些是问题/数据输入提示。
+4. 根据两个数据模型之间的**唯一标识符**映射两个数据模型。
+5. 使数据电机
+    - 从一个数据收集系统获取数据、
+    - 重组数据，以适应其他数据收集系统的数据模型
+    - 将重组后的数据推送到另一个系统中
+    - 在两个系统中保留唯一标识符，以便进行完整性检查
+6. 设置数据马达定期自动运行
+7. 记录电机的所有活动，以便监控和调试。
+
+### Excel 导入 DHIS2{ #excel-import-to-dhis2 } 
+
+在 DHIS2 中使用预定义的 Excel 模板创建了一个 Excel 微型数据库。Excel 中的数据与 DHIS2 中需要导入的数据元素、组织单位和时期的 UID 进行了映射。Excel 中的映射只需完成一次。映射完成后，数据可保存在 Excel 表中，并在有互联网时导入 DHIS 应用程序。数据通过 Excel 表中映射的 UID 发送到 DHIS2，如果是基于名称的数据，则发送到 DHIS2 中相应的计划和计划阶段。
+
+**实施指南**
+
+- 为保持数据质量，格式中应尽量少用开放文本字段。应创建更多的下拉选项，以便用户选择所需的选项，这些选项可以很容易地与 DHIS2 数据值联系起来。
+- 工作表应受到保护，用户不能在应用程序中添加任何新字段或进行任何更改。
+- 需要在 Excel 表中建立与 DHIS2 相同的验证。
+- 组织单位代码是向 DHIS2 发送数据的首选方案，以避免组织单位名称不匹配。
+- 在 DHIS2 系统中，每条记录都必须有一个唯一的标识符。这一唯一标识符可用于连接病人的纵向记录（计划阶段），以便在病人就诊时对其进行更新，避免重复。
+
+### 用于 OpenMRS-DHIS2 互操作性{ #for-openmrs-dhis2-interoperability } 
+
+从基于 OpenMRS 的 EMR 到 DHIS2 的互操作性模块是由 HISP 印度团队开发的，以支持这样一种架构：基于名称的会诊数据存储在各个医院的服务器中，通过查询进行汇总，并通过数据交换模块将数据移至州存储库（DHIS2）。所设想的架构是将基于姓名的数据保留在医疗机构中，并通过数据交换模块将汇总数据移至州 DHIS2 门户网站。
+
+通过互操作性标准（SDMX--统计数据和元数据交换，最初由世界卫生组织推广，后被 ADX 标准取代），OpenMRS 和 DHIS2 之间进行了数据交换，以 DHIS2 为基础同步了所有元数据（数据元素和设施），并定期使用 DHIS2 API 服务将信息汇总到 DHIS2 中。交换的报告包括所有国家疾病计划报告、人口疾病概况报告以及库存和盘存报告。实施这一模块是一项巨大的挑战。从技术上讲，创建数据传输需要编写数百个查询来汇总数据并将其推送到 DHIS2。最初是手工操作，一些工作人员只需按下导出按钮。由于没有定期这样做，传输过程被自动化，每天在固定的时间同步数据。由于互联网和电力供应时断时续且不可靠，这也是一个问题。
+
+图 4.7 简要介绍了这种数据交换的架构。
+
+![OpenMRS.png](resources/images/chis_figure27.png)
+
+*图 4.7：* DHIS2 与 OpenMRS 的互操作性
+
+#### 实施准则{ #guidelines-for-implementation } 
+
+- 所有需要传输到 DHIS2 的数据都需要在 DHIS2 中定义为数据元素。需要为所需的综合报告创建数据集。
+- 所有指标都需要在 DHIS2 中创建，所有分子数据（如病床数和医生数）也需要存储在 DHIS2 中，然后用于生成指标。
+- 需要编写查询来汇总 OpenMRS 数据库中基于名称的数据，然后将其作为定义的数据元素存入 DHIS2。
+- 需要在 DHIIS2 中定制报告和仪表板
+- 应创建一个自动调度程序，以便定期交换数据。
+
+### DHIS2 中的短信导入{ #sms-import-in-dhis2 } 
+
+接收 DHIS2 中的短信需要 SMS 网关和 API。如果还需要向用户发送反馈信息（以确认 DHIS2 是否收到短信），则还需要发送信息的 API。信息需要按特定号码发送，也可按预定义的数据项集读取。在发送信息时，可以使用点（.）或空格（）等分隔符分隔数据元素，使用户更容易理解。用户的电话号码需要在其所属的组织单位进行登记，这样当收到来自同一号码的短信时，就可以在组织单位进行登记。
+
+#### 实施准则{ #guidelines-for-implementation } 
+
+- 在使用 SMS 功能时，应尽量减少需要报告的数据元素，以便用户记住顺序。为方便使用，应将顺序和格式写在纸上提供给保健工作者。
+- 为所有用户注册电话号码非常重要，应确保用户通过相同的号码发送信息，以便在正确的组织单位注册数据。
+- 下面的图片描述了用户在发送短信和接收确认信息过程中看到的不同屏幕截图。
+
+![sms.png](resources/images/chis_figure28.png)
+
+
+*图 4.8：* 将短信导入 DHIS2 的示例
+
+## 使用案例{ #use-cases } 
+
+### 印度使用案例--社区保健员基于移动设备的报告{ #india-use-case-mobile-based-reporting-by-chws } 
+
+在许多情况下，基于移动设备的报告是 CHIS 的重要组成部分。在本节中，我们将讨论印度社区层面基于移动医疗的三种不同报告模式。
+
+1. 印度旁遮普省基于短信的 HMIS 报告。
+2. 印度旁遮普省癌症调查支持基于短信的报告。
+3. 印度喜马偕尔邦基于 GPRS 的 HMIS 报告。
+
+在每个案例中，我们都详细介绍了技术、实施和能力建设过程、面临的问题和挑战以及如何解决这些问题和挑战。
+
+#### 印度旁遮普省基于短信的 HMIS 报告{ #sms-based-reporting-for-hmis-in-punjab-india } 
+
+2011 年，国家卫生部在 5 个州的 5 个街区启动了一个试点项目，覆盖约 200 名社区保健员，以测试从社区层面进行移动报告的技术效果。
+
+用 J2ME 开发了一个简单的基于 JAVA 的应用程序，并安装在卫生保健工作者的手机上。在街区（分区）一级安装了带 SIM 卡的调制解调器，用于接收短信。街区计划管理员的电脑中安装了 "短信监听器 "软件和离线 DHIS2 应用程序。当保健工作者通过移动应用程序发送报告时，报告将通过短信发送。安装的短信监听器以二进制形式接收短信，并通过识别收到短信的手机号码将数据导入相应的组织单位。在 DHIS2 离线应用程序中输入了特定卫生工作者的手机号码，并将其输入各自的组织单位。从试点中吸取了一些有益的经验教训。遇到了一些技术问题，如调制解调器堵塞、丘陵地区的信号问题和一些数据丢失。一些社区保健工作者不愿意使用手机，因为他们觉得使用纸质报告更方便。
+
+总体而言，试点取得了成功，旁遮普邦和喜马偕尔邦这两个邦提出在全邦范围内全面推广这种基于移动设备的报告方式。
+
+#### 旁遮普省基于移动医疗的 HMIS 报告{ #mhealth-based-reporting-for-hmis-in-punjab } 
+
+旁遮普邦约有 5000 名社区保健工作者，每个分中心有 2 名助产士（ANM），其中一名是正规助产士，另一名是合同助产士。该州为每名助产士配备了一部手机（诺基亚 2330 Classic），以便他们报告每月例行的 HMIS 数据。
+
+与基于离线 DHIS2 的试点不同，旁遮普省采用的是以旁遮普语开发的 J2ME（JAVA）在线应用程序。该应用程序通过蓝牙安装在 ANM 的手机上。这是一个基于短信的简单解决方案。填写完这些表格后，ANM 通过短信将数据发送到安装在州服务器调制解调器中 SIM 卡的号码上。在 DHIS2 中导入数据后，会向 ANM 发送回执短信，以确认报告。在州服务器上安装了两个调制解调器，每个调制解调器用于 10-10 个地区。
+
+![phone 1.jpg](resources/images/chis_figure29.jpg)
+![phone 2.jpg](resources/images/chis_figure30.jpg)
+
+*图 4.9：* J2ME 数据录入应用程序示例
+
+这是一个包含三个数据集的在线 DHIS2 应用程序。每个助产士的手机号码都登记在助产士所在的分中心。一旦收到号码发送的信息，就会将其转换为 XML 文件，并导入 DHIS2，供登记相应号码的组织单位使用。由于每个分中心都有两名 ANM，因此在每个分中心下又创建了两个组织单位 ANM1 和 ANM2，并将号码登记在各自的用户名中。该移动项目与州 HMIS 在 DHIS2 上的应用同步进行，预计在报告几个月后，DHIS2 上的所有社区数据都将通过移动报告提供。
+
+除手机外，还提供了 CUG 连接，其中包括 200 卢比的信用额度，供国家助产士使用，以实现短信报告和免费通话功能。
+
+![what.png](resources/images/chis_figure31.png)
+
+
+*图 4.10：*旁遮普用例数据流模型
+
+实施过程包括以下步骤
+
+- 采购硬件：诺基亚 2330 Classic 带 SIMS 卡和 EZ-SMS 型调制解调器，用于接收短信。
+- 最后确定格式：最终确定了三种格式：每日数据集、每月数据集 1 和每月数据集 2，分别包含 10、56 和 83 个数据元素。
+- ANM 分类：ANM分为ANM1和ANM2。
+- 安装：使用蓝牙将三个数据集的 JAR 文件安装到 5000 部手机上，并在手机背面粘贴标有 ANM 姓名和分中心的贴纸。这一过程在州总部进行，历时一个半月。
+- 在各地区分发移动电话：安装完成后，手机被送往各地区，并在培训前分发给助产士。
+- 编写培训手册：然后用旁遮普语编写了培训手册，通过屏幕截图和图表演示了应用程序的使用，并在培训期间分发了这些手册
+- 能力建设：应用软件使用培训为期 2 个月，覆盖 4545 名卫生工作者，在州/县/街区/分中心一级进行。每个小组由两名成员组成，覆盖 5-7 个县。第一天进行的是地区培训，随后是街区一级的培训。
+- 手持支持：通过派驻州总部的 3 人小组提供为期一年的手把手支持。
+
+#### 问题与挑战{ #issues-and-challenges-experienced } 
+
+**每日数据集：** 起初，ANMs 对该应用程序表示不满，但随着时间的推移，这种不满情绪有所缓和。造成这种反感的关键在于每日报告，其中包含的数据元素代表了 EPI 课程中主要在周三开展的活动，这意味着除周三外，其他时间的数据元素都被报告为零。ANM 认为，这种模式会被管理者认为她们在其他日子偷懒。为了应对这种不断上升的抵触情绪，管理者最终不得不取消每日报告制度。
+
+**年龄因素：** 年长的助产士有抵触情绪，因为他们以前从未使用过手机。因此，让这些助产士学习应用软件是一项艰巨的任务。
+
+**其他问题：** 信号问题、余额相关问题以及由于应用程序负载而导致服务器端确认报告延迟的问题
+
+**调制解调器堵塞：** 调制解调器每天接收近 5000 条短信，这给州服务器和调制解调器带来了巨大的 负荷，延迟了确认信息的发送，这给是否收到他们的报告造成了恐慌。此外，由于移动运营商只在其服务器上保留 3 天未收到的短信，短信开始失效。为发送回执信息，又安装了两台调制解调器，以分担巨大的负荷。
+
+![](resources/images/chis_figure32.jpg)
+*Figure 4.11:A district wise data status percentage showing the reporting percentage in initial days.*
+
+按地区分列的数据状态百分比，显示最初几天的报告百分比。
+
+**Key Take-Aways:**
+
+- 仅仅因为技术的发展而增加报告频率并不是一个好主意，因为这增加了助产士的监督意识。
+- 调制解调器似乎不具备处理大规模短信流量的能力，短信网关解决方案更适合大规模项目。
+- 州政府正在考虑将基于 Android 的应用程序用于 HMIS 报告。
+
+### 旁遮普省基于短信的癌症调查报告使用案例{ #punjab-sms-based-cancer-survey-reporting-use-case } 
+
+继 2011 年例行 HMIS 报告取得成功后，该州于 2012 年启动了一个基于短信服务的癌症调查新项目：
+
+- 提高对癌症预警信号和症状的认识。
+- 根据症状及早发现疾病
+- 确定疾病发病率（实际病例数），以便进一步规划
+
+现简要介绍调查的实施过程：
+
+- 农村地区的调查由社区保健员进行，城市地区的调查由护理学院和医学院的学生进行
+- 调查员走访了自己所在地区的每一户家庭
+- 调查使用了包括表格在内的问卷：其一，收集家庭中每个家庭成员的基本信息，如姓名、年龄段、教育程度和癌症家族史等；其二，如果发现有人癌症阳性或有癌症症状，则收集基于姓名的具体疾病详细信息，并通过手机（JAVA 短信应用程序）上报至 DHIS2。
+- 调查使用了相同的手机（诺基亚 2330）和调制解调器。
+
+先使用先前存在的旧手机号码列表，然后在 DHIS2 应用程序中添加和注册新号码。调查员发送特定病例的短信，将其转换为 XML 文件，然后导入相应的组织单位，在那里生成特定病例的唯一 ID，并在回执短信中发送。调查员随后在特定表格中记录下这一唯一编号，以便在在线应用程序中跟踪该案例。农村地区使用移动应用程序，而在互联网更可靠的城市地区，数据则直接输入在线应用程序。
+
+#### 数据流{ #data-flow } 
+
+![](resources/images/chis_figure33.png)
+
+
+*图 4.12：* 从分中心一级到州一级的数据流。
+
+#### 能力建设进程{ #the-capacity-building-process } 
+
+在全州推广之前，在一个区的两个街区进行了试点，并启动了与 HMIS 类似的实施过程。组建了一个 150 人的培训团队，并在两周内完成了全州范围的培训。
+
+- 培训在地区总部或街区一级进行
+- 由两到三名成员组成的培训小组在每个地点开展培训。
+- 培训学员的出席情况
+- 社区保健工作者在参加培训时领取了移动电话
+- 一名成员负责安装应用程序，另一名成员负责培训，使用模拟器，然后进行 PowerPoint 演示
+- 在实践课程中，实地工作人员接受了如何填写数据集中所有字段以及如何通过手机发送数据的培训。
+- 对于城市地区，表格是在 DHIS2 追踪器上设计的。个人记录在病人登记屏幕上输入，报告形式的输出可通过应用程序中的报告查看
+
+通过移动报告从农村地区获取数据的工作进展顺利，但调制解调器堵塞的问题依然存在。为解决这一问题，在州服务器机房安排了一名服务器管理员，负责实时监控短信流量。在城市地区，由于数据库庞大，用户无法在在线应用程序中保存数据。为解决这一问题，引入了 Excel 输入功能，在 Excel 表中输入表格 2 数据，然后将其输入 DHIS2。
+
+### 喜马偕尔邦基于短信的 HMIS 报告使用案例{ #himachal-pradesh-sms-based-hmis-reporting-use-case } 
+
+在进行了一个街区的试点之后，该州同意进行全州试点。通过向旁遮普省学习，将短信应用改为基于 GPRS 的应用。从惠普试点中学到的一些经验包括
+
+- GPRS 充值比短信贵
+- 山区和偏远地区的 GPRS 连接不畅。
+- 州政府没有向助产士提供电话，而是使用他们现有的电话。
+- 基于 GPRS 的解决方案与许多用户手机不兼容，也与 Opera mini 浏览器不兼容。在 201 部手机中，只有 74 部手机兼容，仅占 37%。
+- ANM 发现很难操作基于网络的解决方案，而且对 ANM 而言，在手机上进行 GPRS 设置非常麻烦。
+
+从试点中汲取经验后，该州同意采用 J2ME 应用程序。每月分中心表格被选中用于报告。随后，该邦决定为助产士购买手机，并选择了诺基亚 C1-01，为每位助产士充值 50 卢比。与旁遮普邦类似，开发了一个基于 J2ME 短信的应用程序，用于发送报告。但所选择的格式并不像旁遮普那样只针对分中心，而是选择了多种格式：
+
+- SC 表格--分中心保健员（月度）
+- IDSP -- 分中心保健员（每周）
+- 初级保健中心表格 1 和初级保健中心表格 2 -- 供初级保健中心保健员使用（每月一次）
+- CHC 表格 1 和 CHC 表格 2 -- 供 CHC 保健员使用（每月一次）
+- 死亡率 - SC、PHC、CHC 保健工作者（每月）
+
+为所有这些格式创建了 JAR 文件，并安装在各自的设备电话上。
+
+#### 短信网关解决方案{ #sms-gateway-solution } 
+
+从旁遮普省的实施经验中，我们发现调制解调器并不是在全州范围内推广的好选择，因此我们使用了短信网关解决方案来代替调制解调器。
+
+- 国家信息技术部（DIT）已经从一家私营公司购买了短信网关解决方案。
+- 实施人员联系了该供应商，以建立与 DHIS2 的集成。但后来国家将提供商更换为政府 IT 部门。这就要求重新进行集成。
+- 服务器和 SMS 网关都放在州 IT 办公室，这给后勤工作带来了许多挑战。
+- 最后部署了与 SMS 网关集成的应用程序。
+
+遇到的一些问题包括
+
+- 在测试中发现，政府 IT 部门不支持旁遮普省以前使用的压缩短信。
+- 服务器只支持 160 个字符的基本短信长度，有些运营商只支持 110/120 个字符。这往往是不够的，因为我们的短信前缀是关键字 HP NRHM。
+- 在第 161^st^ 字符处，服务器无法理解未以 HP NRHM 为前缀的第二条短信，结果第二条短信丢失，导致无法报告完整的数据。
+- 因此，SC 表格被分为三部分，每部分包含 100 个字符，但将一个表格分为三部分并非最佳解决方案。
+- 然后对应用程序进行了修改，在第 121^st^ 字符处的第二条短信前也加上了关键字 HP NRHM。第二条短信将在第 121^st^ 字符处切断，报告变得更加顺畅。
+- 在一些街区，ANM 负责多个分中心，但在应用程序中只能为一个组织单位分配一个手机号码。为了解决这个问题，每个组织单位都有一个 4 位数的 "设施代码"，这样一名卫生工作者就可以用同一部手机报告多个组织单位的情况。
+
+![](resources/images/chis_figure34.jpg)
+
+
+*Figure 4.13: ANMs going through the application in one of the training sessions in Kangra District.*
+
+##### 能力建设进程{ #capacity-building-process } 
+
+- 培训主要是在街区一级通过一个 2-3 人的培训小组进行的。
+- 对参加培训的人员及其手机号码进行了登记。
+- 卫生工作者在参加培训时领取手机。
+- 一名成员负责安装应用程序，另一名成员负责格式和应用程序方面的培训。
+- 手机号码已在 DHIS2 的各组织单位登记。
+- 一名成员向卫生工作者宣传如何通过仿真器使用手机发送报告，随后进行了实际操作培训。
+- 在分发给所有卫生工作者的培训手册中，对培训格式进行了介绍和说明。
+- 此外，还向卫生工作者提供了相应的设施代码，并要求他们发送虚拟短信以检查应用程序的运行情况。
+- 然后从服务器端删除这些虚假数据，并要求卫生工作者在报告日期开始每月报告。
+
+##### 问题与挑战{ #issues-and-challenges } 
+
+- SMS 网关的供应商发生了变化，这意味着整个集成过程需要重新设计。
+- 短信短码的费用相对较高。
+- 更改短代码意味着再次更改 201 部手机的短代码
+- 由于政府的严格规定，服务器的部署和维护非常困难，例如不提供远程访问服务器，每次都需要对服务器进行物理更新。
+
+下表总结了旁遮普邦和喜马偕尔邦在移动医疗应用方法上的差异。
+
+
+| ** 邦贾布** | **喜马偕尔邦** |
+| :- | :- |
+| 基于 J2ME 短信 | 基于 J2ME 短信 |
+| 调制解调器 | 短信网关解决方案 |
+| 只有 SC 表格 | SC 表、CHC 表和 IDSP 表 S 的多种表格 |
+| 国家启动培训日期 | 各州在举办流动地区 TOT 培训的同时，还举办自己的 HMIS 培训。在地区 TOT 培训中，确定了街区培训的日期。区培训本身正在安装应用程序 |
+| Airtel 的 CUG 后付费资费计划 | 预付费，无 CUG，BSNL |
+| 只对助产士和主管进行培训。 | 所有卫生工作者和主管都接受了培训。 |
+
+*图 4.14：* 印度使用案例之间的差异。
+

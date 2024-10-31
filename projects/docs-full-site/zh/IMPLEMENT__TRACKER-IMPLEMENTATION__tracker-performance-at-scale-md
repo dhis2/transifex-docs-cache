@@ -1,0 +1,410 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs-implementation/blob/master/content/tracker_implementation/optimizing_for_covid_vacc_campaigns.md"
+revision_date: '2022-01-19'
+tags:
+- 实施
+---
+
+# 跟踪器的规模性能{ #tracker-performance-at-scale } 
+
+本文件介绍了优化 DHIS2 追踪器实施的方法，以便大规模提供 COVID-19 疫苗。
+
+## 执行摘要{ #executive-summary } 
+> **Server**
+>
+> * Appropriate software versions are used:
+>   * JDK11
+>   * PostgreSQL 12 or 13
+>   * DHIS2 version 2.35 or later, latest available patch
+> * Server monitoring is set up. Recommended: munin, glowroot
+> * Server is appropriately sized. For covax, at least:
+>   * 32 CPU cores
+>   * 32GB RAM
+>   * SSD/fast disk
+>   * Fast and stable internet and internal network connectivity
+> * In shared hosting environment, verify that the server has the
+> specified resources in practice
+> * Use dedicated server for database/postgresql if possible
+>
+>
+> **Tracker/Tracker Analytics**
+>
+> * Minimize the use of program indicators in dashboards, as this has cause performance issues.
+>   * Alternative: serving tracker analytics through the aggregate data model, using strategies described in this document.
+> * Limit access to dashboards that use program indicators, particularly those dashboards that load by default as the 'landing page' upon logging into DHIS2.
+>   * Alternative: Set up a text only/information landing dashboard that excludes tracker analytics to minimize impact. Limit dashboards based on program indicators only to those users/users groups who need them for analytical purposes (e.g. not for general data entry users)
+> * Enable analytics cache
+> * Do not use continuous analytics
+> * Tracker: Disable the "Display front page list" check in the
+> program details.
+> * Apply custom database indexes for frequently searched TEI
+> attributes.
+> * Ensure that system generated attributes don't use RANDOM pattern
+>
+>
+> **Android**
+>
+> * Ensure admins responsible for Android deployments are familiar with:
+>   * The use of the Android Settings App and the various sync strategies that can improve performance.
+>   * Specific configuration for users which will use Android is highly recommended.
+>   * Distribution of the Android App mechanisms and management of version updates.
+>
+> **Implementation Strategies**
+>
+> * Ensure there is an aggregate configuration available for reporting (e.g. daily reporting based on tally sheets) that can be used routinely, or as a back-up in the case of lag time in Tracker data entry during high-volume periods (e.g. COVAC Aggregate Package)
+> 16. Use the latest COVID-19 Immunization/EIR tracker package and related aggregate datasets (for serving the dashboard) as a reference; though we do not recommend 'updating' a package that has already been substantially customized for the country. 
+
+
+## 背景 { #background } 
+
+### 观众{ #audience } 
+
+本节的主要受众是支持卫生部实施国家 COVID-19 疫苗交付计划的系统管理员。不过，虽然这里介绍的是 COVID-19 疫苗递送的具体使用案例，但大部分指导内容与大规模跟踪器的一般实施都有关联。
+
+
+### 目的 { #purpose } 
+
+- 分享 "可获得的最佳信息"、实时/新出现的指导、技巧和工具，以优化 DHIS2 的实施，实现 COVID-19 疫苗的预期规模。这些信息通常来自实践社区。
+- 这并不是规范性的指导，而是一系列建议，随着我们从实际实施中学习和更新/改进全球产品，这些建议可能会发生实时变化 
+- 我们的目标是促进可能面临类似挑战并能从共同解决方案中受益的国家实施项目之间的信息共享
+
+## 实施者指南{ #guidance-for-implementers } 
+
+### 一般指导{ #general-guidance } 
+
+* 从 2.35 版开始，性能得到大幅提升。我们强烈建议将跟踪器实例升级到最新的 2.35 或 2.36 补丁版本，因为这些版本的点版本也增加了性能改进。 
+* 我们强烈建议设置服务器监控工具，以确定服务器何时以及为何出现问题。   
+    * 一些建议包括 [https://glowroot.org](https://glowroot.org/) 和 [https://munin-monitoring.org](https://munin-monitoring.org/) 
+    * 以下是 [在 DHIS2 上安装 glowroot 的教程](https://github.com/dhis2/dhis2-docs/blob/glowroot-tutorial/src/tutorials/glowroot.md)
+
+### 分析性能{ #analytics-performance } 
+
+Recognizing that country demands for frequency of 'real time' analytics data for decision making may vary and timely data is crucial, we recommend to avoid running analytics during heavy data entry periods. We have seen major spikes in overall response times while analytics tables are being generated. **These seem to have the most impact when many users are accessing dashboards that contain program indicators calculating on the fly.**
+
+#### 仪表板性能{ #dashboard-performance } 
+
+以下是改进仪表盘性能的步骤。
+
+* Users should **not** have dashboards with tracker-based analytics as the landing page after logging in.
+    a. 添加一个不带分析功能的仪表盘，作为用户登录后的默认/第一个仪表盘。(即确保按字母顺序排列在第一位。例如"\*\*NOTICE\*\* or \*\*INFO\*\*)。 
+    b. 该仪表板可填充文本项目，以传达关键信息、更新、标准操作程序等。 
+    c. 仪表板应与公众访问共享
+
+![Example of dashboard without analytics used as landing page after logging in.](resources/images/covax_perf_image2.jpg)
+
+* 限制只有需要使用数据进行决策的分析用户才能共享仪表盘；限制数据录入用户共享仪表盘。这可以通过用户组来实现，同时为非分析用户提供上述登陆仪表盘。 
+
+* 跟踪分析请求，尤其是某些程序指标配置的跟踪分析请求，可能会很慢，并造成性能问题。提取此类数据时 
+    a. 在接种员工作高峰期以外进行，以避免他们的工作受阻 
+    b. 当时使用较小的数据集。例如，可能需要获得当时组织单位子集的数据（如按地区）。 
+    c. 与其由几个人从 DHIS2 下载相同的数据（例如国家一级的数据），不如只下载一 次，然后通过 excel 等进行共享。
+
+* 确保在 dhis2 配置中启用缓存，这样，对相同分析资源的重复请求就能从缓存中获得服务，并跳过数据库查询。 
+    a. dhis.conf - `analytics.cache.expiration` 设置为至少 3600（6 小时）。 
+    b. 系统设置 -\> 分析 -\> 缓存策略。建议值：至少 CACHE_6AM_TOMORROW。将缓存性设置为 "private"（私有），以避免使用nginx缓存。
+
+* 关闭连续分析。如果关闭连续分析功能，只有在分析表运行后才能看到分析结果的更新。
+
+* As a **last resort/blunt measure for poor performing dashboards, you may also:** a. Remove tracker analytics access for non-critical users. b. Set the default landing app through the system settings to the capture or data entry applications. This will mean that all users will first be directed to those apps. This may be disruptive for users that do not enter data, but it will minimize traffic to the dashboards.
+
+* 考虑通过[实施部分]（#implementation-strategies）中所述的聚合数据模型，从 COVID-19 环境影响报告跟踪器中提供跟踪器分析。简而言之
+    a. 将 PI 映射到综合数据元素 
+    b. 按预定频率（通过脚本）向聚合数据模型推送数据值 
+    c. 通过指标更广泛地共享基于聚合数据模型的仪表盘，其性能可提高 100 倍（仪表盘项目的加载时间为 0.02-0.1 秒，而测试实例的加载时间为 10-200 秒）。此外，通过使用维度（如表示和切分 CatCombos），它们还能提供更强的分析能力。
+
+#### 评估分析/计划指标绩效{ #assessing-analyticsprogram-indicator-performance } 
+
+对 COVID-19 环境影响报告跟踪软件包中最初包含的仪表盘（注：这些跟踪仪表盘现已从软件包中删除，不推荐使用）进行分析后发现：
+
+* 由于对注册类计划指标的查询时间过长，仪表板的运行速度明显减慢。
+
+* 了解辍学率是件好事，但即使在我们的测试数据库上加载辍学率也需要很长时间。我们认为，辍学率不太可能需要每天监测，而是可以通过 COVAC 核心模块（数据集汇总和覆盖范围监测仪表板等）每周甚至每月进行更高层次的分析。
+
+![](resources/images/covax_perf_image6.png)
+
+![](resources/images/covax_perf_image5.png)
+
+其他 "繁重 "的可视化内容应从日常监控仪表盘中删除，因为这些仪表盘是与低级用户共享的，会导致性能压力。这些可视化内容可以转移到查看频率较低的仪表盘、HTML 报告或其他报告工具中：
+
+a.地图级别较低，或要求不必要的组织单位
+
+b.超过 100 个事件行或 50 个注册行的事件报告
+
+c.需要长时间纵向数据的可视化，如过去 12 个月的数据
+
+d.与注册类计划指标（如辍学率）的任何可视化情况
+
+e.在对 COVAC 软件包中的计划指标进行的测试中，"注册类型 "计划指标的响应时间最长。此外，它们的可扩展性也较差，因为在请求额外的时期、组织单位或 TEI 时，它们需要更长的时间来提供数据。
+
+### Tracker 性能{ #tracker-performance } 
+
+* 与使用 "RANDOM() "模式的 TEA 相比，使用 SEQUENTIAL() 模式生成唯一系统 ID 的 TEA 性能更高。**我们建议避免使用 RANDOM 模式**，因为
+    * 比赛条件开放； 
+    * 使用时间越长，它的性能会呈大幅下降趋势；以及 
+    * 它使用数据库中的保留值表来跟踪哪些值已被分发。众所周知，该表是跟踪器导入过程中的一个痛点。
+    * 使用 Android 的实施方案请注意：为离线使用的设备预留值可能会影响用户对 SEQUENTIAL 生成的感知，请参阅此处：[https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_dhis2_config_reserved_id](https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_dhis2_config_reserved_id)
+
+* 在 COVID-19 疫苗注册表的早期版本中，一些工作列表会导致性能问题。在 COVID IER 软件包 V 1.1.2 中，这些列表已从软件包中删除。如果您发现跟踪器的加载速度很慢，这可能与工作列表和一个组织单位中的大量 TEI 有关。解决方法是禁用程序详细信息中的 "显示首页列表 "复选框（缺点是也会禁用工作列表）
+
+* 通过为特定的被跟踪实体属性添加部分三叉星索引，可以显著改善对 TEI 属性（尤其是非唯一属性，如名、姓、电话号）的搜索。尼日利亚和卢旺达已经采用了这种方法，性能得到了极大改善。这一功能尚未添加到核心中，因此目前还需要手动创建。要添加三叉索引并与原始列类型复合，必须创建两个扩展。这些扩展已经是 posgresql 默认安装的一部分。扩展：
+
+```
+创建扩展 pg_trgm；
+创建扩展 btree_gin；
+```
+
+trackedentityattributeid 1234 的索引示例（例如：电话号码）。必须对搜索时大量使用的每个属性（名、姓等）重复索引
+```
+在 trackedentityattributevalue 上同时创建索引 in_gin_teavalue_1234 
+使用 gin (trackedentityinstanceid，lower(value) gin_trgm_ops) 
+where trackedentityattributeid = 1234；
+```
+
+* 同样，如果系统根据事件数据值进行搜索，三叉索引也会有所帮助。尼日利亚将完成疫苗接种的 QR 码作为一个事件数据值，并对其进行大量搜索（例如：乘客在登机前检查 QR 码）。根据具体实施配置的搜索模式，也可以应用这种三叉索引。并非所有实施都需要这样做。假设已经创建了上述扩展名，下面是一个为数据元素（uid=LavUrktwH5D，qrCode）创建索引的示例，该数据元素连接到程序阶段。本例中的 dataelementid=233047 和 programstageid=64527。
+
+```
+在 > programstageinstance 上同时创建索引 in_gin_psi_edv_64527_233047 
+使用 gin (lower(eventdatavalues #>> '{LavUrktwH5D, value}') gin_trgm_ops)；
+```
+
+* 使用自定义应用程序可能会对性能产生积极或消极的影响。应用程序可以提供更有针对性的功能，从而避免额外的点击和对 API 的调用。自定义应用程序也需要谨慎使用，我们看到有些自定义应用程序使用的 API 功能会给系统造成不必要的压力。跳过分页的参数、计算分页结果的数量、在更适合使用 EQ（等于）的情况下使用 LIKE 操作符进行比较，这些都是造成一些压力的显著元凶。如果对唯一属性使用 LIKE 操作符，则应为其创建上述三叉索引。应始终避免使用 SkipPaging。使用分页时，应避免使用 totalPages，因为它会使数据库查询获取全部记录数，而不是只获取给定的页面。如果可行，应在可搜索属性上执行搜索字符串最小 3 个字符的限制。尼日利亚有一个自定义应用程序，它在应用程序端强制执行了 3 个字符的最小搜索限制，这有助于减轻一些繁重的查询。只有当搜索字符串至少有 3 个字符时，查询优化器才会使用 Trigram 索引。
+
+> **注**
+>
+> 自定义应用程序进行的调用需要格外注意，因为这些调用可能是以一种未经充分测试并证明性能良好的方式构建的。此处提供的常见性能问题清单并非详尽无遗。重要的是要进行监控，并额外关注来自自定义应用程序、集成中间件和外部脚本的调用。
+
+* Tracker Capture 应用程序会单独更新事件数据值。在高并发环境中，这会导致数据库行级锁定和等待。斯里兰卡以核心 Tracker Capture App 为基准，创建了自定义 Tracker Capture App。在定制应用程序中，他们改变了流程，以便在用户点击 "保存并完成 "时，所有事件数据值都会在单个 API 中一起更新。原始核心应用程序中的按钮是 "完成"。如果支持 HISP 的小组/管理员/实施人员具备必要的技能，他们或许可以考虑做同样的事情。
+
+### 用户管理{ #user-management } 
+
+* 我们建议不要在多台设备上共享用户登录信息。这可能会导致用户无意中退出登录。
+    * 替代方案：每个设备一个用户（例如，用户跟随设备，即疫苗接种点数据录入人员；为提高安全性，可每天循环使用密码）
+* 为安卓系统优化用户（在安卓系统部分进行描述）
+* 如上所述，限制对基于跟踪器的仪表板的不必要访问
+
+## 安卓系统部署指南{ #guidance-for-android-deployments } 
+
+### DHIS2 配置建议{ #dhis2-configuration-recommendations } 
+
+本小节将介绍通过直接调整 DHIS2 服务器配置可以实现的具体建议。
+
+#### 用户访问{ #user-access } 
+
+由于安卓系统具有离线工作的特性，因此在设备离线的情况下，应用程序会尽可能多地下载信息。以减少传输的数据量：
+
+- 设置用户可以访问的组织单位、程序和数据集；这将大大减少传输的数据量和服务器的负荷
+
+- 请参阅有关如何 [创建用户] 的建议(https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_dhis2_config_creating_user)
+
+#### 自动生成值{ #auto-generated-values } 
+
+由于是离线操作，Android 还将下载保留的值。应用程序将尝试评估剩余值的数量，并在同步时从服务器获取更多的值。
+
+在用户长时间离线的情况下，该值可能需要增加（在下文中解释）。如果定义的自动生成值包括使用任何形式的日期（日、月、年），系统管理员在定义这些值和使用 Android 应用程序时应特别注意。另外请注意，使用 SEQUENTIAL() 模式（例如 TEI 属性 "系统生成的 ID"）为离线使用的设备预留值时，每个值都将按顺序使用，因为它们*被预留在设备中*，这可能会让某些用户感到困惑。这种行为在文档[此处](https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_dhis2_config_reserved_id)中已有说明。
+
+有关此主题的更多信息，请参阅[官方文档](https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_dhis2_config_reserved_id)和[CoP.中的本帖](https://community.dhis2.org/t/question-regarding-expiry-of-reserved-ids-of-an-auto-generated-unique-values-configured-with-a-text-pattern-containing-current-date-mm-yyyy/40761/2)
+
+### 安卓设置 WebApp{ #android-settings-webapp } 
+
+安卓设置 WebApp](https://apps.dhis2.org/app/a1bd6b5b-de8c-4998-8d34-56c18a139683)是一个可安装在任何最新 DHIS2 服务器上的应用程序，系统管理员可通过它来定义每个手机将读取的一些设置。
+
+#### 保留值{ #reserved-values } 
+
+上文简要介绍了自动生成值的用法。通过安卓设置应用程序，系统管理员可以定义每个移动用户将检索多少个这些值。如果你的移动用户将长时间离线，增加这个值可能是个好主意，但是，在这里设置一个很大的数字可能会导致值耗尽，并增加初始同步时传输的数据。
+
+![](resources/images/covax_perf_image4.png)
+
+举个例子，假设我们使用的移动设备将离线一周，然后回到中心位置进行数据同步。每个用户每天可能最多接诊 50 名患者，因此一周内最多接诊 350 名患者。将每个 TEI 属性下载的*保留值*至少设置为 350，可确保用户能够正常脱机工作，而不会有耗尽值的风险。
+
+#### 元数据同步{ #metadata-sync } 
+
+![](resources/images/covax_perf_image1.png)
+
+如果您的程序不太可能被修改，为该设置设置一个较长的周期值将会减少服务器的连接数。在没有完全更新元数据的设备的重要性和服务器因设备数量而承受的负载之间找到平衡点是很好的。
+
+举个例子，假设我们有一个拥有 10.000 台设备的系统，并将它们设置为每 1 天同步一次。这意味着服务器每天应能处理 10.000 次元数据更新请求。尽管如果没有更改，这些请求将导致空响应，但如果软件包中没有更改或更改不太可能是关键性的，将该值设置为 1 周甚至手动（通过适当的方式与现场用户沟通）可能会更明智。
+
+您甚至可以禁用自动元数据同步，并依靠用户触发的手动同步（如果这是您实施的一个选项）。
+
+#### 数据同步{ #data-sync } 
+
+数据同步遵循与元数据同步相同的原则，并应根据实施情况进行调整。例如，我们可以发现在一些实施方案中，用户需要到现场进行离线工作，因此为这些用户提供工作所需的所有数据非常重要。或者，用户很可能要在现场为病人挂号，并将数据从设备传输到服务器。
+
+请参阅以下示例：
+
+* 在实施过程中，用户几乎都是离线工作，他们需要在设备上保存尽可能多的数据，如果要求用户在出发前执行数据同步，可以将*数据同步*设置为*手动*。如果需要自动执行，也可以设置为每日同步。
+
+* 在实施过程中，如果用户要去野外，他们可能会被抢劫，或者担心设备丢失，那么将*数据同步*设置为最短（30 分钟），以便尽快将数据推送到服务器，可能会很有趣。也可以指示用户在每次添加或修改病人时使用[粒度同步](https://docs.dhis2.org/en/full/use/dhis2-android-app.html#capture_app_generic_sync_info)，但这样可能会比较麻烦。
+
+![](resources/images/covax_perf_image3.png)
+
+您也可以禁用自动数据同步，而依靠用户触发的手动同步，但如果用户不系统，这将增加数据被记录和未同步的风险。
+
+#### 下载设置{ #download-settings } 
+
+这些设置允许用户定义执行数据同步时下载的 TEI 数量。也许应将其与上述*数据同步*设置结合使用。了解这些设置的工作原理对确定有针对性的有效方法非常重要。官方文档 [同步设置](https://docs.dhis2.org/en/full/use/dhis2-android-app.html#capture_app_andoid_settings_webapp_synchronization) 详细解释了设置时应注意的事项。在定义这些设置时，实施系统的连接能力也应发挥重要作用，因为在连接性非常好的实施系统中，将该值减至最大可以在*数据同步*过程中减少服务器的负载，而不会对用户产生很大影响（他们将始终能够在线找到病人）。不过，在进行非常广泛的搜索时，这可能会导致服务器过载。移动用户连接服务器的方式（即使用移动数据套餐而不是无线网络）也会产生影响，因为下载许多可能用不到的病人会无端消耗移动数据。
+
+请参阅以下示例：
+
+*  在实施过程中，用户主要是将患者添加到系统中（即使用 COVID 注册患者），设备上不需要有很多患者。因此，设置较低的下载 TEI 值将减少数据同步时服务器的负载，并减少传输的数据量（使用移动数据连接时应考虑到这一点）。
+
+*  在实施过程中，如果用户将离线探视病人而无法进行在线搜索，系统管理员可能希望让用户下载尽可能多的 TEI，以便他们携带所需的所有病人数据。
+
+*  在连接性非常好的情况下，用户管理部门可以决定减少下载设置，使设备上的 TEI 尽可能少，完全依靠在线搜索。由于用户将通过唯一 ID（即国民身份证号码）进行搜索，这对服务器的要求不高，因此这种设置似乎是适当的。但是，如果用户不能通过唯一 ID 搜索病人，而是使用姓氏，服务器可能会出现搜索负荷过重的问题，因此，允许用户下载更多病人并依赖离线模式可能更有意义。
+
+### 应用程序更新{ #application-updates } 
+
+![](resources/images/covax_perf_image8.jpg)
+
+DHIS2 Android 应用程序通过两个渠道发布：[Google Play 商店](https://play.google.com/store/apps/details?id=com.dhis2) 和[Github](https://github.com/dhis2/dhis2-android-capture-app/releases)。我们每 6 个月发布一次版本，并根据需要随时发布补丁。如果实施者使用 Google Play Store 作为供应源，他们可以从自动更新中获益，但在某些情况下，实施者希望在向用户提供新版本之前先进行测试，这可能并不可取。我们建议禁用自动更新，这样管理员/测试人员就可以在要求用户使用之前对应用程序进行大量测试。
+
+通过 Google Play 安装应用程序后，请按以下步骤禁用自动更新：
+
+- 选择屏幕右上角的三点菜单。默认情况下，将选择 "启用自动更新"。
+- 取消选择此按钮。这将确保在有更新时，Android 应用程序不会自动更新。
+- 完成后，不应勾选 "启用自动更新 "框。
+
+现在，系统管理员可以检查新版本，然后让用户知道何时应该更新他们的应用程序，他们可以通过访问 Play Store 并点击每次有新版本发布时都会出现的更新按钮来做到这一点。
+
+有关推出计划和测试的更多信息，请参阅 [官方指南](https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_testing)。
+
+### 设备和管理建议{ #device-and-management-recommendations } 
+
+在本节中，我们将简要介绍与设备本身及其管理有关的一些建议。
+
+#### 安卓设备规格{ #android-device-specifications } 
+
+很难给出使用哪种设备的一般性建议。实施机构应在一组设备上测试其最终配置，以了解用户体验。
+
+例如，如果实施工作需要用户到现场并离线处理大量 TEI，他们就应该选择高端设备，因为安卓应用程序会消耗更多资源。但是，如果实施工作的预算非常紧张，而且将有数千名用户，但使用的 TEI 和数据量要小得多，那么他们可能更倾向于使用一些中端设备。
+
+有关此过程的更多信息，请参阅 [官方指南](https://docs.dhis2.org/en/full/implement/android-implementation.html#implementation_guide_mobile_specs)。
+
+#### 移动设备管理{ #mobile-device-management } 
+
+我们强烈建议在移动实施中使用移动设备管理（MDM）。移动设备管理（MDM）具有多种优势，可以简化实施和支持工作。不过，它们通常会产生较高的成本。
+
+实施方可以选择即用型 MDM，也可以在自己的基础设施中部署解决方案。就预算而言，后者可能是更好的解决方案，但需要较高的技术技能，如系统管理和数据库管理。
+
+本[[官方指南]{.ul}](https://docs.dhis2.org/en/full/implement/managing-mobile-devices.html) 涵盖了经过测试的几种 MDM，列出了它们的主要优缺点。
+
+### 移动建议清单{ #mobile-recommendations-checklist } 
+
+
+| **DHIS2大规模移动实施核对表** |  |
+| --- | --- |
+| 用户访问配置 |  |
+| 自动生成值模式            |                           |
+| 安卓设置网络应用程序：                  |                           |
+| * 保留数值数目*              |                           |
+| *自动元数据同步期*         |                           |
+| *自动数据同步周期*             |                           |
+| *数据下载设置*                 |                           |
+| 安卓应用程序更新管理        |                           |
+| 移动设备管理                |                           |
+
+
+## 服务器托管、管理和监控{ #server-hosting-administration-and-monitoring } 
+
+服务器托管有两个基本要求：
+
+- 应该有一个--最好是两个--受过必要培训并有经验的人来管理服务器。
+- 应制定隐私/安全政策，以涵盖大量人口数据的存储
+
+### 服务器规格{ #server-specifications } 
+
+正如有关服务器[规格](https://docs.dhis2.org/en/manage/performing-system-administration/dhis-core-version-237/installation.html#install_server_specifications)的文档所指出的，"DHIS2 与内存容量和 CPU 内核数量成线性关系，因此您能负担的越多，应用程序的性能就越好"。Covax 的实施通常以一个国家的成年总人口为目标，即使在较小的国家也将是大规模的。具体要求会因预期用户数量和 TEI 而异，但 32GB 内存和 32 个 CPU 可视为除最小实施项目外的所有实施项目的起点。所有实施项目都应做好升级硬件的准备，以支持不断变化的规模和不断增长的数据。
+
+固态硬盘/磁盘的性能对整体性能也至关重要，严重影响着搜索 TEI 和分析等关键活动。文档建议："最低读取速度为 150 Mb/s，200 Mb/s 较好，350 Mb/s 或更理想"。实际磁盘性能还可以通过查看磁盘延迟来评估。您可以在 munin 上查看这些数据，也可以使用 dd 进行简单的一次性评估：
+
+```
+dd if=/dev/zero of=/root/testfile bs=512 count=1000 oflag=dsync
+```
+
+对于好的磁盘，该命令应该在几分之一秒内完成（<0.5 秒）。超过 5 秒的速度可能会太慢，无法达到可接受的性能水平。
+
+### 服务器架构和基础设施{ #server-architecture-and-infrastructure } 
+
+The application (tomcat) and database (postgresql) *could* be hosted on the same server, but ideally the database should be set up on a dedicated server.
+
+快速、稳定的互联网始终是必需的，但当数据库设置在单独的服务器上时，确保两者之间有快速、稳定的*内部*网络连接也很重要。
+
+服务器托管在共享、虚拟化环境中时必须特别考虑。在这种情况下，托管服务提供商可能会过度分配资源（如 CPU、磁盘），这意味着服务器实际上并不拥有它看起来拥有的资源。这也意味着性能会根据其他系统的负载而波动。在某些情况下，国家不得不与托管服务提供商协商，以确保所使用的服务器不被过度配置，或者转移到物理服务器上。
+
+### 安装与配置 { #installation-and-configuration } 
+
+必须确保使用正确的软件版本来优化性能：
+
+- JDK11
+- PostgreSQL 12 或 13 版本
+- DHIS2 2.35 或更高版本，**最新可用的补丁版本**
+
+Tomcat 需要配置足够的内存。这取决于服务器的总可用内存，以及是否与 postgresql 共享内存，还是数据库运行在单独的服务器上。使用 DHIS2 超级用户账户，打开 "About DHIS2"（关于 DHIS2），查看 "Memory info"（内存信息）字段，就能验证 Tomcat 的内存配置：
+
+![](resources/images/covax_perf_image7.png)
+
+正确配置 postgresql 以获得良好性能也至关重要。服务器文档](https://docs.dhis2.org/en/manage/performing-system-administration/dhis-core-version-237/installation.html#install_postgresql_performance_tuning) 中有相关说明。
+
+### 服务器监控{ #server-monitoring } 
+
+我们强烈建议设置服务器监控工具，以确定服务器何时以及为何出现问题。应监控关键性能指标，如所有节点上的内存、CPU、磁盘性能，以及代理、数据库和 tomcat 上的应用程序特定指标。一些建议包括 [https://glowroot.org](https://glowroot.org/) 和 [https://munin-monitoring.org](https://munin-monitoring.org/)。已编写了[在 DHIS2 上安装 glowroot 的教程](#glowroot_tutorial)来支持这一点。
+
+其他可能需要更多配置但允许大量定制的选项包括 prometheus/grafana 和 ELK 堆栈。
+
+## 实施战略{ #implementation-strategies } 
+
+根据斯里兰卡、印度尼西亚、尼日利亚、卢旺达和其他国家的经验，在大规模 COVID-19 疫苗部署中，基于追踪器分析的可视化会导致非常繁重的 TEI 计数查询，几乎导致系统无法使用。卢旺达采取了严厉的缓解策略（禁用所有分析应用程序），而斯里兰卡则恢复了 SQL 查询。
+
+这些挑战可以通过上文提供的性能优化指南得到部分解决。我们还认识到
+
+* 由于在国家实施、配置和定制过程中存在许多不同因素，跟踪系统的性能在前所未有的规模下具有不可预测性
+* 各国服务器管理的能力、资源和结构差异很大
+
+与此同时，在 2020 年孟加拉国的麻疹-风疹运动中，通过 DHIS2 进行的每日汇总报告被证明是非常有效的。采用汇总配置可促进对库存和施用剂量的日常报告（如通过统计表），这些数据在很大程度上足以满足通过仪表板对整个运动进行 "实时日常 "监测的目的。在乌干达，总体实施与 COVID EIR 跟踪器并行使用，以便在跟踪器数据录入无法持续（没有足够的设备等）的高流量期间进行日常监测和检查数据的完整性。
+
+根据反馈，我们了解到大多数实施方案都要求在 COVID-19 疫苗交付的活动阶段至少每天进行一次监控，但 "实时 "的定义却不尽相同。活动运营中心可能会在一天中的某个时间段对日常表现进行监控，在国家实施和安排分析时应考虑到这一点。
+
+### 使用跟踪器部署的汇总数据模型{ #use-of-aggregate-data-model-with-tracker-deployments } 
+
+我们建议将汇总数据模型纳入 COVID-19 疫苗的实施中，以实现两个不同的功能。
+
+#### 并行汇总报告：疫苗接种点的每日库存和接种疫苗剂量统计表{ #parallel-aggregate-reporting-daily-stock-tally-sheets-of-vaccine-doses-administered-at-vaccination-site-level } 
+
+确保各国在部署跟踪登记系统的同时拥有 COVAC 汇总包的建议是一个老建议。在此，我们提出了一些理由，说明为什么认为一个国家在部署跟踪系统的同时，应准备好用于报告的汇总配置：
+
+- 在许多国家，为了确保数据的完整性以达到监测活动的目的，有必要这样做：例如， 如果由于各种原因，跟踪登记册无法覆盖全部人口
+
+- 在某些情况下，这种报告机制（如基于每日统计表）可在活动量大、个人数据录入可能滞后的时期使用（没有足够的设备、连接问题、没有足够的数据录入人员等）。
+
+- 统计表中的每日报告也经常用于与跟踪系统数据进行数据质量比较，并帮助国家评估其跟踪系统的部署情况，以及就数据源/数据流做出决定。
+
+COVAC "核心 "汇总包](https://docs.dhis2.org/en/topics/metadata/covid-19-vaccine-delivery/covac-aggregate/version-110/design.html) 包含支持该功能的配置（与世卫组织监测指南、世卫组织非洲区域办事处报告工具和 eJRF 保持一致）：
+
+- 每日数据集：COVIDVAC - 疫苗接种（如接种剂量，按目标群体分列）
+
+- 日常数据集：场址级库存报告（如使用的小瓶、实物库存清点等）
+
+- 年度数据集（也可以是月度/季度数据集，视国家计划而定）：设定人口目标，可按优先群体等分类
+
+- COVAC 监测仪表板，包含覆盖率、接种剂量、关键库存数据、辍苗率等。该监测仪表板一般用于对整个国家 COVID 疫苗交付计划进行更高级别的监测；该仪表板的所有组件并非都用于 "实时"/日常监测。
+
+#### 将跟踪器数据转换为聚合数据模型 → 用于分析目的（如提供高性能仪表盘）{ #converting-tracker-data-to-aggregate-data-model-for-the-purpose-of-analysis-eg-serving-performant-dashboards } 
+
+由于提供基于跟踪器数据的仪表盘可能会出现性能问题（例如，每次加载仪表盘时都会临时计算繁重的计划指标），我们建议使用聚合数据模型提供每日/近实时仪表盘。在我们的测试中，这种方法的性能要好得多，而且还能为分析用户提供关键指标。分析的另一个好处是将数据结构化为维度（类别组合），以便进行透视和切片。
+
+要从跟踪源数据（如 COVID 疫苗注册表）提供 COVID-19 分析，您需要
+
+1. 一个汇总数据集（与跟踪程序在同一实例中或在另一实例中）和一组 DE 和 COC，以接收跟踪器汇总的数据
+
+2. 建立一个仪表盘，以取代基于跟踪器的活动监测仪表盘；该仪表盘应完全基于综 合领域的指标和/或数据要素。
+
+3. 一套计划指标，可汇总跟踪器数据，推送至目标汇总 DE/COC，其属性映射至目标汇总元数据
+
+4. 用于将跟踪器数据（如计划指标值）推送到汇总 DE 的脚本。脚本示例正在开发中，不久将与大家分享。
+
+通用[跟踪器到汇总数据指南](https://docs.dhis2.org/en/implement/maintenance-and-use/tracker-and-aggregate-data-integration.html#how-to-saving-aggregated-tracker-data-as-aggregate-data-values)，并将继续更新。
+
+## 已知软件问题列表{ #list-of-known-software-issues } 
+
+[COVAC：性能问题](https://docs.google.com/document/d/1NJoio5qkdtdljflbt3_AS6N2HgGTepW_TW2m4-qHlTE/edit#)
+

@@ -1,0 +1,136 @@
+---
+edit_url: "https://github.com/dhis2-metadata/TB_AGG/blob/master/docs/tb_agg-design.md"
+revision_date: "2022-05-25"
+---
+
+# TB 骨料系统设计{ #tb-aggregate-design }
+
+## 介绍 { #introduction }
+
+本文件介绍了用于汇总报告的结核病配置包的系统设计，重点是如何在 DHIS2 中设计配置的数据收集部分（即数据集和数据元素）。
+
+## 总览 { #overview }
+
+用于汇总报告的结核病配置包以世界卫生组织[结核病定义和报告框架](http://apps.who.int/iris/bitstream/10665/79199/1/9789241505345_eng.pdf) 为基础。如表 1 所述，它共包含 7 个数据集。
+
+| 名称 | 周期性 | 目的 |
+| :-- | :-- | :-- |
+| 结核病例登记 | 季刊 | 肺结核新病例报告（通报） |
+| 结核病治疗结果 | 季刊 | 报告一线治疗的疗效 |
+| 结核病治疗结果 - 二线治疗 | 每年 | 报告二线治疗的疗效 |
+| RR/MDR-TB 病例的发现和治疗 | 每年 | 耐药结核病新病例的报告 |
+| **[仅有旧记录]** 根据涂片结果登记肺结核病例 | 季刊 | 根据 2006 年报告框架报告肺结核新病例（通知）情况 |
+| **[仅限旧记录]** 结核病治疗结果 - 按涂片结果分列 | 季刊 | 根据 2006 年报告框架报告一线治疗的治疗结果 |
+| **[仅限旧记录]** 结核病治疗结果--二线治疗 | 每年 | 根据 2006 年报告框架报告二线治疗的治疗结果 |
+
+顾名思义，上表中显示的后 3 组数据只是为了根据以前的报告指南保留历史数据。这一点很重要，因为结核病流行病学的变化相对较慢，分析结核病数据需要查看多年趋势。新旧表格尽可能使用相同的数据元素。配置包中的指标与当前表格和旧表格中的数据元素都有关联，以便对使用两种不同框架收集的数据进行比较。
+
+**Note:** These **[old records only]** data set should **not** be used for prospective data entry.
+
+## 数据集结构和设计{ #data-set-structure-and-design }
+
+本节将为每个数据集介绍数据集（报告表）的主要部分（表格），并解释其配置方式和原因。
+
+除了个案登记表的年龄分类外，**[仅限旧记录]** 与目前的表格比较接近，因此不再详细介绍。
+
+### 结核病例登记{ #tb-case-registration }
+
+#### 案件登记{ #case-registration }
+
+![Case registration](resources/images/TB_AGG_image1.png)
+
+病例登记表设置为 12 个单独的数据元素。可以想象，该表也可以设置为三个数据元素，并将 "既往抗结核治疗情况 "作为一个数据元素类别。之所以选择单个数据元素的 "扁平 "结构，有几个原因：
+
+-   如上所述，结核病配置包的结构必须能够与之前的报告框架进行比较。使用扁平结构可使本节中的某些字段（数据元素）在以前版本的病例登记表中重复使用。
+-   对这些数据的分析通常是根据这些行和列的具体组合进行的，这些行和列已被定义为指 标。使用治疗状态类别可以更容易地 "按原样 "复制上表，但这似乎不太相关。如有必要，可使用数据元素组套重新创建。
+-   既往抗结核治疗状况 "类别仅适用于 3 个数据元素。虽然包含了类似的既往治疗概念/分类，但耐药结核病数据集和既往报告框架的结构不同，因此无法在其中使用该分类。
+
+#### 按年龄和性别分列的病例登记{ #case-registration-by-age-and-sex }
+
+![Case registration by age and sex](resources/images/TB_AGG_image2.png)
+
+本节/表被配置为单一数据元素，具有 "年龄和性别 "类别组合。尽管年龄类别只适用于单一数据元素，但如下例所示，这使得分析工具具有最大的灵活性：
+
+![Pivot table example](resources/images/TB_AGG_image3.png)
+
+#### 数据验证 { #data-validation }
+
+已配置验证规则，将 "病例登记 "中报告的新病例和复发病例数量与按年龄和性别报告的数量进行核对。
+
+### 实验室活动与结核病/艾滋病毒{ #lab-activity-and-tbhiv }
+
+![Lab diagnostic activity and TB/HIV](resources/images/TB_AGG_image4.png)
+
+这两个部分/表格已配置为单独的数据元素。
+
+#### 数据验证 { #data-validation }
+
+已为这些检查配置了验证规则：
+
+-   实验室检查 ≥ 阳性结果
+-   已知艾滋病毒感染状况 ≥ 感染状况呈阳性
+-   艾滋病毒呈阳性 ≥ CPT/ART
+
+### 结核病治疗结果{ #tb-treatment-outcomes }
+
+#### 治疗结果{ #treatment-outcomes }
+
+![Treatment outcomes](resources/images/TB_AGG_image5.png)
+
+治疗结果表（仅适用于一线治疗）按肺结核病例类型（细菌学确诊、临床、既往治疗、 HIV 阳性）分类。对于每一类患者，该表包括登记的病例数（即治疗队列）和治疗结果。在 DHIS2 系统中，每一类病人都被配置为一个登记病例/队列数据元素和一个治疗结果数据元素。治疗结果数据元素有一个 "结核病治疗结果 "类别，包含 6 种治疗结果中的每一种。
+
+First of all, it is clear that having **one** data element for each category of TB case would not make sense, as it would include both the cohort and the number of reported outcomes, i.e. the total of the category would not make sense, which is the general rule. However, the table _could_ have been set up with each field being an individual data element. The reason why a category was chosen includes:
+
+-   关于类别的一般建议是，所有选项的总和应该是有意义的，因为在报告工具中默认 显示的是总数。虽然在这种情况下，总数可能不是特别有用（它基本上是评估结果的总数），但它是一个有意义的数 字。相比之下，"病例和死亡人数 "就是一个最常见的没有意义的类别。
+-   如果包括当前表格和旧表格、第一行和第二行，治疗结果类别适用于 13 个病例类别。因此，使用类别有助于将数据元素的数量从 78 个减少到 13 个。
+-   使用类别可以最大限度地提高分析治疗结果数据的灵活性。例如，只需设置一个包含两个类别选项的筛选器，就能显示 "治疗成功"（定义为 "治愈 "和 "治疗完成 "之和）的结果总数。
+
+#### 数据验证 { #data-validation }
+
+已制定了验证规则，核实群组（登记病例）的规模与报告的治疗结果数量相同。
+
+#### 结核病/艾滋病毒{ #tbhiv }
+
+![TB/HIV Activities](resources/images/TB_AGG_image6.png)
+
+治疗结果数据集的结核病/艾滋病毒部分/表格与病例登记表的结核病/艾滋病毒部分非常相似。之所以将其包括在内，是因为在编制季度通知报告时，很大一部分病例的艾滋病毒感染状况可能尚不清楚。治疗结果报告中的结核病/艾滋病毒部分可以收集有关艾滋病毒感染状况的完整信息。它包含与 HIV 感染状况有关的类似变量，但使用单独的数据元素，并用"（按结果时间）" 后缀将其分开。此处适用的验证规则与病例登记数据集中的结核病/艾滋病毒表相同。
+
+### 结核病治疗结果 - 二线治疗{ #tb-treatment-outcomes-second-line }
+
+#### 治疗结果{ #treatment-outcomes }
+
+![Treatment outcomes](resources/images/TB_AGG_image7.png)
+
+二线治疗病例的治疗结果配置方式与上述相同，验证规则也相同。
+
+### RR/MDR-TB 病例的发现和治疗{ #rrmdr-tb-case-detection-and-treatment }
+
+#### 案件侦破{ #case-detection }
+
+![Case detection](resources/images/TB_AGG_image8.png)
+
+案件侦查部分/表格配置有单独的数据元素。
+
+#### 数据验证 { #data-validation }
+
+数据验证规则检查 RR-TB 或 MDR-TB 病例数是否多于仅 MDR-TB 病例数。
+
+#### 治疗{ #treatment }
+
+![Treatment](resources/images/TB_AGG_image9.png)
+
+处理部分/表格配置有单独的数据元素。
+
+### [仅有旧记录] 按涂片结果登记肺结核病例{ #old-records-only-tb-case-registration-by-smear-results }
+
+#### 按性别和年龄分列的病例（遗产）{ #cases-by-sex-and-age-legacy }
+
+![Cases by sex and age (legacy)](resources/images/TB_AGG_image10.png)
+
+The [old records only] data sets are not discussed in detail, but the “cases by sex and age” section/table deserves a special comment. The previous TB reporting framework (2006 version) allowed some variations in how notifications where disaggregated by age. Consequently, different countries use a few different age disaggregations. Because the TB configuration package is designed to be used in different countries/contexts, the “cases by sex and age” section uses a sex category that includes “unknown sex”, and an age category that includes a few different, overlapping age options. For example, it includes both 0-4 years, 5-14 years _and_ 0-14 years. This is in general **not** a recommended approach as 1) the category total does not make sense, and 2) there is a risk for double counting if all age brackets are used. However, this was done here for the following reasons:
+
+-   它只用于历史数据，而不是用于手动输入（如果手动输入的话
+-   由于它是为使用已有数据而设计的，因此在任何情况下都不应该存在任何重叠数据。
+-   只包括一组年龄选项，然后由每个国家自行添加所需的年龄选项，这可能行得通，但需要更新指标公式，因为会产生新的类别选项组合。
+-   单个类别选项可以重复使用，包括当前框架和旧框架。在使用类别选项组时，即使报告的年龄段发生变化，也可以定义随时间推移而有效的年龄分类。
+-   相当多的国家已将其历史数据保存在由世界卫生组织全球结核病数据库维护的全球 DHIS2 数据库中，其中使用了这一类别（出于上述原因）。如果结核病配置包中的历史数据使用不同的类别，将这些数据移入国家 DHIS2 数据库将更加复杂。

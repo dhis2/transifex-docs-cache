@@ -1,0 +1,504 @@
+---
+edit_url: "https://github.com/dhis2-metadata/MAL_CS/blob/master/docs/mal_cs-design.md"
+revision_date: '2023-11-28'
+tags:
+- 元数据
+---
+
+# 消除疟疾病例监测和病灶调查系统设计{ #mal-cs-design }
+
+## 介绍 { #introduction } 
+
+将监测系统转变为核心干预措施是[2016-2030 年全球疟疾技术战略](https://www.who.int/publications-detail-redirect/9789240031357) 的第三个支柱。随着各国在消除疟疾方面取得进展，监测的目的是发现所有疟疾病例；调查每一个确诊疟疾病例；确定可能的感染地点，以指导阻断传播的行动，并确保每一个发现的病例都得到及时治疗和监测，以防止二次感染。消除疟疾的理想监测信息系统包括快速完整的病例报告、中央数据存储和管理、自动数据分析以及定制的输出和反馈，以便及时采取有针对性的应对措施。用于疟疾病例监测和病灶调查的 DHIS2 追踪软件包是减轻负担和消除疟疾环境中疟疾监测的辅助工具。
+
+所包含的数据元素遵循世卫组织的建议，这些建议基于世卫组织的全球标准和规范性指导，如该组织的指导方针和指导文件，特别是[疟疾监测、监控和评估：参考手册](https://www.who.int/publications-detail-redirect/9789241565578)。根据世卫组织监测评估工具包的工作，将收集到的数据转化为可操作的指标和仪表板。支持病例通知、病例调查、病灶调查和分类工作流程的跟踪软件包旨在与用于消除和减轻负担环境中疟疾方案监测的 DHIS2 综合软件包结合使用，以加强数据质量、分析和数据驱动决策。
+
+## 系统设计概述{ #system-design-overview } 
+
+用于单个数据的疟疾元数据包包含两个跟踪程序，支持世卫组织[疟疾监测、监控和评估：参考手册 Manual](https://www.who.int/publications-detail-redirect/9789241565578)所述的病例通报、病例调查、病灶调查和分类工作流程。
+
+这些跟踪程序旨在一起部署，以支持以下典型工作流程：
+
+1. 疟疾病例通报、调查和分类
+2. 病灶调查和分类
+3. 将病例数据与重点联系起来
+
+在消除疟疾的环境中，病例调查、检测和重点调查是相互关联的消除疟疾监测活动，对于可靠地确定感染源以及对病例和病灶进行分类以便采取适当的应对措施非常重要。
+
+虽然各国的标准操作程序可能各不相同，但下图根据中国的 "1-3-7 "方法，以 1 天内病例通报、3 天内病例调查和 7 天内重点调查为例，说明了典型的消除监测工作流程。在 DHIS2 软件包的设计中，**疟疾病例通报、调查和响应程序**支持图中左侧两个面板上的病例通报和调查；而疟疾病灶调查程序支持右侧面板上的重点调查。
+
+* 图 1：根据 DHIS2 成套设计支持的 "1-3-7 "方法建立的病例通知和病例及重点调查系统
+
+![Surveillance workflow](resources/images/surveillance_workflow.png)
+
+_Source: [Malaria Surveillance, Monitoring and Evaluation: A reference manual Manua](https://www.who.int/publications-detail-redirect/9789241565578)_
+
+* MAL CS - 疟疾病例通报、调查和应对计划
+
+这是一项以病例为基础的纵向监测计划，支持典型的工作流程，即通报确诊疟疾病例，并通过病例调查和重点调查对其进行跟踪，以确定感染源以及病例和病灶的分类，从而指导有效的应对措施。
+
+它允许通过以下关系将案件联系起来：案件与案件（被动侦破）之间的关系；案件与相关跟踪程序 "病灶调查 "中登记的病灶之间的关系。病灶调查 "程序详细介绍了围绕引发案件调查的索引案件所采取的行动，以及在病灶范围内采取的适当应对措施。 
+
+* MAL-FOCI - 疟疾病灶调查计划
+
+登记所有病灶及其分类状况，以及在病灶内为管理病灶而采取的有效应对干预措施，并在必要时进行重新分类的可能性。
+
+* 仪表板
+
+除元数据外，该软件包还包括七个预配置但可编辑的仪表板。这些仪表盘由相应计划的指标填充。这些计划相互配合，在减轻负担和消除疟疾的不同方面发挥作用。
+
+## 计划结构{ #program-structure } 
+
+### 计划摘要{ #program-summary } 
+
+#### MAL-CS：疟疾病例通报、调查和应对{ #mal-cs-malaria-case-notification-investigation-response } 
+
+| 阶段 | 描述 |
+|---|---|
+| 注册 | 该部分用于记录病例及其相关组织单位的信息。当病人登记加入病例计划时，他们也会登记加入其报告的医疗机构组织单位，并被分配一个唯一的 ID，同时收集有关病人的一般问题，如全名、年龄、性别、职业和联系方式。这一登记也是启动调查所必需的病例通知。 |
+| 诊断和治疗阶段 | 这一阶段记录与患者诊断、病例检测环境、疟疾病史和患者旅行史有关的所有信息，这些信息是对病例进行初步分类所必需的。这一阶段在医疗机构一级进行，通常在发现后 24 小时（1 天）内完成。 |
+| 个案调查和分类 | 这一阶段包括记录有关信息、接受筛查的家庭成员和检测呈阳性者的信息、家庭协调情况以及所采取的任何病媒控制干预措施的记录。这一阶段在疫情家庭进行，通常在调查小组发现后 3 天内完成。 |
+| 邻近住户调查 | 在这一阶段，调查人员可对疫点周围预定半径内的邻近住户进行调查。这一阶段包括对所有家庭成员进行疟疾筛查，捕捉邻近住户的坐标，并记录所采取的任何病媒控制干预措施......这是一个可重复的阶段，在每个被访问的邻近住户进行，通常在调查小组发现疫点病例后 3 天内完成。 |
+| 案例结果 | 在这一阶段，一旦所有检查结束，就会记录最终的病例分类以及患者的治疗结果。这一阶段最好在发现后 3 天内完成。 |
+| 常规重点调查 | 这一阶段收集的信息涉及重点人群的类型以及所采取的病媒控制干预措施。常规重点调查通常在每个被动发现病例后 7 天内进行。 |
+
+#### MAL-FOCI：疟疾病灶调查{ #mal-foci-malaria-foci-investigation } 
+
+ | 阶段 | 描述 |
+|---|---|
+| 注册 | 该阶段收集病灶的基本信息，包括注册日期和病灶名称，并为其分配一个唯一的 ID，从而创建病灶档案。 |
+| 重点状况、调查和分类 | 这是一个可重复的阶段，可记录病灶状况、病媒行为、杀虫剂抗药性状况和最终分类，其中记录病灶状况并对病灶进行分类。 |
+| 焦点回应 | 这一阶段是一个可重复的阶段，记录在这一重点中采取的应对措施和病媒控制干预措施。 |
+
+### 工作流程 { #workflow } 
+
+![Package workflow](resources/images/package_workflow.png)
+
+该计划假定所有登记人员的疟疾检测结果均呈阳性，并分为五个不可重复的阶段，对病例进行全程跟踪。
+
+### 预期用户{ #intended-users } 
+
+该计划的目的是在护理点设施和实地一级进行数据录入，并将指标填充到仪表板中，以便在国家、地区和设施各级使用。目前，数据录入用户可以访问所有阶段，但根据国内工作流程，他们可以按计划阶段进行划分，例如，只允许调查小组访问调查阶段。
+
+### 用户组{ #user-groups } 
+
+用户组是根据用途和功能划分的。如果功能重叠，一个用户可以属于多个用户组。此外，还可以通过为不同阶段指定特定的用户组来进一步划分。用户还需要指定一个组织单位。
+
+* MAL-CS：疟疾病例通报、调查和应对
+  1. **MAL-CS-数据分析：** 可以访问所有仪表盘，但不能修改元数据或输入新数据
+  2. **MAL-CS-数据输入：** 能够输入数据并创建新的病人记录
+  3. **MAL-CS- 元数据管理：** 可以修改元数据
+
+执行国应确保用户拥有各自组织单位的数据输入和搜索权。
+
+* MAL-FOCI：病灶调查与响应
+  1. ** MAL-FOCI-数据分析：** 可以访问所有仪表盘，但不能修改元数据或输入新数据
+  2. **MAL-FOCI-数据输入：** 能够输入数据并创建新的病人记录
+  3. **MAL-FOCI- 元数据管理：** 可以修改元数据
+
+## 跟踪器配置{ #tracker-configuration } 
+
+### MAL-CS：疟疾病例通知、调查和应对--计划配置{ #mal-cs-malaria-case-notification-investigation-response-program-configuration } 
+
+疟疾病例通知、调查和应对 "程序从确诊疟疾病例开始跟踪，直至做出重点应对决定。病例由跟踪实体类型 "疟疾病例 "表示。一个病例可不止一次加入该方案。 
+
+程序会显示首页列表，以便对组织单位中的案例一目了然，搜索案例时至少需要两个属性，最多可返回 50 个 TEI。
+
+该程序已被设置为 "审计"，这意味着用户可以访问其他组织单位的注册信息，但会保留谁访问了哪些记录的审计线索。有关访问限制更严格的更安全方法，请参阅 [此处](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-236/new-tracker.html#webapi_nti_access_level)。
+
+### MAL-FOCI：疟疾病灶调查--计划配置{ #mal-foci-malaria-foci-investigation-program-configuration } 
+
+疟疾病灶调查 "计划登记所有已确定的病灶。世卫组织对病灶的定义是 "位于疟疾流行地区或曾经发生过疟疾的地区内的一个确定的限定区域，在该区域内存在疟疾传播所需的流行病学和生态学因素"。在实践中，调查和发现病灶中的病例是更广泛的病灶调查的一部分，而后者可能还包括确定传播原因的额外调查。病灶由跟踪实体类型 "病灶区 "表示。
+
+程序会显示首页列表，以便对组织单位中的病灶列表一目了然，搜索病灶时至少需要一个属性，搜索返回的 TEI 没有上限。
+
+由于 Foci 属于地理设置，因此在其注册中没有登记敏感的个人信息，它们的访问级别被设置为 "开放"。应根据当地数据保护立法对此进行评估。
+
+它目前没有捕捉入学坐标的功能点，因为这些坐标是在调查阶段捕捉到的。
+
+### 前缀{ #prefixes } 
+
+在整个元数据包中，元素的前缀是 "MAL"（与其他疟疾计划共享的对象）、"MAL-CS"（病例监测计划的对象）、"MAL-FOCI"（疟疾病灶计划的对象）和 "GEN"（我们的标准元数据包的通用前缀）。
+
+### 唯一标识符{ #unique-identifiers } 
+
+这些程序使用不同的唯一标识符来帮助重复数据删除和定位病例/病灶。这些标识符包括自动生成的标识符，应根据当地需要进行调整。
+
+系统个案 ID - 整个系统唯一的标识符，格式为 RANDOM(XXX######)。
+
+疟疾本地病例 - ID 整个系统唯一的标识符。目前该标识符不会自动生成，因此无法以纸质记录等为依据。
+
+Focus ID - An identifier which is unique for the whole system with an automatically generated pattern in the format `RANDOM(XXX##)`
+For more information about the text patterns in DHIS2, see [here.](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/additional-information/dhis2-tutorials.html#working-with-textpattern)
+
+### 追踪实体类型 { #tracked-entity-type } 
+
+#### MAL-CS：疟疾病例通报、调查和应对{ #mal-csmalaria-case-notification-investigation-response } 
+
+病例监控程序使用的跟踪实体类型是 "病例"，而不是我们元数据包中常用的 "人"。这意味着每次有人受到感染，他们就会成为一个病例。一个病例只允许注册一次。如果某人再次感染疟疾，则必须登记为新病例，（在诊断和治疗阶段）有一些字段可以记录其以前的感染信息。
+
+这意味着可能有多个 "个案 "跟踪实体代表同一个人，并具有相同的国家 ID 编号，因此，该属性对于实例来说不应该是唯一的。每个案例都会生成一个新的 "系统案例 ID"。
+
+根据实施需要，另一种方法是使用跟踪实体类型 "人"，并允许多次登记。在这种情况下，每次记录感染时都需要一个新的病例 ID，这将导致新的登记，因此它不应作为个人登记的属性，而应作为数据元素添加到计划阶段。
+
+#### MAL-FOCI：病灶调查与应对{ #mal-foci-foci-investigation-response } 
+
+Foci 计划使用跟踪实体类型 "重点区域"，其强制属性为 "重点 ID "和 "重点名称"。
+
+### 人际关系 { #relationships } 
+
+建议使用[关系小部件](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-235/tracking-individual-level-data/tracker-capture.html#add_relationship_to_tracked_entity_instance)配置两种关系类型，以将疟疾病例相互连接起来（在同一跟踪程序内），并将疟疾病例与其重点地区连接起来（在跟踪程序之间）。
+
+**MAL - 病例对病例**：这种关系类型是一种双向关系，将疟疾病例与同一追踪项目中的另一个疟疾病例联系起来。 
+* 来自限制条件：在计划 "疟疾病例通知、调查和响应 "中使用跟踪实体类型 "疟疾病例 "的跟踪实体实例
+* 限制：在计划 "疟疾病例通知、调查和响应 "中使用跟踪实体类型 "疟疾病例 "的跟踪实体实例
+
+![配置疟疾病例对病例关系 "来自 "约束](resources/images/MAL_CS_relationshipType_casetocase.png)
+
+![配置疟疾病例到病例关系 "到 "约束](resources/images/MAL_CS_relationshipType_casetocase2.png)
+
+**MAL - 病例到病灶**：这种关系类型是一种双向关系，目的是将疟疾病例（一个追踪程序中的 TEI）与恶性病灶（另一个追踪程序中的 TEI）联系起来。病例到病灶允许用户将病例与现有或新病灶联系起来。同样，也可以将病灶与报告的病例联系起来。 
+* 来自限制条件：在计划 "疟疾病例通知、调查和响应 "中使用跟踪实体类型 "疟疾病例 "的跟踪实体实例
+* 限制：跟踪实体实例，在计划 "疟疾病灶调查 "中使用跟踪实体类型 "重点区域
+
+![配置疟疾病例与病灶之间的关系 "来自 "约束](resources/images/MAL_CS_relationshipType_casetofocus.png)
+
+![配置疟疾病例与病例之间的关系 "from "约束](resources/images/MAL_CS_relationshipType_casetofocus2.png)
+
+关系窗口小部件中显示的信息可以通过在跟踪实体类型中添加属性并标记 "显示在列表中 "复选框来更改。
+![关系 widgetalt_text](resources/images/relationships.png)
+
+## 详细阶段{ #stages-in-detail } 
+
+### MAL-CS：疟疾病例通知、调查和应对 - 阶段{ #mal-cs-malaria-case-notification-investigation-response-stages } 
+
+1. 注册
+
+   在登记阶段，每个病例都要进行登记，并分配一个系统病例 ID 和疟疾病例 ID。根据实施的需要，这些标识可以配置为自动生成和唯一的。
+
+   | 名称 | UID | 值类型 | 选项/逻辑（如适用） | 是否必填？|
+   |:---:|:---:|:---:|:---:|:---:|
+   | 注册日期 | qDkgAbB5Jlk | 日期 | | 是 | 日期
+   | 系统案例 ID | HAZ7VQ730yn | 文本 | 自动分配 | 否 | 系统案例 ID | HAZ7VQ730yn | 文本 | 自动分配 | 否
+   疟疾本地病例 ID | NXazwhBRpfA | TEXT | | NO | No |
+   | 名字 | sB1IHYu2xQT | 文本 | | 不 |
+   | Surname | ENRjVGxVL6l | TEXT | | No |
+   | 出生日期 | NI0QRzJvQ0k | 日期 | | 无 |
+   | 出生日期是估计的 | Z1rLc1rVHK8 | TRUE_ONLY | | NO |
+   | Age (years) | B6TnnFMgmCk | INTEGER_ZERO_OR_POSITIVE | Calculated by program rule | NO |
+   | Sex | oindugucx72 | TEXT | FEMALE MALE | NO | 性别
+   | 怀孕状态 | sPDKWSQ2vKQ | 文本 | 只有育龄女性可见 /YES NO | NO | 否
+   | Malaria - Occupation | ZZmkcCkzzWr | TEXT | NURSE STUDENT TEACHER TRUCKDRIVER MINEWORKER SEASONALWORKER MIGRANTWORKER FARMER | NO | 疟疾--职业
+   | 现在的家庭住址 | CpDhdm55uhl | 文本 | | 不 |
+   | 地址（永久） | XN0145qZ7kH | 文本 | | 不 |
+   | 国籍 | spkM2E9dn2J | 文本 | 完整国家列表 ISO 代码 | NO |
+   | 手机号码 | fctSQp5nAYl | PHONE_NUMBER | | NO | 手机号码
+   | 户主（名） | YCKldfKePsC | 文本 | | | 否 |
+   | 户主（姓氏） | uLvB95ZxIUL | 文本 | | 不
+
+2. 诊断和治疗阶段
+
+   该阶段分为三个部分。必须输入诊断日期和病例检测设置。这两个要素在指标计算中使用量很大。
+
+   | 节 | 名称 | UID | 值类型 | 逻辑/选项（如果有） | 强制性？|
+   |---|---|---|---|---|---|
+   | 不适用 | 诊断日期 | hYyB7FUS5eR | 日期 | | 是 | 不适用 | 诊断日期 | hYyB7FUS5eR | 日期 | | 是 | 是
+   | 病例检测 | 检测设置 | fazCI2ygYkq | 文本 | PASSIVE REACTIVE PROACTIVE | YES | 是
+
+   在疟疾诊断部分，记录了与诊断过程相关的所有数据。为方便数据录入，在不相关的情况下还会隐藏选项。
+
+   | 节 | 名称 | UID | 值类型 | 逻辑/选项（如果有） | 强制性？|
+   |---|---|---|---|---|---|
+   | 疟疾诊断 | 进行病例调查的原因 | zFiMMpGyBgr | TEXT | 只有在检测设置中选择 "主动 "时可用。development_of_activities population_movement refugee_crisis climatic_triggers other | no | 其他
+   | 诊断疟疾 | 进行病例调查（其他） | J4fIuC5ZLsU | 文本 | | NO | No |
+   | 疟疾诊断 | 温度 | J7hdx5FCJvG | 编号 | | 不 |
+   | 疟疾诊断 | 体重 | JINgGHgqzSN | INTEGER_POSITIVE | | NO | JINgGHgqzSN
+   | 疟疾诊断 | 症状发作日期 | YEpmDm1I01R | 日期 | 如果增加了有症状的天数，则按程序规则计算 | NO | | 日期
+   | S6uZEpdNh8o | YES_ONLY | | NO | 疟疾诊断
+   | Malaria diagnosis | Number of days with symptoms | kJiPLxGq2yI | INTEGER_ZERO_OR_POSITIVE | Calculated by program rule if date is added | NO |
+   | 疟疾诊断 | qdjVZojEK8S | TEXT | RDT MICROSCOPY OTHER | NO | 疟疾诊断确认。
+   | 疟疾诊断 | 诊断方法（其他） | FxYWTORW4mT | TEXT | 只有在选择 "其他 "时才可见 | NO | 不可见。
+   | 疟疾诊断 | 疟疾疟原虫种类鉴定 | vGxpKVMkmaW | 文本 | 只有在选择了诊断方法时才可见
+   | 疟疾诊断 | 疟疾阳性物种（其他） | voV7EhjhyJ3 | TEXT | | NO | No |
+   | Malaria diagnosis | Malaria parasite density | Wwu7UAt7bZW | INTEGER_ZERO_OR_POSITIVE | Only visible if “Microscopy” is selected | NO |
+   | 疟疾诊断 | 配子细胞的存在 | LCxi1dciA1C | BOOLEAN | 仅在选择 "显微镜检查 "时可见 | NO | 不可见
+   | 疟疾诊断 | MAL-CS 疾病严重程度 | SzVk2KvkSSd | 文本 | SIMPLE SEVERE | 不
+   | 疟疾诊断 | 疟疾药物治疗 | nTMP8Aj1rYA | TEXT | AL ALPLUSPQ AS-SP ASPLUSAQ ASPLUSMQ ASPLUSMQPLUSPQ ASPLUSSP ASPLUSSPPLUSPQ CHLOROQUINE DHA-PPQ DHA-PPQPLUSPQ RADICAL_CURE OTHER | NO | 疟疾治疗
+   | 疟疾诊断 | 住院状态 | MKMyvXshCdB | 文本 | ADMITTED REFERRED OPD | NO | 疟疾诊断
+   | 疟疾诊断 | 转诊原因 | Zlro25GTcNK | TEXT | 只有当病例入院状态为 "已转诊 "时才可见 FURTHER_MANAGEMENT OUTOFSTOCK | NO | 转诊原因
+
+   旅行详情部分涉及案件最近在国内外的旅行记录，以确定有待调查的初步分类。此外，还包括基本的决策支持方案规则。
+
+   | 节 | 名称 | UID | 值类型 | 选项（如果有） | 是否必填？|
+   |---|---|---|---|---|---|
+   | 旅行详情 | 最近在国内旅行 | hiymQVgVG2v | 文本 | 是 | 否 | 否 | 是
+   | 旅行详情 | 在国内旅行（30 天症状） | qpp5fp1RVaX | 文本 | 仅适用于病例最近旅行过的情况 YES NO | NO | 否
+   | 旅行详情 | 在国内旅行 地区/区域 | SI1D9IfXiI4 | 文本 | 只有当病例最近旅行过才可用 | NO | | 旅行详情
+   | 旅行详情 | 旅行所在国城镇/村庄名称 | eYOHoeSizJk | 文本 | 只有当病例最近旅行过才可用 | NO | | 旅行详情
+   | 旅行详情 | 昨晚在国内旅行 | BRNQ61bbt28 | 日期 | 仅适用于最近旅行的病例 | NO | 不适用
+   | 旅行详情 | 在国内旅行 第一夜 | Oc9Y7jvdU2g | 日期 | 仅适用于最近旅行的情况 | NO | 不适用
+   | 旅行详情 | 境外旅行 | OhU3RfPlQGR | 文本 | 是 | 否 | 否 | | 是
+   | 旅行详情 | 上个月在国外旅行 | B1zbtdPXMRk | 文本 | 只有当病例最近旅行时才可用是 否 | 否 | 是
+   | 旅行详情 | 前往的国家 | f9xYwUwrHq9 | 文本 | 只有当病例最近旅行过时才可用完整的国家列表 | NO | 否
+   | 旅行详情 | 在国外旅行 地区/区域 | kwv9fXr7gbj | 文本 | 只有当病例最近旅行过才可用 | NO | | 旅行详情
+   | 旅行详情 | 到国外旅行的城镇/村庄名称 | JZw2d0yzmHB | 文本 | 只有当病例最近旅行过才可用 | NO | | 旅行详情
+   | 旅行详情 | 昨晚在国外旅行 | mw2Rso4RHEF | 日期 | 仅适用于最近旅行的病例 | NO | 不适用
+   | 旅行详情 | 第一晚在国外旅行 | JBBAwCahDQ3 | 日期 | 仅适用于最近旅行的病例 | NO | 不适用
+   | 旅行详情 | 旅行历史叙述 | i7JwJXVEl2C | 文本 | | NO |
+   | 旅行详情 | 初步案件分类 | bcGuRgKDZei | 文本 | 本地进口 INTRODUCED RECRUDESCENT INDUCED | NO | 不适用
+   | 旅行详情 | 分类叙述 | pIcW9I0z5LL | 文本 | | 不 |
+
+   疟疾病史部分涉及以前感染疟疾的相关数据，包括以前的治疗方法和确定的种类。
+
+   | 节 | 名称 | UID | 值类型 | 逻辑/选项（如果有） | 强制性？|
+   |---|---|---|---|---|---|
+   | 过去 3 个月内输血 | yO0ZIegEsDk | BOOLEAN | | NO | | 有疟疾史
+   | 疟疾历史 | 历史 | cpXwLgQTLeO | BOOLEAN | | NO | No |
+   | 疟疾史 | 既往诊断日期 | Urz28endlF6 | 日期 | 仅适用于有确诊疟疾史的情况 | NO | 否
+   | 疟疾史 | 疟原虫种类（以前） | xTeHON9Jisk | TEXT | 仅适用于有确诊疟疾史的情况PF PK PM PO PV MIX OTHER | NO | 疟疾史（以前） | xTeHON9Jisk | TEXT | 仅适用于有确诊疟疾史的情况
+   | 疟疾史 | 疟疾用药（以前） | JndDE3YbCEB | TEXT | 仅在有确诊疟疾史时可用AL ALPLUSPQ AS-SP ASPLUSAQ ASPLUSMQ ASPLUSMQPLUSPQ ASPLUSSP ASPLUSSPPLUSPQ CHLOROQUINE DHA-PPQ DHA-PPQPLUSPQ RADICAL_CURE OTHER | NO | 疟疾用药（以前） | JndDE3YbCEB | TEXT | 仅在有确诊疟疾史时可用
+
+   最后一部分在数据输入屏幕中不可见，但对指标计算至关重要。它始终通过程序规则隐藏，表达式为 "true"，表示始终隐藏。两个数据元素都是自动填充的。通知日期来自填写报告时的当前日期，诊断日期来自事件中的 "诊断日期 "功能。后一个数据元素的存在是为了在其他阶段的指标中使用该值。
+
+   | 节 | 名称 | UID | 值类型 | 选项（如果有） | 是否必填？|
+   |---|---|---|---|---|---|
+   | 出于指标目的的隐藏部分（诊断） | 通知日期 | fPbtS7glDT2 | 日期 | | NO | 日期
+   | 用于指标目的的隐藏部分（诊断） | 诊断日期 | ObiXORrILyV | 日期 | | 否 | | 否
+
+3. 个案调查和分类
+
+   这就是神奇之处。案件通知、调查和回复是尽可能贴近案件进行记录的阶段。调查是在家庭中使用移动设备进行的。它包括一个功能点，调查人员可在此记录家庭层面的案件坐标。这些坐标随后将用于填充地理仪表板。
+
+   第一部分涉及案件的地点
+
+   | 节 | 名称 | UID | 值类型 | 选项（如果有） | 是否必填？|
+   |---|---|---|---|---|---|
+   | 地物 | 事件点 | | 坐标 | | 否 |
+   | 特征 | 案件调查日期 | wYTF0YCHMWr | 日期 | | 是 | 是
+   | 案件入户调查 | 案件调查地点 | xS8sL2MMpc0 | 文本 | 卫生保健机构家庭电话 | NO | 电话号码
+   | 案件住户调查 | 村名 | Th6dW4kwZji | 文本 | 只有在住户中进行调查时才可用 | NO | 不
+
+   索引病例家庭调查是对病例居住的实际地点进行调查，并对家庭成员进行筛选。如果数字不正确（例如，拥有渔网的家庭成员多于家庭成员总数），则会触发基本验证规则
+
+   | 户主姓名 | SlqoeFUJvUV | 文本 | | NO | 户主姓名
+   |---|---|---|---|---|---|
+   | 指数情况住户调查和答复 | 住户成员人数 | lezQpdvvGjY | INTEGER_ZERO_OR_POSITIVE | | NO | No | No.
+   | y57kkdyw35d | INTEGER_ZERO_OR_POSITIVE | | NO
+   | 指数病例家庭调查和响应 | 家庭成员疟疾阳性 | qxWAgIAfZAh | INTEGER_ZERO_OR_POSITIVE | | NO |
+   | QtZBHQORAvK | INTEGER_ZERO_OR_POSITIVE | | 不
+   | 指数情况住户调查和答复 | 住户成员自己的网络 | uPNwmZl8Clb | INTEGER_ZERO_OR_POSITIVE | | NO | | NO
+   | KA6RY4BB41F | INTEGER | | YES | 是
+   | 指数病例家庭调查和响应 | 过去 12 个月内喷洒过药物的家庭 | AeVEKN0zwJJ | BOOLEAN | | YES | 是
+   | 疟疾病媒控制干预--室内滞留喷洒 | oYbOVrpDnRo | YES_ONLY | | NO | 疟疾病媒控制干预--室内滞留喷洒
+   | 指数病例家庭调查和应对 | 疟疾病媒控制干预--发放长效驱虫蚊帐 | CSYSRYrevdf | YES_ONLY | | NO | 疟疾病媒控制干预--发放长效驱虫蚊帐
+   | 指数病例家庭调查和应对 | 病媒控制干预-幼虫源管理 | wwIvEJUmxx8 | YES_ONLY | | NO |
+
+   最后一部分在数据输入屏幕中不可见，但对指标计算至关重要。它总是通过程序规则隐藏起来，两个数据元素都是自动填入的。两个不同的数据元素通过程序规则自动填入诊断阶段的数据。
+
+   | 节 | 名称 | UID | 值类型 | 选项（如果有） | 是否必填？|
+   |---|---|---|---|---|---|
+   | 检测设置 | fazCI2ygYkq | 文本 | 被动 被动 被动 被动
+   诊断日期 | ObiXORrILyV | 日期 | | NO | | | | | | | | | | 日期
+
+4. 邻近住户调查
+
+   该阶段记录在案件预定半径内住户所做调查的数据。如果数字不正确（例如，拥有渔网的家庭成员多于家庭成员总数），则会触发基本的验证规则。
+
+   | 节 | 名称 | UID | 值类型 | 选项（如果有） | 是否必填？|
+   |---|---|---|---|---|---|
+   | 附近住户调查 | 调查日期 | VgsOuy9mXyZ | 日期 | | 是 | 是
+   | 附近住户调查 | 户主姓名 | SlqoeFUJvUV | 文本 | | 无 |
+   | 附近住户调查 | 住户成员人数 | lezQpdvvGjY | INTEGER_ZERO_OR_POSITIVE | | NO | 不知道
+   | y57kkdyw35d | INTEGER_ZERO_OR_POSITIVE | | NO | | Y57kkdyw35d
+   | 附近住户调查 | 家庭成员疟疾阳性 | qxWAgIAfZAh | INTEGER_ZERO_OR_POSITIVE | | NO | 不知道
+   | QtZBHQORAvK | INTEGER_ZERO_OR_POSITIVE | | NO | 附近住户调查 | 睡眠地点
+   | 附近住户调查 | 家庭成员自己的网络 | uPNwmZl8Clb | INTEGER_ZERO_OR_POSITIVE | | NO | NO | NO | NO
+   | KA6RY4BB41F | INTEGER | | NO | 附近住户调查 | 前一晚在网下睡觉的住户中的居民
+   | AeVEKN0zwJJ | BOOLEAN | | NO | | AeVEKN0zwJJ
+   | 附近住户调查 | 疟疾病媒控制干预--发放长效驱虫蚊帐 | CSYSRYrevdf | yes_ONLY | | NO | | CSYSRYrevdf
+   | oYbOVrpDnRo | yes_ONLY | | NO | 疟疾病媒控制干预--室内滞留喷洒
+
+5. 案例结果
+
+   病例结果记录了病例调查后的最终病例分类以及疾病结果，并包含以下数据元素：
+
+   案件结果 | 报告日期 | eHvTba5ijAh | 日期 | | TRUE | TRUE | TRUE | TRUE | TRUE | TRUE | TRUE | TRUE
+   |---|---|---|---|---|:---:|
+   | 病例结果 | 疟疾最终病例分类 | y3CG06h1Clh | TEXT | INDIGENOUS IMPORTED INTRODUCED RECRUDESCENT INDUCED | FALSE | 病例结果
+   | 病例结果 | 疾病结果 | zXNfOKXRBA9 | TEXT | CURED DIED ABSCONDED | TRUE | 病例结果
+
+   它还包括一个包含数据元素 "入院状态 "的隐藏部分，该数据元素是根据 "诊断和治疗 "阶段的同一数据元素自动分配的。
+
+   | 部分 | TEA / DE / eventDate | UID | valueType | optionSet | 强制性
+   |:---:|:---:|:---:|:---:|:---:|:---:|
+   | 隐藏部分，用于指标目的（结果） | 入院状态 | MKMyvXshCdB | 文本 | ADMITTED REFERRED OPD | NO | 入院状态
+
+6. 常规重点调查和回应
+
+   本阶段在每个案例取得结果后完成。它包括五个部分，不可重复。
+
+   在 "地点 "部分，用户可选择地点是城市还是农村。
+
+   | 节 | 名称 | UID | 值类型 | 选项（如果有） | 是否必填？|
+   |---|---|---|---|---|---|
+   | 特征 | 重点调查日期 | KwrBvn1EJT3 | 日期 | | 是 | 日期 | 是
+   | 地 区 | 地 区 | r4GBctr3Xdh | 文本 | 城市 乡村 | 否 | | 地区
+
+   在 "人口类型 "部分，用户选择病例焦点中存在的人口类型。可以选择多个类型
+
+   | 部分 | TEA / DE / eventDate | UID | valueType | optionSet | 强制性
+   |:---:|:---:|:---:|:---:|:---:|:---:|
+   | 人口类型 | MAL- Migrant | BK2d3ktuJWa | YES_ONLY | | NO | BK2d3ktuJWa
+   | 人口类型 | MAL- Refugee | HUzRTYRFcYn | YES_ONLY | | NO | HUzRTYRFcYn
+   | 人口类型 | MAL- 居民 | Cd5AUkJT1mE | YES_ONLY | | NO | Cd5AUkJT1mE
+   | 人口类型 | MAL- 临时工 | VJ7qLlRgm7e | YES_ONLY | | NO | VJ7qLlRgm7e
+
+   答复部分收集答复日期。
+
+   | 部分 | TEA / DE / eventDate | UID | valueType | optionSet | 强制性
+   |:---:|:---:|:---:|:---:|:---:|:---:|
+   | 响应 | 响应日期 | G7f2D1vl3fD | 日期 | | NO | 响应时间
+
+### MAL-FOCI：病灶调查与应对 - 阶段{ #mal-foci-foci-investigation-response-stages } 
+
+1. 注册
+
+   在病灶注册中，除了注册日期外，只有四个属性。它有一个多边形属性，该属性是通过跟踪实体类型配置的，可以捕捉焦点的周边。请注意，这并没有配置为程序特征，因为输出地图中不支持表示多边形特征。
+
+   | Name | UID | valueType | optionSet | mandatory | mandatory | 选项集
+   |:---:|:---:|:---:|:---:|:---:|:---:|
+   | 病灶登记日期 | M3xtLkYBlKI | 日期 | | 是 | 否 | 日期
+   | 多边形|TE 类型属性 | 多边形坐标 | | NO | | | | | | | NO
+   | 疟疾病灶调查 病灶名称 | Kv4fmHVAzwX | TEXT | | | NO | | |
+   | 疟疾病灶调查地点 | phxAY4PQdsT | TEXT | URBAN RURAL | NO | | | |
+   疟疾病灶调查焦点 ID | K9innmM1nuW | TEXT | | NO | | |
+   | 疟疾病灶调查 病灶定义 | cnXnFAStrrd | TEXT | VILLAGEFOCUS DISTRICTFOCUS REGIONFOCUS | NO | | | |
+
+2. 重点状况调查和分类阶段
+
+   这是一个可重复的阶段，记录病灶调查的细节。它有五个部分，在调查之后应对病灶进行分类，随后的阶段将包括之前的分类和可能采取的任何干预措施。
+
+   如果之前没有进行过任何干预或调查，则第一部分会通过程序规则隐藏起来。如果进行过干预，则显示该部分，其中大部分数据元素会根据其他阶段的值自动完成。
+
+   它有一个点功能，可以将坐标记录为地图上的一个点，以标记焦点的位置。
+
+   | 阶段 | 部分 | TEA / DE / eventDate | UID | valueType | optionSet | 强制性 | | 阈值类型
+   |:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+   | 特征点坐标
+   | | 特征 | 病灶调查日期 | CWaAcQYKVpq | 日期 | | YES | 是
+   | Focus Status | - Date of classification | Ah29MGrnVjJ | DATE | | No |
+   | Focus Status | - Classification | V1OnhZYfSa2 | TEXT | ACTIVE RESIDUAL_NON-ACTIVE CLEARED | NO | | V1OnhZYfSa2
+   | 重点状态 | - 以前的病媒控制干预措施 - LLIN 分配 | jhoCqSTA2QB | YES_ONLY | | NO |
+   | 重点状态 | - 以前的病媒控制干预 - 室内滞留喷洒 | e6hRE1N1Fcc | YES_ONLY | | NO |
+   | | 重点状态 | - 以前的病媒控制干预 - 幼虫源管理 | dbMsAGvictz | YES_ONLY | | NO |
+
+3. 病灶调查部分是大部分工作发生的地方。
+
+   | 部分 | TEA / DE / eventDate | UID | valueType | optionSet | 强制性
+   |:---:|:---:|:---:|:---:|:---:|:---:|
+   | Foci Investigation | - Total Population in the Focus | HDRons6AfbL | INTEGER_POSITIVE | | No |
+   | 病灶调查 | - 疟疾家庭 | VNM6zoPECqd | INTEGER_POSITIVE | | NO | 疟疾家庭
+   | Foci Investigation | MAL- Resident | Cd5AUkJT1mE | YES_ONLY | | No |
+   | Foci Investigation | MAL- Migrant | BK2d3ktuJWa | YES_ONLY | | NO |
+   | Foci Investigation | MAL- Temporary worker | VJ7qLlRgm7e | YES_ONLY | | NO |
+   | Foci Investigation | MAL- Refugee | HUzRTYRFcYn | YES_ONLY | | NO | No |
+   | Foci Investigation | - Type of Population - Other | QZZA5IfHAAU | YES_ONLY | | NO | QZZA5IfHAAU | 是
+   | Foci Investigation | - Type of Population - Specify Other | ehBd9cR5bq4 | TEXT | Only shown if other is selected | NO | 仅在选择 "其他 "时显示。
+   | Foci Investigation | - Geographical features | SaHE38QFFwZ | TEXT | HILLY PLATUE HILLY_AND_PLATUE | NO |
+   | Foci Investigation | - Development activity present | Tj642rK34Qf | YES_ONLY | | NO |
+   | Foci Investigation | - Development activity type | jzksn7lA2ac | TEXT | Only shown if yes is is selected previously--AGRICULTURE CONSTRUCTION MINING PLANTATION OTHER | NO | | - Development activity type
+   | Foci Investigation | - Development activity other specify | gd8U1R3ALDA | TEXT | Only shown if other is selected | NO | 仅在选择 "其他 "时显示。
+
+   病媒行为部分涉及该地区蚊子的休息和叮咬行为。
+
+   | 部分 | TEA / DE / eventDate | UID | valueType | optionSet | 强制性
+   |:---:|:---:|:---:|:---:|:---:|:---:|
+   | Vector Behaviour | - Biting Behaviour | PxKiOhLn7mV | TEXT | INDOORBITING OUTDOORBITING | NO | 室内咬人行为
+   | 矢量行为 | -静息行为 | X1DpyS5FN3T | 文本 | 室内外 | 无 |
+
+   杀虫剂抗药性部分登记该地区是否存在杀虫剂抗药性以及对哪种杀虫剂存在抗药性。
+
+   | 部分 | TEA / DE / eventDate | UID | valueType | optionSet | 强制性
+   |:---:|:---:|:---:|:---:|:---:|:---:|
+   | 杀虫剂抗药性 | - 已证实的疟疾杀虫剂抗药性 | fyjPqlHE7Dn | BOOLEAN | | NO | No |
+   | BENDIOCARB01 CARBOSULFAN04 DDT4 DIELDRIN4 MALATHION5 PIRIMPHOS025 DELTAMETHRIN005 | NO | | UFTvUJIMiH0 | TEXT | 只有在先前选择 "是 "时才会出现。
+
+   分类部分可让医务工作者登记重点状态，以及如何根据收集到的证据进行分类。在下一次调查中，该值将出现在表格开头的数据元素中。
+
+   | 部分 | TEA / DE / eventDate | UID | valueType | optionSet | 强制性
+   |:---:|:---:|:---:|:---:|:---:|:---:|
+   | 分类 | - 聚焦最终分类 | fjdU9F6EngS | TEXT | ACTIVE RESIDUAL_NON-ACTIVE CLEARED | YES | 是
+   | 分类 | - 重点分类日期 | bl7EMKxJIIT | 日期 | | 是 |
+   | 分类 | - 附加信息证据 | PILB3GtIwiJ | 文本 | | NO |
+
+4. 病灶 反应阶段
+
+   | 部分 | TEA / DE / eventDate | UID | valueType | optionSet | 强制性
+   |:---:|:---:|:---:|:---:|:---:|:---:|
+   | 病灶应答 | 病灶应答日期 | uvMKOn1oWvd | 日期 | | 是 | 否
+   | Foci Response | - Households included | k0rev4WSffi | INTEGER_POSITIVE | | NO | Foci Response
+   | Foci Response | - People included | DX4LVYeP7bw | INTEGER_POSITIVE | | NO | | DX4LVYeP7bw
+
+   | 部分 | TEA / DE / eventDate | UID | valueType | optionSet | 强制性
+   |:---:|:---:|:---:|:---:|:---:|:---:|
+   | JhpYDsTUfi2 | YES_ONLY | | NO | 病媒控制
+   | 病媒控制 | MAL- 后续病媒控制干预-室内残留喷洒 | yhX7ljWZV9q | YES_ONLY | | NO |
+   | 病媒控制 | - 后续病媒控制干预 - 幼虫源管理 | c2c62aRFIfr | YES_ONLY | | NO |
+
+## 计划规则{ #program-rules } 
+在数据输入过程中，已根据工作流程逻辑对程序规则进行了配置，以隐藏数据元素/部分，并为其他数据元素或事件日期赋值。由于在根据多个事件的数据计算指标时存在局限性，一些程序规则被用于将数据移入作为整个程序 "隐藏部分 "一部分的数据元素中。在修改软件包时，应格外注意这些隐藏部分的数据元素是否被正确填入。可以通过删除隐藏部分的程序规则，直接在 Tracker 中进行测试。这些规则均称为_"为指标目的隐藏部分"_。 
+
+## 分析工具 { #analytics } 
+
+### 仪表板 { #dashboards } 
+
+该软件包包括 7 个仪表板，其中 6 个完全基于 MAL-CS 的指标，其余 1 个综合了 MAL-CS 和 MAL-FOCI 的指标。为了使它们保持合乎逻辑的顺序，我们在它们的名称前添加了一个数字，并在它们的前缀加上了相应的计划。
+
+#### MAL-CS- 01 趋势{ #mal-cs-01-trends } 
+
+![Trends](resources/images/dashboard1.png)
+
+#### MAL-CS-02 流行病学{ #mal-cs-02-epidemiology } 
+
+![Epidemiology](resources/images/dashboard2.png)
+
+#### MAL-CS-03 治疗和诊断{ #mal-cs-03-treatment-and-diagnostic } 
+
+![Treatment and diagnostic](resources/images/dashboard3.png)
+
+#### MAL-CS-04 案件通知与调查{ #mal-cs-04-case-notification-investigation } 
+
+![Case Notification and Investigation](resources/images/dashboard4.png)
+
+#### MAL-CS-05- 案件分类{ #mal-cs-05-case-classification } 
+
+![Case Classification](resources/images/dashboard5.png)
+
+#### MAL-CS-06- 地理定位{ #mal-cs-06-geolocation } 
+
+![Geolocation](resources/images/dashboard6.png)
+
+#### 焦点多边形{ #foci-polygons } 
+
+病灶调查和应对方案允许捕捉多边形而不是点。目前，这些多边形在程序中默认不作为地图对象，但可以作为跟踪实体层添加。
+
+![Foci polygon layer](resources/images/polygon.png)
+
+#### MAL-FOCI{ #mal-foci } 
+
+ ![Foci](resources/images/dashboard7.png)
+
+### 指标和计划指标{ #indicators-and-program-indicators } 
+
+本软件包中的指标是根据世卫组织指导文件中的规范制定的。 
+
+**计划指标**在本软件包中使用最为频繁（例如，通过条件筛选计算事件或注册人数）。由于根据多个事件的数据计算指标的局限性，一些计划规则被用来将数据移入作为整个计划 "隐藏部分 "一部分的数据元素中。在修改软件包时，应格外注意这些隐藏部分的数据元素是否被正确填入。可以通过删除隐藏部分的程序规则，直接在 Tracker 中进行测试。这些规则均称为_"为指标目的隐藏部分"_。 
+
+**指标**用于有分子和分母的情况。在本软件包中，指标通常在分子和分母中包含计划指标，以便计算调查案件百分比、及时通知案件百分比、按风险组别分列的案件百分比等数值。 
+
+*Note: Indicators that calculate a percentage of cases based on detection vs. outcome can show a result exceeding 100%, this results from cases in which the outcome happens in the following period. In particular for confirmed cases classified, the percentage can be more than 100% since the confirmation comes from diagnosis and treatment and the classification from the outcome, in a report the outcome could be in a different period.* 
+
+## 安卓兼容性{ #android-compatibility } 
+
+目前的程序与安卓系统完全兼容。在使用安卓系统实施时，尤其是修改程序时，必须熟悉[安卓系统实施指南]。(https://docs.dhis2.org/en/full/implement/dhis2-android-implementation-guide.html)
+

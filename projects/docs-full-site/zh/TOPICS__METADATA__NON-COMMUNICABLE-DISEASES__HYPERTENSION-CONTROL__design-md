@@ -1,0 +1,219 @@
+---
+edit_url: "https://github.com/dhis2-metadata/NCD_HTN/blob/master/docs/ncd_htn-design.md"
+revision_date: '2022-09-27'
+tags:
+- 元数据
+---
+
+# 高血压登记系统设计{ #ncd-htn-design }
+
+## 介绍 { #introduction } 
+
+### 目的 { #purpose } 
+
+本《高血压登记系统设计指南》概述了用于配置 DHIS2 跟踪程序以登记高血压患者并提供常规随访的概念设计。本文件旨在供国家和地区一级的 DHIS2 实施者使用，以便能够支持软件包的实施和本地化。在本地化和调整本配置包时，应始终考虑当地的工作流程和国家指导方针。
+
+### 背景 { #background } 
+
+高血压̶或血压升高̶是一种严重的疾病，会大大增加罹患心脏、大脑、肾脏和其他疾病的风险。据世界卫生组织估计，全世界 30-79 岁的成年人中约有 12.8 亿人患有高血压，其中大多数（三分之二）生活在中低收入国家。只有五分之一（21%）的高血压患者血压得到控制[^first]。
+
+该软件包基于 2021-2022 年在尼日利亚卡诺州和奥贡州配置和部署的用于高血压护理的 DHIS2 追踪器，由尼日利亚联邦卫生部、国家初级卫生保健发展局、HISP-Nigeria、世卫组织和 "拯救生命的决心 "组织合作完成。截至 2022 年 7 月，超过 104 家初级医疗保健机构的 16,000 多名高血压患者正在使用这一工具进行治疗。该计划以[简单应用](https://www.simple.org/)的设计和原则为基础，[简单应用]是由 RTSL 开发的一款定制移动应用，已在 4 个国家部署，截至 2022 年 4 月，已有 200 多万患者加入高血压护理。该方案的指标来自高血压管理 HEARTS 技术方案。
+
+在[尼日利亚高血压控制倡议](https://www.afro.who.int/news/nigeria-collaborates-who-curb-hypertension-introduces-control-initiative) (NHCI)之前，没有跟踪高血压患者管理情况的工具，只有 "疑似病例 "的发病率数据可在国家DHIS2实例中获得。国家高血压控制倡议促进了跟踪高血压患者管理和纵向监测的纸质工具的开发，但在操作上存在诸多挑战（增加了高危工作者的工作量和负担）和数据质量挑战（数据不一致、数据缺失、汇总错误、数据不及时），使项目管理人员和政策制定者无法获得准确的决策数据。这些因素导致在卡诺州和奥贡州由国家健康和儿童研究所支持的设施中部署了 DHIS2 追踪器。
+
+该软件包的主要目标是提高数据的及时性和准确性，加强数据在决策中的应用，并在初级医疗保健层面推广高效的高血压管理。与 "简单应用 "一样，该程序包也力求将常规高血压护理数据集最小化，以改进设施层面的分析，同时最大限度地减轻护理提供者的报告负担。
+
+## 系统设计概述{ #system-design-overview } 
+
+### 使用案例{ #use-case } 
+
+![Nigeria HTN User](resources/images/ncd_htn_001.jpg){ .center width=50% }
+
+The principal end users of this system are care providers at primary health centers who see patients for monthly hypertension services. Since hypertension generally affects a broad proportion of the population, in many contexts care providers have little time to enter detailed data on hypertension patient encounters. Therefore the focus is on collecting a _limited set of data elements_ to produce three key indicators: percent of patients with controlled blood pressure, percent of patients with uncontrolled blood pressure, and percent of patients with missed monthly visits.
+
+这些指标可在设施层面或更高的地区和国家层面的仪表板上进行监测（见下文）。汇总结果随后可推送到国家 HMIS 系统中。
+
+收集的其他数据元素对高血压管理也很重要。例如，医疗服务提供者会输入所提供的高血压治疗方法和药物。不过，患者必须被诊断出患有高血压，才能加入该计划。
+
+由于初级卫生保健中心通常缺乏可靠的互联网，因此跟踪器设计用于使用 DHIS2 Android 应用程序进行离线数据采集。它也可以通过 DHIS2 追踪器捕捉应用程序在浏览器中运行。
+
+![Design Diagram](resources/images/ncd_htn_002.jpg)
+
+### 计划结构的理由{ #rationale-for-program-structure } 
+
+该程序的基本目标是记录高血压患者每月的血压检查情况，并记录所提供的药物。所收集的数据仅用于识别患者和管理高血压，应尽快输入。
+
+不过，高血压登记册可以扩展到相关的非传染性疾病 (NCD)，如糖尿病或心血管疾病。这对于临床医生在高血压就诊期间经常监测和管理合并症（如糖尿病或心血管疾病）的情况尤其有用。
+
+因此，在调整程序供当地使用时，诊断出这些其他非传染性疾病可被视为有资格加入目前的 "高血压登记处"。因此，"此患者是否患有高血压 "的跟踪实体属性在注册时会自动填写为 "是"，而高血压报告的计划指标也需要此值。这种方法为实施提供了灵活性，以便在开始推广后用其他非传染性疾病来增强该计划。
+
+此外，通常与设施访问同步进行的实验室检测也可以作为新的计划阶段添加进来。
+
+## 程序配置{ #program-configuration } 
+
+### 注册{ #registration } 
+
+若要在 DHIS2 高血压登记册中登记新病人，用户首先要在登记页面中输入一些跟踪实体属性（Tracked Entity Attributes）。跟踪实体属性收集个人身份信息（如姓名、出生日期、身份证号码），用于患者搜索和验证。
+
+在高血压注册项目中，包括 16 个跟踪实体属性，但只有 5 个可作为标识符进行搜索。元数据参考文件中提供了完整的列表。
+
+| 注册开始             |  注册结束 |
+|:-------------------------:|:-------------------------:|
+| ![Registration Start](resources/images/ncd_htn_003.png) | ![Registration End](resources/images/ncd_htn_004.png) |
+
+有四个字段必须在注册时输入，用 * 表示
+
+* **Date of birth**.  If the patient does not know his or her date of birth, then the care provider should provide an estimated DoB and check ‘date of birth is estimated‘, which signifies the DoB should not be considered a reliable identifier for search criteria. Entering date of birth under 10 years old and over 140 years old displays an error. After entering the date of birth, the _current_ age is calculated as a program indicator and displays in the indicators widget.
+
+* **同意记录数据**。在保存注册信息前，患者必须同意以电子方式记录其个人数据。这一点会通过一个强制性的 "是"-"仅 "跟踪实体属性进行记录。
+
+* **患者过去是否接受过高血压治疗？**医疗服务提供者会收到提示，询问这是一项新诊断，还是患者曾接受过治疗。
+
+* **病人状态**。在登记期间，病人被假定为处于 "活动 "状态，因此会自动填写此值。详情请参阅[关闭记录]（#closing-the-record）。
+
+在登记期间，病人也被假定为患有高血压，因此该属性也是自动填写的。详见[计划结构的理由](#rationale-for-program-structure)。
+
+病人支持者的信息也会被输入，以帮助进行失访跟踪调查。
+
+注意：由于这些人口统计和标识符数据通常可在各跟踪程序中重复使用，因此多个 DHIS2 跟踪程序包可共享所跟踪实体的属性。这些元数据在[通用元数据 库](https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/common-metadata-library/design.html) （在属性名称中以 "GEN - "为前缀）。
+
+用户点击 "保存 "图标后，患者即被视为已注册高血压注册表，并立即打开首次高血压就诊事件。
+
+### HTN 访问{ #htn-visit } 
+
+该计划的唯一阶段是高血压就诊（高血压就诊）。假定注册后每月重复进行。
+
+访问中有一个必访部分和一个选访部分：
+
+* 高血压记录（必填）
+* 体重指数测量（可选）
+
+_Hypertension Records_ section is where systolic and diastolic blood pressure is recorded. Invalid blood pressure values (below 60 or above 260) are prohibited by program rule.
+
+如果高血压患者已怀孕，高血压可能预示着妊娠高血压。因此，如果患者是女性，这里会出现一个问题来确认患者的妊娠状态。(请注意，妊娠状态数据元素可在通用元数据 库中找到）。
+
+本部分还将记录当前开具的高血压药物。之前输入的药物将与最近一次高血压就诊后的天数一起列在计划指标部件中。
+
+在本部分的最后，用户可以选择进行 BMI 测量。点击这两个问题中的 "是 "即可打开该部分。请注意，这些部分的前缀是 "轻点添加 [X]"，以帮助 Android 用户打开这些部分。
+
+_BMI Measures_ 部分记录患者的身高和体重。输入患者体重（低于 35 或超过 180）和身高（低于 130 或超过 210）的不确定值会通过程序规则触发警告。
+
+然后自动计算出体重指数（BMI），BMI 的标准分类为体重不足、正常、超重、肥胖和严重肥胖。
+
+这些分类基于世界卫生组织的肥胖和超重标准（超重是指体重指数大于或等于 25；肥胖是指体重指数大于或等于 30）[^第二]。英国国家医疗服务体系的严重肥胖（BMI 超过 40）和体重不足（BMI 低于 18.5）标准[^第三]对这些定义的下限和上限进行了补充。
+
+输入后，病人最新记录的体重指数将显示在程序指标部件中。
+
+![Enter Patient BMI](resources/images/ncd_htn_005.gif)
+
+### 结束记录{ #closing-the-record } 
+
+如果医疗机构不再接诊病人，就必须更新他们的状态，这将从关键绩效指标的分母中删除病人的记录。
+
+当用户遇到因死亡或转院而不再在医疗机构就诊的病人记录时，可以更新病人状态。
+
+为此，用户进入 TEI 配置文件，然后单击 "更新病人状态"。此时，病人状态被解锁，可以从 "活动 "更改为 "死亡 "或 "转出"。然后必须保存个人资料。请注意，"病人状态 "是必填字段，因此在保存个人资料前不能为空。
+
+不同的医疗系统可能有不同的病人随访方法。在根据当地情况进行调整时，重要的是要考虑由谁来关闭记录，以及这一过程的执行频率。在尼日利亚，卫生工作者通过家访或电话对患者进行随访，并相应地更新患者记录。在其他情况下，可能会依靠健康数据管理人员定期进行数据清理以删除重复数据，或联系长期失去随访的患者名单。还有一些情况可能与国家民事登记和人口动态统计系统（CRVS）有联系，可以通过国家身份证识别已死亡的病人。
+
+![Close the Record](resources/images/ncd_htn_006.gif)
+
+## 分析工具 { #analytics } 
+
+### 个人层面的计划指标{ #individual-level-program-indicators } 
+
+该软件包包含 23 个计划指标和 8 个指标。大多数计划指标都会对人和事进行计数，而大多数指标都是百分比。
+
+除了在高血压监测仪表板中使用的计划指标外，还有五个计划指标应专门用于患者层面。这些计划指标在维护应用程序中被标记为 "在报告中显示"，并与 "高血压 - 个人水平 "计划指标组放在一起。
+
+* 当前年龄
+* 患者体重指数
+* 病人就诊总数
+* 患者上次就诊后的天数
+
+The individual values for patients are found at the Program Indicator widget in Tracker Capture, or at the _Analytics_ tab in the Android Capture app (see below). It is important that these individual-level program indicators are not aggregated in analytics apps such as data visualizer, as the values may be misinterpreted. The charts to show can be configured in the Android Settings app.
+
+![Patient Analytics](resources/images/ncd_htn_007.gif)
+
+## 仪表板 { #dashboards } 
+
+本软件包中唯一的仪表板是**高血压监测**仪表板，它提供了高血压患者管理血压控制的关键指标概览。该仪表盘可作为高级计划管理员用户或在本地设施级别查看。
+
+仪表板指标的定义紧紧围绕[来自简单应用程序的汇总数据](https://docs.simple.org/reports/what-we-report)以及[世界卫生组织 HEARTS 技术包](https://www.who.int/publications/i/item/9789240001367)的报告定义。这些定义包含在下文以及仪表板底部的文本框中。
+
+仪表板有三个部分需要考虑。
+
+### 关键绩效指标{ #key-performance-indicators } 
+
+![Dashboard - fig.1](resources/images/ncd_htn_008.png)
+
+The first three monthly line charts display key performance indicators relating to blood pressure control of registered and active hypertension patients. They consider visits within the last three months for all active patients registered before the previous three months. For patients who did visit in the last three months, the indicators check whether blood pressure was controlled at their _latest_ visit.
+
+下图比较了高血压登记处的每月新登记人数和累计新登记人数。
+
+* **% Patients with Controlled BP:** The percentage of patients registered to a facility before the last 3 months, where the patient has a BP measure <140/90 taken within the last 3 months and their patient status is Active.
+* ** 血压未受控制的患者百分比：** 过去 3 个月前在医疗机构登记的患者百分比，患者在过去 3 个月内测量的血压≥140/90，且患者状态为 "活动"。
+* **3 个月失去随访的患者百分比：** 过去 3 个月前在医疗机构登记的患者百分比，患者在过去 3 个月内没有就诊，且患者状态为活跃。
+* **登记的高血压患者：** 在医疗机构登记的高血压患者人数。
+* **登记的高血压患者（累计）：** 机构登记的高血压患者总数。
+
+### 标题数字、每月访问量和每季度群组报告{ #headline-figures-monthly-visits-and-quarterly-cohort-report } 
+
+![Dashboard - fig.2](resources/images/ncd_htn_009.png)
+
+下一部分重点介绍上个月登记的高血压患者总数和血压控制率。这两张卡片重复了前一部分的信息，以示强调。然后，"每月高血压就诊次数 "图表显示了每月的就诊总次数，分为登记当天的就诊次数和随访次数。
+
+在这些卡片下面是以条形图和表格形式显示的《季度群组报告》。该报告有一个特殊的调出框，以帮助解释：
+
+#### 高血压队列季度报告》说明{ #htn-quarterly-cohort-report-description } 
+
+HTN 季度队列报告将某一季度登记的所有患者纳入其中，并查看他们在下一季度的就诊结果。例如，4 月至 6 月队列中的患者在 1 月至 3 月季度登记，预计在 4 月至 6 月季度就诊。
+
+#### 定义{ #definitions } 
+
+* **高血压就诊总次数：** 高血压患者到医疗机构初诊或复诊的总次数。
+* (_ 季度队列_) **血压受控分子：** 在登记季度之后的季度内最后一次就诊时血压<140/90 的患者人数。
+* (_季度队列_) **血压未受控制分子：** 在登记季度之后的季度内最后一次就诊时血压≥140/90 的患者人数。
+* (_quarterly Cohort_) **失去随访分子：** 在登记季度之后的季度中没有就诊的患者人数。
+* (_Quarterly Cohort Denominator_) **上一季度登记的高血压患者：** 上一季度在医疗机构登记且患者状态为 "活跃 "的患者人数。
+
+### 医疗机构层面的摘要和病人转院/死亡/LTFU{ #facility-level-summary-and-patient-transfersdeathsltfu } 
+
+![Dashboard - fig.3](resources/images/ncd_htn_010.png)
+
+最后一部分首先重复了上个月按设施级别（用户 OU x 2）分列的顶部视觉效果信息。这对于地区或省一级的高级用户来说非常有用，可以查看各机构的高绩效和低绩效。如果用户只有查看设施级别仪表板的权限，则会重复相同的内容。
+
+本节下一部分显示了高血压患者的总转院人数、总死亡人数和 12 个月失去随访的总人数（截至当月初）。重要的是要记住，虽然死亡和转出系统的患者不包括在上述指标的大多数_分母中，但失去随访 12 个月的患者仍被视为处于活动状态，因此包括在所有分母中_。总注册人数和总就诊人次包括后来死亡或转出的病人。
+
+* **病人转院：** 目前状态标记为 "转出 "的高血压登记病人总数
+* ** 死亡患者：** 目前状态标记为 "死亡 "的已登记高血压患者总数
+* ** 12 个月失去随访的患者百分比**：在医疗机构登记，但在过去 12 个月中未就诊的高血压患者百分比。
+
+## 用户组{ #user-groups } 
+
+用户会根据其在系统中的角色被分配到相应的用户组。软件包中其他对象的共享可根据设置进行调整。更多信息请参阅 [DHIS2 共享文档](https://docs.dhis2.org/en/topics/metadata/crvs-mortality/rapid-mortality-surveillance-events/installation.html#sharing)。
+
+| 用户组 | 仪表板 | 计划元数据 | 计划数据 |
+|-|-|-|-|
+| HTN 管理员 | 可以编辑和查看 | 可以编辑和查看 | 无访问权限 |
+| 高血压网络接入 | 可以编辑和查看 | 只能查看 | 只能查看 |
+| 高血压数据采集 | 无法访问 | 只能查看 | 可以捕捉和查看 |
+
+## 安卓设置应用程序{ #android-settings-app } 
+
+高血压注册表可在安卓设备上离线使用，每月可采集数千名患者的数据。因此，在 DHIS2 Android 设置应用程序（[参见此处的文档](https://docs.dhis2.org/en/use/android-app/settings-configuration.html) ）中考虑 Android 同步设置至关重要。
+
+例如，您可以考虑这样一种设置，即设施级设备自动下载分配给每个设施的所有患者，这些患者在过去三个月中发生过高血压事件或进行过登记。如果有不符合这些标准的患者来到该机构，用户需要上网搜索才能找到他们的记录。
+
+元数据和数据应同时同步，尽可能每天同步，以避免冲突。
+
+在 Android 设置应用程序中，还可以为系统配置不同的 Android 应用程序外观和可视化设置。这些设置值得在部署前的适应和测试阶段进行探索。
+
+## 引用 { #references } 
+
+[^first]: 世界卫生组织 (25/08/2021).高血压要闻》。取自：<https://www.who.int/news-room/fact-sheets/detail/hypertension> （访问日期：2022 年 9 月 19 日）
+
+[^second]: 世界卫生组织 (09/06/2021).肥胖和超重概况介绍。取自：[https://www.who.int/news-room/fact-sheets/detail/obesity-and-overweight](https://www.who.int/news-room/fact-sheets/detail/obesity-and-overweight) （访问日期：19/09/2022）
+
+[^third]: 国民健康服务（16/05/2022）。概述：肥胖症。取自：[https://www.nhs.uk/conditions/obesity/](https://www.nhs.uk/conditions/obesity/) （访问日期：2022 年 9 月 19 日）
+

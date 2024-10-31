@@ -1,0 +1,352 @@
+---
+edit_url: "https://github.com/dhis2-metadata/CRVS_VE/blob/master/docs/crvs_ve-installation.md"
+revision_date: "2022-05-27"
+---
+
+# 生命事件出生、死产和死亡通知 - 追踪器安装指南{ #crvs-ve-trk-installation }
+
+本文件包括更新版生命事件跟踪器软件包的安装指南。
+
+系统默认语言：系统默认语言：英语
+
+可用翻译：法语、西班牙语、葡萄牙语
+
+## 总览 { #overview }
+
+软件包元数据 json 文件包含一个 "软件包 "组件，提供软件包版本和内容的技术细节。当前版本软件包中可用的文件如下。
+
+### DHIS2.35{ #dhis235 }
+
+=== "全套服务"
+
+    ```json
+    "package": {
+        "DHIS2Build": "35d663a",
+        "DHIS2Version": "2.35.11",
+        "code": "VE0000",
+        "description": "Vital Events",
+        "lastUpdated": "20220120T113753",
+        "locale": "en",
+        "name": "CRVS_VE_TKR_1.1.0_DHIS2.35.11-en",
+        "type": "TKR",
+        "version": "1.1.0"
+    }
+    ```
+
+### DHIS2.36{ #dhis236 }
+
+=== "全套服务"
+
+    ```json
+    "package": {
+        "DHIS2Build": "5d136cb",
+        "DHIS2Version": "2.36.6",
+        "code": "VE0000",
+        "description": "Vital Events",
+        "lastUpdated": "20220120T140039",
+        "locale": "en",
+        "name": "CRVS_VE_TKR_1.1.0_DHIS2.36.6-en",
+        "type": "TKR",
+        "version": "1.1.0"
+    }
+    ```
+
+## 安装 { #installation }
+
+模块的安装包括以下几个步骤：
+
+1. [使用 DHIS2 元数据准备元数据文件]（#preparing-the-metadata-file）。
+2. [将元数据文件导入 DHIS2]（#importing-metadata）。
+3. [配置导入的元数据](#configuration)。
+4. [导入后调整程序](#调整程序)
+
+在开始 DHIS2 的安装和配置过程之前，建议首先阅读安装指南的各个部分。根据导入类型确定适用的章节：
+
+1. 导入空白的 DHIS2 实例
+2. 导入具有现有元数据的 DHIS2 实例。
+
+本文件中概述的步骤应在测试/暂存 DHIS2 实例中进行测试，然后才应用于生产环境。
+
+## 要求 { #requirements }
+
+安装模块需要 DHIS2 的管理员用户账户。
+
+应格外注意确保服务器本身和 DHIS2 应用程序的安全，并应定义对所收集数据的访问权限。有关 DHIS2 系统安全的详细信息不在本文讨论范围之内，请参阅[DHIS2 文档](https://docs.dhis2.org/)。
+
+## 元数据文件{ #metadata-files }
+
+尽管并非总是必要，但在将元数据文件导入DHIS2之前对其进行某些修改通常可能是有利的。
+
+生命事件跟踪器软件包包括三个元数据文件。每个文件的内容和用途如下：
+
+| 软件包标识符 | 目录 | 目的 |
+| --- | --- | --- |
+| CRVS_VE_TKR_1.1.0_DHIS2.35.11-en | 更新跟踪器软件包 | 新实施 |
+
+## 准备元数据文件 { #preparing-the-metadata-file }
+
+### 默认数据维度 { #default-data-dimension }
+
+在 DHIS2 早期版本中，默认数据维度的 UID 是自动生成的。因此，虽然所有 DHIS2 实例都有默认类别选项、数据元素类别、类别组合和类别选项组合，但这些默认值的 UID 可能不同。DHIS2 的后期版本对默认维度的 UID 进行了硬编码，这些 UID 在配置包中使用。
+
+为避免导入元数据时发生冲突，建议搜索并替换整个 .json 文件中所有出现的这些默认对象，将 .json 文件中的 UID 替换为导入该文件的实例中的 UID。表 1 显示了应替换的 UID，以及用于识别现有 UID 的 API 端点
+
+| 目的 | 用户标识 | 应用程序接口端点 |
+| --- | --- | --- |
+| 类别 | `GLevLNI9wkl` | `.../api/categories.json?filter=name:eq:default`。 |
+| 类别选项 | `xYerKDKCefk` | `.../api/categoryOptions.json?filter=name:eq:default`。 |
+| 类别组合 | `bjDvmb4bfuf` | `.../api/categoryCombos.json?filter=name:eq:default`。 |
+| 类别选项组合 | `HllvX50cXC0` | `../api/categoryOptionCombos.json?filter=name:eq:default` |
+
+使用列出的 API 请求识别实例中默认 dimesions 的 UID，并用实例中的 UID 替换 json 文件中的 UID。
+
+> **注意**
+>
+> 请注意，必须使用纯文本编辑器，而不是 Microsoft Word 等文字处理程序来执行搜索和替换操作。
+
+### 指标类型 { #indicator-types }
+
+指标类型是另一种可能造成导入冲突的对象类型，因为某些名称在不同的 DHIS2 数据库中 使用（如 "百分比"）。由于指标类型由其因子（包括 "仅分子 "指标的 1）定义，因此它们是明确的，可通过搜索和替换 UID 来替换。这种方法有助于避免潜在的导入冲突，并防止实施者创建重复的指标类型。下表包含可替换的 UID，以及用于识别现有 UID 的 API 端点：
+
+| 目的 | 用户标识 | 应用程序接口端点 |
+| --- | --- | --- |
+| 仅分母（数字） | `kHy61PbChXr` | `../api/indicatorTypes.json?filter=number:eq:true&filter=factor:eq:1` |
+| 每千人 | `zpa0vUC7IWd` | `../api/indicatorTypes.json?filter=number:eq:false&filter=factor:eq:1000` |
+| 百分比 | `hmSnCXmLYwt` | `../api/indicatorTypes.json?filter=number:eq:false&filter=factor:eq:100` |
+
+### 追踪实体类型 { #tracked-entity-type }
+
+与指标类型一样，您的 DHIS2 数据库中可能已有跟踪实体类型。应更改对跟踪实体类型的引用，以反映系统中的情况，从而避免产生重复。下表包含可替换的 UID，以及用于识别现有 UID 的 API 端点：
+
+| 目的 | 用户标识 | 应用程序接口端点 |
+| --- | --- | --- |
+| 个人 | `MCPQUTHX1Ze` | `../api/trackedEntityTypes.json?filter=name:eq:Person` |
+
+### 使用根组织单位 UID 进行可视化{ #visualizations-using-root-organisation-unit-uid }
+
+分配给特定组织单位级别或组织单位组的可视化、事件报告、报告表和地图都有一个对根（第 1 级）组织单位的引用。此类对象（如果存在于元数据文件中）包含一个占位符 `<OU_ROOT_UID>`。使用 .json 文件编辑器中的搜索功能可以识别该占位符，并将其替换为目标实例中 1 级组织单位的 UID。
+
+### 选项代码{ #option-codes }
+
+根据 DHIS2 命名规则，元数据代码使用大写字母、下划线和空格。一些可能出现的例外情况在相应的软件包文档中有所说明。当前版本软件包的元数据对象中包含的所有代码都经过了调整，以符合命名约定。软件包早期版本中使用的代码可能使用小写字母。如果现有实现中的数据值包含小写代码，则必须直接在数据库中更新这些值。
+
+下表列出了元数据包中代码改为大写的所有选项集。在将元数据导入实例之前，请检查现有系统中的选项集是否与软件包 .json 中的选项集一致，并使用相同的大写选项代码。
+
+| 选项集名称                           | 选项集 UID |
+| ----------------------------------------- | -------------- |
+| GEN - 助产士类型                | `gHkSQ7ti6zn`  |
+| GEN - 出生类型                          | `jumQ0TEDlf4`  |
+| GEN - 死亡方式                     | `A7mNd2r3ZJe`  |
+| GEN - 交付方式                    | `whFhwY80xAQ`  |
+| GEN - 出生地                      | `BkY9x47OEff`  |
+| GEN - 性别（与未知者）                  | `rlYDq7U043q`  |
+| 婚姻状况                            | `rkRT5bxwyAt`  |
+| 关系（母亲/父亲/配偶/其他） | `ocdVHauxjzI`  |
+| 死产类型                           | `tPXEZ46FACM`  |
+| VE - 死亡发生地            | `tPXEZ46FACM`  |
+| VE - 注册原因                  | `I90dDKWASnH`  |
+
+下表包含使用受影响选项集的元数据元素：
+
+| 元数据对象          | 名称                           | 用户标识           |
+| ------------------------ | ------------------------------ | ------------- |
+| 数据元素             | GEN - 出生地           | `ABhkInP0wGY` |
+| 数据元素             | GEN - 出生类型               | `LtlzGAPWWo8` |
+| 数据元素             | GEN - 助产士       | `lQtJB35vsDj` |
+| 数据元素             | GEN - 交付方式         | `fF7wxNym0Un` |
+| 数据元素             | VE - 死亡地点            | `XkvdOAv6d3V` |
+| 数据元素             | GEN - 死亡方式          | `MAqI45DkhPd` |
+| 数据元素             | VE - 死产分类 | `vjNZ3tj3ins` |
+| 跟踪实体属性 | 生命事件 性别 男/女/男/女         | `fSn3gGMwRLi` |
+| 跟踪实体属性 | 生命事件 婚姻状况    | `EhEPmB7n31b` |
+| 跟踪实体属性 | 重要事件关系 1    | `Nv4K5ob82z3` |
+| 跟踪实体属性 | 重要事件关系 2    | `egRR3lyqD0F` |
+
+> **Important**
+>
+> During the import, the existing option codes will be overwritten with the updated upper case codes. In order to update the data values for existing data in the database, it is necessary to update the values stored in the database using database commands. Make sure to map existing old option codes and new option codes before replacing the values. Use staging instance first, before making adjustments on the production server.
+
+对于数据元素值，请使用
+
+    ```SQL
+    UPDATE programstageinstance
+    SET eventdatavalues = jsonb_set(eventdatavalues, '{"<affected data element uid>","value"}', '"<new value>"')
+    WHERE eventdatavalues @> '{"<affected data element uid>":{"value": "<old value>"}}'::jsonb
+    AND programstageid=<database_programsatgeid>;
+    ```
+
+对于跟踪的实体属性值，请使用
+
+    ```SQL
+    UPDATE trackedentityattributevalue
+    SET value = <new value>
+    WHERE trackedentityattributeid=<affected trackedentityattribute database_id> AND value=<old value>;
+    ```
+
+> **Example**
+>
+> To replace the option code 'yes' with 'YES' for existing data values (data element COVAC - Previously infected with COVID `LOU9t0aR0z7`) in the programstage with the id=1510410385 (example id), the command will be configured as follows:
+>
+>     ```SQL
+>     UPDATE programstageinstance
+>     SET eventdatavalues = jsonb_set(eventdatavalues, '{"LOU9t0aR0z7","value"}', '"YES"')
+>     WHERE eventdatavalues @> '{"LOU9t0aR0z7":{"value": "yes"}}'::jsonb
+>     AND programstageid=1510410385;
+>     ```
+
+选项代码还用于程序规则表达式、程序指示器等。如果要更新系统中的代码选项，请确保更新了所有受影响的元数据对象中的代码。
+
+### 选项的排序顺序{ #sort-order-for-options }
+
+检查系统中选项的排序顺序 `sortOrder` 是否与元数据包中选项的排序顺序一致。这仅适用于 json 文件和目标实例包含相同 UID 的选项和选项集时。
+
+导入后，确保选项集中选项的排序顺序从 1 开始，排序顺序值中不应有间隙（如 1、2、3、5、6）。
+
+排序顺序可在维护应用程序中调整。
+
+1. 转到适用的选项集
+2. 打开 "选项 "部分
+3. 使用 "按名称排序"、"按代码/数值排序 "或 "手动排序"。
+
+## 导入元数据 { #importing-metadata }
+
+使用 [Import/Export](#import_export) DHIS2 应用程序导入元数据包。建议在尝试实际导入元数据之前使用 "模拟运行 "功能来发现问题。如果 "模拟运行 "报告了任何问题或冲突，请参阅下面的[导入冲突]（#处理-导入-冲突）部分。如果 "试运行"/"验证 "导入无误，请尝试导入元数据。如果导入成功且无任何错误，则可以继续[配置](#configuration) 模块。在某些情况下，"模拟运行 "时不会显示导入冲突或问题，但在尝试实际导入时会显示。在这种情况下，导入摘要将列出需要解决的任何错误。
+
+### 处理导入冲突 { #handling-import-conflicts }
+
+> **注意**
+>
+> 如果将软件包导入新的 DHIS2 实例，由于目标数据库中没有元数据，因此不会发生导入冲突。导入元数据后，进入"[配置](#configuration) "部分。
+
+可能会发生多种冲突，但最常见的是配置包中的元数据对象的名称、简称和/或代码已经存在于目标数据库中。这些问题有几种不同的解决方案，各有利弊。例如，哪种方案更合适取决于发生冲突的对象类型。
+
+#### 备选方案1 { #alternative-1 }
+
+重新命名 DHIS2 数据库中存在冲突的现有对象。这种方法的优点是无需修改 .json 文件，而是通过 DHIS2 的用户界面进行更改。这可能更不容易出错。这也意味着配置包保持原样，例如在发布包更新时，这可能是一个优势。在培训材料和文档中也经常引用原始软件包对象。
+
+#### 备选方案2 { #alternative-2 }
+
+重命名.json文件中存在冲突的对象。这种方法的优点是现有的DHIS2元数据保持不变。当存在培训材料或文档（例如链接到所讨论对象的数据字典的SOP）时，这可能是一个因素，并且不存在通过修改用户熟悉的元数据而使用户感到困惑的风险。
+
+请注意，对于备选项1和2，修改可以简单到在名称中添加一个小的前缀/后缀，以最大程度地减少混乱的风险。
+
+#### 备选3 { #alternative-3 }
+
+第三种也是更复杂的方法是修改.json文件以重新使用现有的元数据。例如，在某个概念的某个选项集已经存在的情况下（例如“性别”），可以从.json文件中删除该选项集，并且对其UID的所有引用都将替换为数据库中已经存在的相应选项集。这样做的最大优点（不限于直接导入冲突的情况）是避免在数据库中创建重复的元数据。执行这种类型的修改时，需要考虑一些关键因素：
+
+-   它需要有关DHIS2详细元数据结构的专业知识
+-   该方法不适用于所有类型的对象。特别地，某些类型的对象具有依赖关系，这种依赖关系以这种方式难以解决，例如与分解有关。
+-   将来对配置包的更新将很复杂。
+
+## 组态 { #configuration }
+
+成功导入所有元数据后，需要执行一些步骤，模块才能正常运行。
+
+### 分享中 { #sharing }
+
+首先，您必须使用 DHIS2 的_共享_功能来配置哪些用户（用户组）应查看与程序相关的元数据和数据，以及谁可以在程序中注册/输入数据。默认情况下，共享配置如下：
+
+-   追踪实体类型
+-   程序
+-   计划阶段
+-   仪表板
+-   可视化、地图、事件报告和报告表格
+-   数据集
+-   类别选项
+
+有关共享的更多信息，请参阅 [DHIS2 文档](#sharing)。
+
+软件包包括三个核心用户组：
+
+-   VE - 通道
+-   VE - 数据采集
+-   VE - 行政
+
+默认情况下，会为这些用户组分配以下权限：
+
+| 目的 | 用户组 |  |  |
+| --- | --- | --- | --- |
+|  | _VE - 访问_ | _VE - 数据采集_ | _VE - 管理_ |
+| _*跟踪实体类型*_ | 元数据：可查看<br> 数据：可查看 | 元数据：可查看<br> 数据：可采集和查看 | 元数据：可编辑和查看<br> 数据：可查看 |
+| _*程序*_ | 元数据：可查看<br> 数据：可查看 | 元数据：可查看<br> 数据：可采集和查看 | 元数据：可编辑和查看<br> 数据：可查看 |
+| _*Program Stages*_ | 元数据：可查看<br> 数据：可查看 | 元数据：可查看<br> 数据：可采集和查看 | 元数据：可编辑和查看<br> 数据：可查看 |
+| _*仪表盘*_ | 元数据：可查看 | 无访问权限 | 元数据：可编辑和查看 |
+| _*数据集*_ | 元数据：可查看<br> 数据：可查看 | 无访问权限 | 元数据：可编辑和查看<br> 数据：无法访问 |
+
+用户会根据其在系统中的角色被分配到相应的用户组。软件包中其他对象的共享可能会根据设置进行调整。更多信息请参阅 [DHIS2 共享文档](#sharing)。
+
+### 用户角色{ #user-roles }
+
+用户将需要用户角色才能参与DHIS2中的各种应用程序。建议以下最低角色：
+
+1. 跟踪器数据分析：可以查看事件分析并访问仪表板，事件报告，事件可视化器，数据可视化器，数据透视表，报告和地图。
+2. 跟踪器数据捕获：可以添加数据值，更新跟踪的实体，跨组织单位搜索跟踪的实体以及访问跟踪器捕获
+
+有关配置用户角色的更多信息，请参阅 [DHIS2 文档](https://docs.dhis2.org/)。
+
+### 组织单位{ #organisation-units }
+
+程序和数据集必须分配给现有层级中的组织单位，以便通过跟踪捕获/捕获应用程序进行访问。
+
+### 重复的元数据 { #duplicated-metadata }
+
+> **注意**
+>
+> 本节仅适用于导入已有元数据的 DHIS2 数据库。如果您使用的是新的 DHIS2 实例，请跳过本节，转到[调整跟踪程序](#adapting-the-program)。如果您正在使用任何依赖于当前元数据的第三方应用程序，请考虑到此次更新可能会破坏它们。
+
+即使成功导入了元数据而没有任何导入冲突，元数据中也可能存在重复项-数据元素，跟踪的实体属性或已存在的选项集。正如上面有关解决冲突的部分所述，要牢记的一个重要问题是，在DHIS2中更改元数据的决定还需要考虑与现有元数据有不同关联的其他文档和资源。 ，以及通过配置包导入的元数据。因此，解决重复项不仅是“清理数据库”的问题，而且还要确保做到这一点，例如，不破坏与其他系统的集成，使用培训材料的可能性，破坏SOP等。这将非常很大程度上取决于上下文。
+
+需要牢记的重要一点是，DHIS2 有一些工具可以隐藏元数据中潜在重复的一些复杂问题。例如，如果存在重复的选项集，可以通过[共享]（#sharing）为用户组隐藏这些选项集。
+
+## 调整计划{ #adapting-the-program }
+
+Once the program has been imported, you might want to make certain modifications to the program. Examples of local adaptations that _could_ be made include:
+
+-   向表单添加其他变量。
+-   根据国家惯例修改数据元素/选项名称。
+-   向变量和/或数据输入表单添加翻译。
+-   根据本地案例定义修改程序指标
+
+但是，如果您决定更改或删除任何包含的表格/元数据，强烈建议格外小心。修改可能会破坏功能，例如程序规则和程序指示器。
+
+## 删除元数据{ #removing-metadata }
+
+为了保持实例整洁并避免出错，建议删除实例中不必要的元数据。
+
+要从系统中删除旧的仪表板，您需要
+
+> **注意**
+>
+> 可以使用 SQL 命令直接从数据库中删除仪表板、仪表板项和所有相关的可视化、地图和报告。
+
+## 从 1.0.0 升级到 1.1.0{ #upgrading-from-100-to-110 }
+
+## 元数据删除{ #metadata-delete }
+
+在已安装 1.0.0 版本的实例中导入 1.1.0 版本的 "重要事件 "软件包足以创建和更新元数据，但应删除以下元数据元素：
+
+| 类型 | 用户标识 | 名称 |
+| --- | --- | --- |
+| 茶 | `u0dqjGQ3Z80` | VE - 性别未知 |
+| 公关 | `napRgSZqVp4` | 如果选中 "性别未知"，则隐藏性别 |
+| 公关 | `dp6ev2TTLUH` | 如果登记原因不是 2（死胎），则隐藏 "性别未知"。 |
+
+## 将传统数据迁移到新的元数据中{ #migrating-legacy-data-to-the-new-metadata }
+
+更新为所有 TEA 性别输入的值，即用 TEA 性别 UID 替换 TEA 性别 UID M/F/U
+
+    ```SQL
+    UPDATE trackedentityattributevalue
+    SET trackedentityattributeid = (SELECT trackedentityattributeid FROM trackedentityattribute where UID = 'fSn3gGMwRLi')
+    WHERE trackedentityattributeid = (SELECT trackedentityattributeid FROM trackedentityattribute where UID = 'oindugucx72');
+    ```
+
+对于与 TEA 性别未知 = true 对应的所有值，将 TEA 的 UID 替换为 TEA 的 UID 性别 M/F/U，将 true 替换为 UNKNOWN
+
+    ```SQL
+    UPDATE trackedentityattributevalue
+    SET value = 'UNKNOWN',
+    trackedentityattributeid = (SELECT trackedentityattributeid FROM trackedentityattribute where UID = 'fSn3gGMwRLi')
+    WHERE trackedentityattributeid = (SELECT trackedentityattributeid FROM trackedentityattribute where UID = 'u0dqjGQ3Z80')
+    and value = 'true';
+    ```

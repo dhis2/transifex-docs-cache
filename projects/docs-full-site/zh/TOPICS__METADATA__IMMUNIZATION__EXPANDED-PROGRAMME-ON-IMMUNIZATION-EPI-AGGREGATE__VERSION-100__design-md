@@ -1,0 +1,151 @@
+---
+edit_url: "https://github.com/dhis2-metadata/IMM_AGG/blob/master/docs/imm_agg-design-1.0.0.md"
+revision_date: "2022-11-21"
+tags:
+    - 元数据
+    - 版本 1.0.0
+---
+
+# 扩大免疫计划（EPI）--系统设计文件{ #imm-agg-design-100 }
+
+## 背景和目的{ #background-and-purpose }
+
+This document describes the design of an immunization module in DHIS2 optimized for integration with a national HMIS. The module is most widely used by countries that have integrated their **Expanded Programme on Immunization (EPI)** reporting into the HMIS.
+
+该模块包括标准指标和仪表板，以支持[**世界卫生组织免疫规划管理人员卫生机构数据分析和使用指南**](https://www.who.int/publications/m/item/analysis-and-use-of-health-facility-data-guidance-for-immunization-programme-managers)建议的核心免疫规划分析。该模块包含月度汇总数据集，可根据系统成熟度灵活使用：
+
+-   用于向 DHIS2 进行**例行直接报告**，设施数据仍基于纸质（数据录入可在设施或地区一级进行）；或
+-   **将 DHIS2 追踪器或其他系统中的个人电子数据**汇总到支持数据分析框架所需的预定义汇总维度中。
+
+## 包装结构{ #package-structure }
+
+| 资料集 | 描述 |
+| --- | --- |
+| 免疫接种 | **每月**数据集。 <br> 报告免疫接种活动（包括外联活动）、免疫接种后的不良事件、库存和冷链情况。 |
+
+> **注**
+>
+> 本数据集是使用 DHIS2 中的自定义表单设计的，特别是为了适应本数据集中的库存部分。如果使用分段表单，库存部分会超出大多数没有高分辨率显示器的用户的屏幕宽度，导致他们在该部分输入数据时不得不向左/右滚动。
+
+## 目标用户 { #intended-users }
+
+-   ** 保健设施用户**：获取和报告有关免疫接种活动的关键数据
+-   **计划管理人员**：国家和国家以下一级的管理人员可负责支持数据录入和分析。
+-   **国家和地方卫生当局**：通过仪表板和分析工具监测和分析监测数据，进行风险评估和规划应对措施；为区域和全球报告生成报告
+
+## 数据集详情{ #dataset-details }
+
+### 外联活动{ #outreach-sessions }
+
+![Data entry for outreach sessions](resources/images/imm-epiagg-1.0.0-001.png)
+
+外联活动的信息是作为单独的数据元素设计的，没有任何分类，但如果需要，可以添加一个 catCombo。如果活动不包括外联会议，则可从数据集中删除该部分。
+
+### 疫苗接种 - 儿童{ #vaccinations-children }
+
+![接种疫苗儿童的数据输入 - 截图不包括完整表格](resources/images/imm-epiagg-1.0.0-002.png)
+
+This section has been configured using an **age disaggregation (<1, >=1)** for each data element within the section.From an analytical point of view, this allows to quickly add in the age breakdowns and pivot them as required. The totals are automatically calculated. Some cells, like for example the cell for OPV 0 for children above the year of age, are blocked and **grayed out to prevent data entry** as per indications of the global guidelines - e.g. OPV 0 is normally administered at birth. The cells can be unblocked in case of need should the local guidelines differ from the global ones.
+
+### 疫苗接种 - 育龄妇女{ #vaccinations-women-of-childbearing-age }
+
+![Data entry for vaccinated women](resources/images/imm-epiagg-1.0.0-003.png)
+
+本部分使用**孕妇分类（怀孕、其他）**进行配置。从分析的角度来看，这种解决方案可以快速添加怀孕状态分类，并根据需要进行透视。如有需要，可以也应该对分类和疫苗列表进行本地编辑，以更好地反映实际需要。
+
+### 免疫接种后的不良事件{ #adverse-events-following-immunization }
+
+![Data entry for reported AEFI](resources/images/imm-epiagg-1.0.0-004.png)
+
+该基本表格按严重程度报告 AEFI 的数量。如果 AEFI 需要更详细的报告形式，DHIS2 全局软件包还包括一个[**AEFI 跟踪器**]（#aefi-design），可用于此目的并进行扩展。
+
+### 库存{ #stock }
+
+![股票数据录入 - 截图不包括完整表格](resources/images/imm-epiagg-1.0.0-005.png)
+
+![Details of the stock disaggregation](resources/images/imm-epiagg-1.0.0-006.png)
+
+库存部分的默认配置仅包括少量疫苗以及疫苗接种活动中通常使用的一些基本物品（如安全箱和疫苗接种卡）。该**清单应在当地加以改进和扩充**，以更好地反映当地的实际库存情况。
+
+存量部分采用**"扁平 "结构**（即未进行分类，该部分仅由单个数据元素组成）。
+
+由于 "已用库存 "一栏是通过计算得出的：（期初余额 + 已收到）-（VVM + 冻结 + 过期 + 破损 + 丢失 + 期末余额），因此需要这种结构。使用两个单独的类别选项（即期初余额、收到、丢弃-VVM、冻结、过期、破损、遗失-、 期末余额）并不合适，因为其中一些选项并不适用于本节中的几个数据元素。因此，对主题关联数据元素采用不同的结构并非最有效的方法。虽然使用这种结构会大大增加数据元素的数量，但使用类别选项组合将所有这些项 目相加，在这种结构中是行不通的，因为在审查 "已用库存 "一栏时，总计并不能提供任 何有意义的信息。
+
+增加库存部分是为了简化数据收集工作。如果单独的统计表更有用，[**物流数据集**](https://docs.dhis2.org/en/topics/metadata/immunization/epi-logistics/lmis-design.html) 也可作为独立软件包在本地编辑。
+
+### 冷链{ #cold-chain }
+
+冷链信息被设计为单独的数据元素，没有任何分类。
+
+## 分析和指标{ #analytics-and-indicators }
+
+无论是缺乏可靠数据还是计算错误，人口数据及其在分母中的使用往往是一项艰巨的任务。
+
+在 2.35.12 之前的任何 DHIS2 版本中，目标和覆盖率都是根据目标人群在时间（一年中的月份）内对其进行的抗原管理，目标人群累计除以 12（月），因为目标人群是按年输入的。指标应根据分析的周期（季度/年度/等）和报告目标人群的周期进行调整；而覆盖范围则应简单地基于指标的年度化。建议使用[超时累计总量指标](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-235/configuring-the-system/metadata.html#manage_indicator)，以确保准确计算覆盖率。在 2.35.12 以上版本的指标中，可以使用 **periodOffset 函数**。因此，覆盖率指标使用过去 12 个月的总和作为分子，而不是将指标按年计算。这是比按年计算覆盖率指标更准确的计算方法。
+
+下面举例说明目前可用于更好地计算覆盖率的指标类型。
+
+|  |  |
+| --- | --- |
+| 指示符 | **EPI - BCG 覆盖率（%） - 期间抵消** |
+| 用户标识 | `lnC0fWd3sD4` |
+| 分子 | **BCG doses < 1 year this month plus last 11 months** <br> _EPI - BCG doses given <1 year + EPI - BCG doses given <1 year.periodOffset(-1) + EPI - BCG doses given <1 year.periodOffset(-2) + EPI - BCG doses given <1 year.periodOffset(-3) + EPI - BCG doses given <1 year.periodOffset(-4) + EPI - BCG doses given <1 year.periodOffset(-5) + EPI - BCG doses given <1 year.periodOffset(-6) + EPI - BCG doses given <1 year.periodOffset(-7) + EPI - BCG doses given <1 year.periodOffset(-8) + EPI - BCG doses given <1 year.periodOffset(-9) + EPI - BCG doses given <1 year.periodOffset(-10) + EPI - BCG doses given <1 year.periodOffset(-11)_ |
+| 分母 |  ** 活产**<br> _GEN - 人口活产数_ |
+
+在 "**免疫效果**"的前面，软件包现在包含了对不同 OU 的评分。该分数是通过公式中的逻辑语句（从 2.36 版开始可能），根据抗原的覆盖率和辍学率综合得出的。
+
+## 验证规则 { #validation-rules }
+
+免疫接种软件包的验证规则归入 "免疫接种 "验证规则组。这些规则将在数据输入级别运行（运行验证按钮），以标记数据输入中的任何潜在错误。
+
+![Example of errors flagged by data validation](resources/images/imm-epiagg-1.0.0-007.png)
+
+## 仪表板 { #dashboards }
+
+免疫接种软件包包括一个预定义仪表盘。下表列出的项目仅包含实施软件包和设置仪表板时需要注意的事项。
+
+| 项目 | 评论 |
+| --- | --- |
+| 按地区对免疫接种情况进行分类 | 根据绩效情况将机关单位分为四类（1,2,3,4）：<br>- 1：覆盖率 > 90% / 辍学率< 10% <br>- 2：覆盖率 > 90% / 辍学率 > 10%<br> - 3：覆盖率< 90% / Dropout rate < 10% <br> - 4：覆盖率< 90% / Dropout rate > 10% |
+
+## 免疫应用程序的可视化{ #visualizations-from-the-immunization-app }
+
+在过去的几个 DHIS2 版本中，一直在努力扩展核心分析功能，以满足开发定制免疫分析的要求。仪表板中 "**免疫分析应用程序**"的代表性可视化内容包括
+
+-   EPI - 各抗原的剂量和覆盖率 - 今年的月份
+-   Monitoring chart for antigens administered <1 years old child - Months this year
+-   新生儿抗原监测表 - 今年月份
+-   覆盖率和辍学率分类 - 过去 12 个月
+-   过去 12 个月各地区免疫接种情况分类
+
+在每个可视化的描述中，您可以找到有关内容和结构的相关信息
+
+## 用户组{ #user-groups }
+
+作为软件包配置的一部分，已创建了用户组，用于管理所有模块元数据中的共享设置。使用这些共享设置的核心元数据主要包括数据集、仪表盘、指标和数据元素。
+
+创建的三个用户组包括
+
+| 用户组 | 仪表板 | 计划元数据 | 计划数据 |
+| --- | --- | --- | --- |
+| EPI-Admin | 可以编辑和查看 | 可以编辑和查看 | 只能查看 |
+| EPI-Access | 只能查看 | 只能查看 | 只能查看 |
+| EPI 数据采集 | 无法访问 | 只能查看 | 可以捕捉和查看 |
+
+-   **EPI-Admin** - 该组中的用户将拥有共享设置，可查看/编辑访问元数据，并可查看数据集中的数据值。
+-   **EPI-Access** - 该组中的用户具有共享设置，只能查看数据集中的元数据和数据值。
+-   **EPI-数据捕获** - 该组的用户将拥有共享设置，只能查看元数据和编辑数据集中的数据值。
+
+虽然在安装此软件包时保留这些用户组很重要，但也可以根据主机实例中任何现有的用户组设置或策略对其进行审查。
+
+## 特别注意事项{ #special-considerations }
+
+### 人口数据{ #population-data }
+
+如果尚未使用，数据集应与第二个数据集结合使用，以收集计算覆盖率等关键指标所需的人口数据，并监测活动和/或关键人口（如 5 岁以下儿童或孕妇）的重要目标。
+
+有关人口数据的更多信息，请参阅 "指标 "部分。
+
+## 引用 { #references }
+
+世界卫生组织，（2018年），《卫生设施数据的分析和使用：免疫规划管理人员指南》。URL：<https://www.who.int/publications/m/item/analysis-and-use-of-health-facility-data-guidance-for-immunization-programme-managers>.[访问日期：2022年9月1日］

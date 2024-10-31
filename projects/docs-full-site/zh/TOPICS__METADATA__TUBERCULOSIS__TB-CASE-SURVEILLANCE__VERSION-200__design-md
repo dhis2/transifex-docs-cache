@@ -1,0 +1,301 @@
+---
+edit_url: "https://github.com/dhis2-metadata/TB_CS/blob/master/docs/tb_cs-design-2.0.0.md"
+revision_date: "2022-12-13"
+tags:
+    - 版本 2.0.0
+    - 元数据
+---
+
+# 结核病例监测 - 系统设计文件{ #tb-cs-design-200 }
+
+## 介绍 { #introduction }
+
+用于 DHIS2 的**结核病例监测跟踪器（TB-CS）数字数据包**基于 2013 年[世卫组织记录和报告框架](https://apps.who.int/iris/handle/10665/79199)。它提供了一套建议的元数据（数据元素、程序规则等），以便以电子方式获取个人/基于病例的结核病监测数据。跟踪器元数据的配置可确保从捕获的个人数据中自动生成世卫组织结核病定义和报告框架（2013 年）所定义的关于通知、一线结果和二线结果的结核病季度汇总标准报告指标。结核病例监测跟踪系统无意支持患者管理或患者护理。这需要对实施此类系统的环境中的角色、责任、工作流程和决策进行更详细的分析。
+
+系统设计文件解释了如何配置跟踪程序，以满足数据录入和分析要求，并支持典型的工作流程。该文件没有详尽列出所采集的所有元数据。该文件也未考虑实施此类系统所需的资源和基础设施，如服务器、电源、互联网连接、备份、培训和用户支持。更多有关结核病计划技术方面的信息，请参阅[世界卫生组织关于结核病护理和控制的电子记 录和报告的出版物](https://apps.who.int/iris/handle/10665/44840). Supplementary implementation guidance for DHIS2 can be found in the [General DHIS2 Implementation Guide](https://docs.dhis2.org/en/implement/configuring-the-android-app/about-this-guide.html) 和[DHIS2 追踪器实施指南](https://docs.dhis2.org/en/implement/understanding-dhis2-implementation/a-quick-guide-to-dhis2-implementation.html) 。
+
+## 系统设计概述{ #system-design-overview }
+
+### 背景 { #background }
+
+国家结核病防治计划各级工作人员需要可靠的流行病学数据，以规划和提供有效的结核病护理和控制服务，并监测计划行动的执行情况。与总体数据收集系统相比，病例监测系统具有明显的优势。与总体监测系统一样，我们可以采集、验证、汇总、计算和显示一套最基本的流行病学指标，但这些指标可以按时间、地点/地区、年龄、性别、病例类型、既往治疗史、艾滋病病毒感染状况、耐药状况和治疗方案的任意组合进行分类。这有助于我们深入了解结核病的流行情况，并监测随时间推移而发生的变化。基于病例的电子数据有望**提高数据质量**，因为数据录入步骤减少，系统可内置自动计算和验证功能，不一致、错误或不完整的数据可迅速更正或补全，并可删除重复记录。基于病例的监测系统还应允许将监测记录与同一病例联系起来，即使结核病例在治疗过程中在不同机构之间转移或转诊。见[**关于保护难民署关注人员个人数据的政策**](http://www.refworld.org/docid/55643c1d4.html) 第 16 页原则 2.4。
+
+### 使用案例{ #use-case }
+
+肺结核病例监测跟踪系统能够对肺结核病例进行**登记和纵向跟踪，从通知点到最终病例结果，包括实验室结果**。如背景部分所述，该程序可捕获病例监测数据流行病学分析所需的最低数据点。这些数据点包括病例的基线和人口信息、风险因素、诊断和常规检查的实验室结果、耐药类型分类、提供的治疗方案以及病例结果。**本跟踪程序并非用于支持临床管理或患者护理**。相反，该程序作为一个电子登记册，支持分散式电子病例监测数据采集，直至医疗机构和实验室层面。
+
+## 计划结构{ #program-structure }
+
+修订后的结核病 CS 跟踪程序旨在反映**更通用的工作流程，**能够整合医疗机构（如临床医生和护士）和实验室的数据录入。各国的工作流程可能各不相同，因此应根据当地情况对病例监测计划进行必要的调整。
+
+> **IMPORTANT**
+>
+> Please note that given the generic design of the tracker, this system design guide contains throughout the sections useful information, considerations, and justifications that can be of great importance for the implementation. The document should therefore be thoroughly revised both by the requesting and implementing parties.
+
+![Theoretical workflow](resources/images/tb_cs_001.png)
+
+根据这一初步工作流程，该计划的结构如下：
+
+![Data flow within the tracker stages](resources/images/tb_cs_029.png)
+
+### 计划结构的依据{ #rationale-for-program-structure }
+
+跟踪器的设计已得到改进，以扩大可能从实验室方面收集到的信息。当然，这种扩展涉及元数据，现在元数据更加全面，可以**区分诊断和监测检验**，但它也创建了一个更通用的基线，实施者和各国可以在此基础上建立自己的工作流程。根据当地的需要，"实验室诊断结果 "和 "诊断和通知 "阶段可以有不同的顺序；根据当地的资源和连通性，数据录入可以在实验室和医疗机构之间集中或分散进行；根据当地的数据流，数据可以实时输入或回溯输入。
+
+特别是，理论上可能会出现**种一般情况，**种情况可能会改变各阶段的流程和顺序：
+
+1. **实验室工作人员收到化验申请，"实验室诊断结果 "是疑似病例登记后的第一步**。这种情况代表了理论上的工作流程，也是各国在常规医疗数据数字化方面进行长期投资时应瞄准的目标。
+
+    - 在这种情况下，"登记 "和 "实验室诊断结果 "阶段由实验室工作人员直接完成。然后，"诊断和通知 "阶段可以同时进行，也可以在实验室结果登记之后进行。此时，病例可以成为正式的结核病例，在这种情况下，他们必须在登记阶段获得结核病登记号，或者他们将获得阴性的实验室结果并被注销。
+
+2. **The suspected case gets enrolled and registered from the clinical side of the workflow before the samples are sent to the laboratory.**
+
+    - 在这种情况下，"注册 "和 "诊断与通知 "阶段首先完成。
+    - 实验室工作人员填写 "实验室诊断结果"。
+    - 临床医生将完成 "诊断和通知 "阶段，确认或通知其诊断，并在必要时通知病例。如果出现后一种情况，临床医生必须重新进行 "登记"，并为现已确诊的病例分配一个结核病登记号。
+
+    请注意，方案 1 和方案 2 的假设前提是实验室工作人员有能力在本地直接将数据输入系统。
+
+    如果这种能力不足以满足当地的需要，那么就会出现第 3 种情况：
+
+3. **数据录入是集中进行的，实验室和临床工作人员之间没有区别** - 数据录入依靠一个（或多个）数据编码器。在这种情况下，各阶段的安排应与当地的信息和数据流相匹配。
+
+在调整跟踪系统工作流程及其各个阶段时，除了要考虑最适合当地情况的方案** 外，还应考虑数据输入是实时进行还是依靠批量回溯数据输入**。
+
+## 预期用户{ #intended-users }
+
+本文件面向各国负责实施结核病数据系统和/或 HMIS 的受众，包括
+
+-   **系统管理员/HMIS 联络员**：负责安装元数据包、设计和维护 HMIS 和/或结核病数据系统的人员。
+-   ** 结核病计划协调人** 负责监督国家结核病计划的数据收集、管理、分析和报告职能
+-   **实施支持专家**，例如，向结核病计划或 HMIS 核心单位提供技术援助，以支持和维护 DHIS2 作为国家卫生信息系统和/或结核病数据系统的人员。
+
+## 跟踪器程序配置{ #tracker-program-configuration }
+
+![Overview of stages and sections](resources/images/tb_cs_030.png)
+
+| **结构** | **描述** |
+| --- | --- |
+| **注册** | 该阶段收集了 TEI 的基本属性。请注意，某些属性显示 "GEN - "前缀。要了解有关 [** 通用元数据 库**](https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/common-metadata-library/design.html) 的更多信息，请参阅提供的链接。<br>该阶段不可重复。 |
+| **实验室诊断结果** | 为了显示可用于**诊断目的**的整个检测清单，用户应首先报告 "样本信息 "部分。<br>**该阶段可重复**。设置可重复性是为了让各国根据当地的工作流程和偏好实施跟踪器--根据是否需要跟踪所有样本（质量好坏）或只跟踪 "好 "样本，可相应地重复该阶段。 |
+| **诊断和通知** | 该阶段收集基线信息、风险因素、潜在的艾滋病毒（合并）感染以及诊断决定。决策者要么**诊断出肺结核疑似病例并通知**他们，要么确认没有感染。用于通知病例或确认未感染的**短信模板**包含在元数据包中。<br>**该阶段不可重复**。 |
+| **治疗** | The stage collects the information necessary for the overview of the **patient’s regimen** and status during their course of treatment.<br>**The stage is repeatable** but limited to two events and one treatment regimen change. |
+| **监测实验室结果** | 为了显示用于监测目的的可用检测项目（痰液镜检和培养检测），用户应首先报告 "样本信 息 "部分。该阶段只显示用于**监测确诊病例**的检测项目，而不是患者后续治疗所需的所有检测项目。对于接受拳头线治疗方案的病例，该阶段将只显示痰显微镜检查，而对于 DRTB 患者，将在显微镜检查中增加培养。<br>**该阶段可重复**。 |
+| **成果** | 该阶段收集确诊病例的最终结果。在这一阶段，如果患者的结果不是肺结核病例，或为了去除重复登记的病例，可对患者进行除名。<br>**该阶段不可重复**。 |
+
+### 舞台细节{ #stage-details }
+
+#### 注册 { #enrollment }
+
+当客户作为跟踪实体实例（TEI）加入结核病病例监控时，TEI 属性就会被记录下来，形成病例档案。
+
+![Enrollment stage](resources/images/tb_cs_003.png)
+
+**注册日期被设置为占位符**，用户可根据实施需要加以利用。它可以用作在 DHIS2 中登记的日期，也可以用作首次咨询、就诊或调查的日期。仅登记确诊肺结核病例时，可以继续使用登记日期作为诊断日期。在这种情况下，实验室跟踪器应与肺结核病例监测模块分开，并作为一个单独的程序设置。
+
+**注意结核病登记号为空**。如果数据输入是实时进行的，在此阶段临床医生/数据输入操作员无法知道疑似病例是否确诊。在收到实验室诊断结果后，用户必须重新打开登记，并为确诊患者分配一个登记号。
+
+如果数据录入是追溯性的，而且是批量输入，那么数据编码员就已经知道患者是否已被确诊，并能据此分配一个登记号。因此，肺结核登记号未被设为必填属性。
+
+完成注册后，下一阶段的**登陆页面将显示为空白**。这样设置是为了让各国能够按照本指南 "计划结构的基本原理 "一章中所述的工作流程实施追踪器。因此，下一阶段可以是 "实验室诊断结果 "或 "诊断和通知 "阶段，可以按此顺序，也可以按相反顺序。
+
+#### 实验室诊断结果{ #diagnostic-laboratory-results }
+
+![Diagnostic test stage](resources/images/tb_cs_004.png)
+
+只有当样本被标记为已收到且质量良好时，才会自动出现完整的诊断检测清单。该阶段包括以下检测：
+
+-   痰涂片显微镜检查；
+-   TB-LAMP；
+-   LF-LAM；
+-   Xpert MTB/RIF；
+-   Xpert MTB/RIF Ultra；
+-   特鲁纳
+-   在固体培养基（如 LJ）中培养；
+-   在液体培养基（如 MGIT）中培养；
+-   固体培养基（如 LJ）中的初始表型 DST；
+-   液体培养基（如 MGIT）中的初始表型 DST；
+-   随后在固体培养基（如 LJ）中进行表型 DST；
+-   随后在液体培养基（如 MGIT）中进行表型 DST；
+-   一线 LPA；
+-   二线 LPA
+
+以其中两项测试的数据录入为例：
+
+![Smear microscopy](resources/images/tb_cs_005.png)
+
+![Xpert MTB/RIF](resources/images/tb_cs_006.png)
+
+每次检测必须提供**检测结果日期**（包括培养检测的接种日期）。这样做的目的是
+
+-   在分析中将测试事件分配到正确的时间段；
+-   帮助监测接收日期和结果日期之间的延迟。
+
+建议在实验室诊断阶段只输入最终有效的检测结果。
+
+**示例：**
+
+-   1 个样本 - 1 次显微镜检测：在数据输入表中记录适用检验的检验结果。
+
+-   1 份样本 - 1 次显微镜检查和 1 次 Xpert MTB/RIF 检测：在数据输入表中记录显微镜检查和 Xpert MTB/RIF 结果。
+
+-   1 个样本 - 2 次重复显微镜检测，其中检测 1 无效，检测 2 有效：在数据输入表中记录检测 2 的结果（有效检测结果）。
+
+这一建议最大限度地减少了数据录入工作量，并符合不将跟踪器用作实验室管理工具的基本要求。
+
+如果当地需要在当地实验室管理系统之外监测实验室的工作量，则可以在每个检 测部分增加一个数据元素，记录在得到最终结果之前必须进行的检测次数。如果当地需要更详细地收集独立于结果之外的样本检测数据，则可将跟踪器升级，以 记录每个样本和每个病例的多次检测。
+
+**因此，**实施者应调查实施国的分析需求，并相应调整与测试次数和结果有关的指标。
+
+#### 诊断和通知{ #diagnosis-and-notification }
+
+根据当前的跟踪器设计，诊断和通知事件可在诊断实验室结果事件之前或之后创建。
+
+**诊断和通知事件日期是一个占位符**，可根据实施需要使用。它可以用作初次就诊、咨询或样本采集的日期。
+
+> **IMPORTANT**
+>
+> If data entry is happening based on paper forms or data import, and the event date is used as date of data entry in DHIS2, there is a chance that the registration event will appear after other events in the timeline, which may be misleading for users.
+
+登记阶段概述了基线信息、最终风险因素、疑似病例是否为 HIV（+），以及最重要的诊断决定部分。
+
+![Baseline info](resources/images/tb_cs_007.png)
+
+系统将**自动提供警告信息，说明所选既往治疗史**的定义。这些定义是根据世界卫生组织的全球指南设定的，应根据当地情况进行调整。如果选择 "复发"、"失败后治疗或 LTFU "或 "其他既往治疗 "作为病史，则会出现患者是否接受过二线治疗的问题。
+
+![Baseline info for 2-line treatment](resources/images/tb_cs_079.png)
+
+![Risk factors and HIV status](resources/images/tb_cs_008.png)
+
+In case of confirmed seropositivity of the patient the system will prompt an expansion of the HIV information and will request the date of the last test and whether the patient is enrolled in an ART cohort. If the latest HIV test date is **older than 6 months** from the date of diagnosis, a warning message will prompt the clinician to schedule another HIV test for the patient.
+
+此时，如果有化验结果，临床医生/数据录入员就可以报告诊断决定。
+
+![Diagnosis of a presumptive case](resources/images/tb_cs_080.png)
+
+![诊断](resources/images/tb_cs_009.png)
+
+一旦**案件得到通知**，用户需要填写诊断决定部分的字段。
+
+如果在 "实验室诊断结果"（Diagnostic Laboratory Results）阶段输入了阳性实验室检测结果，则会自动分配**细菌学确认**。如果当地指南要求临床医生手动输入此信息，则可删除与确认方法相关的 PR。
+
+A **notification is sent to the patient** if the “Notify the case?” checkbox is clicked, the diagnosis, date of diagnosis, the notification date and the patient’s telephone number are recorded in the system.
+
+如果检测结果为阴性，但病例**临床诊断**，则可通知患者 "临床诊断"。
+
+![Clinical diagnosis](resources/images/tb_cs_010.png)
+
+如果实验室**结果为阴性，无需通知**，用户应在 "您是否要通知该病例？这样该病例就被排除在肺结核病例分析之外。**如果患者未被确诊，将向其发送短信**。
+
+![The suspected case results as negative](resources/images/tb_cs_011.png)
+
+一旦推定病例得到细菌学确诊或临床诊断，他们就会收到一个**结核病登记号**。在数据录入屏幕右上角的 "反馈 "**窗口中，这一信息也会作为**提示突出显示在注册信息上方。因此，临床医生/数据录入员应重新打开注册窗口，并根据国家指导原则分配结核病登记号。虽然默认配置将此空格留为空白且可编辑，但实施者可能需要考虑根据当地工作流程自动分配编号（或字母数字序列）是否合适。
+
+![TB registration number assignment for clinically and bacteriologically diagnosed cases](resources/images/tb_cs_019.png)
+
+同样的信息也会作为**错误信息**出现在 "诊断日期 "下，以提醒为新确定的病例分配结核病登记号。
+
+![Error message for the TB registration number assignment for clinically and bacteriologically diagnosed cases](resources/images/tb_cs_020.png)
+
+#### 治疗{ #treatment }
+
+![Treatment](resources/images/tb_cs_012.png)
+
+在此阶段，临床医生/数据输入员将报告患者的**治疗方案**--一线或二线治疗。由于检测未发现任何抗药性，患者将被自动分配为 DS（对药物敏感）选项。临床医生可在该部分的方框中打勾，以覆盖自动分配，并根据自己的临床意见手动分配正确的分类。也可以完全取消自动分类，这反过来会迫使临床医生根据每位患者的化验结果手动指定分类。治疗结束日期只有在需要覆盖当前治疗的情况下才能应用--例如，患者需要从一线治疗方案转为二线治疗方案。之所以决定可以更改治疗而不是通知和诊断阶段，是为了在出现错误时有更大的灵活性，并保留病人的病史，而不是覆盖和删除过去的诊断。
+
+The date of treatment initiation (event date) is important for the calculation of the delay between diagnosis and the debut of the treatment. The Treatment Status section contains **automatically assigned standard calculations of treatment durations and treatment initiation delays in days**. The event due date is configured with the description ‘expected date of outcome. By default, the **due date for the outcome section is scheduled for 180 days after the date of treatment initiation - this is to be considered as a placeholder and the 180 days threshold should be replaced with whichever period is defined in the national guidelines.** The Outcome stage due date may be changed manually, but can only be rescheduled once. For a user, this may be done after Treatment has been initiated and the DE in the Treatment stage ‘Outcome Due’ has been generated. When an Outcome stage is overdue (the current date is later than the calculated DE ‘Outcome due’ from the Treatment stage, a message is displayed in the Feedback Widget.
+
+#### 监测实验室结果{ #monitoring-laboratory-results }
+
+The structure of the monitoring stage is **virtually identical to the diagnostic laboratory stage**. The main difference is the list of tests - the monitoring lab stage includes only the ones that are relevant for monitoring purposes. Please note that if the patient is flagged as DS (drug susceptible), only the microscopy test will automatically appear in the monitoring lab stage as per WHO guidelines. As aforementioned, should the patient be a DRTB case, the list of tests will also display the cultures in solid and liquid media.
+
+#### 成果{ #outcome }
+
+如上所述，结果阶段是一个**不可重复的阶段**，确诊阳性病例在此阶段结束治疗。临床医生/数据录入员可根据登记后的时间长短，选择所有结果或仅选择在给定时间内可接受的结果。
+
+-   如果患者的结果是在确诊后 6 个月内登记的，则只有 "死亡 "和 "LTFU "两个选项。
+-   超过 6 个月阈值后，结果列表会扩大，还包括 "已治愈"、"未评估 "和 "已完成 "选项。
+-   失败 "结果只能在诊断日期 5 个月后输入。
+
+**月数是根据全球指南设置的占位符**，但应根据相关国家指南更新数值。每个结果都会自动显示一个警告框，其中包含所选选项的定义。这些定义遵循世界卫生组织指南中详述的标准解释。同样，也应根据国家指南中的定义进行替换或扩展。
+
+![Outcome](resources/images/tb_cs_014.png)
+
+结果还可用于取消病例。如果疑似病人不是病例，或为了删除重复登记，则会应用取消病例。被删除的重复病例不会被考虑或计入报告总数，但会提供被注销的重复病例数，以监测数据和数据录入的质量。
+
+## 附加功能{ #additional-features }
+
+### 实时通知{ #real-time-notifications }
+
+如果系统用于实时数据录入和监控，跟踪器的默认配置中有四个预定义通知。这些通知可以也应该进行定制，以更好地反映当地情况和需求。
+
+-   **TB CS - 病例通知** - 该短信通知将发送给推定病例，提醒接收者实验室结果已出，他/她应与医疗机构联系。只有当推定病例的电话号码和通知日期具有有效值时，才会发送通知。
+-   **TB CS - 样本质量差通知** - 当实验室收到的样本不符合处理质量标准并被登记为 "质量差 "时，系统会向结核病管理用户组发送内部通知。该通知应提示临床医生从同一病例中采集另一份样本，用于诊断或监测。
+-   **TB CS - 取消通知（推定病例）** - 向推定病例发送此短信通知，提示其联系医疗机构。只有当病例在 "结果 "阶段被取消通知，且该病例的电话号码在注册时已登记，才会触发该通知。
+-   **TB CS - Denotification（已通知病例）** - 此短信通知发送给已通知病例，该病例因重复输入数据或任何其他人为或系统错误而被误通知。
+
+### 常数 { #constants }
+
+该软件包包括一套**检测项目和一份药物清单，实施国可根据国情（如该国使用/可用的药物和检测项目）对其进行修改**。The use of constants enables a system admin in an implementing country to easily _‘turn on’ or ‘turn off’_ types of drugs and tests depending on availability in the country.当完整的软件包安装到 DHIS2 实例中时，该软件包中包含的所有检验项目和药物的所有数据 元素都会被包含在系统中。默认情况下，所有常量均设置为 "1"（启用相关数据元素进行数据录入），如果不需要（禁用相关数据元素进行数据录入），可由实施者或系统管理员根据国家情况设置为 "0"。如果该国后来有了某种检验或药物，管理员只需将常量值从 "0 "改为 "1"，即可重新启用数据元素。
+
+![Example of a constant](resources/images/tb_cs_018.png)
+
+### 顶部栏小部件{ #top-bar-widget }
+
+顶栏部件**可以显示或隐藏**。在跟踪器的默认配置中，顶栏是可见的，并按以下顺序显示相关信息：1) 诊断日期；2) 结核病登记号；3) 诊断后的月份；4) 患者年龄（月）。5）患者年龄（岁）；6）艾滋病毒感染状况；7）耐药性分类（诊断时）；8）病例分类；9）治疗方案；10）耐药性。
+
+显示的顺序、信息量和变量都可以在本地自定义。
+
+![Top bar info](resources/images/tb_cs_015.png)
+
+### 反馈小工具{ #feedback-widget }
+
+Upon the completion of the enrollment process, the feedback text box will be displayed and available on the **top right corner of the screen**. Just like the other widgets, t**he feedback box can be removed**, though in the default configuration of the tracker it is displayed and used to flash important messages and notes to the user entering the data.
+
+![反馈文本框](resources/images/tb_cs_016.png)
+
+## 分析工具 { #analytics }
+
+### 计划指标 { #program-indicators }
+
+计划指标和指标的完整清单见[元数据参考文件]（resources/tb_cs-metadata.xlsx）。
+
+### 在结核病综合报告中报告病例数据{ #reporting-case-based-data-into-aggregate-tb-reports }
+
+基于病例的结核病监测跟踪器获取的数据可纳入标准的汇总报告（即每月、每季度或由国家决定的更频繁的报告）。DHIS2 中的结核病综合系统设计可在 who.dhis2.org/documentation/#tb 上查阅。
+
+该数据包包括两组计划指标，这些指标与结核病汇总数据包中数据集的相应数据元素和类别选项组合相对应。
+
+目前的 TB CS 追踪器支持以下数据集的数据传输：
+
+-   结核病 - 病例通报（每季度一次）
+-   结核病 - RR/MDR-TB 病例发现和治疗（每年一次）
+-   结核病 - 治疗结果（每季度）
+-   结核病 - 治疗结果 - 二线治疗（每年一次）
+-   结核病 - 实验室（每月）
+
+映射基于元数据对象的代码。数据传输过程详见安装指南。
+
+### 计划规则{ #program-rules }
+
+肺结核病例监测跟踪系统广泛使用程序规则来显示/隐藏数据元素，以优化数据录入表单，向数据录入用户显示警告/反馈，以及自动计算和为数据元素分配数据值。程序规则的完整列表可在元数据参考文件中找到。
+
+## 仪表板 { #dashboards }
+
+结核病例监测跟踪系统 2.0.0 版包含一个用于监测结核病样本处理和检测结果的仪表板（**TB-LAB - 实验室**），汇总了监测实验室活动的关键指标（检测量、病例或样本、阳性率、周转时间和结果）。仪表板首先显示所有检测类型的总体数据，然后按检测类型（涂片显微镜、GeneXpert、GeneXpert Ultra 和培养检测--固体和液体培养基）进行划分。各部分均用文本框标明检验类型。根据当地情况、实施类型和检验的可用性，可以也应该对仪表板进行调整，以更好地反映实施需求。此外，**如果结核病例监测跟踪器作为一个独立模块使用而不进行汇总数据传输，则可以利用现有指标并配置自定义可视化和仪表板**。
+
+## 用户组{ #user-groups }
+
+结核病病例监视跟踪软件包包括以下用户组：
+
+-   TB 管理员：可以编辑/查看元数据；不能访问数据 [所有计划阶段]
+-   TB 数据采集：可查看元数据，可采集数据[所有计划阶段]，无法访问仪表板
+-   TB 访问：凸轮查看元数据，可查看数据 [所有计划阶段］
+-   结核病实验室访问：凸轮查看元数据，可查看数据[计划阶段]，访问实验室仪表板
+-   结核病实验室数据采集：可查看元数据，可采集数据 [结核病登记和实验室阶段］
+
+## 引用 { #references }
+
+**联合国难民事务高级专员办事处（UNHCR）**，（2015年）。联合国难民署关注人员个人数据保护政策》。URL： <https://www.refworld.org/docid/55643c1d4.html> [2022年7月20日访问］
+
+**世界卫生组织**，（2013 年）。结核病的定义和报告框架--2013 年修订版（2014 年 12 月和 2020 年 1 月更新）。URL： <https://apps.who.int/iris/bitstream/handle/10665/79199/9789241505345_eng.pdf?sequence=1&isAllowed=y> [2022年7月20日访问］

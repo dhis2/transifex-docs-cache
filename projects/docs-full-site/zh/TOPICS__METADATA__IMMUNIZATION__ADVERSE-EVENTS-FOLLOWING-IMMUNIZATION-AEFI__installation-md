@@ -1,0 +1,318 @@
+---
+edit_url: "https://github.com/dhis2-metadata/IMM_AEFI/blob/master/docs/imm_aefi-installation.md"
+revision_date: '2022-11-03'
+tags:
+- 元数据
+---
+
+# AEFI 追踪器安装指南{ #imm-aefi-installation }
+
+## 总览 { #overview } 
+
+AEFI 跟踪软件包是使用 DHIS2.33.2 开发的。这样做是为了支持 DHIS2 的一些最新功能。要使用该软件包，建议将其安装到使用 DHIS2 2.33.2 或更高版本的 DHIS2 实例中。如果要在新实例上安装，请参阅 [DHIS2 安装指南](https://docs.dhis2.org/master/en/dhis2_system_administration_guide/installation.html) 。
+
+## 安装 { #installation } 
+
+模块的安装包括以下几个步骤：
+
+1. [准备]（＃preparing-the-metadata-file）具有DHIS2元数据的元数据文件。
+2. 将元数据文件[导入]（＃importing-metadata）到DHIS2中。
+3. [配置]（＃additional-configuration）导入的元数据。
+4. 导入后[Adapting]（＃adapting-the-tracker-program）程序
+
+建议在开始DHIS2中的安装和配置过程之前先通读每个部分。根据要导入到新的DHIS2实例还是具有元数据的DHIS2实例，已识别出不适用的节。在重复或转移到DHIS2的生产实例之前，应在测试/分阶段环境中测试本文档中概述的过程。
+
+## 要求 { #requirements } 
+
+为了安装该模块，需要DHIS2上的管理员用户帐户。在DHIS2的生产实例上执行此文档中概述的过程之前，应在测试/分阶段环境中进行测试。
+
+应格外小心，以确保服务器本身和DHIS2应用程序受到良好保护，以限制对所收集数据的访问。保护DHIS2系统的详细信息不在本文档的范围之内，我们参考[DHIS2文档]（http://dhis2.org/documentation）。
+
+## 准备元数据文件 { #preparing-the-metadata-file } 
+
+**注意**：如果要将软件包安装在DHIS2的新实例上，则可以跳过“准备元数据文件”部分，然后立即移至“ [将元数据文件导入DHIS2]（＃importing-元数据）。”
+
+尽管并非总是必要，但在将元数据文件导入DHIS2之前对其进行某些修改通常可能是有利的。
+
+### 默认数据维度 { #default-data-dimension } 
+
+在早期版本的DHIS2中，默认数据维的UID是自动生成的。因此，尽管所有DHIS2实例都具有默认类别选项，数据元素类别，类别组合和类别选项组合，但这些默认的UID可以不同。 DHIS2的更高版本具有用于默认维度的硬编码UID，并且这些UID在配置包中使用。
+
+为避免导入元数据时发生冲突，建议搜索并替换整个 .json 文件中所有出现的这些默认对象，将 .json 文件中的 UID 替换为导入该文件的数据库的 UID。表 1 显示了应替换的 UID，以及用于识别现有 UID 的 API 端点
+
+|目的|用户标识|应用程序接口端点|
+|--|--|--|
+|类别|GLevLNI9wkl|../api/categories.json?filter=name:eq:default|
+|类别选项|xYerKDKCefk|../api/categoryOptions.json?filter=name:eq:default|
+|类别组合|bjDvmb4bfuf|../api/categoryCombos.json?filter=name:eq:default|
+|类别选项组合|HllvX50cXC0|../api/categoryOptionCombos.json?filter=name:eq:default|
+
+例如，如果将配置包导入<https://play.dhis2.org/demo> ，默认类别选项组合的 UID 可通过<https://play.dhis2.org/demo/api/categoryOptionCombos.json?filter=name:eq:default> 识别为 bRowv6yZOF2。
+
+然后，您可以在.json文件中搜索所有出现的HllvX50cXC0并将其替换为bRowv6yZOF2，因为这是您要导入的系统中的默认ID。 ***请注意，此搜索和替换操作必须使用纯文本编辑器***，而不是像Microsoft Word这样的字处理器。
+
+### 指标类型 { #indicator-types } 
+
+指标类型是另一种可能导致导入冲突的对象，因为在不同的DHIS2数据库中使用了某些名称（例如“百分比”）。由于指标类型仅由其因子以及是否为无分母的简单数字定义，因此它们是明确的，可以通过搜索和替换UID进行替换。这样可以避免潜在的导入冲突，并避免创建重复的指标类型。表2显示了可以替换的UID以及用于标识现有UID的API端点
+
+|目的|用户标识|应用程序接口端点|
+|--|--|--|
+|仅分母（数字）|CqNPn5KzksS|../api/indicatorTypes.json?filter=number:eq:true&filter=factor:eq:1|
+
+#### 追踪实体类型 { #tracked-entity-type } 
+
+像指示器类型一样，您的DHIS2数据库中可能已经存在跟踪的实体类型。对跟踪实体类型的引用应该更改以反映系统中的内容，因此您不会创建重复项。表3显示了可以替换的UID以及用于标识现有UID的API端点
+
+|目的|用户标识|应用程序接口端点|
+|--|--|--|
+|个人|MCPQUTHX1Ze|../api/trackedEntityTypes.json?filter=name:eq:Person|
+
+#### 活动报告组织 单位{ #event-report-organisation-unit } 
+
+在 AEFI 元数据包中，有与组织单位树根级单位相关的事件报告。需要用系统中组织单位树根级单位的 UID 替换对组织单位的引用。表 4 显示了需要替换的 UID，以及识别现有组织单位 UID 的 api 端点
+
+|目的|用户标识|应用程序接口端点|
+|--|--|--|
+|组织单位|GD7TowwI46c|./api/organisationUnits.json?level=1|
+
+## 导入元数据 { #importing-metadata } 
+
+.json元数据文件是通过DHIS2的[Import / Export]（https://docs.dhis2.org/master/en/user/html/import_export.html）应用程序导入的。建议在尝试实际导入元数据之前使用“空运行”功能来识别问题。如果“试运行”报告任何问题或冲突，请参见下面的[导入冲突]（https://who.dhis2.org/documentation/installation_guide_complete.html#handling-import-conflicts）部分。如果“试运行” /“验证”导入正常进行，请尝试导入元数据。如果导入成功并且没有任何错误，则可以继续[配置]（https://who.dhis2.org/documentation/installation_guide_complete.html#configuration）模块。在某些情况下，“空运行”期间不会显示导入冲突或问题，而是在尝试实际导入时显示。在这种情况下，导入摘要将列出需要解决的所有错误。
+
+### 处理导入冲突 { #handling-import-conflicts } 
+
+***注意***：如果要导入到新的DHIS2实例中，则不必担心导入冲突，因为要导入的数据库中没有与之冲突的内容。按照说明导入元数据，然后继续进行“ [附加配置]（＃additional-configuration）”部分。
+
+可能会发生许多不同的冲突，尽管最常见的是配置包中有目标数据库中已经存在名称，简称和/或代码的元数据对象。对于这些问题，有两种替代解决方案，具有不同的优缺点。哪一个更合适将取决于例如发生冲突的对象的类型。
+
+#### 备选方案1 { #alternative-1 } 
+
+重命名DHIS2数据库中存在冲突的现有对象。这种方法的优点是无需修改.json文件，因为更改是通过DHIS2的用户界面完成的。这很可能不太容易出错。这也意味着配置包将保留原样，例如在使用基于配置包的培训材料和文档时，这可能是一个优势。
+
+#### 备选方案2 { #alternative-2 } 
+
+重命名.json文件中存在冲突的对象。这种方法的优点是现有的DHIS2元数据保持不变。当存在培训材料或文档（例如链接到所讨论对象的数据字典的SOP）时，这可能是一个因素，并且不存在通过修改用户熟悉的元数据而使用户感到困惑的风险。
+
+请注意，对于备选项1和2，修改可以简单到在名称中添加一个小的前缀/后缀，以最大程度地减少混乱的风险。
+
+#### 备选3 { #alternative-3 } 
+
+第三种也是更复杂的方法是修改.json文件以重新使用现有的元数据。例如，在某个概念的某个选项集已经存在的情况下（例如“性别”），可以从.json文件中删除该选项集，并且对其UID的所有引用都将替换为数据库中已经存在的相应选项集。这样做的最大优点（不限于直接导入冲突的情况）是避免在数据库中创建重复的元数据。执行这种类型的修改时，需要考虑一些关键因素：
+
+* 它需要有关DHIS2详细元数据结构的专业知识
+* 该方法不适用于所有类型的对象。特别地，某些类型的对象具有依赖关系，这种依赖关系以这种方式难以解决，例如与分解有关。
+* 将来对配置包的更新将很复杂。
+
+## 附加配置 { #additional-configuration } 
+
+成功导入所有元数据后，需要执行一些步骤，模块才能正常运行。
+
+### 分享中 { #sharing } 
+
+首先，您将必须使用DHIS2的*共享*功能来配置哪些用户（用户组）应查看与程序关联的元数据和数据，以及谁可以在程序中注册/输入数据。默认情况下，已为以下配置共享：
+
+* 追踪实体类型
+* 程序
+* 计划阶段
+* 仪表板
+
+该软件包有六个用户组，最后三个是程序阶段通知的接收者：
+
+* AEFI 接入
+* AEFI 管理员
+* AEFI 数据采集
+* AEFI 地区
+* AEFI 国家
+* AEFI 一级决策
+
+默认情况下，将以下内容分配给这些用户组
+
+|目的|用户组|||
+|--|--|--|--|
+||_AEFI访问_|_AEFI admin_|_AEFI 数据采集_|
+|_*跟踪实体类型*_|元数据：可查看<br> 数据：可查看|元数据：可编辑和查看<br> 数据：可查看|元数据：可查看<br> 数据：可采集和查看|
+|_*程序*_|元数据：可查看<br> 数据：可查看|元数据：可编辑和查看<br> 数据：可查看|元数据：可查看<br> 数据：可采集和查看|
+|_*Program Stages*_|元数据：可查看<br> 数据：可查看|元数据：可编辑和查看<br> 数据：可查看|元数据：可查看<br> 数据：可采集和查看|
+|_*仪表盘*_|元数据：可查看|元数据：可编辑和查看|元数据：无|
+
+您将需要根据用户在系统中的角色将其分配给适当的用户组。您可能需要根据设置来启用包中其他对象的共享。有关配置共享的更多信息，请参考[DHIS2文档]（https://docs.dhis2.org/master/zh/dhis2_user_manual_zh/about-sharing-of-objects.html）。
+
+### 用户角色 { #user-roles } 
+
+用户将需要用户角色才能参与DHIS2中的各种应用程序。建议以下最低角色：
+
+1. 跟踪器数据分析：可以查看事件分析并访问仪表板，事件报告，事件可视化器，数据可视化器，数据透视表，报告和地图。
+2. 跟踪器数据捕获：可以添加数据值，更新跟踪的实体，跨组织单位搜索跟踪的实体以及访问跟踪器捕获
+
+有关配置用户角色的更多信息，请参见[DHIS2文档]（http://dhis2.org/documentation）。
+
+### 组织单位 { #organisation-units } 
+
+您必须将程序分配给自己的层次结构中的组织单位，以便能够在跟踪器捕获中查看程序。
+
+### 重复的元数据 { #duplicated-metadata } 
+
+**注意**：仅当您要导入已经存在元数据的DHIS2数据库时，此部分才适用。如果您使用的是新的DHIS2实例，请跳过本节，然后转到[调整跟踪程序]（＃adapting-the-tracker-program）。”
+
+即使成功导入了元数据而没有任何导入冲突，元数据中也可能存在重复项-数据元素，跟踪的实体属性或已存在的选项集。正如上面有关解决冲突的部分所述，要牢记的一个重要问题是，在DHIS2中更改元数据的决定还需要考虑与现有元数据有不同关联的其他文档和资源。 ，以及通过配置包导入的元数据。因此，解决重复项不仅是“清理数据库”的问题，而且还要确保做到这一点，例如，不破坏与其他系统的集成，使用培训材料的可能性，破坏SOP等。这将非常很大程度上取决于上下文。
+
+要记住的重要一件事是DHIS2具有可以隐藏元数据中潜在重复项的某些复杂性的工具。例如，如果存在重复的选项集，则可以通过[sharing]（https://docs.dhis2.org/master/en/user/html/sharing.html）为用户组隐藏它们。
+
+## 调整跟踪器程序 { #adapting-the-tracker-program } 
+
+程序导入后，您可能需要对程序进行某些修改。可以**的本地改编例子包括：
+
+* 向表单添加其他变量。
+* 根据国家惯例修改数据元素/选项名称。
+* 向变量和/或数据输入表单添加翻译。
+* 根据本地案例定义修改程序指标
+
+但是，如果您决定更改或删除任何包含的表格/元数据，强烈建议格外小心。修改可能会破坏功能，例如程序规则和程序指示器。
+
+## 线路列表{ #line-listing } 
+
+由于技术问题，通用软件包中不包括两个重要的行列表。实施者需要按照以下步骤配置这些行列表
+
+### AEFI 线路列表（事件报告）{ #aefi-line-listing-event-report } 
+
+![Line listing](resources/images/AEFI_Tracker_design_17.png)
+
+* **注意：** 以上截图不代表完整的行列表
+
+1. 进入 **DHIS 2 事件报告应用程序**
+2. 选择表格样式 **行列表**
+3. 选择输出样式 **事件**
+4. 在**数据**部分，选择程序 **免疫接种后不良事件 (AEFI)**
+5. 选择阶段 **AEFI**
+6. 使用下表，按照建议的顺序添加**数据元素/程序属性**。
+7. 在**期间**部分，选择**今年**
+8. 在**组织单位**部分，选择**用户组织单位**
+9. 点击**收藏**按钮并**保存**。
+10. 添加**名称** - AEFI LINE LISTING - 今年
+11. 点击**收藏**按钮并**保存**。
+12. 单击 **共享**。限制外部和公众访问，并与适用的用户组共享事件报告：**AEFI 访问（可查看）** 和 **AEFI 管理员（可编辑和查看）**
+13. 转到 **AEFI 仪表板**，将事件报告添加到仪表板。
+
+| 字段/列 # | 变量名称 | 来源阶段 | 对象类型 |  |
+|-|---|---|---|-|
+| 1 | 数 |  |  |  |
+| 2 | DOR（报告日期--报告编制日期） |  |  |  |
+| 3 | DON（通知日期 - 患者将事件通知医疗系统的日期） |  |  |  |
+| 4 | 事件日期 |  |  |  |
+| 5 | 组织单位 |  |  |  |
+| 6 | AEFI - 案件报告人 | AEFI 阶段 | 数据元素 | uZ9c4fKXuNS |
+| 7 | AEFI - 记者地址 | AEFI 阶段 | 数据元素 | Q20pEixZxCs |
+| 8 | AEFI 案件编号 |  | Program attribute | h5FuguPFF2j |
+| 9 | Given name |  | Program attribute | TfdH5KvFmMy |
+| 10 | Family name |  | Program attribute | aW66s2QSosT |
+| 11 | Date of birth |  | Program attribute | BiTsLcJQ95V |
+| 12 | Sex |  | Program attribute | CklPZdOd6H1 |
+| 13 | AEFI - AEFI start date | AEFI Stage | 数据元素 | vNGUuAZA2C2 |
+| 14 | AEFI_Serious adverse event following immunization | AEFI Stage | 数据元素 | kQCVFWE2MPb |
+| 15 | AEFI - AEFI outcome | AEFI Stage | 数据元素 | yRrSDiR5v1M |
+| 16 | AEFI - Vaccination 1 date | AEFI Stage | 数据元素 | dOkuCjpD978 |
+| 17 | AEFI - Vaccine 1 name | AEFI Stage | 数据元素 | uSVcZzSM3zg |
+| 18 | AEFI - batch/lot number (Vaccine 1) | AEFI Stage | 数据元素 | LNqkAlvGplL |
+| 19 | AEFI - Diluent batch/lot number 1 | AEFI Stage | 数据元素 | FQM2ksIQix8 |
+| 20 | AEFI - Vaccination 2 date | AEFI Stage | 数据元素 | VrzEutEnzSJ |
+| 21 | AEFI - Vaccine 2 name | AEFI Stage | 数据元素 | g9PjywVj2fs |
+| 22 | AEFI - batch/lot number (Vaccine 2) | AEFI Stage | 数据元素 | b1rSwGRcY5W |
+| 23 | AEFI - Diluent batch/lot number 2 | AEFI Stage |  数据元素 | ufWU3WStZgG |
+| 24 | AEFI - Vaccination 3 date | AEFI Stage |  数据元素 | f4WCAVwjHz0 |
+| 25 | AEFI - Vaccine 3 name | AEFI Stage | 数据元素 | OU5klvkk3SM |
+| 26 | AEFI - batch/lot number (Vaccine 3) | AEFI Stage | 数据元素 | YBnFoNouH6f |
+| 27 | AEFI - Diluent batch/lot number 3 | AEFI Stage | 数据元素 | MLP8fi1X7UX |
+| 28 | AEFI - Abdominal pain | AEFI Stage | 数据元素 | T6tsxbKzikz |
+| 29 | AEFI - Abscess | AEFI Stage | 数据元素 | wce39JmsjIK |
+| 30 | AEFI - Anaphylaxis | AEFI Stage | 数据元素 | MkIgCrCTFyE |
+| 31 | AEFI - Bell's Palsy | AEFI Stage | 数据元素 | BKxtyqhIDkB |
+| 32 | AEFI - Chills | AEFI Stage | 数据元素 | TPSvWhUfib3 |
+| 33 | AEFI - Congenital anomaly | AEFI Stage | 数据元素 | lSBsxcQU0kO |
+| 34 | AEFI - Cough | AEFI Stage | 数据元素 | ZdFB8xUhOUM |
+| 35 | AEFI - Diarrhoea | AEFI Stage | 数据元素 | NAiZTRCHRWL |
+| 36 | AEFI - Dizziness | AEFI Stage | 数据元素 | XluNAFG1wj6 |
+| 37 | AEFI - Drowsiness | AEFI Stage | 数据元素 | rjjRNU5yDhT |
+| 38 | AEFI - Encephalopathy | AEFI Stage | 数据元素 | pdpAEuUS1W9 |
+| 39 | AEFI - Fainting | AEFI Stage | 数据元素 | OhHYABXmGGe |
+| 40 | AEFI - Fatigue | AEFI Stage | 数据元素 | owRcSysyioE |
+| 41 | AEFI - Fever | AEFI Stage | 数据元素 | rzhHSqK3lQq |
+| 42 | AEFI - Headache | AEFI Stage | 数据元素 | HY6NIt2FX4A |
+| 43 | AEFI - Injection site soreness | AEFI Stage | 数据元素 | P4oSprWWqrn |
+| 44 | AEFI - Injection site tenderness | AEFI Stage | 数据元素 | KqlCtmOWt4G |
+| 45 | AEFI - Irritability | AEFI Stage | 数据元素 | PWOzcN7UCfW |
+| 46 | AEFI - Itching | AEFI Stage | 数据元素 | FC54HsGMErl |
+| 47 | AEFI - Joint pain | AEFI Stage | 数据元素 | vCfZD893IVe |
+| 48 | AEFI - Loss of apetite | AEFI Stage | 数据元素 | QFMRugi3fm6 |
+| 49 | AEFI - Lymphadenopathy | AEFI Stage | 数据元素 | dDWYBYUNpaQ |
+| 50 | AEFI - Lymph node enlargement | AEFI Stage | 数据元素 | GEkI9NzxTmM |
+| 51 | AEFI - Mild fever | AEFI Stage | 数据元素 | nKLO8ZNdR0B |
+| 52 | AEFI - Muscle pain | AEFI Stage | 数据元素 | pzOF4lGIyTU |
+| 53 | AEFI - Nasal congestion | AEFI Stage | 数据元素 | wWDenTQ5xBR |
+| 54 | AEFI - Nausea | AEFI Stage | 数据元素 | KOt0J61mF61 |
+| 55 | AEFI - 请指明其他（不良事件） | AEFI 阶段 | 数据元素 | iTm5wvq16iq |
+| 56 | AEFI - 请指明其他（严重事件） | AEFI 阶段 | 数据元素 | AfrWB2ofm7l |
+| 57 | AEFI - 持续哭泣 | AEFI 阶段 | 数据元素 | GTyK3p976de |
+| 58 | AEFI - 母乳喂养不当 | AEFI 阶段 | 数据元素 | sX1SvRadOmn |
+| 59 | AEFI - 发作类型 | AEFI 阶段 | 数据元素 | Zz4KYO4AsSY |
+| 60 | AEFI - 癫痫发作 | AEFI 阶段 | 数据元素 | wCGZpudXuYx |
+| 61 | AEFI - 败血症 | AEFI 阶段 | 数据元素 | tUmgO1Ugv6U |
+| 62 | AEFI - 严重局部反应 | AEFI 阶段 | 数据元素 | UNmEidE6M9K |
+| 63 | AEFI - 严重局部反应 > 3 天 | AEFI 阶段 | 数据元素 | We87rvcvd8J |
+| 64 | AEFI - 最近关节以外的严重局部反应 | AEFI 阶段 | 数据元素 | f8hjxmHOtAB |
+| 65 | AEFI - 皮疹 | AEFI 阶段 | 数据元素 | xgqzqv0p2Us |
+| 66 | AEFI - 咽喉痛 | AEFI 阶段 | 数据元素 | seXW1hERwOo |
+| 67 | AEFI - 疲劳 | AEFI 阶段 | 数据元素 | JaZ9yf1dDy3 |
+| 68 | AEFI - 血小板减少 | AEFI 阶段 | 数据元素 | GGLLaieVChK |
+| 69 | AEFI - 中毒性休克综合征 | AEFI 阶段 | 数据元素 | Apq4JaueuWR |
+| 70 | AEFI - 呕吐 | AEFI 阶段 | 数据元素 | cMEIyp0rMo1 |
+| 71 | AEFI - 死亡 | AEFI 阶段 | 数据元素 | DOA6ZFMro84 |
+| 72 | AEFI - 住院治疗 | AEFI 阶段 | 数据元素 | Il1lTfknLdd |
+| 73 | AEFI - 危及生命 | AEFI 阶段 | 数据元素 | lATDYNmTLKD |
+| 74 | AEFI - 持续或严重残疾 | AEFI 阶段 | 数据元素 | lsO8n8ZmLAB |
+
+### AEFI 国家级摘要（活动报告）{ #aefi-national-level-summary-event-report } 
+
+![AEFI 国家线路图](resources/images/AEFI_Tracker_design_22.png)
+
+
+* **注意：** 以上截图并不代表完整的列表
+
+1. 进入 **DHIS 2 事件报告应用程序**
+2. 选择表格样式 **行列表**
+3. 选择输出样式 **注册**
+4. 在**数据**部分，选择程序 **免疫接种后不良事件 (AEFI)**
+5. 选择适用的阶段。参见下表
+6. 使用下表，按照建议的顺序添加**数据元素/程序属性**。
+7. 在**期间**部分，选择**过去 12 个月**
+8. 在**组织单位**部分，选择**用户组织单位**
+9. 点击**收藏**按钮并**保存**。
+10. 添加 **名称** - AEFI 国家级摘要（今年）
+11. 点击**收藏**按钮并**保存**。
+12. 单击 **共享**。限制外部和公众访问，并与适用的用户组共享事件报告：**AEFI 访问（可查看）** 和 **AEFI 管理员（可编辑和查看）**
+13. 转到 **AEFI 仪表板**，将事件报告添加到仪表板。
+
+| 字段/列 # | 变量名称 | 来源阶段 | 对象类型 | 用户标识 |
+|-|---|---|---|-|
+| 1 | 数 |  |  |  |
+| 2 | DON（通知日期 - 患者将事件通知医疗系统的日期） |  |  |  |
+| 3 | 事件日期 |  |  |  |  |
+| 4 | 组织单位 |  |  |  |
+| 5 | AEFI 案件编号 |  | 计划属性 | h5FuguPFF2j |
+| 6 | AEFI - 在国家一级获得批准的日期 | 国家级舞台 | 数据元素 | cWMUoQEuvtR |
+| 7 | AEFI - 最终分类日期 | 国家级舞台 | 数据元素 | wDijUvPYVne |
+| 8 | AEFI - 有效诊断 | 国家级舞台 | 数据元素 | IZoGGNUkNl0 |
+| 9 | AEFI - 疫苗 1 名称 |  AEFI 阶段 | 数据元素 | uSVcZzSM3zg |
+| 10 | AEFI - 疫苗接种 1 日期 | AEFI 阶段 | 数据元素 | dOkuCjpD978 |
+| 11 | AEFI - 疫苗 2 名称 | AEFI 阶段 | 数据元素 | g9PjywVj2fs |
+| 12 | AEFI - 疫苗接种 2 日期 | AEFI 阶段 | 数据元素 | VrzEutEnzSJ |
+| 13 | AEFI - 疫苗 3 名称 | AEFI 阶段 | 数据元素 | OU5klvkk3SM |
+| 14 | AEFI - 疫苗接种 3 日期 | AEFI 阶段 | 数据元素 | f4WCAVwjHz0 |
+| 15 | AEFI - 疫苗 4 名称 | AEFI 阶段 | 数据元素 | menOXwIFZh5 |
+| 16 | AEFI - 疫苗接种 4 日期 | AEFI 阶段 | 数据元素 | H3TKHMFIN6V |
+| 17 | AEFI - 最终因果关系评估分类 | 国家级舞台 | 数据元素 | DpgoIsq65SW |
+| 18 | AEFI - 最终因果关系评估子分类 | 国家级舞台 | 数据元素 | D42M2tdJo7R |
+
+#### 可视化 { #visualizations } 
+
+与 AEFI 阶段相关的可视化信息详见 AEFI 设施级别行列表概览。有两种关键的可视化方式与因果关系评估分类和子分类相关。
+

@@ -1,0 +1,174 @@
+---
+edit_url: "https://github.com/dhis2-metadata/TB_AGG/blob/master/docs/tb_agg_lab-design.md"
+revision_date: '2023-11-10'
+tags:
+- 元数据
+---
+
+# 结核实验室 - 系统设计指南{ #tb-agg-lab-design }
+
+## 介绍 { #introduction } 
+
+DHIS2 中的**结核病实验室（TB-Lab）设计**是为满足各国的明确需求而开发的，即快速调整解决方案，以管理疑似和推定结核病例的实验室样本采集、检测和实验室结果数据。这些数据集允许从医疗机构（在那里收集并处理实验室样本）和实验室进行报告，以生成关键的项目绩效指标并提高结核病诊断的可见度。本节记录了通过汇总数据模型支持核心指标集和仪表板分析的设计，以便各国将基于实验室的指标纳入 HMIS。本节还记录了["**世卫组织结核病综合指南：模块 1：预防：结核病预防性治疗**"](https://www.who.int/publications/i/item/9789240001503)的更新版和 2013 年[**世卫组织记录和报告框架**](https://apps.who.int/iris/handle/10665/79199)。 
+
+## 使用案例{ #use-case } 
+
+该组件根据疑似肺结核病例的实验室诊断结果，获取流行病学分析所需的最低限度数据点。这些风险因素、诊断和常规检查的实验室结果、耐药类型分类、提供的治疗方案以及病例结果。源数据可能来自电子病例监控工具（如 DHIS2 结核病例监控跟踪器），也可能来自纸质或其他来源的汇总数据并报告到 DHIS2 中，具体取决于各国的具体情况。在本文件中，我们将就如何使用 DHIS2 结核病例监测跟踪器中的源数据填充核心指标的汇总数据元素提供基本指导。  
+
+结核病实验室汇总数据集的设计**与[结核病病例监测]（#tb-cs-设计）追踪者计划**完全一致，该计划的构思反映了**通用的工作流程**，用于整合医疗机构（如临床医生和护士）以及实验室获取的数据。有关结核病 CS 追踪器计划的结构及其原理的详细信息，请参阅[追踪器设计指南](https://docs.dhis2.org/en/topics/metadata/tuberculosis/tb-case-surveillance-tracker/version-200/design.html) 中的 "系统设计概述 "一章。各国的工作流程可能各不相同，DHIS2 的设计应根据当地情况进行必要调整。
+
+![Data flow within the tracker stages](resources/images/tb_agg_lab_001.png)
+
+如上流程图所示，跟踪器的设计已得到改进，以扩大实验室可能收集到的信息。这种扩展当然涉及元数据，现在元数据更加全面，可以区分为诊断疑似病例而进行的检测和为监测确诊病例而进行的检测。此外，它还创建了一个更通用的基线，实施者和各国可以在此基础上建立自己的工作流程。同样，在结核病汇总包内创建了结核病实验室汇总数据集，以扩大可收集和分析的实验室相关数据，**用于诊断疑似病例或监测确诊病例**（上图流程图中的橙色方格）。
+
+肺结核病例监测跟踪系统的汇总是通过*计划指标*实现的，这些指标与本设计文件中描述的相应汇总数据元素相对应，并包含在元数据参考文件中。这种设计允许基于病例的全规模电子实施（最不常见）、基于纸张的实施（常见）或基于电子/纸张的混合实施（最常见）在全国范围内生成同一套核心监测指标，并从仪表板中包含的分析建议中获益。有关汇总单个结核病数据的更多信息，请参阅["将基于病例的数据报告为结核病汇总数据报告"](https://docs.dhis2.org/en/topics/metadata/tuberculosis/tb-case-surveillance-tracker/version-200/design.html#reporting-case-based-data-into-aggregate-tb-reports) section in the TB case surveillance design guide. For a more generic guide on how to integrate tracker and aggregate data, please refer to the page linked [here](https://docs.dhis2.org/en/implement/maintenance-and-use/tracker-and-aggregate-data-integration.html) 。
+
+## 预期用户{ #intended-users } 
+
+- **系统管理员和 HIS 核心小组**：负责设计和维护国家 HMIS 和/或结核病数据系统的人员
+- ** 结核病计划协调人** 负责监督国家结核病计划的数据收集、管理、分析和报告职能
+- ** 实验室技术员**负责报告实验室数据，** 实验室主管**负责监督工作量和工作质量。
+- **实施支持专家**，例如，向结核病计划或 HMIS 核心单位提供技术援助，以支持和维护 DHIS2 作为国家卫生信息系统和/或结核病数据系统的人员。
+
+## 数据集配置{ #dataset-configuration } 
+
+结核病实验室数据集的周期为每月一次。各国可以照原样采用，也可以根据自己的报告要求进行调整，并相应改变数据集的周期。
+**注意，为了灵活应对各国在采用电子病例监测方面的差异，一些数据元素是按疑似病例和确诊病例分列的。**如果一个国家只收集确诊病例的数据，则应相应调整类别组合，以简化数据集。 
+
+### 重要定义{ #important-definitions } 
+
+Throughout the dataset, implementers and user should not mix and devalue the meaning behind **Cases (patients)**, **Samples (the matter gathered from the body to aid in the process of a medical diagnosis)**, and **Tests (medical procedure performed to detect, diagnose, or monitor diseases, disease processes, susceptibility, or to determine a course of treatment)**.
+The corresponding TB case surveillance tracker suggests a set workflow for reporting on a number of tests per sample (_see “Diagnostic Laboratory Results” chapter of the tracker design guide for more information_). In the aggregate data entry form, multiple samples per case, multiple tests per sample, and multiple tests per sample by type could be reported. This is important to keep in mind as there is a potential risk of number mismatches in calculations - if there are several tests registered per patient, the results will rightfully differ from one another.
+
+以下计算病例的程序逻辑仅适用于结核病诊断阶段。它可以帮助用户避免在每个病例采集多个样本或重复某些检测的情况下出现计算错误：
+
+- 痰涂片显微镜检查
+  - 在结核病诊断阶段，**具有有效显微镜检查结果**的预防性结核病例
+    - "+++"  - 如果至少一个测试结果为 "+++"
+    - "++"- 如果至少有一个测试结果为 "++"，且没有记录 "+++"结果  
+    - "+"--如果至少有一项检测结果为 "+"，且未记录 "++"或 "+++"结果
+    - "稀少"--如果至少有一项检测结果稀少，且未记录 "+"、"++"或 "+++"结果
+    - "阴性"--如果所有检测结果均为阴性，且未记录阳性检测结果
+- 培养（固体或液体培养基）
+  - ** 有有效培养结果的预防性肺结核病例**
+    - "MTB"--如果至少一项检测结果为 MTB
+    - "NTM"--如果至少有一项检测结果为 NTM，且未记录 MTB 结果。
+    - 培养物污染或无生长的病例不计算在内。
+- Xpert MTB/RIF 或 Xpert MTB/RIF Ultra
+  - **具有有效基因Xpert结果的预防性肺结核病例**
+    - "检测到 MTB"--如果至少一项检测结果为 "检测到 MTB"。
+    - "未检测到 MTB"--如果至少一项检测结果为 "未检测到 MTB"，且未记录 "检测到 MTB "的结果
+  - 经 Xpert MTB/RIF 检测结果为利福平的 MTB 阳性病例
+    - "抗性"--如果至少有一项结果显示抗性。
+    - "易感"--如果至少有一项结果显示易感而无抗药性。
+    - "不确定"--如果至少有一项结果是不确定的，并且没有检测到易感性或抗药性。
+
+### 数据元素 { #data-elements } 
+
+属于结核病实验室数据集的所有数据元素都归入**"结核病-实验室 "数据元素组**。
+数据元素的完整列表见[参考文件](resources/tb_agg_lab_reference.xlsx)
+
+## 数据集详情{ #dataset-details } 
+
+### 推定案件{ #presumptive-cases } 
+
+![Presumptive cases](resources/images/tb_agg_lab_002.png)
+
+在结核病诊断过程中，需要输入这一部分的数据来计算总体阳性率。如果实施过程中只收集确诊病例的数据，则应删除本节和数据元素。
+
+### 结核样本{ #tb-samples } 
+
+![TB Samples](resources/images/tb_agg_lab_003.png)
+
+In this section, basic sample information is recorded on samples collected, tested, received or lost. Each data element is a **subgroup of the previous**: out of the collected samples, the lab should report how many were physically received, and finally, among those samples, how many were accepted for testing. The data is **disaggregated by the type of patient** from which the samples were taken: presumptive cases (TB diagnostics) and confirmed cases (Case monitoring)Should the implementation collect only data related to confirmed cases, the category combination should be removed.
+
+### 痰涂片显微镜检查{ #sputum-smear-microscopy } 
+
+![Samples, cases and microscopy test volumes](resources/images/tb_agg_lab_004.png)
+
+该部分包含与涂片显微镜检测有关的数据：
+
+- 显微镜检测样本（结核病诊断和病例监测）
+- 通过显微镜检测的病例（结核病诊断和病例监测）
+- 显微镜检查结果有效的肺结核推定病例（少量、+、++、+++、阴性）
+- 按结果分列的显微诊断检测（少、+、++、+++、阴性）
+
+### 培养 - 液体和固体培养基{ #culture-liquid-and-solid-media } 
+
+![样本、案例和培养基测试卷](resources/images/tb_agg_lab_005.png)
+
+固体和液体培养基部分的结构相同。本文件包含液体培养基部分的屏幕截图，仅供参考。
+
+- 培养检测样本（结核病诊断和病例监测）
+- 通过培养检测的病例（结核病诊断和病例监测）
+- 有有效培养结果的肺结核推定病例（MTB、NTM）
+- 按结果分列的诊断性培养试验（ MTB、NTM、无生长、污染）
+
+### GeneXpert - Xpert MTB/RIF 和 Xpert MTB/RIF Ultra{ #genexpert-xpert-mtbrif-and-xpert-mtbrif-ultra } 
+
+[样本、病例和 GeneXpert 检测卷](resources/images/tb_agg_lab_006.png)
+
+Xpert MTB/RIF 和 Xpert MTB/RIF Ultra 部分采用相同的结构。本文件包含 Xpert MTB/RIF 部分的屏幕截图，仅供参考。
+
+- 由 GeneXpert（结核病诊断）检测的样本
+- 通过 GeneXpert（结核病诊断）检测的病例
+- 基因检测结果有效的肺结核推定病例（检测到 MTB、未检测到 MTB）
+- 经 GeneXpert 检测为利福平阳性的 MTB 阳性病例（耐药、易感、不确定）
+- 按利福平结果（耐药、易感、不确定）进行的 GeneXpert 检测
+- 按结果分列的 Xpert MTB/RIF 诊断测试（检测到 MTB、未检测到 MTB、错误、无效、无结果）
+
+由于**GeneXpert 检测不常用于病例监测目的**，因此病例监测分类选项已灰显。
+
+### 样品处理周转时间{ #turnaround-time-for-sample-processing } 
+
+![Turnaround time for sample processing](resources/images/tb_agg_lab_007.png)
+
+该部分包含显微镜检查和培养样本周转时间的相关数据。显微镜样本按从样本采集到检测结果的周转天数（从 0 天到 6 天以上）分列。培养样本按从样本采集到样本接种的周转天数（从 0 到 11+ 天）分列。
+
+- 显微镜检查周转时间（总天数）
+- 样本接种固体培养周转时间（总天数）
+- 样品接种的液体培养周转时间（总天数）
+- 按周转时间（0 至 6+ ）分列的显微镜检测
+- 按周转时间（0 至 11+ ）分列的固体培养物检测
+- 按周转时间（0 至 11+ ）划分的液体培养试验
+
+> **NOTE**
+>
+>The total turnaround time should be **manually calculated** based on the information from paper registers, excel documents or other electronic systems and entered in DHIS2.
+
+## 验证规则 { #validation-rules } 
+
+该软件包包括一套验证规则，以提高报告数据的质量。这些规则检查与病例、检测和样本的总数和分类相关的数据是否一致。
+属于结核病实验室数据集的所有验证规则都归入**"结核病-实验室 "验证规则组**。验证规则的完整列表见元数据参考文件。
+
+## 仪表板 { #dashboards } 
+
+![The Tb lab dashboards and the sections](resources/images/tb_agg_lab_008.png)
+
+TB-Lab 数据集包括一个预定义的仪表板（**TB9.实验室**），汇总了监测实验室活动的关键指标（检测、病例、样本、阳性率、周转时间和检测结果）。
+
+仪表板包含一个部分，其中包括总体检测数据以及涂片显微镜检查、Xpert MTB/RIF、Xpert MTB/RIF Ultra、固体和液体培养的单独部分。根据当地的具体情况、实施类型和检验的可用性，可以也应该对仪表板进行调整，以满足实施需要。
+
+## 用户组{ #user-groups } 
+
+该模块包括与结核病 HMIS 软件包相同的标准用户组。
+
+| 名称 | 用户标识 | 访问权限 |
+|-----|------|---------------|
+| 结核病防治 | `pyu2ZlNKbzQ` | 查看元数据，查看数据 |
+| TB 管理员  | `Ubzlyfqm1gO` | 编辑和查看元数据，查看数据 |
+| 结核病数据采集 | `UKWx4jJcrKt` | 查看元数据、捕获和查看数据 |
+
+## 特殊考虑{ #special-considerations } 
+
+### 跟踪器到汇总数据传输{ #tracker-to-aggregate-data-transfer } 
+
+TB-Lab 汇总包中的所有数据元素都与 TB 病例监测跟踪器中的计划指标相对应。这使得各国可以同时实施追踪器和汇总数据的收集和报告。有关将汇总数据集用于单项数据的更多信息，请参阅[**追踪器规模化性能**](https://docs.dhis2.org/en/implement/tracker-implementation/tracker-performance-at-scale.html#tracker-performance-at-scale) 文件中的["**使用追踪器部署的汇总数据模型**"](https://docs.dhis2.org/en/implement/tracker-implementation/tracker-performance-at-scale.html#use-of-aggregate-data-model-with-tracker-deployments) 部分。
+此外，[**整合跟踪器和汇总数据**](https://docs.dhis2.org/en/implement/maintenance-and-use/tracker-and-aggregate-data-integration.html#:~:text=Tracker%20data%20can%20be%20aggregated,month%20to%20p roduce%20monthly%20reports) 文件提供了更多关于实施汇总数据和单个数据相结合的不同方法的详细信息。
+
+## 引用 { #references } 
+
+世界卫生组织（2013 年）。结核病的定义和报告框架--2013年修订版（2014年12月和2020年1月更新）。日内瓦。URL： <https://apps.who.int/iris/bitstream/handle/10665/79199/9789241505345_eng.pdf?sequence=1&isAllowed=y> [2022年7月20日访问］
+
+世界卫生组织（2020 年）。世卫组织结核病业务手册（模块 1--预防）：  结核病预防性治疗》。日内瓦，URL： <https://apps.who.int/iris/bitstream/handle/10665/331525/9789240002906-eng.pdf> [2022 年 7 月 22 日访问］
+
