@@ -1,0 +1,299 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-capture-app/blob/master/docs/src/commonmark/en/content/capture-app/app-android-settings-configuration.md"
+revision_date: "2021-07-20"
+---
+
+# Android Settings Web App { #capture_app_andoid_settings_webapp }
+
+## Aperçu { #capture_app_andoid_settings_webapp_overview }
+
+This section focuses on the Android Settings Web App implementation.
+
+The Android Settings Web App allows admins to configure synchronization parameters for the DHIS2 Android Capture App, encrypt the local database of the android devices, customize the appearance of Programs, Data sets, and Home screen, and add TEI Analytics items. The configuration parameters defined within this web app will overwrite the settings of all android devices using the DHIS2 Android Capture App.
+
+Please note that in this version of the web app, only users with 'ALL' authority are able to define those parameters in the configuration. Other users having access to the web app can see the value of the parameters, but cannot edit them.
+
+> **Attention**
+>
+> Cette version présente des améliorations et des fonctionnalités dérangeantes. De ce fait, les versions précédentes ne sont plus prises en charge, les paramètres qui y sont stockés seront supprimés.
+
+## Paramètres généraux { #capture_app_andoid_settings_webapp_general }
+
+Elles incluent des configurations telles que l'URL Matomo et l'identifiant du projet, le nombre de valeurs réservées à télécharger par TEI et chiffre la base de données de l'appareil.
+
+![](resources/images/capture-app-general-settings.png)
+
+**Matomo configuration:** If you already have a Matomo instance, add the Matomo URL and the project ID.
+
+**Mobile configuration:** This section allows admin users to edit the SMS gateway ad result sender phone number.
+
+**Reserved values:** This will specify the number of values per TEI attribute reserved to download in the devices.
+
+**Encrypt device database:**
+
+> **Warning**
+>
+> This is a critical action and will affect the local database of all android devices synchronizing with the server (it won't affect the server DHIS2 database).
+>
+> By default, the android app database is not encrypted, but an admin can check the _Encrypt device database_ to encrypt the metadata and data stored in every device. Encrypting the database will have an impact on the database volume and performance of the android app. Note that at the moment of selecting or unselecting this option, no data is lost (even if it hasn't been previously synchronized with the server)
+
+**Disable all settings:** By clicking this button, the user will remove all android configuration settings. No configuration will be applied to the Android Capture app (if this is the case, the sync parameters applied are the ones defined in the Android Capture app).
+
+## Synchronization { #capture_app_andoid_settings_webapp_synchronization }
+
+Cette fonction propose des paramètres supplémentaires pour contrôler la synchronisation des métadonnées et/ou des données.
+
+### Global { #capture_app_andoid_settings_webapp_synchronization_global }
+
+**Metadata sync:** Admin users can choose how often the metadata will sync. e.g. Sync metadata every 24 hours.
+
+**Data sync:** Admin users can choose how often the data will sync. e.g. Syncing data every 6 hours.
+
+![](resources/images/capture-app-sync-global.png)
+
+### Programme { #capture_app_andoid_settings_webapp_synchronization_program }
+
+Cette section contrôle les paramètres de synchronisation de données du programme. Il possède une section permettant de définir les paramètres généraux ou par défaut qui seront utilisés lors de la synchronisation de tous les programmes.
+
+#### Paramètres généraux { #capture_app_andoid_settings_webapp_synchronization_program_global }
+
+Les paramètres généraux s'appliquent à tous les programmes auxquels un utilisateur de l'application Android a accès.
+
+![](resources/images/capture-app-program-global-settings.png)
+
+**TEI to download:** Maximum number of TEIs to download from the server.
+
+**TEI download period:** It downloads the TEIs that have been updated within a period. e.g. TEIs that have been updated within last month
+
+**Event to download:** Maximum number of Events to download.
+
+**Event download period:** It downloads Events which event date belongs to a specific period.
+
+#### Paramètres spécifiques { #capture_app_andoid_settings_webapp_synchronization_program_specific }
+
+Cette section permet aux utilisateurs administrateurs de spécifier le comportement d'un ou de plusieurs programmes particuliers lors de la synchronisation des données. La configuration spécifique écrase les paramètres généraux des programmes répertoriés dans cette section. Pour ajouter un paramètre à un programme spécifique :
+
+- Cliquez sur _Ajouter un paramètre spécifique au programme_. Une boîte de dialogue apparaît.
+- Cliquez sous le titre "Valeurs par programme" et vous aurez une liste de programmes.
+- Lorsque vous cliquez sur un programme, les différents paramètres à configurer seront affichés. Le nombre de paramètres dépend du type de programme (avec ou sans enregistrement).
+
+**Paramètres des programmes sans enregistrement**
+
+![](resources/images/capture-app-program-specific-dialog-without_registration.png)
+
+**Paramètres des programmes avec des enregistrements**
+
+![](resources/images/capture-app-program-specific-dialog-with_registration.png)
+
+Si des paramètres spécifiques ont été enregistrés, un tableau en présentera un résumé avec la configuration propre à chaque programme ainsi que les options pour modifier ou supprimer ces paramètres.
+
+![](resources/images/capture-app-program-specific-table.png)
+
+> **Caution**
+>
+> Using specific settings per program might have unexpected results in the number of TEIs downloaded and the total amount might exceed the one defined in the Global Settings. This is due to how the appliation download the TEIs from the server. The Android client will first download a max number of TEIs from the server based on the Organistation Units where the user has access and based on the lastUpdate field. Afterwards it will download a max munumber of TEIs from the specific programs. Therefore, if the TEIs downloaded from the Global setting (500 in the example above) have been updated more recently than any of the TEIs from a specific program (500 for Malaria case diagnosis, treatment and investigation) the Android client will end up downloading 1000 TEI.
+>
+> This might look confusing at first, but once understood can be used to ensure a minium (and maximum) number of TEIs for a specific program will be downloaded which can be very useful in specific implementations.
+>
+> Imagine an implementation where it must be ensured that the Android user has all the TEIs of a specific program in a server where the same user has access to other Organisation Units where other TEIs might be enrolled in another program. The program is called Community Care and it has 17 TEIs which have been updated very long time ago. The administrator can ensure that the 17 TEIs will be donwloaded by setting anything in Global Settings (if needed to reduce bandwidth a very low value should be set) and a at least 17 for the specific program as show in the image below:
+>
+> ![](resources/images/capture-app-program-specific-example-web.png)
+>
+> When the initial synchronization is triggered the Android device will first download the last TEIs updated on the server (which according to our example do not belong to the specific program) and secondly up to 20 TEI from the specific program resulting in the following (notice all the TEIs for the program were downloaded):
+>
+> ![](resources/images/capture-app-program-specific-example-mobile1.png)
+>
+> And by going to the settings it can be appreciated how the total number of TEIs is the expected 37, 20 from the Global Setting, and 17 from the program specific.
+>
+> ![](resources/images/capture-app-program-specific-example-mobile2.png)
+
+#### Réinitialiser toutes les valeurs { #capture_app_andoid_settings_webapp_synchronization_program_reset_all }
+
+En cliquant sur _Réinitialiser toutes les valeurs_, l'utilisateur admin restaurera les valeurs des paramètres par défaut de la section du programme. Veuillez noter que dans ce cas, les paramètres spécifiques à chaque programme ne sont pas rétablis.
+
+Pour enregistrer une configuration, l'utilisateur administrateur doit cliquer sur le bouton _Enregistrer_ (ce bouton est désactivé pour les utilisateurs qui n'ont pas 'TOUS' les droits)
+
+### Data set { #capture_app_andoid_settings_webapp_synchronization_data }
+
+Cette section contrôle les paramètres de synchronisation des données agrégées.
+
+#### Paramètres généraux { #capture_app_andoid_settings_webapp_synchronization_data_global }
+
+La première partie concerne les paramètres généraux qui s'appliquent à tous les ensembles de données auxquels un utilisateur de l'application Android a accès.
+
+![](resources/images/capture-app-dataset-global-settings.png)
+
+**Number of Periods:** Maximum number of periods to download.
+
+#### Paramètres spécifiques { #capture_app_andoid_settings_webapp_synchronization_data_specific }
+
+Pour ajouter un paramètre spécifique :
+
+- Cliquez sur _Ajouter un paramètre spécifique à un ensemble de données_, vous accéderez à une fenêtre de  dialogue comportant une liste d'ensembles de données,
+- Cliquez sur un ensemble de données pour compléter automatiquement ce champ avec la valeur par défaut en fonction du type de période de l'ensemble de données.
+
+![](resources/images/capture-app-dataset-specific-dialog.png)
+
+![](resources/images/capture-app-dataset-specific-table.png)
+
+### User Sync Test { #capture_app_andoid_settings_webapp_synchronization_user_sync_test }
+
+Cette section vérifie la quantité de données et de métadonnées qu'un utilisateur pourrait synchroniser avec son appareil. Vous pouvez tester cette fonctionnalité sur n'importe quel utilisateur auquel vous avez accès. Ce test permet de voir le nombre d'unités d'organisation, d'ensembles de données, de règles de programme, de programmes, etc., auxquels un utilisateur de l'application Android a accès (les ressources que l'application Android va télécharger), ainsi que la taille des métadonnées et des données téléchargées (estimation). Notez qu'un utilisateur n'a pas besoin d'avoir 'TOUS' les droits pour mener ce test.
+
+![](resources/images/capture-app-user-sync-test.png)
+
+> **Remarque :**
+>
+> Les valeurs surlignées en rouge sont dues au fait que la valeur est considérée supérieure à la valeur maximale recommandée.
+
+## Appearance { #capture_app_andoid_settings_webapp_appearance }
+
+Ces paramètres permettent de contrôler l'aspect des formulaires de saisie de données et de listes.
+
+- Filtre : il définit les filtres qui peuvent être activés dans les différents menus de l'application.
+- Spinner d'achèvement : il active/désactive le spinner d'achèvement, lequel montre la progression des entrées de données dans les formulaires.
+
+These settings refer to visual components, so they must be consumed by the app.
+
+### Home screen { #capture_app_andoid_settings_webapp_appearance_home_screen }
+
+Il permet à l'utilisateur administrateur d'activer ou de désactiver l'option d'affichage des filtres liés à la date, à l'unité d'organisation, à l'état de la synchronisation et à l'utilisateur lui-même, sur l'écran d'accueil.
+
+![](resources/images/capture-app-appearance-home.png)
+
+### Programme { #capture_app_andoid_settings_webapp_appearance_program }
+
+Il permet à l'utilisateur administrateur de spécifier les filtres qui vont être affichés et d'activer ou de désactiver l'option d'affichage du pourcentage d'achèvement du formulaire de saisie de données.
+
+#### Paramètres généraux { #capture_app_andoid_settings_webapp_appearance_program_global }
+
+Les paramètres généraux s'appliquent à tous les programmes auxquels un utilisateur de l'application Android a accès.
+
+![](resources/images/capture-app-appearance-program-global.png)
+
+#### Paramètres spécifiques { #capture_app_andoid_settings_webapp_appearance_program_specific }
+
+Cette section permet à l'utilisateur administrateur de personnaliser l'option contrôlant l'affichage du filtre et du pourcentage d'achèvement. Pour ajouter un paramètre spécifique :
+
+- Cliquez sur _Ajouter des paramètres de programme_. Une boîte de dialogue apparaîtra.
+- Cliquez sur le menu déroulant ; il affichera une liste de programmes.
+- Lorsque vous cliquez sur un programme, les différents filtres à configurer seront affichés. Le filtre de la combinaison de catégorie dépend du nom de la combinaison de catégorie.
+
+![](resources/images/capture-app-appearance-program-specific.png)
+
+Si des paramètres spécifiques ont été enregistrés, un tableau présentera le résumé de la configuration de chaque programme ainsi que les options pour modifier ou supprimer ces paramètres.
+
+![](resources/images/capture-app-appearance-program-table.png)
+
+### Data set { #capture_app_andoid_settings_webapp_appearance_data }
+
+It allows admins to enable/disable filters for the data set section
+
+#### Paramètres généraux { #capture_app_andoid_settings_webapp_appearance_data_global }
+
+La première partie concerne les paramètres généraux qui s'appliquent à tous les ensembles de données auxquels un utilisateur de l'application Android a accès.
+
+![](resources/images/capture-app-appearance-dataset-global.png)
+
+#### Paramètres spécifiques { #capture_app_andoid_settings_webapp_appearance_data_specific }
+
+Pour ajouter un paramètre spécifique :
+
+- Cliquez sur _Ajouter des paramètres à un ensemble de données_. Un dialogue avec liste déroulante apparaît, présentant une liste d'ensembles de données.
+- Cliquez sur un ensemble de données. Une liste d'options permettant d'activer ou de désactiver les filtres s'affichera.
+
+![](resources/images/capture-app-appearance-dataset-specific.png)
+
+![](resources/images/capture-app-appearance-dataset-table.png)
+
+## Analytics { #capture_app_andoid_settings_webapp_analytics }
+
+Analytics settings define the TEI analytics items (charts, tables) that will be displayed to the user. The scope of the analysis is the TEI, so the visualizations will be displayed in the TEI dashboard of the android app.
+
+Any item defined in the settings app will overwrite the default behaviour of the android app, only showing the items defined in the settings app. The purpose of this section is to define visualizations to show evolution of dataelements and program indicators over time. Based on that, it will only take into cosideration dataelements that belongs to a repeatable program stage, or programindicators which formula contains at least one dataelement that belongs to a repeatable program stage.
+
+Pour créer un élément d'**Analyses des TEI ** :
+
+- Cliquez sur _Ajouter des Analyses de TEI _. Une boîte de dialogue apparaît avec un petit formulaire.
+- Choisissez un programme et une étape de programme répétable, puis remplissez le formulaire. **Nom abrégé** est le seul champ facultatif.
+- Si une visualisation d'élément autre que Nutrition OMS a été choisie, les prochains champs à sélectionner seront le type de période (mensuel, hebdomadaire, quotidien), un type d'élément (indicateur de programme, élément de données) et un élément qui sera basé sur le type d'élément précédemment sélectionné. Rappelez-vous que ces éléments sont liés au programme et à l'étape du programme répétable choisis au début.
+
+![](resources/images/capture-app-analytics-item.png)
+
+Pour créer un élément d'**Analyses de Nutrition OMS** :
+
+- Sélectionnez un programme, une étape de programme et Nutrition OMS comme type de visualisation.
+- Choisissez un type de visualisation OMS qui peut être la taille pour l'âge (HFA), le poids pour l'âge (WFA) ou le poids pour la taille (WFH).
+- Select the trackedentityattribute that represents the gender. You have then to specify the option for Male 'Male title' and the option for Female 'Female title'. Normally they will be option codes.
+- Choose the dataelement/programindicator that will be displayed in the Horizontal (x) axis
+- Choose the dataelement/programindicator that will be displayed in the Vertical (y) axis
+
+![](resources/images/capture-app-analytics-who-item.png)
+
+Si un élément d'Analyses de TEI a été créé, un tableau affichera le titre de l'élément et le nom du programme, ainsi que des boutons d'action permettant de supprimer ou de modifier cet élément.
+
+![](resources/images/capture-app-analytics-table.png)
+
+## Installation { #capture_app_andoid_settings_webapp_installation }
+
+Un utilisateur peut facilement installer Android Settings Web App en se connectant à DHIS2 et en accédant à **Gestion des applications**.
+
+- Click on **App Store**
+- Accédez à _Android Settings App (Application Paramètres Android)_
+- Click on _Install V2.0.0_
+
+![](resources/images/capture-app-app-hub-install.png)
+
+## Log in and first time setup { #capture_app_andoid_settings_webapp_login }
+
+Lorsqu'un utilisateur installe et lance Android Settings Web App pour la première fois, l'application Web devra définir et enregistrer les valeurs par défaut de la configuration. Par cette action, les paramètres par défaut seront appliqués à tous les appareils Android connectés à l'instance.
+
+![](resources/images/capture-app-first-time-setup.png)
+
+> **Attention**
+>
+> Les versions précédentes sont obsolètes. Vous débuterez donc avec une nouvelle configuration par défaut.
+
+![](resources/images/capture-app-first-setup-with-deprecation-message.png)
+
+> **Attention**
+>
+> Seuls les utilisateurs disposant de 'TOUS' les droits peuvent _sauvegarder ou mettre à jour_ la configuration. Cependant, tout utilisateur pourra la consulter, une fois l'accès créée.
+
+![](resources/images/capture-app-first-setup-no-authorities.png)
+
+## Enter and save configuration parameters { #capture_app_andoid_settings_webapp_enter_and_save }
+
+### Datastore { #capture_app_andoid_settings_webapp_datastore }
+
+En interne, tous les paramètres sont stockés dans le [Datastore](https://docs.dhis2.org/master/en/developer/html/webapi_data_store.html) au format JSON.
+
+Structure du Datastore :
+
+| Élément      | Description                                 | Type de données |
+| --------- | ------------------------------------------- | --------- |
+| Espace de noms | Espace-noms pour l'organisation des entrées       | Chaîne    |
+| Clé       | Clé d'identification des valeurs            | Chaîne    |
+| Valeur     | Valeur contenant les informations à entrer | JSON      |
+
+### Save configuration parameters { #capture_app_andoid_settings_webapp_save_config }
+
+Au bas du formulaire de toutes les sections de paramètres, les utilisateurs administrateurs peuvent trouver un bouton _Enregistrer_.
+
+![](resources/images/capture-app-save_button.png)
+
+C'est seulement si un utilisateur administrateur clique sur ce bouton que toutes les modifications apportées à la section en cours sont enregistrées sur le Datastore. Ces modifications s'appliqueront aux Applications Android Capture lorsqu'elles synchroniseront leur configuration.
+
+**Modifications non sauvegardées :**
+
+In case an admin user wants to go to another section when there are still some unsaved changes, an alert will be displayed before navigating away from the current section. In case the user accepts leaving the page, the unsaved changes will be lost.
+
+![](resources/images/capture-app-unsaved-changes.png)
+
+#### Reset all values to default { #capture_app_andoid_settings_webapp_reset_all }
+
+Un utilisateur administrateur peut restaurer les paramètres à tout moment. Un bouton _Réinitialiser toutes les valeurs par défaut_ situé au bas du formulaire de toutes les sections de paramètres permet d'exécuter cette fonction.
+
+![](resources/images/capture-app-reset-default.png)
+
+Les valeurs par défaut ne seront restaurées que sur le Datastore et appliquées que si l'utilisateur clique sur _Enregistrer_.
