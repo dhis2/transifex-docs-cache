@@ -1,0 +1,264 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/new_install_docs/src/sysadmin/concepts/audit.md"
+revision_date: '2024-11-04'
+tags:
+- Gestionar
+---
+
+# Audit { #audit } 
+
+## Introducción { #introduction } 
+
+DHIS2 soporta un nuevo servicio de auditoría basado en _Apache ActiveMQ Artemis_. Artemis se utiliza como un sistema de mensajería asíncrona por DHIS2.
+
+Después de guardar una entidad en la base de datos, se creará un mensaje de auditoría y se enviará al servicio de consumidor de mensajes de Artemis. El mensaje entonces será procesado en un subproceso diferente.
+
+Los registros de auditoría pueden recuperarse de la base de datos de DHIS2. Actualmente no hay UI o API endpoint disponible para recuperar las entradas de auditoría.
+
+Detailed explanation of the audit system architecture can be found [here](https://github.com/dhis2/wow-backend/blob/master/guides/auditing.md).
+
+## What we log { #what_we_log }
+
+This is the list of operations we log as part of the audit system:
+
+- Operations on user accounts (like but not limited to creation, profile edits)
+- Operations on user roles, groups and authority groups
+- Operations on metadata objects (like but not limited to categories, organization units, reports)
+- Operations on tracked objects (like but not limited to instances, attributes, data values)
+- Jobs configuration
+- Breaking the glass operations
+
+## Tabla de auditoría única { #audit_table }
+
+All audit entries, except the ones related to tracked entities, will be saved into one single table named `audit`
+
+| Columna | Tipo | Descripción |
+| --- | --- | --- |
+| auditid | entero | Clave primaria. |
+| auditType | texto | LEER, CREAR, ACTUALIZAR, ELIMINAR, BUSCAR |
+| auditscope | texto | METADATOS, AGREGADO, TRACKER |
+| klass | texto | Nombre de la clase Java de la entidad auditoría. |
+| attributes | jsonb | Una cadena JSON con atributos del objeto auditado. Ejemplo: `{"valueType":"TEXT", "categoryCombo":"SWQW313FQY", "domainType":"TRACKER"}`. |
+| data | bytea | Cadena JSON comprimida de la entidad de auditoría en formato de matriz de bytes (no legible por humanos). |
+| createdat | marca de tiempo sin zona horaria | Tiempo de creación. |
+| createdby | texto | Nombre de usuario del usuario que realiza la operación auditada. |
+| uid | texto | El UID del objeto auditado. |
+| code | texto | El código del objeto auditado. |
+
+El servicio de auditoría hace uso de dos nuevos conceptos: _Ámbito de auditoría_ y _Tipo de auditoría_.
+
+## Ámbito de auditoría { #audit_scope }
+
+Un ámbito de auditoría es un área lógica de la aplicación que puede ser auditada. Actualmente existen tres ámbitos de auditoría.
+
+| Scope | Clave | Objetos auditados |
+| --- | --- | --- |
+| Tracker | TRACKER | Instancia de entidad Tracker, Valor de atributo de entidad Tracker, Inscripción, Evento. |
+| Metadatos | METADATA | Todos los objetos de metadatos (por ejemplo, elemento de datos, unidad organizativa). |
+| Agregado | AGGREGATE | Valor de datos agregados. |
+
+## Tipo de auditoría { #audit_type }
+
+Un tipo de auditoría es una acción que desencadena una operación de auditoría. Actualmente admitimos los siguientes cuatro tipos.
+
+| Nombre     | Clave      | Descripción         |
+| -------- | -------- | ------------------- |
+| Read     | READ     | Se leyó el objeto.    |
+| Create   | CREATE   | El objeto fue creado. |
+| Update   | UPDATE   | El objeto fue actualizado. |
+| Delete   | DELETE   | El objeto fue eliminado. |
+| Disabled | DISABLED | Deshabilitar auditoría.      |
+
+> **Precaución**
+>
+> El tipo de auditoría READ puede generar una gran cantidad de datos en la base de datos y puede tener un impacto en el rendimiento.
+
+## Tracked entity audits { #tracked-entity-audits } 
+
+Operations on tracked entities like instances, attributes and values are stored, respectively in the `trackedentityinstanceaudit`, `trackedentityattributevalueaudit` and `trackedentitydatavalueaudit` tables.
+
+### trackedentityinstanceaudit { #trackedentityinstanceaudit } 
+
+| Columna | Tipo | Descripción |
+| --- | --- | --- |
+| trackedentityinstanceauditid | entero | Clave primaria. |
+| trackedentityinstance | texto | Tracked entity instance name. |
+| created | marca de tiempo sin zona horaria | Tiempo de creación. |
+| accessedby | texto | Nombre de usuario del usuario que realiza la operación auditada. |
+| auditType | texto | LEER, CREAR, ACTUALIZAR, ELIMINAR, BUSCAR |
+| comment | texto | El código del objeto auditado. |
+
+This data can be retrieved via [API](#webapi_tracked_entity_instance_audits).
+
+### trackedentityattributevalueaudit { #trackedentityattributevalueaudit } 
+
+| Columna | Tipo | Descripción |
+| --- | --- | --- |
+| trackedentityattributevalueauditid | entero | Clave primaria. |
+| trackedentityinstanceid | entero | Instance ID of which the attribute value belongs to. |
+| trackedentityattributeid | entero | Attribute ID. |
+| created | marca de tiempo sin zona horaria | Tiempo de creación. |
+| modifiedby | texto | Nombre de usuario del usuario que realiza la operación auditada. |
+| auditType | texto | LEER, CREAR, ACTUALIZAR, ELIMINAR, BUSCAR |
+| value | texto | The value of the audited object. |
+| encryptedvalue | texto | The encrypted value if confidentiality flag is set. |
+
+This data can be retrieved via [API](#webapi_tracked_entity_attribute_value_audits).
+
+### trackedentitydatavalueaudit { #trackedentitydatavalueaudit } 
+
+| Columna | Tipo | Descripción |
+| --- | --- | --- |
+| trackedentitydatavalueauditid | entero | Clave primaria. |
+| programstageinstanceid | entero | Program stage ID of which the data value belongs to. |
+| dataelementid | entero | ID of the data element. |
+| created | marca de tiempo sin zona horaria | Tiempo de creación. |
+| modifiedby | texto | Nombre de usuario del usuario que realiza la operación auditada. |
+| auditType | texto | LEER, CREAR, ACTUALIZAR, ELIMINAR, BUSCAR |
+| value | texto | The value of the audited object. |
+| providedelsewhere | bool | Indicates whether the user provided the value elsewhere or not. |
+
+This data can be retrieved via [API](#webapi_tracked_entity_data_value_audits).
+
+## Breaking the glass { #breaking-the-glass } 
+
+Breaking the glass features allows to access records a DHIS2 user doesn't have access in special circumstances. As a result of such, users must enter a reason to access such records.
+
+A video explaining how it works can be found in our Youtube channel [here](https://www.youtube.com/watch?v=rTwg5Ix_E_M).
+
+The breaking the glass event is stored in the `programtempownershipaudit` table, described below:
+
+| Columna | Tipo | Descripción |
+| --- | --- | --- |
+| programtempownershipauditid | entero | Clave primaria. |
+| programid | entero | Program ID of which the tracked entity belongs to. |
+| trackedentityinstanceid | entero | Instance ID of which the attribute value belongs to. |
+| created | marca de tiempo sin zona horaria | Tiempo de creación. |
+| accessedby | texto | Nombre de usuario del usuario que realiza la operación auditada. |
+| reason | texto | The reason as inserted in the dialog. |
+
+## Configurar { #audit_configuration }
+
+El sistema de auditoría está habilitado de forma predeterminada para los siguientes ámbitos y tipos.
+
+Scopes (case sensitive):
+
+- `READ`
+- `CREATE`
+- `UPDATE`
+- `DELETE`
+- `SEARCH`
+- `DISABLED`
+
+Tipos:
+
+- `METADATOS`
+- `TRACKER`
+- `AGREGADO`
+
+Esto significa que **no se requiere ninguna acción** para habilitar el sistema de auditoría predeterminado. La configuración predeterminada es equivalente a la siguiente configuración `dhis.conf`.
+
+```properties
+audit.metadata = CREATE;UPDATE;DELETE
+audit.tracker = CREATE;UPDATE;DELETE
+audit.aggregate = CREATE;UPDATE;DELETE
+```
+
+La auditoría se puede configurar utilizando la _matriz de auditoría_. La matriz de auditoría representa las combinaciones válidas de ámbitos y tipos, y se define con las siguientes propiedades en el archivo de configuración `dhis.conf`. Cada propiedad acepta una lista delimitada por punto y coma (`;`) de tipos de auditoría.
+
+- `audit.metadata`
+- `audit.tracker`
+- `audit.aggregate`
+
+### Artemis { #artemis } 
+
+[Apache ActiveMQ Artemis](https://activemq.apache.org/components/artemis/documentation/) is an open source project to build a multi-protocol, embeddable, very high performance, clustered, asynchronous messaging system. It has been part of DHIS2 since version 2.31 and used as a system to consume audit logs.
+
+By default, DHIS2 will start an embedded Artemis server, which is used internally by the application to store and access audit events.
+
+However, if you have already an Artemis server, you can connect to it from DHIS2 to send audit events, as described in our [official documentation](#webapi_amqp_configuration): in this setup, audit events will flow from DHIS2 to the external Artemis system.
+
+### log4j2 { #log4j2 } 
+
+[log4j2](https://logging.apache.org/log4j/2.x/index.html) is the default DHIS2 logging library used to handle output messages. It's used to control what events are recored in which file.
+
+The application ships a [log4j2 default configuration file](https://github.com/dhis2/dhis2-core/blob/master/dhis-2/dhis-web/dhis-web-commons-resources/src/main/webapp/WEB-INF/classes/log4j2.xml), which instructs what information to log and where (console). DHIS2 then takes care of import that file and instruction logging as described in the [log4j configuration class](https://github.com/dhis2/dhis2-core/blob/2.38/dhis-2/dhis-support/dhis-support-system/src/main/java/org/hisp/dhis/system/log/Log4JLogConfigInitializer.java), that is, redirecting output from console to files.
+
+From 2.36 to 2.38, audit log file `dhis-audit.log` is rotated [every day at midnight](https://github.com/dhis2/dhis2-core/blob/2.38/dhis-2/dhis-support/dhis-support-system/src/main/java/org/hisp/dhis/system/log/Log4JLogConfigInitializer.java#L171).
+
+An example of custom log4j2 configuration can be found [here](): it shows how to configure DHIS2 to save all logs into an external storage location, rotate them on a weekly basis and retain them for 30 days. Please read the [application logging section](#install_application_logging) on how to use it.
+
+## Examples { #examples } 
+
+Esta sección demuestra cómo configurar el sistema de auditoría en `dhis.conf`.
+
+Para habilitar la auditoría de creación y actualización de metadatos y tracker únicamente: 
+
+```properties
+audit.metadata = CREATE;UPDATE
+audit.tracker = CREATE;UPDATE
+audit.aggregate = DISABLED
+```
+
+Para auditar sólo objetos relacionados con tracker crear y eliminar:
+
+```properties
+audit.metadata = DISABLED
+audit.tracker = CREATE;DELETE
+audit.aggregate = DISABLED
+```
+
+Para deshabilitar completamente la auditoría para todos los ámbitos:
+
+```properties
+audit.metadata = DISABLED
+audit.tracker = DISABLED
+audit.aggregate = DISABLED
+```
+
+We recommend keeping the audit trails into a file, as by default in version 2.38. For older versions, the following configuration saves the audit logs into the `$DHIS2_HOME/logs/dhis-audit.log` file:
+
+```properties
+audit.database = off
+audit.logger = on
+```
+
+To store audit data into the database, add the following to your `dhis.conf` file (default up until version 2.38):
+
+```properties
+audit.database = on
+audit.logger = off
+```
+
+To extract logs from the `audit` table, you can use [`dhis2-audit-data-extractor`](https://github.com/dhis2/dhis2-utils/tree/master/tools/dhis2-audit-data-extractor) from the system where DHIS2 is running:
+
+```
+$ python extract_audit.py extract
+```
+
+Please read the documentation for full details.
+
+To parse entries from log file, you can use the python script as follow:
+
+```
+$ grep "auditType" dhis-audit.log | python extract_audit.py parse
+```
+
+Or use `jq` as follow:
+
+```
+$ grep "auditType" dhis-audit.log | jq -r .
+```
+
+To select events within a specific date, you can use `jq` as follow (in this example, we're selecting all events happened between January 2022 and end of June 2022):
+
+```
+$ grep "auditType" dhis-audit.log | jq -r '.[] | select ( (.datetime >="2022-01-01") and (.datetime <= "2022-06-30") )'
+```
+
+Same with `extract_audit`:
+
+```
+$ python3 extract_audit.py extract -m stdout -f JSON | jq -r '.[] | select ( (.datetime >="2022-01-01") and (.datetime <= "2022-06-30") )'
+```
+

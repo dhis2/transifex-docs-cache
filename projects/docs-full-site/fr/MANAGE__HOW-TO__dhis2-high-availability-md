@@ -1,0 +1,151 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/new_install_docs/src/sysadmin/how-to/tomcat-clustering.md"
+revision_date: '2024-11-01'
+tags:
+- Gestion
+---
+
+# Configuration du cluster de serveur Web { #install_web_server_cluster_configuration }
+
+Cette section décrit comment configurer l'application  DHIS 2 pour qu'elle s'exécute dans un cluster.
+
+# Présentation du clustering { #install_cluster_configuration_introduction }
+
+Le clustering est une technique courante permettant d'améliorer l'évolutivité et la disponibilité du système. Elle consiste à installer plusieurs serveurs web, par exemple des instances Tomcat, pour qu'ils servent une seule application. Le clustering permet d'*étendre* une application de manière à ce que de nouveaux serveurs puissent être ajoutés afin d'améliorer ses performances. Elle garantit également une *grande disponibilité*, car le système peut tolérer que des instances tombent en panne sans pour autant rendre le système inaccessible aux utilisateurs.
+
+Quelques configurations doivent être effectuées pour que DHIS 2 s'exécute dans un cluster.
+
+* Un entrepôt de données Redis doit être installé et les informations de connexion doivent
+être fournies pour chaque instance de l'application DHIS 2 dans `dhis.conf`.
+
+* Les instances et les serveurs DHIS 2 doivent partager le même dossier *fichiers* utilisé pour 
+les applications et les téléchargements de fichiers, soit par l'intermédiaire de l'option *Stockage de fichiers cloud AWS S3*, 
+soit par un lecteur réseau partagé.
+
+* L'invalidation du cache de l'instance DHIS 2 doit être activée.
+
+* Un équilibreur de charge tel que nginx doit être configuré pour distribuer les requêtes Web
+dans les instances du cluster.
+
+## Invalidation du cache de l'instance DHIS 2 avec Redis { #install_cluster_cache_invalidation_redis }
+
+DHIS 2 peut invalider les caches des différentes instances en écoutant les événements envoyés et émis par un serveur Redis, lorsqu'il est configuré à cet effet.
+
+C'est le moyen le plus simple d'activer l'invalidation du cache. Si vous prévoyez déjà d'utiliser [Redis pour la configuration du cluster de stockage de données partagé](#install_cluster_configuration_redis), le serveur Redis sera partagé pour les deux cas.
+
+### Prérequis { #prerequisites }
+
+* [ Install ](https://docs.kipkurgat.com/server-admin/how-to-guides/installing-redis.html) Redis server
+
+### Configuration de Redis { #redis-configuration }
+
+Aucune configuration spécifique dans Redis n'est nécessaire pour que l'invalidation du cache DHIS 2 fonctionne.
+
+Lorsque vous choisissez d'activer la configuration du cluster de stockage de données partagé avec Redis, vous partagerez la configuration de l'hôte/port Redis avec le système d’invalidation du cache. En d'autres termes, vous ne pouvez configurer qu'**un** serveur Redis partagé.
+
+### Configuration de DHIS 2 { #dhis-2-configuration }
+
+Les propriétés suivantes doivent être spécifiées dans le fichier de configuration DHIS 2 `dhis.conf` :
+
+```propriétés
+# Configuration de l'invalidation du cache
+
+redis.cache.invalidation.enabled = activé
+
+# Configuration du Redis partagé
+redis.host = REDIS_HOST
+redis.port = REDIS_PORT
+redis.password = PASSWORD (Facultatif, uniquement s'il est activé sur le serveur Redis)
+redis.use.ssl = vrai (Facultatif, uniquement s'il activé sur le serveur Redis)
+```
+
+## Configuration du cluster de stockage de données partagé Redis { #install_cluster_configuration_redis }
+
+Pour configurer un cluster, vous avez besoin d'un serveur Redis qui va gérer les sessions utilisateur partagées, le cache de l'application et les nœuds du cluster.
+
+Pour optimiser les performances, les événements *Redis Keyspace* pour les _commandes génériques_ et les _événements expirés_ doivent être activés sur le serveur Redis. Si vous utilisez un serveur Redis géré par une plateforme cloud (comme *AWS ElastiCache pour Redis* ou *Azure Cache pour Redis*), il vous faudra activer les notifications d'événements keyspace à l'aide des interfaces de console cloud respectives. Si vous configurez un serveur Redis autonome, l'activation des notifications d'événements keyspace peut être effectuée dans le fichier *redis.conf* en ajoutant ou en décommentant la ligne suivante :
+
+```
+notify-keyspace-events Egx
+```
+
+DHIS2 se connectera à Redis si la propriété de configuration *redis.enabled* dans `dhis.conf` est définie sur *activé* avec les propriétés suivantes :
+
+- *redis.host* : Spécifie où le serveur Redis est exécuté. La valeur par défaut est *localhost*. Obligatoire.
+
+- *redis.port* : Spécifie le port sur lequel le serveur Redis écoute. La valeur par défaut est *6379*. Facultatif.
+
+- *redis.password* : Spécifie le mot de passe d'authentification. Si un mot de passe n'est pas nécessaire, il peut rester vide.
+
+- *redis.use.ssl* : Spécifie si SSL est activé sur le serveur Redis. La valeur par défaut est *faux*. Facultatif.
+
+Lorsque Redis est activé, DHIS2 attribue automatiquement à l'une des instances en cours d'exécution le rôle de leader du cluster. L'instance leader sera utilisée pour exécuter des travaux ou des tâches programmées qui doivent être exécutés exclusivement par une instance. En option, vous pouvez configurer la propriété *leader.time.to.live.minutes* dans `dhis.conf` pour définir la fréquence à laquelle le choix du leader doit avoir lieu. Cela donne aussi une indication sur le temps nécessaire pour qu'une autre instance prenne le relais après que le leader précédent ne soit plus disponible. La valeur par défaut est 2 minutes. Notez que l'attribution d'un leader dans le cluster n'est effectuée que si Redis est activé. Ci-dessous, un exemple de fichier de configuration `dhis.conf` avec Redis activé et la fréquence du choix du leader configurée.
+
+```propriétés
+# Configuration de Redis
+
+redis.enabled = activé
+
+# Configuration de Redis partagé
+redis.host = HÔTE_REDIS
+redis.port = PORT_REDIS
+redis.password = MOT DE PASSE (Facultatif, uniquement s'il est activé sur le serveur Redis)
+redis.use.ssl = vrai (Facultatif, uniquement s'il est activé sur le serveur Redis)
+
+# Facultatif, la valeur par défaut est 2 minutes
+leader.time.to.live.minutes=4
+```
+
+### Configuration du dossier de fichiers { #files-folder-configuration }
+
+DHIS 2 va stocker plusieurs types de fichiers hors de l'application elle-même, tels que des applications, des fichiers sauvegardés lors de saisies de données et des avatars d'utilisateurs. Lorsqu'il est déployé dans un cluster, l'emplacement de ces fichiers doit être partagé entre toutes les instances. Sur le système de fichiers local, l'emplacement est le suivant :
+
+```
+{DHIS2_HOME}/files
+```
+
+Ici, `DHIS2_HOME` fait référence à l'emplacement du fichier de configuration DHIS 2 tel que spécifié par la variable d'environnement DHIS 2, et `fichiers` est le dossier de fichiers immédiatement en dessous.
+
+Il existe deux manières d'obtenir un emplacement partagé :
+
+* Utiliser l'option *Stockage de fichiers cloud AWS S3*. Les fichiers seront stockés dans un
+compartiment S3 qui est automatiquement partagé entre toutes les instances DHIS 2 présentes dans le cluster.
+Consulter la section *Configuration de l'entrepôt de fichiers* pour obtenir des conseils.
+* Configurer un dossier partagé entre toutes les instances et tous les serveurs DHIS 2 
+présents dans le cluster. Sur Linux, cela peut être réalisé avec *NFS* (Network File System)
+qui est un protocole de système de fichiers en réseau. Notez que seul le sous-dossier `fichiers`
+sous `DHIS2_HOME` doit être partagé, pas le dossier parent.
+
+## Configuration de l'équilibreur de charge { #install_load_balancing }
+
+Lorsqu'un cluster d'instances Tomcat est installé, un *équilibreur de charge* peut être utilisé pour acheminer les requêtes web entrantes vers les instances backend du cluster. Un équilibreur de charge veille à ce que la charge soit répartie uniformément entre les instances du cluster. Il détectera également l'indisponibilité d'une instance et, le cas échéant, arrêtera les requêtes de routine vers cette instance et utilisera les autres instances disponibles.
+
+L'équilibrage de la charge peut être réalisé de plusieurs manières. *nginx* est une approche simple. En l'utilisant, vous devrez définir un élément *upstream* qui énumère l'emplacement des instances backend, puis utiliser cet élément dans le bloc d'emplacement *proxy*.
+
+```text
+http {
+
+  # Upstream element with sticky sessions
+
+  upstream dhis_cluster {
+    ip_hash;
+    server 193.157.199.131:8080;
+    server 193.157.199.132:8080;
+  }
+
+  # Proxy pass to backend servers in cluster
+
+  server {
+    listen 80;
+
+    location / {
+      proxy_pass   http://dhis_cluster/;
+    }
+  }
+}  
+```
+
+DHIS 2 conserve l'état des sessions utilisateur côté serveur dans une certaine mesure. L'utilisation de "sessions persistantes" est une approche simple qui permet d'éviter de reproduire l'état de la session du serveur en acheminant les demandes d'un même client vers le même serveur. La directive *ip\_hash* de l'élément upstream garantit cette fonction.
+
+Plusieurs instructions ont été omises par souci de concision dans l'exemple ci-dessus. Consultez la section proxy inverse pour obtenir un guide détaillé.
+

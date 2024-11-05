@@ -1,0 +1,124 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/new_install_docs/src/sysadmin/reference/logging.md"
+revision_date: '2024-11-01'
+tags:
+- Manage
+---
+
+# 应用程序日志记录 { #install_application_logging } 
+
+This section covers application logging in DHIS2.
+
+## 日志文件 { #log-files } 
+
+The DHIS2 application log output is directed to multiple files and locations.
+First, log output is sent to standard output. The Tomcat servlet container
+usually outputs standard output to a file under "logs":
+
+```properties
+
+<tomcat-dir>/logs/catalina.out
+
+```
+
+Second, log output is written to a "logs" directory under the DHIS2 home
+directory as defined by the `DHIS2_HOME` environment variables. There is a main
+log file for all output, and separate log files for various background
+processes. The main file includes the background process logs as well. The log
+files are capped at 50 Mb and log content is continuously appended.
+```properties
+
+<DHIS2_HOME>/logs/dhis.log    
+<DHIS2_HOME>/logs/dhis-analytics-table.log
+<DHIS2_HOME>/logs/dhis-data-exchange.log
+<DHIS2_HOME>/logs/dhis-data-sync.log
+
+```
+
+## 日志配置 { #log-configuration } 
+
+To override the default log configuration you can specify a Java system
+property with the name `log4j2.configurationFile` and a value pointing to the
+[Log4j version 2](https://logging.apache.org/log4j/2.x/manual/configuration.html)
+configuration file at the file system like this:
+
+```properties
+-Dlog4j2.configurationFile=/home/dhis/config/log4j2.properties
+```
+
+Java system properties can be set e.g. through the *JAVA\_OPTS* environment
+variable or in the tomcat startup script.
+
+A second approach to overriding the log configuration is to specify logging
+properties in the `dhis.conf` configuration file. The supported properties are:
+
+```属性
+＃日志文件的最大大小，默认为'100MB'
+logging.file.max_size = 250MB
+
+＃最大滚动日志归档文件数，默认为0
+logging.file.max_archives = 2
+```
+
+DHIS2 will eventually phase out logging to standard out / catalina.out and as a
+result it is recommended to rely on the logs under `DHIS2_HOME`.
+
+DHIS2 will provide the following context values:
+
+* `sessionId`: Current user's session ID
+* `xRequestID`: An alphanumeric ID as send by the `X-Request-ID` HTTP header
+  for the currently processed request; empty if not provided
+
+To use the context variables in the log add them using `-X{<name>}` to your log
+pattern as in this example:
+
+    * %-5p %d{ISO8601} %m (%F [%t]) %X{sessionId} %X{xRequestID}%n
+
+## Log level configuration { #log-level-configuration } 
+
+To set the log level of individual packages you can specify properties on the
+format  `logging.level.{package-names}` in `dhis.conf`. For example, to set the
+log level for the entire Spring Framework to DEBUG and up, you can specify:
+
+```
+logging.level.org.springframework = DEBUG
+```
+To set the log level to DEBUG for the DHIS2 services, you can specify:
+
+```
+logging.level.org.hisp.dhis = DEBUG
+```
+
+常见的日志级别是`DEBUG`、`INFO`、`WARN`和`ERROR`。
+
+> **Note**
+> 
+> Log level configuration is not supported for the embedded DHIS2 Jetty version.
+
+## 变更日志 { #install_changelog } 
+
+DHIS2 writes entries to changelogs when certain entities were changed in the
+system. The entities fall within two categories: _Aggregate_ and _tracker_. The
+_aggregate_ category includes changes to aggregate data values. The _tracker_
+category includes changes to program instances, program temporary ownership
+items, tracked entity attribute values and tracked entity data values.
+
+The changelog for both categories are enabled by default. You can control
+whether to enable or disable the changelog by category through the `dhis.conf`
+configuration file using the properties described below. Property options are
+`on` (default) and `off`.
+
+The benefit of the changelog is the ability to see changes which have been
+performed to the data. The benefits of disabling the changelog is a minor
+performance improvement by avoiding the cost of writing changelog items to the
+database, and less database storage used. It is recommended to enable
+changelog, and great care should be taken if disabling it.
+
+```属性
+＃汇总变更日志，可以为“ on”，“ off”
+changelog.aggregate =开启
+
+＃Tracker changelog，可以为“ on”，“ off”
+changelog.tracker =开
+```
+

@@ -1,0 +1,83 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/new_install_docs/src/sysadmin/concepts/SMS-reporting.md"
+revision_date: '2024-10-29'
+tags:
+- Gerir
+---
+
+# Usando Gateways para relatórios de SMS  { #sms_report_sending } 
+
+DHIS2 supports accepting data via [SMS](https://docs.dhis2.org/master/en/dhis2_user_manual_en/mobile.html), however, the SMS needs to be compressed. The DHIS2 Android App acts as a transparent layer to send the information via SMS where the user does not have to worry about writing the SMS. To send SMSs with the Android App the SMS gateway need to be properly configured. This section explains the different options available and how to achieve that.
+
+## Sending SMS { #sms_report_sending } 
+
+It is important to clarify firstly, that this section mainly concerns the set up of **receiving SMS** (from mobile devices to the DHIS2 server), which is necessary when considering using the App to send (sync) information recorded in the app to the DHIS2 server via SMS. In the App this can be set-up under the *Settings* > *SMS Settings*
+
+O envio de SMS, ou seja, do servidor DHIS2 para dispositivos móveis, é relativamente simples de configurar. Se tudo o que for necessário for o envio de notificações para os telefones dos usuários do DHIS2 quando determinados eventos ocorrerem (mensagens, limites e.t.c.), apenas o envio de SMS é necessário.
+
+Tudo isso pode ser configurado na página Configuração do serviço SMS na [seção Configuração móvel] (https://docs.dhis2.org/master/en/user/html/mobile_sms_service.html).
+
+There is out of the box support for common providers such as *Bulk SMS* and *Clickatell*, and both providers support sending of SMS to numbers in most countries.
+
+Observe também que é possível usar um gateway de SMS diferente para enviar e receber SMS. Portanto, mesmo que você configure uma solução de recebimento de SMS abaixo, ainda é possível usar uma das soluções acima mencionadas para o envio de SMS.
+
+## Usando um dispositivo Android como gateway de SMS { #sms_report_android_gateway } 
+
+De longe, a solução mais simples é usar um dispositivo Android dedicado como seu SMS Gateway. Qualquer telefone ou tablet com sistema operacional Android (4.4, Kitkat ou superior) deve funcionar. Exigirá uma conexão constante com a Internet para encaminhar mensagens para o servidor DHIS2 e também precisará de um cartão SIM para receber o SMS.
+
+Você precisará baixar e instalar o aplicativo DHIS2 Android SMS Gateway no dispositivo móvel. Veja uma lista de [lançamentos] (https://github.com/dhis2/dhis2-sms-android-gateway/releases) onde você pode baixar o arquivo APK mais recente para instalar. Existem instruções na própria página do aplicativo, mas basicamente você só precisa iniciar o aplicativo e inserir os detalhes do seu servidor DHIS2 (URL, nome de usuário e senha).
+
+Assim que estiver configurado e em execução, você deve inserir o número de telefone deste dispositivo de gateway na página de configuração de qualquer outro dispositivo móvel usando o aplicativo DHIS2 Capture. Então, quando SMS são enviados a partir desses dispositivos de relatório, eles serão recebidos no dispositivo de gateway e automaticamente encaminhados para o servidor DHIS2 onde serão processados.
+
+Using this gateway device is perfect for testing the SMS functionality but should not be used in production as it presents several flaws like not being able to handle multipart SMS, handling concurrent SMS and might even be killed by the Android OS.  Therefor when considering moving a project to production it would be necessary to investigate one of the more permanent and reliable solutions for gateways below.
+
+### Envio de SMS usando um gateway de dispositivo Android { #sending-sms-using-an-android-device-gateway } 
+
+Esta opção não é atualmente suportada nem documentada.
+
+## Gateways de SMS dedicados { #sms_report_dedicated_gateway } 
+
+Esta seção discute o uso de gateways SMS mais permanentes e dedicados e as opções disponíveis. Cada uma dessas opções abaixo envolverá um provedor (ou você) com uma conexão SMPP com uma operadora de telefone no país e usando essa conexão para receber SMS e encaminhá-los para o seu servidor DHIS2 pela Internet usando HTTP.
+
+Essas soluções podem usar um ** número longo ** ou ** código curto **. Um número longo é um número de telefone celular padrão do tipo que a maioria das pessoas usa, ou seja, +61 400123123. Um código curto é simplesmente um número curto, como 311. Códigos curtos geralmente custam mais para configurar e manter.
+
+### Garantir que o SMS de entrada para o servidor DHIS2 seja formatado corretamente { #ensuring-incoming-sms-to-dhis2-server-are-formatted-correctly } 
+
+When sending incoming SMS to a DHIS2 server via the API you use the following URL: *https://<DHIS2_server_url>/api/sms/inbound*
+
+No DHIS2 versão 2.34 e abaixo, este endpoint requer que o formato do SMS de entrada esteja em um formato muito específico, ou seja, a própria mensagem deve ser um parâmetro chamado texto, o número de telefone do remetente deve ser um parâmetro chamado originador.
+
+Ao usar todas as opções de gateway de SMS abaixo, ao configurá-los para encaminhar SMS de entrada para outro serviço da web, cada um terá seu próprio formato, que será diferente daquele esperado pela API DHIS2. Por esse motivo, é necessário reformatá-los antes de enviá-los para o servidor DHIS2.
+
+Uma opção é executar seu próprio serviço web muito simples, que simplesmente recebe o SMS de entrada do provedor de gateway, reformata-o para o necessário para DHIS2 e o encaminha para sua API DHIS2. Esse serviço precisaria ser escrito por um desenvolvedor de software.
+
+Na versão 2.35 do DHIS2, está planejado o suporte a esses casos com um sistema de templates para SMS de entrada, para que você possa especificar o formato das mensagens que serão enviadas de seu provedor. Dessa forma, você pode configurar o servidor DHIS2 para aceitar SMS de entrada de qualquer outro provedor de gateway de SMS e eles podem enviar SMS de entrada diretamente para a API DHIS2, sem a necessidade de tal serviço da web de formatação.
+
+### Usando RapidPro { #using-rapidpro } 
+
+[RapidPro] (https://rapidpro.io/) é um serviço executado pela UNICEF em mais de 50 países ao redor do mundo. É uma coleção de software que funciona com operadoras de telefonia locais para permitir que as organizações desenvolvam soluções de SMS para seus projetos, como relatórios de SMS ou campanhas de conscientização.
+
+O serviço RapidPro envolverá uma conexão SMPP a uma ou mais operadoras de telefonia no país, geralmente por meio de um código de acesso, potencialmente dedicado ao trabalho de saúde para ONGs. É então possível adicionar um webhook para que os SMS recebidos sejam encaminhados para outro serviço da web, como o serviço de formatação da web descrito acima. Se o código de acesso também for usado para outros fins, pode ser necessário adicionar os números de telefone de seus dispositivos de relatório a um grupo separado, de modo que apenas o SMS recebido desses dispositivos seja encaminhado para o webhook.
+
+RapidPro está atualmente configurado e funcionando em cerca de metade dos países que estão usando ou pilotando DHIS2. Antes de considerar uma das soluções abaixo, que podem ser caras em termos de finanças e tempo, vale a pena entrar em contato com o Unicef para saber se o RapidPro está disponível e se pode ser usado para relatórios de saúde em seu país.
+
+### Usando provedores de gateway de SMS comerciais { #using-commercial-sms-gateway-providers } 
+
+Of the commercial SMS gateway providers mentioned in the Sending SMS section above, they will usually have capability to *send* SMS in most countries but can only support *receiving* SMS in a limited amount of countries. The majority of countries they support receiving SMS in are not those using DHIS2. Of the countries that are using DHIS2, most are already covered by having a RapidPro service running in-country.
+
+Porém, vale a pena pesquisar quais opções comerciais estão disponíveis para o seu país. Em alguns países, haverá pequenas empresas nacionais que fornecem serviços de SMS, elas terão conexões SMPP existentes com as operadoras de telefonia que você pode usar.
+
+### Usando operadoras de telefonia diretamente { #using-phone-carriers-directly } 
+
+Se nenhuma das soluções acima estiver disponível, será necessário entrar em contato diretamente com as operadoras de telefone em seu país. A primeira pergunta a ser feita seria se eles estão cientes de alguma empresa que esteja operando conexões SMPP com eles e que você possa abordar.
+
+Do contrário, como opção final, você precisará considerar a configuração e manutenção de sua própria conexão SMPP com a operadora de telefonia. No entanto, nem todas as operadoras de telefonia oferecem esse serviço.
+
+Você precisaria rodar seu próprio servidor rodando um software como [Kannel] (https://www.kannel.org/), que se conecta (geralmente através de uma VPN) a um serviço SMPP rodando na rede das operadoras de telefonia. Com isso em vigor, qualquer SMS recebido para o número longo configurado ou código curto é enviado da operadora de telefone para o servidor Kannel e você pode então encaminhar essas mensagens como acima.
+
+### Recebendo SMS concatenado ou multiparte { #receiving-concatenated-or-multipart-sms } 
+
+When syncing data via SMS with the DHIS2 Android App, it uses a compressed format to use as little space (characters of text) as possible. Despite this, it will quite often be the case that a message will extend over the 160 character limit of one standard SMS. On most modern mobile devices these messages will still be sent as one concatenated or multipart SMS, and received as one message. 
+
+Ao selecionar um gateway de SMS, é importante confirmar se a operadora de telefone usada oferece suporte a SMS concatenados. A maioria deles oferece suporte para isso, mas é importante confirmar, pois a funcionalidade SMS não funcionará se o SMS for dividido. Isso se baseia em algo chamado UDH (cabeçalho de dados do usuário). Ao discutir com os provedores, certifique-se de perguntar se há suporte.
+

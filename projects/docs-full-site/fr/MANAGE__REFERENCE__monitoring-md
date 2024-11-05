@@ -1,0 +1,396 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/new_install_docs/src/sysadmin/reference/monitoring.md"
+revision_date: '2024-03-20'
+tags:
+- Gestion
+---
+
+# Surveillance { #monitoring }
+
+## Introduction { #monitoring } 
+
+DHIS2 peut exporter des mesures compatibles avec [Prometheus] (https://prometheus.io/) pour surveiller les nœuds de DHIS2.
+
+Cette section décrit les étapes nécessaires pour installer Prometheus et [Grafana] (https://grafana.com/) à l'aide d'une procédure d'installation standard (`apt-get`) et de Docker, et pour configurer Grafana afin qu'il affiche les mesures de DHIS2.
+
+Pour une liste des mesures exposées par une instance DHIS2, veuillez vous référer au guide du suivi sur [GitHub] (https://github.com/dhis2/wow-backend/blob/master/guides/monitoring.md).
+
+## Configuration { #monitoring_setup } 
+
+Les sections suivantes décrivent comment configurer Prometheus et Grafana et comment configurer Prometheus pour extraire des données d'une ou plusieurs instances DHIS2.
+
+### Installation de Prometheus + Grafana sur Ubuntu et Debian { #prometheus } 
+
+- Téléchargez Prometheus depuis la page officielle [download](https://prometheus.io/download/).
+
+- Veillez à appliquer un filtre à votre système d'exploitation et à l'architecture de votre processeur (Linux et amd64).
+
+- Veillez à sélectionner la dernière version stable, et non la version "rc", car elle n'est pas considérée comme suffisamment stable pour l'instant.
+
+- Téléchargez l'archive, soit en cliquant sur le lien, ou en utilisant `wget`.
+
+```
+wget https://github.com/prometheus/prometheus/releases/download/v2.15.2/prometheus-2.15.2.linux-amd64.tar.gz
+```
+
+- Décompresser le zip
+
+```
+tar xvzf prometheus-2.15.2.linux-amd64.tar.gz
+```
+
+L'archive contient de nombreux fichiers importants, mais voici les principaux que vous devez connaître.
+
+- `prometheus.yml` : le fichier de configuration de Prometheus. C'est ce fichier que vous allez modifier afin d'ajuster votre serveur Prometheus, par exemple pour changer l'intervalle de récupération ou pour configurer des alertes personnalisées ;
+- `prometheus` : le binaire de votre serveur Prometheus. C'est la commande que vous allez exécuter pour lancer une instance de Prometheus sur votre boîte Linux ;
+- `promtool` : il s'agit d'une commande que vous pouvez exécuter pour vérifier votre configuration Prometheus.
+
+### Configurer Prometheus comme un service { #prometheus_service } 
+
+- Créer un utilisateur `Prometheus` avec un groupe `Prometheus`.
+
+```
+useradd -rs /bin/false prometheus
+```
+
+- Déplacer les binaires Prometheus dans un répertoire bin local
+
+```
+cd prometheus-2.15.2.linux-amd64/ 
+cp prometheus promtool /usr/local/bin
+chown prometheus:prometheus /usr/local/bin/prometheus
+```
+
+- Créez un dossier dans le dossier `/etc` pour Prometheus et déplacez les fichiers de la console, les bibliothèques de la console et le fichier de configuration de Prometheus dans ce dossier nouvellement créé.
+
+```
+mkdir /etc/prometheus
+cp -R consoles/ console_libraries/ prometheus.yml /etc/prometheus
+```
+
+Créez un dossier de données à la racine du répertoire, avec un dossier prometheus à l'intérieur.
+
+```
+mkdir -p /data/prometheus
+chown -R prometheus:prometheus /data/prometheus /etc/prometheus/*
+```
+
+### Créer un service Prometheus { #prometheus_create_service } 
+
+Pour créer un service _systemd_ Prometheus, rendez-vous dans le dossier `/lib/systemd/system` et créez un nouveau fichier systemd nommé `prometheus.service`.
+
+```
+cd /lib/systemd/system
+touch prometheus.service
+```
+
+- Modifiez le fichier nouvellement créé et coller le contenu suivant à l'intérieur :
+
+```propriétés
+[Unité]
+Description=Prometheus
+Souhaite=réseau-cible.en ligne
+Après=éseau-cible.en ligne
+
+[Service]
+Type=simple
+Utilisateur=prometheus
+Groupe=prometheus
+ExecStart=/usr/local/bin/prometheus \
+  --fichier.de configuration=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.path="/data/prometheus" \
+  --web.console.modèles=/etc/prometheus/consoles \
+  --web.console.bibliothèque=/etc/prometheus/console_libraries \
+  --web.adresse-écoute=0.0.0.0:9090 \
+  --web. activer-l'api de-l'administrateur
+
+Redémarrer=toujours
+
+[Installer]
+Requis par=multi-utilisateur.cible
+```
+
+- Enregistrer le fichier et activer le service Prometheus au démarrage
+
+```
+systemctl enable prometheus
+systemctl start prometheus
+```
+
+- Tester que le service est en cours d'exécution
+
+```
+systemctl status prometheus
+
+...
+Active : active (en cours d'exécution)
+```
+
+- Il devrait maintenant être possible d'accéder à l'interface utilisateur de Prometheus en accédant à `http://localhost:9090`.
+
+
+### Mise en place du proxy inverse Nginx { #prometheus_nginx } 
+
+Prometheus ne prend pas en charge l'authentification ou le cryptage TLS de manière automatique. Si Prometheus doit être exposé en dehors des limites du réseau local, il est important d'activer l'authentification et le cryptage TLS. Les étapes suivantes montrent comment utiliser Nginx comme proxy inverse.
+
+- Installer Nginx, s'il n'est pas déjà installé
+
+```
+apt mise à jour
+apt-installer nginx
+```
+
+Par défaut, Nginx commence à écouter les requêtes HTTP sur le port `http` par défaut, qui est `80`.
+
+Si une instance Nginx fonctionne déjà sur la machine et que vous ne savez pas sur quel port elle est à l'écoute, exécutez la commande suivante :
+
+```
+> lsof | grep LISTEN | grep nginx
+
+nginx   15792   root   8u   IPv4   1140223421   0t0   TCP *:http (LISTEN)
+```
+
+La dernière colonne indique le port utilisé par Nginx (`http` -> `80`).
+
+Par défaut, la configuration de Nginx est située dans `/etc/nginx/nginx.conf`
+
+Assurez-vous que `nginx.conf` contient la section `Virtual Host Config`
+
+```
+##
+# Configurations du serveur virtuel
+##
+
+Inclut  /etc/nginx/conf.d/*.conf;
+Inclut  /etc/nginx/sites-enabled/*;
+
+```
+
+- Créez un nouveau fichier dans `/etc/nginx/conf.d` du nom de `prometheus.conf`
+
+```
+touch /etc/nginx/conf.d/prometheus.conf
+```
+
+- Modifiez le fichier nouvellement créé et coller le contenu suivant à l'intérieur :
+
+```
+serveur {
+  écoute 1234;
+
+  localisation / {
+    proxy_pass           http://localhost:9090/;
+  }
+}
+```
+
+- Redémarrez Nginx et accédez à http://localhost:1234
+
+```
+systemctl redémarrer nginx
+
+# en cas d'erreurs de démarrage
+journalctl -f -u nginx.service
+```
+
+- Configurez Prometheus pour le proxy inverse, en éditant `/lib/systemd/system/prometheus.service` et ajoutez l'argument suivant à la liste des arguments transmis à la commande  Prometheus.
+
+```
+--web.externe-url=https://localhost:1234
+```
+
+- Redémarrer le service
+
+```
+systemctl daemon-reload
+systemctl redémarrer prometheus
+
+
+# en cas d'erreurs
+journalctl -f -u prometheus.service
+```
+
+### Activer l'authentification du proxy inverse { #prometheus_auth } 
+
+Cette section montre comment configurer l'authentification de base via le proxy inverse. Si vous avez besoin d'un mécanisme d'authentification différent (SSO, etc.), veuillez consulter la documentation correspondante.
+
+- Assurez-vous que `htpasswd` est installé sur le système
+
+```
+apt-get install apache2-utils
+```
+
+- Créer un fichier d'authentification
+
+```
+cd /etc/prometheus
+htpasswd -c .credentials admin 
+```
+
+Choisissez un mot de passe efficace et assurez-vous que le fichier pass a été correctement créé.
+
+- Editez le fichier de configuration Nginx créé précédemment (`/etc/nginx/conf.d/prometheus.conf`), et ajoutez les informations d'authentification.
+
+```
+serveur {
+ écoute 1234;
+
+  localisation / {
+    auth_basic           "Prometheus";
+    auth_basic_user_file /etc/prometheus/.credentials;
+    proxy_pass           http://localhost:9090/;
+  }
+}
+```
+
+- Redémarrer Nginx
+
+```
+systemctl redémarrer nginx
+
+# en cas d'erreurs
+journalctl -f -u nginx.service
+```
+
+- `http://localhost:1234` devrait maintenant vous demander votre nom d'utilisateur et votre mot de passe.
+
+### Installer Grafana sur Ubuntu et Debian { #grafana } 
+
+- Ajouter une clé `gpg` et installer le paquet OSS Grafana depuis le repo APT
+
+```sh
+apt-installer -y apt-transport-https
+
+wget -q -O - "https://packages.grafana.com/gpg.key" | sudo apt-key add -
+
+add-apt-repositoire "deb https://packages.grafana.com/oss/deb stable main"
+
+apt-mettre à jour
+
+apt-installer grafana
+```
+
+- Si le système utilise `systemd`, un nouveau `grafana-service` est automatiquement créé. Vérifiez le fichier `systemd` pour avoir un aperçu de l'installation de Grafana.
+
+```
+cat /usr/lib/systemd/system/grafana-server.service
+```
+
+Ce fichier est très important car il fournit des informations sur l'instance Grafana nouvellement installée.
+
+Le fichier affiche :
+
+Le **serveur binaire de Grafana** est situé dans `/usr/sbin/grafana-server`.
+Le fichier qui définit toutes les **variables d'environnement** est situé dans `/etc/default/grafana-server`
+Le **fichier de configuration** est donné par la variable d'environnement `CONF_FILE`.
+Le **PID du fichier** est également déterminé par la variable d'environnement `PID_FILE_DIR`.
+Les chemins de **logging**(enregistrement), **data** (données), **plugins** (extensions) et **provisioning** (approvisionnement) sont donnés par des variables d'environnement.
+
+- Démarrer le serveur
+
+```
+systemctl start grafana-server
+```
+
+- Accéder à la console web Grafana : http://localhost:3000
+
+Le nom d'utilisateur par défaut pour Grafana est `admin` et le mot de passe par défaut est également `admin`.
+Vous serez invité à changer le mot de passe lors de votre premier accès.
+
+- Configurer Prometheus comme source de données Grafana
+
+Accédez au panneau des sources de données en cliquant sur `Configuration` > `Sources de données` dans le menu à gauche.
+
+Cliquez sur `Add a datasource` (Ajouter une source de données)
+
+Sélectionnez une source de données Prometheus dans la fenêtre suivante.
+
+Configurer la source de données en fonction de la configuration de Prometheus (utiliser l'authentification, TSL, etc.)
+
+### Installer Prometheus + Grafana à l'aide de Docker { #prometheus_grafana_docker } 
+
+Cette section décrit comment démarrer une pile Prometheus contenant Prometheus et Grafana.
+
+La configuration est basée sur ce projet : https://github.com/vegasbrianc/prometheus
+
+- Cloner ce projet Github : https://github.com/vegasbrianc/prometheus
+
+- Démarrer la pile Prometheus en utilisant :
+
+```
+déploiement de la pile docker -c docker-stack.yml prom
+```
+
+La commande ci-dessus peut entraîner l'erreur suivante :
+
+*Ce nœud n'est pas un gestionnaire swarm. Utilisez "docker swarm init" ou "docker swarm join" pour connecter ce noeud au swarm et réessayez*.
+
+Si cela se produit, vous devez démarrer Swarm. Vous pouvez utiliser la ligne de commande suivante :
+
+```
+docker swarm init --advertise-addr <YOUR_IP>
+```
+
+Une fois cette commande exécutée avec succès, vous devriez pouvoir exécuter la commande précédente sans problème.
+
+La pile contient également un exportateur de noeuds pour le suivi de Docker. Si vous n'êtes pas intéressé par le suivi de Docker, vous pouvez commenter les sections concernées dans le fichier `docker-stack.yml` :
+
+- `exportateur de noeuds`
+- `cadvisor`
+
+- Pour arrêter la pile Prometheus :
+
+```
+docker stack rm prom
+```
+
+Le fichier de configuration de Prometheus (`prometheus.yml`) est situé dans le dossier `prometheus`.
+
+- Accédez à la console web de Grafana à l'adresse suivante : http://localhost:3000 avec le nom d'utilisateur : `admin` et le mot de passe : `foobar`.
+
+### Configurer Prometheus pour obtenir des indicateurs à partir d'une ou plusieurs instances DHIS2 { #prometheus_dhis2 } 
+
+Avant d'utiliser Prometheus, il faut le configurer. Nous devons donc créer un fichier de configuration nommé `prometheus.yml`
+
+> **Remarque**
+>
+> Le fichier de configuration de Prometheus est écrit en YAML ce qui interdit formellement l'utilisation de tabulations. Si votre fichier est mal formaté, Prometheus ne démarrera pas. Faites attention lorsque vous l'éditez.
+
+Le fichier de configuration de Prometheus est divisé en trois parties : `global`, `rule_files`, et `scrape_configs`.
+
+Dans la partie générale, on trouve la configuration générale de Prometheus : `scrape_interval`(intervalle d'analyse) définit la fréquence à laquelle Prometheus analyse les cibles, `evaluation_interval` (intervalle d'évaluation) contrôle la fréquence à laquelle le logiciel évalue les règles. Les règles sont utilisées pour créer de nouvelles séries temporelles et pour générer des alertes.
+
+Le bloc `rule_files`(dossiers de règles) contient des informations sur l'emplacement de toutes les règles que nous voulons que le serveur Prometheus charge.
+
+Le dernier bloc du fichier de configuration est nommé `scape_configs` (configuration du cadre) et contient les informations sur les ressources que Prometheus suit.
+
+Un fichier de suivi simple de DHIS2 Prometheus ressemble à cet exemple :
+
+```yaml
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s 
+
+scrape_configs:
+  - job_name: 'dhis2'
+    metrics_path: '/api/metrics'
+    basic_auth:
+      username: admin
+      password: district
+    static_configs:
+      - targets: ['localhost:80']
+```
+
+L'intervalle général `scrape_interval` est fixé à 15 secondes, ce qui est suffisant pour la plupart des cas d'utilisation.
+
+Dans la partie `scrape_configs` nous avons défini l'exportateur DHIS2.
+Le bloc `basic_auth` contient les informations d'identification requises pour accéder à l'API `metrics` : envisagez de créer un utilisateur ad-hoc uniquement pour accéder au point de terminaison `metrics`.
+
+Prometheus peut ou non fonctionner sur le même serveur que DHIS2 : dans la configuration ci-dessus, on suppose que Prometheus ne suit qu'une seule instance de DHIS2, fonctionnant sur le même serveur que Prometheus, nous utilisons donc `localhost`.
+
+### Configurer l'exportateur DHIS2 { #dhis2_metrics_conf } 
+
+Le sous-système de suivi est désactivé par défaut dans DHIS2.
+
+Chaque groupe de mesures doit être explicitement activé pour que les mesures puissent être exportées. Pour configurer DHIS2 afin d'exporter une ou plusieurs mesures, consultez ce [document] (https://github.com/dhis2/wow-backend/blob/master/guides/monitoring.md#dhis2-monitoring-configuration).
+

@@ -1,0 +1,396 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/new_install_docs/src/sysadmin/reference/monitoring.md"
+revision_date: '2024-03-20'
+tags:
+- Správa
+---
+
+# Monitoring { #monitoring } 
+
+## Úvod { #monitoring } 
+
+DHIS2 může exportovat metriky kompatibilní s [Prometheus](https://prometheus.io/) pro monitorování uzlů DHIS2.
+
+Tato část popisuje kroky potřebné k instalaci Prometheus a [Grafana](https://grafana.com/) pomocí standardního instalačního postupu (`apt-get`) a Dockeru a konfigurace Grafany tak, aby zobrazovala metriky DHIS2.
+
+Seznam metrik vystavených instancí DHIS2 najdete v příručce pro monitorování na [GitHub](https://github.com/dhis2/wow-backend/blob/master/guides/monitoring.md).
+
+## Nastavení { #monitoring_setup } 
+
+V následujících částech je popsáno, jak nastavit Prometheus a Grafanu a jak nastavit Prometheus pro načítání dat z jedné nebo více instancí DHIS2.
+
+### Instalace Prometheus + Grafana na Ubuntu a Debian { #prometheus } 
+
+- Stáhněte si Prometheus z oficiální stránky [download](https://prometheus.io/download/).
+
+- Nezapomeňte vyfiltrovat operační systém a architekturu procesoru (Linux a amd64).
+
+- Ujistěte se, že jste vybrali nejnovější stabilní verzi, nikoli „rc“, protože prozatím není považována za dostatečně stabilní.
+
+- Stáhněte si archiv kliknutím na odkaz nebo pomocí `wget`.
+
+```
+wget https://github.com/prometheus/prometheus/releases/download/v2.15.2/prometheus-2.15.2.linux-amd64.tar.gz
+```
+
+- Rozbalte zip soubor
+
+```
+tar xvzf prometheus-2.15.2.linux-amd64.tar.gz
+```
+
+Archiv obsahuje mnoho důležitých souborů, ale zde jsou hlavní, které potřebujete vědět.
+
+- `prometheus.yml`: konfigurační soubor pro Prometheus. Toto je soubor, který se chystáte upravit, abyste vylepšili svůj server Prometheus, například abyste změnili interval scrapingu nebo nakonfigurovali vlastní výstrahy;
+- `prometheus`: binární soubor pro váš server Prometheus. Toto je příkaz, který se chystáte spustit pro spuštění instance Prometheus ve vašem Linux boxu;
+- `promtool`: toto je příkaz, který můžete spustit k ověření vaší konfigurace Prometheus.
+
+### Konfigurace Prometheus jako služby { #prometheus_service } 
+
+- Vytvořte uživatele `Prometheus` se skupinou` Prometheus`.
+
+```
+useradd -rs /bin/false prometheus
+```
+
+- Přesuňte binární soubory Prometheus do místního adresáře bin
+
+```
+cd prometheus-2.15.2.linux-amd64/ 
+cp prometheus promtool /usr/local/bin
+chown prometheus:prometheus /usr/local/bin/prometheus
+```
+
+- Vytvořte složku ve složce `/etc` pro Prometheus a přesuňte soubory konzoly, knihovny konzoly a konfigurační soubor prometheus do této nově vytvořené složky.
+
+```
+mkdir /etc/prometheus
+cp -R consoles/ console_libraries/ prometheus.yml /etc/prometheus
+```
+
+Vytvořte datovou složku v kořenovém adresáři se složkou prometheus uvnitř.
+
+```
+mkdir -p /data/prometheus
+chown -R prometheus:prometheus /data/prometheus /etc/prometheus/*
+```
+
+### Vytvořte službu Prometheus { #prometheus_create_service } 
+
+Chcete-li vytvořit službu Prometheus _systemd_, přejděte do složky `/lib/systemd/system` a vytvořte nový soubor systemd s názvem `prometheus.service`.
+
+```
+cd /lib/systemd/system
+touch prometheus.service
+```
+
+- Upravte nově vytvořený soubor a vložte do něj následující obsah:
+
+```properties
+[Unit]
+Description=Prometheus
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=prometheus
+Group=prometheus
+ExecStart=/usr/local/bin/prometheus \
+  --config.file=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.path="/data/prometheus" \
+  --web.console.templates=/etc/prometheus/consoles \
+  --web.console.libraries=/etc/prometheus/console_libraries \
+  --web.listen-address=0.0.0.0:9090 \
+  --web.enable-admin-api
+
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+- Uložte soubor a při spuštění povolte službu Prometheus
+
+```
+systemctl enable prometheus
+systemctl start prometheus
+```
+
+- Vyzkoušejte, zda je služba spuštěna
+
+```
+systemctl status prometheus
+
+...
+Active: active (running)
+```
+
+- Nyní by mělo být možné získat přístup k uživatelskému rozhraní Prometheus přístupem na stránku `http://localhost:9090`.
+
+
+### Nastavení reverzní proxy Nginx { #prometheus_nginx } 
+
+Prometheus nativně nepodporuje ověřování ani šifrování TLS. Pokud musí být Prometheus vystaven mimo hranice místní sítě, je důležité povolit ověřování a šifrování TLS. Následující kroky ukazují, jak používat Nginx jako reverzní proxy.
+
+- Nainstalujte Nginx, pokud již není nainstalován
+
+```
+apt update
+apt-get install nginx
+```
+
+Ve výchozím nastavení Nginx začne poslouchat požadavky HTTP ve výchozím portu `http`, což je `80`.
+
+Pokud v počítači již běží instance Nginx a nejste si jisti, na kterém portu naslouchá, spusťte následující příkaz:
+
+```
+> lsof | grep LISTEN | grep nginx
+
+nginx   15792   root   8u   IPv4   1140223421   0t0   TCP *:http (LISTEN)
+```
+
+Poslední sloupec zobrazuje port používaný Nginxem (`http` -> `80`).
+
+Ve výchozím nastavení je konfigurace Nginx umístěna v `/etc/nginx/nginx.conf`
+
+Ujistěte se, že soubor `nginx.conf` obsahuje sekci `Virtual Host Config`
+
+```
+##
+# Virtual Host Configs
+##
+
+include /etc/nginx/conf.d/*.conf;
+include /etc/nginx/sites-enabled/*;
+
+```
+
+- Vytvořte nový soubor v souboru  `/etc/nginx/conf.d` s názvem `prometheus.conf`
+
+```
+touch /etc/nginx/conf.d/prometheus.conf
+```
+
+- Upravte nově vytvořený soubor a vložte do něj následující obsah:
+
+```
+server {
+  listen 1234;
+
+  location / {
+    proxy_pass           http://localhost:9090/;
+  }
+}
+```
+
+- Restartujte Nginx a přejděte na http://localhost:1234
+
+```
+systemctl restart nginx
+
+# in case of start-up errors
+journalctl -f -u nginx.service
+```
+
+- Nakonfigurujte Prometheus pro reverzní proxy pomocí úpravy `/lib/systemd/system/prometheus.service` a přidejte následující argument do seznamu argumentů předaných spustitelnému souboru Prometheus.
+
+```
+--web.external-url=https://localhost:1234
+```
+
+- Restartujte službu
+
+```
+systemctl daemon-reload
+systemctl restart prometheus
+
+
+# in case of errors
+journalctl -f -u prometheus.service
+```
+
+### Povolit ověření reverzní proxy { #prometheus_auth } 
+
+Tato část ukazuje, jak konfigurovat základní ověřování pomocí serveru reverzní proxy. Pokud potřebujete jiný mechanismus ověřování (jednotné přihlášení atd.), Zkontrolujte příslušnou dokumentaci.
+
+- Ujistěte se, že je v systému nainstalován `htpasswd`
+
+```
+apt-get install apache2-utils
+```
+
+- Vytvořte ověřovací soubor
+
+```
+cd /etc/prometheus
+htpasswd -c .credentials admin 
+```
+
+Vyberte silné heslo a zkontrolujte, zda byl předávací soubor správně vytvořen.
+
+- Upravte dříve vytvořený konfigurační soubor Nginx (`/etc/nginx/conf.d/prometheus.conf`) a přidejte ověřovací informace.
+
+```
+server {
+  listen 1234;
+
+  location / {
+    auth_basic           "Prometheus";
+    auth_basic_user_file /etc/prometheus/.credentials;
+    proxy_pass           http://localhost:9090/;
+  }
+}
+```
+
+- Restartujte Nginx
+
+```
+systemctl restart nginx
+
+# in case of errors
+journalctl -f -u nginx.service
+```
+
+- `http://localhost:1234` by nyní měl vyžadovat zadání uživatelského jména a hesla.
+
+### Instalace Grafany na Ubuntu a Debianu { #grafana } 
+
+- Přidejte klíč `gpg` a nainstalujte balíček OSS Grafana z APT repo
+
+```sh
+apt-get install -y apt-transport-https
+
+wget -q -O - "https://packages.grafana.com/gpg.key" | sudo apt-key add -
+
+add-apt-repository "deb https://packages.grafana.com/oss/deb stable main"
+
+apt-get update
+
+apt-get install grafana
+```
+
+- Pokud systém používá program `systemd`, automaticky se vytvoří nová služba `grafana-service`. Zkontrolujte soubor `systemd` a získejte přehled o instalaci Grafany
+
+```
+cat /usr/lib/systemd/system/grafana-server.service
+```
+
+Tento soubor je docela důležitý, protože nabízí informace o nově nainstalované instanci Grafana.
+
+Soubor ukazuje:
+
+Binární soubor **serveru Grafana** je umístěn na adrese `/usr/sbin/grafana-server`.
+Soubor, který definuje všechny **proměnné prostředí**, je umístěn na `/etc/default/grafana-server`
+**Konfigurační soubor** se zadává prostřednictvím proměnné prostředí `CONF_FILE`.
+**PID souboru** je také určen proměnnou prostředí `PID_FILE_DIR`.
+Cesty **logging**, **data**, **plugins** a **provisioning** jsou dány proměnnými prostředí.
+
+- Spusťte server
+
+```
+systemctl start grafana-server
+```
+
+- Přejděte na webovou konzolu Grafana: http://localhost:3000
+
+Výchozí přihlašovací jméno pro Grafanu je `admin` a výchozí heslo je také `admin`.
+Při prvním přístupu budete vyzváni ke změně hesla.
+
+- Nakonfigurujte Prometheus jako zdroj dat Grafana
+
+Přístup na panel zdrojů dat kliknutím na `Konfigurace`>` Zdroje dat` v levé nabídce.
+
+Klikněte na `Add a datasource`
+
+V dalším okně vyberte datový zdroj Prometheus.
+
+Nakonfigurujte zdroj dat podle nastavení Prometheus (použijte ověřování, TSL atd.)
+
+### Instalace Prometheus + Grafana pomocí Dockeru { #prometheus_grafana_docker } 
+
+Tato část popisuje, jak spustit stack Prometheus obsahující Prometheus a Grafanu.
+
+Konfigurace je založena na tomto projektu: https://github.com/vegasbrianc/prometheus
+
+- Klon tohoto projektu na Github: https://github.com/vegasbrianc/prometheus
+
+- Spusťte zásobník Prometheus pomocí:
+
+```
+docker stack deploy -c docker-stack.yml prom
+```
+
+Výše uvedený příkaz může mít za následek následující chybu:
+
+*Tento uzel není správcem swarm. Pomocí „docker swarm init“ nebo „docker swarm join“ připojte tento uzel k swarm a zkuste to znovu*
+
+Pokud k tomu dojde, musíte spustit Swarm. Můžete použít následující příkazový řádek:
+
+```
+docker swarm init --advertise-addr <YOUR_IP>
+```
+
+Jakmile se tento příkaz úspěšně spustí, měli byste být schopni bez problémů spustit předchozí příkaz.
+
+Stack obsahuje také exportér uzlů pro monitorování Dockeru. Pokud vás monitorování Dockeru nezajímá, můžete komentovat příslušné oddíly v souboru `docker-stack.yml`:
+
+- `node-exporter`
+- `cadvisor`
+
+- Zastavení zásobníku Prometheus:
+
+```
+docker stack rm prom
+```
+
+Soubor konfigurace Prometheus (`prometheus.yml`) je umístěn ve složce `prometheus`.
+
+- Přejděte na webovou konzolu Grafana na adrese: http://localhost:3000 s uživatelským jménem: `admin` a heslem: `foobar`
+
+### Nakonfigurujte Prometheus tak, aby načítal metriky z jedné nebo více instancí DHIS2 { #prometheus_dhis2 } 
+
+Před použitím programu Prometheus je nutné provést základní konfiguraci. Musíme tedy vytvořit konfigurační soubor s názvem `prometheus.yml`
+
+> **Poznámka**
+>
+> Konfigurační soubor Prometheus je napsán v YAML, což přísně zakazuje používání karet. Pokud je váš soubor nesprávně naformátovaný, Prometheus se nespustí. Při úpravách buďte opatrní.
+
+Konfigurační soubor Prometheus je rozdělen do tří částí: `global`, `rule_files` a `scrape_configs`.
+
+V globální části najdeme obecnou konfiguraci Prometheus: `scrape_interval` definuje, jak často Prometheus škrábne cíle,  `evaluation_interval`  určuje, jak často bude software vyhodnocovat pravidla. Pravidla se používají k vytváření nových časových řad a ke generování výstrah.
+
+Blok `rule_files` obsahuje informace o umístění všech pravidel, která chceme načíst serveru Prometheus.
+
+Poslední blok konfiguračního souboru má název `scape_configs` a obsahuje informace, které prostředky Prometheus sleduje.
+
+A simple DHIS2 Prometheus monitoring file looks like this example:
+
+```yaml
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s 
+
+scrape_configs:
+  - job_name: 'dhis2'
+    metrics_path: '/api/metrics'
+    basic_auth:
+      username: admin
+      password: district
+    static_configs:
+      - targets: ['localhost:80']
+```
+
+Globální `scrape_interval` je nastaven na 15 sekund, což je dost pro většinu případů použití.
+
+V části `scrape_configs` jsme definovali exportér DHIS2.
+Bloky `basic_auth` obsahují pověření požadovaná pro přístup k API `metrics`: zvažte vytvoření uživatele ad-hoc pouze pro přístup ke koncovému bodu `metrics`.
+
+Prometheus může nebo nemusí běžet na stejném serveru jako DHIS2: ve výše uvedené konfiguraci se předpokládá, že Prometheus sleduje pouze jednu instanci DHIS2 běžící na stejném serveru jako Prometheus, takže používáme `localhost`.
+
+### Nakonfigurujte exportér DHIS2 { #dhis2_metrics_conf } 
+
+Monitorovací subsystém je ve výchozím nastavení v DHIS2 zakázán.
+
+Aby bylo možné metriky exportovat, musí být každý cluster metrik explicitně povolen. Chcete-li nakonfigurovat DHIS2 na export jedné nebo více metrik, zkontrolujte tento [dokument](https://github.com/dhis2/wow-backend/blob/master/guides/monitoring.md#dhis2-monitoring-configuration).
+
