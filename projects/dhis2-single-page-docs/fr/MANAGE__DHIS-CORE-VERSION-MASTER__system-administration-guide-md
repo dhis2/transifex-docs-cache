@@ -1,8 +1,8 @@
 ---
-revision_date: '2024-10-21'
+revision_date: '2024-11-13'
 tags:
-- Gestion
 - Version Master de DHIS2 Central
+- Gestion
 template: single.html
 ---
 
@@ -42,12 +42,14 @@ Les versions ultérieures de DHIS2 nécessitent les versions logicielles suivant
 - JavaJDK. OpenJDK est recommandé.
 
 
-Table: DHIS2 JDK compatibility
+Table: DHIS2 compatibility
 
-| DHIS2 version | JDK recommended | JDK required |
-|---------------|-----------------|--------------|
-| 2.41          | 17              | 17           |
-| 2.40          | 17              | 11           |
+| DHIS2 version | JDK recommended | JDK required | Tomcat required |
+|---------------|-----------------|--------------|-----------------|
+| 2.42          | 17              | 17           | 10              |
+| 2.41          | 17              | 17           | 8.5.50          |
+| 2.40          | 17              | 11           | 8.5.50          |
+| 2.39          | 11              | 11           | 8.5.50          |
 | 2.38          | 11              | 11           |
 | 2.35          | 11              | 8            |
 | pre 2.35      | 8               | 8            |
@@ -55,7 +57,7 @@ Table: DHIS2 JDK compatibility
 
 - Base de données PostgreSQL version 9.6 ou plus. Une version ultérieure de PostgreSQL telle que la version 14 est recommandée.
 - Extension de base de données PostGIS version 2.2 ou plus.
-- Conteneur de servlet Tomcat version 8.5.50 ou plus, ou autre API de servlet
+- Tomcat servlet container version 10 for 2.42, 8.5.50 or later for lower versions, or other Servlet API
   Conteneurs de servlets compatibles 3.1.
 - Configuration du cluster uniquement (facultatif) : entrepôt de données Redis version 4 ou ultérieure.
 
@@ -2307,15 +2309,15 @@ Toutes les entrées d'audit, à l'exception de celles liées aux entités suivie
 | Colonne     | Type                        | Description |
 |------------|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
 | identifiant de l'audit    | entier                     | Clé primaire. |
-| type d'audit  | texte                        | LIRE, CRÉER, METTRE À JOUR, SUPPRIMER, RECHERCHER |
-| portée de l'audit | texte                        | MÉTADONNÉES, AGRÉGÉ, TRACKER |
-| klass      | texte                        | Nom de classe Java de l’entité d’audit. |
+| type d'audit  | text                        | LIRE, CRÉER, METTRE À JOUR, SUPPRIMER, RECHERCHER |
+| portée de l'audit | text                        | MÉTADONNÉES, AGRÉGÉ, TRACKER |
+| klass      | text                        | Nom de classe Java de l’entité d’audit. |
 | attributs | jsonb                       | Une chaîne JSON avec les attributs de l'objet audité. Exemple : `{"valueType": "TEXT", "categoryCombo": "SWQW313FQY", "domainType": "TRACKER"}`. |
 | données       | bytea                       | Chaîne JSON compressée de l'entité d'audit au format "tableau d'octets" (non lisible par l'homme). |
 | créé à  | horodatage sans fuseau horaire | Temps de création. |
-| créé par  | texte                        | Nom d'utilisateur de l'utilisateur effectuant l'opération auditée. |
-| uid        | texte                        | L'UID de l'objet audité. |
-| code       | texte                        | Le code de l'objet audité. |
+| créé par  | text                        | Nom d'utilisateur de l'utilisateur effectuant l'opération auditée. |
+| uid        | text                        | L'UID de l'objet audité. |
+| code       | text                        | Le code de l'objet audité. |
 
 Le service d'audit utilise deux nouveaux concepts : *Portée de l'audit* et *Type d'audit*.
 
@@ -2337,7 +2339,7 @@ Un type d'audit est une action qui déclenche une opération d'audit. Actuelleme
 | Nom     | Clé      | Description         |
 | -------- | -------- | ------------------- |
 | Lire     | LIRE     | L'objet a été lu.    |
-| Créer   | CRÉER   | L'objet a été créé. |
+| Créer   | CREATE   | L'objet a été créé. |
 | Mettre à jour   | METTRE À JOUR   | L'objet a été mis à jour. |
 | Supprimer   | SUPPRIMER   | L'objet a été supprimé. |
 | Désactivé | DÉSACTIVÉ | Désactiver l'audit.      |
@@ -2356,11 +2358,11 @@ Les opérations sur les entités suivies telles que les instances, les attributs
 | Colonne     | Type                        | Description |
 |------------|-----------------------------|-------------|
 | trackedentityinstanceauditid | entier | Clé primaire. |
-| trackedentityinstance | texte  | Nom de l'instance d'entité suivie.  |
-| créés  | horodatage sans fuseau horaire | Temps de création. |
-| accessible par | texte | Nom d'utilisateur de l'utilisateur effectuant l'opération auditée. |
-| type d'audit | texte | LIRE, CRÉER, METTRE À JOUR, SUPPRIMER, RECHERCHER |
-| commentaire | texte | Le code de l'objet audité. |
+| trackedentityinstance | text  | Nom de l'instance d'entité suivie.  |
+| created  | horodatage sans fuseau horaire | Temps de création. |
+| accessible par | text | Nom d'utilisateur de l'utilisateur effectuant l'opération auditée. |
+| type d'audit | text | LIRE, CRÉER, METTRE À JOUR, SUPPRIMER, RECHERCHER |
+| commentaire | text | Le code de l'objet audité. |
 
 Ces données peuvent être récupérées via [API](#webapi_tracked_entity_instance_audits).
 
@@ -2371,11 +2373,11 @@ Ces données peuvent être récupérées via [API](#webapi_tracked_entity_instan
 | trackedentityattributevalueauditid (Id d'audit de valeur d'attribut d'entité suivie) | entier | Clé primaire. |
 | trackedentityinstanceid (Id d'instance d'entité suivie)  | entier | ID de l'instance à laquelle appartient la valeur d'attribut.  |
 | trackedentityattributeid (ID d'attribut d'entité suivi) | entier | ID d'attribut.  |
-| créés  | horodatage sans fuseau horaire | Temps de création. |
-| modifié par  | texte | Nom d'utilisateur de l'utilisateur effectuant l'opération auditée. |
-| type d'audit | texte  | LIRE, CRÉER, METTRE À JOUR, SUPPRIMER, RECHERCHER |
-| valeur | texte | La valeur de l'objet audité. |
-| valeur cryptée | texte | La valeur cryptée si l'indicateur de confidentialité est activé. |
+| created  | horodatage sans fuseau horaire | Temps de création. |
+| modifié par  | text | Nom d'utilisateur de l'utilisateur effectuant l'opération auditée. |
+| type d'audit | text  | LIRE, CRÉER, METTRE À JOUR, SUPPRIMER, RECHERCHER |
+| value | text | La valeur de l'objet audité. |
+| valeur cryptée | text | La valeur cryptée si l'indicateur de confidentialité est activé. |
 
 
 Ces données peuvent être récupérées via [API](#webapi_tracked_entity_attribute_value_audits).
@@ -2387,10 +2389,10 @@ Ces données peuvent être récupérées via [API](#webapi_tracked_entity_attrib
 | Id d'audit de la valeur de données de l'entité suivie | entier | Clé primaire. |
 | ID d'instance de l'étape de programme | entier | ID de l'étape de programme à laquelle appartient la valeur de données.  |
 | Id d'élément de données | entier | ID de l'élément de données.  |
-| créés | horodatage sans fuseau horaire | Temps de création. |
-| modifié par | texte | Nom d'utilisateur de l'utilisateur effectuant l'opération auditée. |
-| type d'audit | texte | LIRE, CRÉER, METTRE À JOUR, SUPPRIMER, RECHERCHER |
-| valeur | texte | La valeur de l'objet audité. |
+| created | horodatage sans fuseau horaire | Temps de création. |
+| modifié par | text | Nom d'utilisateur de l'utilisateur effectuant l'opération auditée. |
+| type d'audit | text | LIRE, CRÉER, METTRE À JOUR, SUPPRIMER, RECHERCHER |
+| value | text | La valeur de l'objet audité. |
 | fourni ailleurs | bool | Indique si l'utilisateur a fourni la valeur ailleurs ou non. |
 
 Ces données peuvent être récupérées via [API](#webapi_tracked_entity_data_value_audits).
@@ -2407,9 +2409,9 @@ L'événement "briser le verre" est stocké dans le tableau `programtempownershi
 | programtempownershipauditid | entier | Clé primaire. |
 | Id du programme | entier | ID du programme auquel appartient l’entité suivie.  |
 | trackedentityinstanceid (Id d'instance d'entité suivie)  | entier | ID de l'instance à laquelle appartient la valeur d'attribut.  |
-| créés  | horodatage sans fuseau horaire | Temps de création. |
-| accessible par  | texte | Nom d'utilisateur de l'utilisateur effectuant l'opération auditée. |
-| raison       | texte | La raison telle qu'insérée dans la boîte de dialogue. |
+| created  | horodatage sans fuseau horaire | Temps de création. |
+| accessible par  | text | Nom d'utilisateur de l'utilisateur effectuant l'opération auditée. |
+| raison       | text | La raison telle qu'insérée dans la boîte de dialogue. |
 
 
 ## Configuration { #audit_configuration }
