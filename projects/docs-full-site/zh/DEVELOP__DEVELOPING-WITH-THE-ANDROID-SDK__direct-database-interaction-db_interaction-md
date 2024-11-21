@@ -1,0 +1,35 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-sdk/edit/master/docs/content/developer/db-interaction.md" 
+---
+# 直接数据库交互  { #db_interaction } 
+
+ <!--DHIS2-SECTION-ID:db_interaction-->
+
+存储库方法满足了应用程序的大多数需求。但是在某些情况下，应用程序可能希望直接与数据库进行交互。
+
+The SDK exposes a DatabaseAdapter object to execute raw statements in the database. Also, SDK model classes include helper methods to create instances from a `Cursor`.
+
+例如，使用存储库并直接与数据库进行交互来读取常量列表。
+
+```java
+// Using repositories
+d2.constantModule().constants().blockingGet() // List<Constant>
+
+// Direct database interaction
+String query = "SELECT * FROM " + ConstantTableInfo.TABLE_INFO.name();
+try (Cursor cursor = Sdk.d2().databaseAdapter().rawQuery(query)) {
+    List<Constant> constantList = new ArrayList<>();
+    if (cursor.getCount() > 0) {
+        cursor.moveToFirst();
+        do {
+            collection.add(Constant.create(cursor));
+        }
+        while (cursor.moveToNext());
+    }
+    return constantList; // List<Constant>
+}
+```
+
+`TableInfo` 类包含表格结构的一些有用信息，如表格和列名。
+
+

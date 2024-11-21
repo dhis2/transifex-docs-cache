@@ -1,0 +1,60 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/new_install_docs/src/sysadmin/reference/ldap.md"
+revision_date: '2024-01-30'
+tags:
+- Gestion
+---
+
+## Configuration du LDAP { #install_ldap_configuration }
+
+DHIS2 peut utiliser un serveur LDAP pour l'authentification des utilisateurs.
+L'authentification LDAP nécessite que chaque entrée corresponde à un utilisateur dans la base de données DHIS2. L'utilisateur DHIS2 sera utilisé pour représenter des autorités / rôles d’utilisateur.
+
+Pour configurer l'authentification LDAP, vous devez définir l'URL du serveur LDAP, un utilisateur gestionnaire, une base de recherche et un filtre de recherche LDAP. Cette configuration doit être effectuée dans le fichier de configuration de DHIS 2 `dhis.conf`.
+Les utilisateurs ou entrées LDAP sont identifiés avec des noms uniques (DN à partir de maintenant). Voici un exemple de configuration :
+
+```propriétés
+# URL du serveur LDAP
+ldap.url = ldaps://domain.org:636
+
+# Nom distinctif de l'entrée du gestionnaire LDAP
+ldap.manager.dn = cn=johndoe,dc=domain,dc=org
+
+# Mot de passe d'entrée du gestionnaire LDAP
+ldap.manager.password = xxxx
+
+# Recherche de base LDAP
+ldap.search.base = dc=domaine,dc=org
+
+# Filtre de recherche LDAP
+ldap.search.filter = (cn={0})
+```
+
+Les propriétés de configuration LDAP sont expliquées ci-dessous :
+
+- *ldap.url :* L'URL du serveur LDAP avec lequel s'authentifier.
+  L'utilisation du SSL (Secure Sockets Layer) ou cryptage est fortement recommandée afin de
+  sécuriser l’authentification. Prenons l'exemple de l'URL suivant
+  *ldaps://domain.org:636*, où ldaps fait référence au protocole,
+  *domain.org* fait référence au nom de domaine ou à l'adresse IP, et *636*
+  fait référence au port (636 est la valeur par défaut pour LDAPS).
+- *ldap.manager.dn:* Un utilisateur du gestionnaire LDAP doit être connecté au 
+  serveur LDAP pour permettre le processus d'authentification des utilisateurs. Cette propriété
+  fait référence au DN de cette entrée, c'est à dire que ce n'est pas l'utilisateur qui sera
+  authentifié lors de la connexion à DHIS2, mais plutôt l'utilisateur qui
+  est connecté au serveur LDAP afin d'effectuer l'authentification.
+- *ldap.manager.password :* Le mot de passe de l'utilisateur du gestionnaire LDAP.
+- *ldap.search.base :* La base de recherche ou le nom unique de
+  l'objet de la base de recherche, qui définit l'emplacement dans le répertoire
+  à partir duquel commence la recherche LDAP.
+- *ldap.search.filter :* Le filtre permettant de faire correspondre les DN des entrées dans le
+  répertoire LDAP. La variable {0} sera remplacée par le nom d'utilisateur DHIS2,
+  ou par l'identifiant LDAP défini pour l'utilisateur
+  avec le nom d'utilisateur fourni.
+
+DHIS2 utilisera le nom d'utilisateur et le mot de passe fournis pour essayer de s'authentifier avec une entrée du serveur LDAP, puis recherchera des rôles/autorités d'utilisateur auprès d'un utilisateur DHIS2 correspondant. Cela implique qu'un utilisateur doit avoir une entrée correspondante dans le répertoire LDAP ainsi qu'un utilisateur DHIS2 pour pouvoir se connecter.
+
+Lors de l'authentification, DHIS2 essaiera de se connecter au serveur LDAP en utilisant l'URL du serveur LDAP configuré ainsi que le DN et le mot de passe du gestionnaire. Une fois la connexion établie, il recherche une entrée dans le répertoire à l'aide de la base de recherche LDAP et du filtre de recherche configurés.
+
+La variable {0} du filtre configuré sera remplacée avant l'application du filtre. Par défaut, elle sera remplacée par le nom d'utilisateur fourni. Vous pouvez également définir un identifiant LDAP personnalisé pour le compte utilisateur DHIS2 concerné. Vous pouvez le faire via l'interface utilisateur du module utilisateur DHIS2 sur l'écran d'ajout ou d'édition en définissant la propriété "Identifiant LDAP". Une fois définie, l'identifiant LDAP remplacera la variable {0} dans le filtre. Cette fonction est utile lorsque le nom commun LDAP ne convient pas ou ne peut pas, pour une raison quelconque, être utilisé comme nom d'utilisateur DHIS2.
+
