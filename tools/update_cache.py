@@ -53,7 +53,7 @@ for p in projects:
                 if r.slug not in skip_files:
                     l_stats = r.language_stats(l.code)
                     last_update = datetime.datetime.strptime(l_stats['last_update'], '%Y-%m-%dT%H:%M:%SZ')
-                    if l_stats['untranslated_strings'] > 0 and last_update > min_date:
+                    if l_stats['untranslated_strings'] == 0 and last_update > min_date:
                         # print(last_update,r.name,r.slug)
                         # pull the resource from transifex
                         path = proj_lang_path+"/"+r.slug
