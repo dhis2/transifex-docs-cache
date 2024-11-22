@@ -1,0 +1,159 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.41/src/developer/web-api/apps.md"
+revision_date: '2021-06-14'
+tags:
+- Développement
+- DHIS Version 2.41
+---
+
+# Applications { #apps } 
+
+## Applications { #webapi_apps } 
+
+Le endpoint `/api/apps` peut être utilisé pour installer, supprimer et 
+lister des applications. La clé de l'application est basée sur le nom de l'application, mais tous 
+les caractères non alphanumériques sont supprimés, et les espaces sont remplacés par un tiret. 
+*My app!* renverra la clé *My-app*.
+
+> **Remarque**
+>
+> Avant la version 2.28, la clé d'application était dérivée du nom de l'archive ZIP
+> , à l'exclusion de l'extension du fichier. Les URLs utilisant l'ancien format
+> devraient toujours renvoyer l'application correcte dans l'api.
+
+    /api/33/apps
+
+### Obtenir les applications { #webapi_get_apps } 
+
+> **Remarque**
+>
+> Avant la version 2.28, la propriété d'application folderName faisait référence au chemin réel
+> de l'application installée. Avec la possibilité de stocker les applications sur des services en nuage, 
+> l'objectif de folderName a changé et fait désormais référence à la clé de
+> l'application.
+
+Vous pouvez lire les clés des applications en listant toutes les applications de la ressource apps
+et en recherchant la propriété *key*. Pour lister toutes les applications installées au format
+JSON :
+
+```bash
+curl -u user:pass -H "Accept: application/json" "http://server.com/api/33/apps"
+```
+
+Vous pouvez aussi simplement orienter votre navigateur web vers l'URL de la ressource :
+
+    http://server.com/api/33/apps
+
+La liste des applications peut également être filtrée par type d'application et par nom, en ajoutant 
+un ou plusieurs paramètres *filtre* à l'URL :
+
+    http://server.com/api/33/apps?filter=appType:eq:DASHBOARD_APP&filter=name:ilike:youtube
+
+Les noms d'applications prennent en charge les opérateurs de filtrage *eq* et *ilike*, tandis que *appType*
+ne prend en charge que *eq*.
+
+### Installer une application { #webapi_install_app } 
+
+Pour installer une application, la commande suivante peut être exécutée :
+
+```bash
+curl -X POST -u user:pass -F file=@app.zip "http://server.com/api/33/apps"
+```
+
+### Supprimer une application { #webapi_delete_app } 
+
+Pour supprimer une application, vous pouvez exécuter la commande suivante :
+
+```bash
+curl -X DELETE -u user:pass "http://server.com/api/33/apps/<app-key>"
+```
+
+### Recharger les applications { #webapi_reload_apps } 
+
+Pour forcer le rechargement des applications actuellement installées, vous pouvez lancer la 
+commande suivante. Cette commande est utile si vous avez ajouté manuellement un fichier directement 
+dans le système de fichiers, au lieu de le télécharger via l'interface utilisateur de 
+DHIS2.
+
+```bash
+curl -X PUT -u user:pass "http://server.com/api/33/apps"
+```
+
+### Partager des applications entre instances { #webapi_share_apps_between_instances } 
+
+Si l'instance DHIS2 a été configurée pour utiliser le stockage en nuage, les applications
+seront désormais installées et stockées sur le service en nuage. Cela permettra à
+plusieurs instances de partager les mêmes versions des applications installées, au lieu 
+d'installer les mêmes applications sur chaque instance individuelle.
+
+> **Remarque**
+>
+> Avant la version 2.28, les applications installées étaient uniquement stockées sur le système de fichiers 
+> local de l'instance. Les applications installées avant la version 2.28 seront toujours disponibles sur
+> l'instance où elles ont été installées, mais elles ne seront pas partagées avec d'autres
+> instances, car elles sont toujours situées sur le système de fichiers local de l'instance.
+
+## Le App store { #webapi_app_store } 
+
+L'API Web expose le contenu de l'App Store DHIS2 sous la forme d'une représentation JSON
+que l'on peut trouver dans la ressource `/api/appHub`.
+
+    /api/33/appHub
+
+### Obtenir les applications { #webapi_get_app_store_apps } 
+
+Vous pouvez extraire les applications à l'aide d'une requête GET :
+
+    GET /api/33/appHub
+
+Un exemple de réponse JSON est décrit ci-dessous.
+
+```json
+{
+  [
+    {
+      "name": "Tabular Tracker Capture",
+      "description": "Tabular Tracker Capture is an app that makes you more effective.",
+      "sourceUrl": "https://github.com/dhis2/App-repository",
+      "appType": "DASHBOARD_WIDGET",
+      "status": "PENDING",
+      "id": "NSD06BVoV21",
+      "developer": {
+        "name": "DHIS",
+        "organisation": "Uio",
+        "address": "Oslo",
+        "email": "dhis@abc.com",
+      },
+      "versions": [
+        {
+          "id": "upAPqrVgwK6",
+          "version": "1.2",
+          "minDhisVersion": "2.17",
+          "maxDhisVersion": "2.20",
+          "downloadUrl": "https://dhis2.org/download/appstore/tabular-capture-12.zip",
+          "demoUrl": "http://play.dhis2.org/demo"
+        }
+      ],
+      "images": [
+        {
+          "id": "upAPqrVgwK6",
+          "logo": "true",
+          "imageUrl": "https://dhis2.org/download/appstore/tabular-capture-12.png",
+          "description": "added feature snapshot",
+          "caption": "dialog",
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Installer des applications { #webapi_install_app_store_apps } 
+
+Vous pouvez installer des applications sur votre instance DHIS2 en supposant que vous avez les 
+permissions appropriées. Une application est référencée en utilisant la propriété `id` 
+de la version correspondante de l'application. Une application est installée par une requête 
+POST avec l'identifiant de la version à la ressource suivante :
+
+    POST /api/33/appHub/{app-version-id}
+

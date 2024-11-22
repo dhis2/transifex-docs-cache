@@ -1,0 +1,725 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.40/src/developer/web-api/data-store.md"
+revision_date: '2023-05-02'
+tags:
+- Développement
+- DHIS Version 2.40
+---
+
+# Magasin de données { #data-store } 
+
+## Magasin de données { #webapi_data_store } 
+
+En utilisant la ressource *dataStore* ("magasin de données"), les développeurs peuvent stocker des données arbitraires pour 
+leurs applications. L'accès à la clé d'un magasin de données est basé sur ses paramètres de partage. 
+Par défaut, toutes les clés créées sont accessibles au public (lecture et écriture). 
+En outre, l'accès à l'espace de noms d'un datastore est limité à l'accès de l'utilisateur 
+à l'application correspondante, si l'application a réservé l'espace de noms. 
+Par exemple, un utilisateur ayant accès à l'application « sampleApp » pourra également 
+utiliser l'espace de noms sampleApp dans le magasin de données. Si un espace de noms 
+n'est pas réservé, aucun accès spécifique n'est requis pour l'utiliser.
+
+    /api/33/dataStore
+
+Notez qu'il existe des espaces de noms réservés utilisés par le système qui requièrent 
+une autorité spéciale pour pouvoir lire ou écrire des données. 
+Par exemple, l'espace de noms pour l'application de réglages android `ANDROID_SETTINGS_APP`
+nécessitera l'autorité `M_androidsettingsapp`.
+
+### Structure du magasin de données { #webapi_data_store_structure } 
+
+Les données du magasin de données se composent d'un espace de noms, d'une clé et d'une valeur. La 
+combinaison de l'espace de noms et de la clé est unique. Le type de données de la valeur est JSON.
+
+Tableau : Structure du magasin de données
+
+| Élément | Description | Type de données |
+|---|---|---|
+| Espace de noms | Espace-noms pour l'organisation des données | Chaîne |
+| Clé | Clé d'identification des valeurs. | Chaîne |
+| Valeur | Valeur contenant les informations à saisir | JSON |
+| Chiffré | Indique si la valeur de la clé donnée doit être chiffrée | Booléen |
+
+### Obtenir des clés et des espaces de noms  { #webapi_data_store_get_keys_and_namespaces } 
+
+Pour obtenir une liste de tous les espaces de noms existants :
+
+    GET /api/33/dataStore
+
+Exemple de requête curl pour le listing :
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore" -u admin:district
+```
+
+Exemple de réponse : 
+
+```json
+[
+  "foo",
+  "bar"
+]
+```
+
+Pour obtenir la liste de toutes les clés d'un espace de noms :
+
+    GET /api/33/dataStore/<namespace>
+
+Exemple de requête curl pour le listing :
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo" -u admin:district
+```
+
+Exemple de réponse : 
+
+```json
+[
+  "key_1",
+  "key_2"
+]
+```
+
+Pour récupérer une valeur pour une clé existante dans un espace de noms :
+
+    GET /api/33/dataStore/<namespace>/<key>
+
+Exemple de requête curl pour l'extraction :
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo/key_1"-u admin:district
+```
+
+Exemple de réponse : 
+
+```json
+{
+  "foo":"bar"
+}
+```
+
+Pour récupérer les métadonnées d'une clé existante dans un espace de noms :
+
+    GET /api/33/dataStore/<namespace>/<key>/metaData
+
+Exemple de requête curl pour l'extraction :
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo/key_1/metaData" -u admin:district
+```
+
+Exemple de réponse : 
+
+```json
+{
+  "id": "dsKeyUid001", 
+  "created": "...",
+  "user": {...},
+  "namespace": "foo",
+  "key": "key_1"
+}
+```
+
+### API de requête { #query-api } 
+L'API de requête permet d'interroger et de filtrer les valeurs de toutes les clés d'un espace de noms. Le paramètre `fields` (champs) est utilisé pour spécifier la requête. Ceci est utile pour récupérer des valeurs spécifiques de clés dans un espace de noms en une seule requête. 
+
+    GET /api/dataStore/<namespace>?fields=
+
+La liste des `champs` peut être :
+
+* empty (vide) : renvoie uniquement les clés d'entrée
+* `.`: renvoie la valeur de la racine telle qu'elle est stockée
+* liste de chemins séparés par des virgules : `<path>[,<path>]` ; chacun `<path>` peut être un simple nom de propriété (comme `age`) ou un chemin imbriqué (comme `person.age`) 
+
+En outre, les entrées peuvent être filtrées à l'aide d'un ou plusieurs paramètres `filter` (filtre) 
+et triées à l'aide du paramètre `order` (ordre). 
+
+Plusieurs filtres peuvent être combinés en utilisant `rootJunction=OR` (par défaut) ou `rootJunction=AND`. 
+
+Tous les détails sur les paramètres `fields`(champs), `filter`(filtre) et `order`(ordre) sont donnés dans les sections suivantes.
+
+#### Pagination { #paging } 
+Par défaut, les résultats utilisent la pagination. Utilisez `pageSize` ("taille de page") et `page` ("page") pour ajuster la taille et le décalage. 
+Le paramètre `paging=false` peut être utilisé pour ne pas utiliser la pagination et toujours retourner toutes les correspondances. 
+Ceci doit être utilisé avec précaution car il peut y avoir beaucoup d'entrées dans un espace de noms. La 
+taille de page par défaut est de 50.
+
+    GET /api/dataStore/<namespace>?fields=.&page=2&pageSize=10
+
+Lorsque la pagination est désactivée, les entrées sont renvoyées sous la forme d'un tableau de résultats simple en tant que structure JSON racine. Le même effet peut être obtenu avec des résultats paginés en utilisant `headless=true`(sans en-tête).
+
+```json
+{
+  "pager": { ... },
+  "entries": [...]
+}
+```
+vs.
+```json
+[...]
+```
+
+#### Extraction des valeurs { #value-extraction } 
+Le magasin de données permet d'extraire des valeurs simples ou complexes entières 
+ainsi que l'extraction de parties de valeurs JSON complexes.
+
+> **Remarque**
+>
+> Pour plus de clarté dans les exemples, les réponses présentées omettent pour la plupart l'objet le plus externe avec les informations de `pagination`
+> et le tableau d'`entrées` présenté dans les exemples.
+
+Pour filtrer un certain ensemble de champs, ajoutez un paramètre `fields` à l’espace de noms 
+requête:
+
+    GET /api/dataStore/<namespace>?fields=name,description
+
+Cela renvoie une liste de toutes les entrées ayant un `nom` non nul et/ou un 
+`description` comme dans l’exemple suivant :
+
+```json
+[
+  {"key": "key1", "name": "name1", "description": "description1"},
+  {"key": "key2", "name": "name2", "description": "description2"}
+]
+```
+
+Si, pour une raison quelconque, nous souhaitons que la liste de résultats contienne des entrées 
+pour lesquelles aucun des champs extraits n'est non nul, le paramètre `includeAll` (inclure tous) peut être 
+ajouté :
+
+    GET /api/dataStore/<namespace>?fields=name,description&includeAll=true
+
+La réponse pourrait ressembler à ceci maintenant:
+
+```json
+[
+  {"key": "key1", "name": "name1", "description": "description1"},
+  {"key": "key2", "name": "name2", "description": "description2"},
+  {"key": "key3", "name": null, "description": null},
+  {"key": "key4", "name": null, "description": null}
+]
+```
+
+L'extraction n'est pas limitée aux simples membres de niveau racine, mais peut également prendre des membres 
+imbriqués en utilisant des crochets ou des parenthèses rondes après le nom d'un membre :
+
+    GET /api/dataStore/<namespace>?fields=name,root[child1,child2]
+    GET /api/dataStore/<namespace>?fields=name,root(child1,child2)
+
+L'exemple de réponse pourrait ressembler à ceci :
+
+```json
+[
+  { "key": "key1", "name": "name1", "root": {"child1": 1, "child2": []}},
+  { "key": "key2", "name": "name2", "root": {"child1": 2, "child2": []}}
+]
+```
+
+La même syntaxe s'applique aux membres imbriqués :
+
+    GET /api/dataStore/<namespace>?fields=root[level1[level2[level3]]]
+    GET /api/dataStore/<namespace>?fields=root(level1(level2(level3)))
+
+L'exemple de réponse ici:
+
+```json
+[
+  { "key": "key1", "root": {"level1": {"level2": {"level3": 42}}}},
+  { "key": "key1", "root": {"level1": {"level2": {"level3": 13}}}}
+]
+```
+
+Lorsque de telles valeurs profondément imbriquées sont extraites, il se peut que nous ne voulions pas conserver la structure 
+mais extraire le membre de la feuille vers un membre de niveau supérieur dans la réponse.
+Les alias peuvent être utilisés à cette fin. Un alias peut être placé n'importe où 
+après le nom d'un membre en utilisant `~hoist` suivi de l'alias entre crochets comme suit :
+
+    GET /api/dataStore/<namespace>?fields=root[level1[level2[level3~hoist(my-prop)]]]
+
+La réponse ressemblerait à ceci maintenant:
+
+```json
+[
+  { "key": "key1", "my-prop": 42},
+  { "key": "key2", "my-prop": 13}
+]
+```
+
+Si le chemin complet doit être conservé tout en donnant un alias à un membre imbriqué, 
+le chemin parent doit être répété en utilisant la syntaxe des points pour indiquer l'imbrication. 
+Cette méthode peut également être utilisée pour restructurer une réponse dans une nouvelle structure 
+différente comme suit :
+
+    GET /api/dataStore/<namespace>?fields=root[level1[level2[level3~hoist(my-root.my-prop)]]]
+
+La réponse nouvellement structurée se présente désormais comme suit :
+
+```json
+[
+  { "key": "key1", "my-root": {"my-prop": 42}},
+  { "key": "key2", "my-root": {"my-prop": 13}}
+]
+```
+
+OBS! Un alias ne peut pas être utilisé pour renommer un niveau intermédiaire. Cependant, un alias
+peut être utilisé pour résoudre une collision de noms avec le membre `key` (clé).
+
+    GET /api/dataStore/<namespace>?fields=id,key~hoist(value-key)
+
+```json
+[
+  { "key": "key1", "id": 1, "value-key": "my-key1"},
+  { "key": "key2", "id": 2, "value-key": "my-key2"}
+]
+```
+
+### Trier les résultats { #sorting-results } 
+Les résultats peuvent être classés en fonction d'une seule propriété en utilisant le paramètre `order=<path>[:direction]`.
+Il peut s'agir de toute valeur valide `<path>` ou de la clé d'entrée (utiliser `_` comme chemin).
+
+Par défaut, le tri est alphanumérique si la valeur du chemin d'accès est une chaîne de caractères de type mixte.
+
+Par exemple, pour extraire la propriété nom et trier le résultat en fonction de celle-ci, utilisez :
+
+    GET /api/dataStore/<namespace>?fields=name&order=name
+
+Pour passer à l'ordre décroissant, utilisez `:desc` :
+
+    GET /api/dataStore/<namespace>?fields=name&order=name:desc
+
+Parfois, la propriété triée est numérique, de sorte que l'interprétation alphanumérique prêterait à confusion.
+Dans ce cas, les types de classement spéciaux `:nasc` et `:ndesc` peuvent être utilisés.
+
+En résumé, l'ordre peut être l'un des éléments suivants :
+
+* `asc`: ordre alphanumérique croissant
+* `desc:`: ordre alphanumérique décroissant
+* `nasc`: ordre numérique croissant
+* `ndesc`: ordre numérique décroissant
+
+> **OBS!**
+> 
+> Lors de l'utilisation de l'ordre numérique, toutes les correspondances doivent avoir une valeur numérique pour la propriété à l'emplacement fourni `<path>`.
+
+### Filtrer les entrées { #filtering-entries } 
+Pour filtrer les entrées dans le contexte API de la requête, ajoutez un ou plusieurs paramètres `filter` (filtre).
+tout en utilisant le paramètre `fields` (champs).
+
+Chaque paramètre `filtre` a la forme suivante :
+
+* les opérateurs unitaires: `<path>:<operator>`
+* les opérateurs binaires: `<path>:<operator>:<value>`
+* les opérateurs d'ensemble: `<path>:<operator>:[<value>,<value>,...]`
+
+Les opérateurs unitaires sont: 
+
+| Opérateur | Description |
+| -------- | ----------- |
+| `nul`   | La valeur est JSON `null` |
+| `!nul`  | La valeur est définie mais différente de la valeur JSON `null` |
+| `vide`  | la valeur est un objet vide, un tableau vide ou une chaîne JSON de longueur zéro |
+| `!vide` | la valeur est différente d'un objet vide, d'un tableau vide ou d'une chaîne de longueur zéro |
+
+Les opérateurs binaires sont:
+
+| Opérateur | Description |
+| -------- | ----------- |
+| `eq`     | la valeur est égale au booléen, au nombre ou à la chaîne de caractères donné(e) |
+| `!eq`, `ne`, `neq` | la valeur n'est pas égale au booléen, au nombre ou à la chaîne de caractères donné(e) |
+| `lt`     | la valeur est numériquement ou alphabétiquement inférieure au nombre ou à la chaîne de caractères donné(e) |
+| `le`     | la valeur est numériquement ou alphabétiquement inférieure ou égale au nombre ou à la chaîne de caractères donné(e) |
+| `gt`     | la valeur est numériquement ou alphabétiquement supérieure au nombre ou à la chaîne de caractères donné(e) |
+| `ge`     | la valeur est numériquement ou alphabétiquement supérieure ou égale au nombre ou à la chaîne de caractères donné(e) |
+
+Les opérateurs binaires de correspondance de motifs de texte sont les suivants :
+
+| Opérateur | Insensible à la casse |  Description |
+| -------- | ---------------- | ----------- |
+| `like`   | `ilike`          | La valeur correspond au modèle de texte indiqué |
+| `!like`  | `!ilike`         | La valeur ne correspond pas au modèle de texte indiqué |
+| `$like`  | `$ilike`, `startswith` (commence avec)   | La valeur commence par le modèle de texte indiqué |
+| `!$like` | `!$ilike`, `!startswith` (commence avec) | La valeur ne commence pas par le modèle de texte indiqué |
+| `like$`  | `ilike$`, `endswith` (se termine par)     | La valeur se termine par le modèle de texte indiqué |
+| `!like$` | `!ilike$`, `!endswith` (se termine par)   | La valeur ne se termine pas par le modèle de texte indiqué |
+
+Pour les opérateurs qui fonctionnent pour plusieurs types de noeuds JSON, la sémantique est déterminée à partir de la valeur fournie.
+Si la valeur est `true` ou `false`, le filtre correspond aux valeurs JSON booléennes. 
+Si la valeur est un nombre, le filtre correspond aux valeurs JSON de type nombre. 
+Sinon, la valeur correspond à des valeurs JSON de type chaîne ou à des types de valeurs mixtes.
+
+> **Conseil**
+>
+> Pour forcer la comparaison de texte pour une valeur numérique, mettez la valeur entre guillemets simples.
+> Par exemple, la valeur `'13'` est le texte 13 alors que `13` est le nombre 13. 
+
+Les opérateurs de l'ensemble sont :
+
+| Opérateur | Description |
+| -------- | ----------- |
+| `in`     | la valeur d'entrée est textuellement égale à l'une des valeurs données (est dans l'ensemble) |
+| `!in`    | la valeur d'entrée n'est pas textuellement égale à l'une des valeurs données (n'est pas dans l'ensemble) |
+
+Ils `<path>` peuvent être :
+
+* `_`: la clé d'entrée est
+* `.`: la valeur de la racine d'entrée est
+* `<member>`: le membre de la valeur racine est
+* `<member>.<member>`: le membre du chemin est (jusqu'à 5 niveaux de profondeur)
+
+L'expression `<member>` path peut être un nom de membre ou, dans le cas d'un tableau, un index de tableau.
+Dans le cas d'un tableau, l'index peut également être donné sous la forme : `[<index>]`.
+Par exemple, le chemin `adresses[0].street` serait identique à `adresses.0.street`.
+
+Vous trouverez ci-dessous quelques exemples de requêtes.
+
+Le nom (de l'objet racine) est "Luke" :
+
+    GET /api/dataStore/<namespace>?fields=.&filter=name:eq:Luke
+
+L'âge (de l'objet racine) est supérieur à 42 (numérique) :
+
+    GET /api/dataStore/<namespace>?fields=.&filter=age:gt:42
+
+La valeur racine est un nombre supérieur à 42 (correspondance numérique déduite de la valeur) :
+
+    GET /api/dataStore/<namespace>?fields=.&filter=.:gt:42
+
+L'option Activé (de l'objet racine) est vraie (correspondance booléenne déduite de la valeur) :
+
+    GET /api/dataStore/<namespace>?fields=.&filter=enabled:eq:true
+
+L'objet racine a un nom contenant « Pet » et a un âge supérieur à 20 ans :
+
+    GET /api/dataStore/<namespace>?fields=.&filter=name:like:Pet&filter=age:gt:20
+
+L'objet racine est signalé comme mineur ou a un âge inférieur à 18 ans :
+
+    GET /api/dataStore/<namespace>?fields=.&filter=minor:eq:true&filter=age:lt:18&rootJunction=or
+
+### Créer des valeurs { #webapi_data_store_create_values } 
+
+Pour créer une nouvelle clé et une nouvelle valeur pour un espace de noms :
+
+    POST /api/33/dataStore/<namespace>/<key>
+
+Exemple de requête curl pour créer, en présumant que la charge JSON est valide :
+
+```bash
+curl "https://play.dhis2.org/demo/api/33/dataStore/foo/key_1" -X POST
+  -H "Content-Type: application/json" -d "{\"foo\":\"bar\"}" -u admin:district
+```
+
+Exemple de réponse : 
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 201,
+  "status": "OK",
+  "message": "Key 'key_1' created."
+}
+```
+
+Si vous souhaitez que les données que vous stockez soient cryptées (par exemple les informations 
+d'identification de l'utilisateur ou autres), vous pouvez ajouter une requête à l'URL comme suit :
+
+    GET /api/33/dataStore/<namespace>/<key>?encrypt=true
+
+### Mettre à jour les valeurs { #webapi_data_store_update_values } 
+
+Pour mettre à jour une clé qui existe dans un espace de noms :
+
+    PUT /api/33/dataStore/<namespace>/<key>
+
+Exemple de requête curl pour mettre à jour, en présumant que la charge JSON est valide :
+
+```bash
+curl "https://play.dhis2.org/demo/api/33/dataStore/foo/key_1" -X PUT -d "[1, 2, 3]"
+  -H "Content-Type: application/json" -u admin:district
+```
+
+Exemple de réponse : 
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 200,
+  "status": "OK",
+  "message": "Key 'key_1' updated."
+}
+```
+
+### Clés de suppression { #webapi_data_store_delete_keys } 
+
+Pour supprimer une clé existante d'un espace de noms :
+
+    DELETE /api/33/dataStore/<namespace>/<key>
+
+Exemple de requête curl pour la suppression :
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo/key_1" -X DELETE -u admin:district
+```
+
+Exemple de réponse : 
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 200,
+  "status": "OK",
+  "message": "Key 'key_1' deleted from namespace 'foo'."
+}
+```
+
+Pour supprimer toutes les clés d'un espace de noms :
+
+    DELETE /api/33/dataStore/<namespace>
+
+Exemple de requête curl pour la suppression :
+
+```bash
+curl "play.dhis2.org/demo/api/33/dataStore/foo" -X DELETE -u admin:district
+```
+
+Exemple de réponse : 
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 200,
+  "status": "OK",
+  "message": "Namespace 'foo' deleted."
+}
+```
+
+### Partage des clés du magasin de données { #webapi_data_store_sharing } 
+
+Le partage des clés des magasins de données suit le même principe que le partage d'autres métadonnées (voir
+[Partage](#webapi_sharing)).
+
+Pour obtenir les paramètres de partage d'une clé de magasin de données spécifique :
+
+    GET /api/33/sharing?type=dataStore&id=<uid>
+
+L'identifiant de la clé du magasin de données provient du point d'extrémité `/metaData` de cette clé :
+
+    GET /api/33/dataStore/<namespace>/<key>/metaData
+
+Comme d'habitude, la propriété `access` dans la réponse reflète les capacités de 
+l'utilisateur actuel pour l'entrée cible.
+La protection de l'espace de nommage peut toujours s'appliquer et rendre un utilisateur incapable 
+d'effectuer certaines modifications.
+
+Pour modifier les paramètres de partage d'une clé de stockage de données spécifique :
+
+    POST /api/33/sharing?type=dataStore&id=<uid>
+
+avec la requête suivante:
+
+```json
+{
+  "object": {
+    "publicAccess": "rw------",
+    "externalAccess": false,
+    "user": {},
+    "userAccesses": [],
+    "userGroupAccesses": [
+      {
+        "id": "hj0nnsVsPLU",
+        "access": "rw------"
+      },
+      {
+        "id": "qMjBflJMOfB",
+        "access": "r-------"
+      }
+    ]
+  }
+}
+```
+
+## Magasin de données de l'utilisateur { #webapi_user_data_store } 
+
+Outre le *magasin de données* qui est partagé par tous les utilisateurs du 
+système, un magasin de données basé sur l'utilisateur est également disponible. Les données stockées dans le 
+*magasin de données de l'utilisateur* sont associées à des utilisateurs individuels, afin que chaque utilisateur 
+puisse avoir des données différentes dans le même espace de noms et la même combinaison de touches. Tous 
+les appels au *magasin de données de l'utilisateur* seront associés à l'utilisateur 
+connecté. Cela signifie que l'on ne peut voir, modifier, supprimer et ajouter que les valeurs 
+associées à l'utilisateur connecté.
+
+    /api/33/userDataStore
+
+### Structure du magasin de données de l'utilisateur { #webapi_user_data_store_structure } 
+
+Le *magasin de données de l'utilisateur* se compose d'un utilisateur, d'un espace de noms, de clés et de valeurs
+associées. La combinaison d'un utilisateur, d'un espace de noms et d'une clé est unique.
+
+Tableau : Structure du magasin de données de l'utilisateur
+
+| Élément | Description | Type de données |
+|---|---|---|
+| Utilisateur | L'utilisateur auquel ces données sont associées | Chaîne |
+| Espace de noms | L'espace de noms auquel appartient la clé | Chaîne |
+| Clé | La clé sur laquelle une valeur est stockée | Chaîne |
+| Valeur | La valeur stockée | JSON |
+| Chiffré | Indique si la valeur doit être cryptée | Booléen |
+
+### Obtenir des espaces de noms { #webapi_user_data_store_get_namespaces } 
+
+Renvoie un tableau de tous les espaces de noms existants
+
+    GET /api/33/userDataStore
+
+Exemple
+    requête:
+
+```bash
+curl -H "Content-Type: application/json" -u admin:district "play.dhis2.org/api/33/userDataStore"
+```
+
+```json
+[
+  "foo",
+  "bar"
+]
+```
+
+### Obtenir des clés { #webapi_user_data_store_get_keys } 
+
+Renvoie un tableau de toutes les clés existantes dans un espace de noms donné
+
+    GET /api/userDataStore/<namespace>
+
+Exemple de requête:
+
+```bash
+curl -H "Content-Type: application/json" -u admin:district "play.dhis2.org/api/33/userDataStore/foo"
+```
+
+```json
+[
+  "key_1",
+  "key_2"
+]
+```
+
+### Obtenir des valeurs { #webapi_user_data_store_get_values } 
+
+Renvoie la valeur d'un espace de noms et d'une clé donnés
+
+    GET /api/33/userDataStore/<namespace>/<key>
+
+Exemple de requête:
+
+```bash
+curl -H "Content-Type: application/json" -u admin:district "play.dhis2.org/api/33/userDataStore/foo/bar"
+```
+
+```json
+{
+  "some": "value"
+}
+```
+
+### Créer une valeur { #webapi_user_data_store_create_values } 
+
+Ajoute une nouvelle valeur à une clé donnée dans un espace de noms donné.
+
+    POST /api/33/userDataStore/<namespace>/<key>
+
+Exemple de requête:
+
+```bash
+curl -X POST -H "Content-Type: application/json" -u admin:district -d "['some value']"
+  "play.dhis2.org/api/33/userDataStore/foo/bar"
+```
+
+```json
+{
+  "httpStatus": "Created",
+  "httpStatusCode": 201,
+  "status": "OK",
+  "message": "Key 'bar' in namespace 'foo' created."
+}
+```
+
+Si vous souhaitez que la valeur soit cryptée (par exemple, les informations d'identification de l'utilisateur
+et autres), vous pouvez ajouter une requête à l'url comme ceci :
+
+    GET /api/33/userDataStore/<namespace>/<key>?encrypt=true
+
+### Mettre à jour les valeurs  { #webapi_user_data_store_update_values } 
+
+Met à jour une valeur existante
+
+    PUT /api/33/userDataStore/<namespace>/<key>
+
+Exemple de requête:
+
+```bash
+curl -X PUT -H "Content-Type: application/json" -u admin:district -d "['new value']"
+  "play.dhis2.org/api/33/userDataStore/foo/bar"
+```
+
+```json
+{
+  "httpStatus":"Created",
+  "httpStatusCode":201,
+  "status":"OK",
+  "message":"Key 'bar' in namespace 'foo' updated."
+}
+```
+
+### Clé de suppression { #webapi_user_data_store_delete_key } 
+
+Supprimer une clé
+
+    DELETE /api/33/userDataStore/<namespace>/<key>
+
+Exemple de requête:
+
+```bash
+curl -X DELETE -u admin:district "play.dhis2.org/api/33/userDataStore/foo/bar"
+```
+
+```json
+{
+  "httpStatus":"OK",
+  "httpStatusCode":200,
+  "status":"OK",
+  "message":"Key 'bar' deleted from the namespace 'foo."
+}
+```
+
+### Supprimer un espace de noms { #webapi_user_data_store_delete_namespace } 
+
+Supprimer toutes les clés de l'espace de noms donné
+
+    DELETE /api/33/userDataStore/<namespace>
+
+Exemple de requête:
+
+```bash
+curl -X DELETE -u admin:district "play.dhis2.org/api/33/userDataStore/foo"
+```
+
+```json
+{
+  "httpStatus":"OK",
+  "httpStatusCode":200,
+  "status":"OK",
+  "message":"All keys from namespace 'foo' deleted."
+}
+```
+
+### Accès administrateur au magasin de données d'un autre utilisateur { #admin-access-to-another-users-datastore } 
+Les administrateurs peuvent manipuler le magasin de données d'un autre utilisateur en ajoutant le paramètre 
+`nom d'utilisateur` à n'importe laquelle des manipulations décrites ci-dessus pour qu'elles n'affectent 
+pas le magasin de données de l'administrateur mais celui de l'utilisateur indiqué par le paramètre 
+`nom d'utilisateur`.
+
+Par exemple, pour ajouter une valeur au magasin de données de `Peter`, un administrateur utilise :
+
+    POST /api/userDataStore/<namespace>/<key>?username=Peter
+

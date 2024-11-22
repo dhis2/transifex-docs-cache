@@ -1,0 +1,226 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-sdk/blob/master/docs/content/developer/sms.md"
+revision_date: '2022-08-31'
+tags:
+- Développer
+---
+
+# Module SMS { #android_sdk_sms_module }
+
+Le module SMS peut être utilisé comme méthode de secours pour télécharger des données lorsqu'une connexion Internet n'est pas disponible. Il nécessite une configuration supplémentaire dans le serveur : une passerelle SMS doit être configurée dans le serveur pour pouvoir recevoir des SMS ; optionnellement, le serveur peut avoir la capacité d'envoyer des SMS en retour aux clients avec la réponse.
+
+Selon l'opérateur de téléphonie mobile, l'envoi de SMS peut entraîner un coût supplémentaire. C'est pourquoi le module SMS est uniquement destiné au **téléchargement de données granulaires**. Il n'est pas utilisé pour le téléchargement de métadonnées ou le téléchargement de données en masse. En outre, les données sont compressées à l'aide de la [bibliothèque de compression SMS] (https://github.com/dhis2/sms-compression) afin que le contenu puisse tenir dans un plus petit nombre de messages. Cette bibliothèque est partagée avec le backend.
+
+À des fins de test, vous pouvez utiliser la [passerelle SMS Android DHIS2] (https://github.com/dhis2/dhis2-sms-android-gateway).
+
+Dans le SDK, le module SMS est accessible à partir de `D2`.
+
+```java
+d2.smsModule()
+```
+
+Ce module est **désactivé par défaut** et doit être explicitement activé et configuré. Il comprend trois composants qui donnent accès aux fonctionnalités du module.
+
+- Cas de configuration : il est utilisé pour définir les données initiales communes à toutes les tâches d'envoi de SMS, telles que les numéros de passerelle, le délai d'attente, l'exécution du téléchargement de 
+l'objet d'identification des métadonnées.
+- Cas de transmission des SMS. Il est utilisé pour convertir les données *DHIS2* qui seront envoyées par le Sdk, pour les envoyer par SMS et pour vérifier l'état d'avancement de la transmission et son résultat.
+- Cas du code Qr : il est utilisé pour convertir les données *DHIS2* en chaîne. Cette chaîne est une représentation compressée des données *DHIS2*. Cela permet d'éviter l'envoi de contenus volumineux par SMS.
+
+Un flux de travail typique pour l'utilisation du module SMS serait le suivant :
+
+- Activer le module SMS.
+- Synchroniser les métadonnées. Le module SMS télécharge des métadonnées supplémentaires à partir du serveur. Cette étape doit donc être effectuée lorsque la connexion Internet est disponible et **après** l'activation du module.
+- Envoyer des données à l'aide du module SMS.
+
+Voici un exemple de code d'un flux de travail typique (il utilise des méthodes de blocage pour simplifier le code) :
+
+```java
+// Activer le module SMS
+d2.smsModule().configCase().setModuleEnabled(true).blockingAwait();
+
+// Synchroniser les métadonnées du module SMS à l'aide du module SMS
+d2.smsModule().configCase().refreshMetadataIds().blockingAwait();
+// or using metadata module
+d2.metadataModule().blockingDownload();
+
+// Configurez au moins le numéro de la passerelle. Voir la section « Configuration des cas » pour plus de paramètres.
+d2.smsModule().configCase().setGatewayNumber("gateway-number").blockingAwait();
+
+// Envoyer des données. Par exemple, un événement tracker:
+SmsSubmitCase case = d2.smsModule().smsSubmitCase();
+Integer numSMSs = case.convertTrackerEvent("event-uid").blockingGet();
+
+case.send().blockingSubscribe();
+```
+
+## Version SMS { #android_sdk_sms_version }
+
+Les SMS sont envoyés dans un format compressé depuis/vers le serveur. Cette tâche est effectuée par la [bibliothèque de compression des SMS] (https://github.com/dhis2/sms-compression), qui est responsable de la conversion entre le texte brut et le format compressé.
+
+Le SDK inclut la dernière version disponible de la bibliothèque de compression, mais il n'est pas garanti que le serveur l'utilise également. C'est pourquoi il est nécessaire de vérifier la version du serveur afin d'activer/désactiver certaines fonctionnalités. La version des SMS dans le serveur peut être vérifiée par :
+
+```java
+d2.systemInfoModule().versionManager().getSmsVersion()
+```
+
+Présentation des versions - caractéristiques :
+
+Version 1:
+
+- Données agrégées.
+- Tracker / données d'événements, mais il y a quelques bugs connus. Nous recommandons de ne pas activer la synchronisation SMS du tracker dans la version 1.
+
+Version 2:
+
+- Ajouter une prise en charge pour les listes vides.
+- Ajouter une prise en charge de la géométrie dans les événements (POINT).
+- Ajouter des propriétés manquantes dans les événements (données de l'événement, date d'échéance) et les inscriptions (date d'exécution, date de l'incident).
+- Ajouter la possibilité d'envoyer des inscriptions et des événements dans le même cas d'envoi de SMS.
+
+Pour plus d'informations, veuillez consulter [SMS compression repository](https://github.com/dhis2/sms-compression).
+
+## Configuration des Cas { #android_sdk_sms_config_case }
+
+```java
+d2.smsModule().configCase()
+```
+
+Ce cas permet de configurer le module SMS avant de l'utiliser. Il est nécessaire, au minimum, de :
+
+- Activer le module.
+- Définir un numéro de passerelle.
+- Télécharger les identifiants des métadonnées.
+
+D'autres paramètres facultatifs permettent de contrôler si le SDK doit attendre une réponse du serveur ou non, ainsi que le délai de réponse. Il est également possible de spécifier le numéro de l'expéditeur afin que les messages reçus d'autres expéditeurs soient ignorés.
+
+## Cas de soumission de SMS { #android_sdk_sms_submit_case }
+
+Utilisez ce cas pour créer une nouvelle demande et envoyez-la. Les cas de demande ne sont pas réutilisables et ne peuvent être envoyés qu'une seule fois. Pour créer un nouveau cas de demande, vous devez faire appel à la méthode :
+
+```java
+SmsSubmitCase case = d2.smsModule().smsSubmitCase();
+```
+
+Il existe deux options pour envoyer un SMS : demander des autorisations et envoyer le SMS directement dans l'application ; ou obtenir le message compressé et utiliser une application externe pour envoyer le SMS.
+
+### Envoyer un SMS dans l'application { #android_sdk_sms_embedded_submit_case }
+
+Une demande comporte les étapes suivantes :
+
+- Spécifier les données à transmettre. Cela signifie qu'il faut faire appel à une méthode comme `convert*()`.
+- Envoyer le message.
+- Vérifier éventuellement l'envoi d'un SMS de confirmation.
+
+Par exemple, l'envoi d'un événement tracker se fera de la manière suivante :
+
+```java
+SmsSubmitCase case = d2.smsModule().smsSubmitCase();
+Integer numSMSs = case.convertTrackerEvent("event-uid").blockingGet();
+
+case.send().blockingSubscribe();
+```
+> **Important**
+>
+> L'application est chargée de demander les autorisations à l'utilisateur ( LIRE_L'ETAT DU_TELEPHONE, ENVOYER_UN SMS, LIRE_UN SMS, RECEVOIR_UN SMS). Dans le cas contraire, le module SMS échouera.
+
+Les méthodes suivantes peuvent être utilisées pour définir les données *DHIS2* à envoyer :
+
+- `convertSimpleEvent()`. Pour définir un événement simple.
+- `convertTrackerEvent()`. Pour définir un événement tracker.
+- `convertEnrollment()`. Pour définir une inscription.
+- `convertDataSet()`. Pour définir un ensemble de données.
+- `convertRelationship()`. Pour définir une relation.
+- `convertDeletion()`. Pour supprimer un événement.
+
+Les méthodes ci-dessus renvoient un message unique indiquant le nombre de messages que 
+l'élément prend en charge. Un exemple d'utilisation de ces méthodes est présenté dans 
+l'extrait qui suit.
+
+```java
+Single<Integer> convertTask = d2.smsModule().smsSubmitCase()
+    .convertEnrollment("enrollment_uid")
+```
+
+Pour envoyer les données converties précédemment, le Sdk fournit une méthode `send()` 
+qui renvoie un flux des états actuels. Il est également possible d'obtenir l'identifiant de la 
+demande en faisant appel à la méthode `getSubmissionId()`.
+
+```java
+d2.smsModule().smsSubmitCase().send()
+```
+
+Il est également possible d'attendre le résultat du SMS en appelant la 
+méthode `checkConfirmationSms()`. Elle renvoie un objet `Completable` où 
+completion signifie que le SMS a été reçu avec succès. Si le 
+résultat est introuvable, la méthode renvoie une erreur. La date acceptée est 
+la date minimale pour laquelle la confirmation va être vérifiée, ce qui permet 
+d'ignorer les anciens messages qui peuvent avoir le même identifiant de transmission.
+
+```java
+d2.smsModule().smsSubmitCase().checkConfirmationSms(new Date());
+```
+
+Ces méthodes peuvent échouer et retourner un objet `PreconditionFailed` si certaines 
+conditions ne sont pas remplies. Les erreurs de préconditions sont les suivantes :
+
+- `NO_NETWORK`. ( pas de connexion)
+- `NO_CHECK_NETWORK_PERMISSION`. (pas de demande de vérification de la connexion)
+- `NO_RECEIVE_SMS_PERMISSION`. (pas de réception de permission de sms)
+- `NO_SEND_SMS_PERMISSION`. (pas d'envoi de permission de sms)
+- `NO_GATEWAY_NUMBER_SET`. (pas de définition du numéro de la passerelle)
+- `NO_USER_LOGGED_IN`. (aucun utilisateur ne s'est connecté)
+- `NO_METADATA_DOWNLOADED`. (aucune métadonnée téléchargée)
+- `SMS_MODULE_DISABLED`. (module de sms désactivé)
+
+
+### Envoyer un SMS à l'aide d'une application externe { #android_sdk_sms_external_submit_case }
+
+Une demande effectuée à l'aide d'une application externe comporte les étapes suivantes :
+
+- Spécifiez les données à soumettre et obtenez le message de compression. Cela signifie qu'il faut faire appel à une méthode comme `compress*()`.
+- Envoyer le message à l'aide d'une application externe.
+- Marquez éventuellement comme étant ENVOYÉ_VIA_SMS si vous savez que le message a été envoyé.
+- Vérifier éventuellement l'envoi d'un SMS de confirmation.
+
+Par exemple, l'envoi d'un événement tracker se fera de la manière suivante :
+
+```java
+SmsSubmitCase case = d2.smsModule().smsSubmitCase() ;
+String message = case.compressTrackerEvent("event-uid").blockingGet() ;
+
+// Utiliser une application externe pour envoyer le SMS
+
+// Marquer optionnellement le cas comme SENT_VIA_SMS
+case.markAsSentViaSMS() ;
+
+// Si vous obtenez une réponse du serveur, vous pouvez vérifier si le message correspond au cas ou non.
+boolean isResponseMessage = case.isConfirmationMessage("sender_number", "message").blockingGet() ;
+```
+
+
+## Cas du Code Qr { #android_sdk_sms_qr_code_case }
+
+```java
+d2.smsModule().qrCodeCase()
+```
+
+Cette méthode permet d'obtenir une représentation compressée des données.
+
+`QrCodeCase` peut convertir le type d'objets *DHIS2* suivant :
+
+- **Événements simples**. En utilisant la méthode `generateSimpleEventCode()` (générer un code d'événement simple) et en y passant l'identifiant de l'événement.
+- **Événements Tracker**. En utilisant la méthode `generateTrackerEventCode()` (générer un code d'événement Tracker) et en y passant l'identifiant de l'événement. 
+- **Événements Tracker**. En utilisant la méthode `generateTrackerEventCode()` (générer un code d'événement Tracker) et en y passant l'identifiant de l'événement. 
+- **Les relations**. En utilisant la méthode `generateRelationshipCode ()` (générer un code de relation) et en y passant un uid de la relation.
+- **Ensembles de données**. En utilisant la méthode `generateDataSetCode()` (générer un code de l'ensemble de données) et en y passant un uid d'ensemble de données, un uid d'unité d'organisation, une combinaison d'options d'attributs et un identifiant de période.
+
+Il est également possible d'obtenir des chaînes compressées qui peuvent être utilisées pour supprimer des événements :
+
+- **Les suppressions**. En utilisant la méthode `generateDeletionCode()` (Générer le code de suppression) et en y passant l'uid de l'événement.
+
+Ces méthodes renvoient un `Unique` contenant les données compressées. L'extrait de code suivant montre un exemple d'utilisation.
+
+```java
+Single<String> convertTask = d2.smsModule().qrCodeCase().generateEnrollmentCode(enrollmentUid);
+```
+

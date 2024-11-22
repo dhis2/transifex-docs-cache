@@ -1,0 +1,243 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.41/src/developer/web-api/i18n.md"
+revision_date: '2024-05-15'
+tags:
+- Développement
+- DHIS Version 2.41
+---
+
+# I18n { #i18n } 
+
+## Langues { #webapi_locales } 
+
+DHIS2 prend en charge les traductions à la fois pour l'interface utilisateur et pour le contenu de la base de données.
+
+### Langues de l'interface utilisateur { #ui-locales } 
+
+Vous pouvez récupérer les langues disponibles pour l'interface utilisateur par le biais 
+de la ressource suivante avec une requête GET. Les représentations XML et JSON sont 
+prises en charge.
+
+    /api/33/locales/ui
+
+### Langues du contenu de la base de données { #database-content-locales } 
+
+Vous pouvez récupérer et créer des langues pour le contenu de la base de données avec des requêtes GET et POST à travers la ressource `dbLocales`. Les représentations XML et JSON sont prises en charge. Pour envoyer des données par POST, deux paramètres sont nécessaires : `pays` et `langue`. 
+
+    /api/locales/dbLocales?country=US&language=en
+
+## Les traductions { #webapi_translations } 
+
+DHIS2 permet de traduire le contenu de la base de données. 
+Si une métadonnée est traduisible, elle aura une propriété `traductions`.
+
+Cela signifie que vous pouvez récupérer et mettre à jour les traductions en utilisant les ressources des classes de métadonnées telles que `api/dataElements`, `api/organisationUnits`, `api/dataSets`, etc.
+
+### Obtenir des traductions { #get-translations } 
+
+Vous pouvez obtenir des traductions pour un objet de métadonnées tel que l'élément de données en envoyant une requête GET à `api/dataElements/{dataElementUID}`
+
+La réponse contient tous les détails de l'élément de données qui comprend également la propriété `traductions` comme suit
+
+```json
+{
+  "id": "fbfJHSPpUQD",
+  "href": "https://play.dhis2.org/dev/api/29/dataElements/fbfJHSPpUQD",
+  "created": "2010-02-05T10:58:43.646",
+  "name": "ANC 1st visit",
+  "shortName": "ANC 1st visit",
+  "translations": 
+  [
+    {
+      "property": "SHORT_NAME",
+      "locale": "en_GB",
+      "value": "ANC 1st visit"
+    },
+    {
+      "property": "NAME",
+      "locale": "fr",
+      "value": "Soin prénatal 1"
+    },
+    {
+      "property": "NAME",
+      "locale": "en_GB",
+      "value": "ANC 1st visit"
+    }
+  ]
+}
+```
+Vous pouvez également obtenir uniquement la propriété `traductions` d'un objet en envoyant une requête GET à 
+`api/dataElements/{dataElementUID}/translations`
+
+```json
+{
+  "translations": 
+  [
+    {
+      "property": "SHORT_NAME",
+      "locale": "en_GB",
+      "value": "ANC 1st visit"
+    },
+    {
+      "property": "NAME",
+      "locale": "fr",
+      "value": "Soin prénatal 1"
+    },
+    {
+      "property": "NAME",
+      "locale": "en_GB",
+      "value": "ANC 1st visit"
+    }
+  ]
+}
+```
+
+### Traduire/mettre à jour des traductions { #createupdate-translations } 
+
+Vous pouvez faire des traductions en envoyant une requête PUT avec le même format JSON à `api/dataElements/{dataElementUID}/translations`
+
+```json
+{
+  "translations": 
+  [
+    {
+      "property": "SHORT_NAME",
+      "locale": "en_GB",
+      "value": "ANC 1st visit"
+    },
+    {
+      "property": "NAME",
+      "locale": "fr",
+      "value": "Soin prénatal 1"
+    },
+    {
+      "property": "DESCRIPTION",
+      "locale": "fr",
+      "value": "description in french"
+    },
+    {
+      "property": "FORM_NAME",
+      "locale": "fr",
+      "value": "name in french"
+    }
+  ]
+}
+```
+
+Il est également possible de mettre à jour l'objet avec la charge, y compris la propriété `traductions`.
+
+Envoyez une requête PUT à `api/dataElements/{dataElementUID}` avec l'objet complet comme ci-dessous :
+
+```json
+{
+  "id": "fbfJHSPpUQD",
+  "created": "2010-02-05T10:58:43.646",
+  "name": "ANC 1st visit",
+  "shortName": "ANC 1st visit",
+  "translations": 
+  [
+    {
+      "property": "SHORT_NAME",
+      "locale": "en_GB",
+      "value": "ANC 1st visit"
+    },
+    {
+      "property": "NAME",
+      "locale": "fr",
+      "value": "Soin prénatal 1"
+    },
+    {
+      "property": "NAME",
+      "locale": "en_GB",
+      "value": "ANC 1st visit"
+    }
+  ]
+}
+```
+
+Le code de statut sera `204 No Content` si la valeur de données a été sauvegardée ou mise à jour avec succès, ou `409 Conflit` si une erreur de validation s'est produite (par exemple, plus d'un `NOM_COURT` pour la même `langue`).
+
+Les propriétés communes qui prennent en charge les traductions sont listées dans le tableau ci-dessous.
+
+Tableau : Noms des propriétés
+
+| Nom de la propriété | Description ; |
+|---|---|
+| nom | Nom de l'objet |
+| nomAbrégé | Nom court de l'objet |
+| Description | Description de l'objet |
+
+Les classes qui prennent en charge les traductions sont listées dans le tableau ci-dessous.
+
+Tableau : Noms des classes
+
+| Nom de la classe | Description ; | Autres propriétés traduisibles |
+|---|---|---|
+| Option de Catégorie d'Élément de Données | Option de catégorie | |
+| Categorie d'Eléments de Données | Catégorie | |
+| Combinaison de Catégorie d'Eléments de Données | la combinaison de catégories. | |
+| Élément de données | Élément de données | |
+| Groupe d'Eléments de Données | Groupe d'éléments de données | |
+| Ensemble de Groupe d'Eléménts de Données | Ensemble de groupes d'éléments de donnée | |
+| Indicateur | Indicateur | description du numérateur, description du dénominateur |
+| Type d'indicateur | Type d'indicateur | |
+| IndicatorGroup | Groupe d’indicateurs | |
+| Ensemble de Groupe d'Indicateur | Ensemble de groupes d'indicateurs | |
+| Unité d'organisation | Unité d’organisation | |
+| Groupe d'Unité d'Organisation | Groupe d'unités d'organisation | |
+| Ensemble de Groupe d'Unité d'Organisation | Ensemble de groupes d'unités d'organisation | |
+| Ensemble de données | Ensemble de données | |
+| Section | Section de l'ensemble des données | |
+| Règle de validation | Règle de validation | instruction |
+| Groupes de règles de validation | Groupe de règles de validation | |
+| Programme | Programme | étiquette de date d'inscription, étiquette de date d'incident |
+| Étape du programme | Étape du programme | étiquette de la date d'exécution, étiquette de la date d'échéance |
+| Attribut d'entité suivie | Attribut d’entité suivie | |
+| Entité suivie | Entité suivie | |
+| Type de relation | Type de relation pour les instances d'entités suivies | fromToName, toFromName |
+| Ensemble d'options | Ensemble d'options | |
+| Option | Option | |
+| Attribut | Attribut des métadonnées | |
+| Modèle de notification de programme | Modèle de notification de programme | modèle de sujet, modèle de message |
+| Modèle de notification de validation | Modèle de notification de validation | modèle de sujet, modèle de message |
+| Modèle de notification de l'ensemble de données  | Modèle de notification de l'ensemble de données  | modèle de sujet, modèle de message |
+| Visualisation | Visualisation | titre, sous-titre, étiquette d'axe de plage, étiquette de ligne de base, étiquette de ligne cible, étiquette d'axe de domaine |
+| Action de règle de programme | Action de règle de programme | contenu |
+| Prédicteur | Prédicteur | Nom, nom court, description, description du générateur  |
+| Règle de validation | Règle de validation | Nom, Description, Instruction, Expression du côté gauche, Expression du côté droit |
+
+## Internationalisation { #webapi_i18n } 
+
+Pour récupérer les paires clé-valeur des chaînes traduites, vous pouvez utiliser 
+la ressource *i18n*.
+
+    /api/33/i18n
+
+Le point d'accès est situé à */api/i18n* et le format de la requête est un simple 
+tableau de paires de valeurs clés :
+
+```json
+[
+  "access_denied",
+  "uploading_data_notification"
+]
+```
+
+La requête doit être de type *POST* et utiliser l' *application/json* comme 
+type de contenu. Un exemple utilisant curl, en supposant que les données de la requête sont sauvegardées 
+dans le fichier `keys.json` :
+
+```bash
+curl -d @keys.json "play.dhis2.org/demo/api/33/i18n" -X POST
+  -H "Content-Type: application/json" -u admin:district
+```
+
+Le résultat ressemblera à ceci :
+
+```json
+{
+  "access_denied":"Access denied",
+  "uploading_data_notification":"Uploading locally stored data to the server"
+}
+```
+

@@ -1,0 +1,659 @@
+---
+edit_url: "https://github.com/dhis2-metadata/HIV_CS/blob/master/docs/hiv_cs-design.md"
+revision_date: '2023-12-15'
+tags:
+- Métadonnées
+---
+
+# Conception du système de surveillance des cas d'infection par le VIH { #hiv-cs-design }
+
+## Contexte et objectif { #background-and-purpose } 
+
+La composante 'Surveillance des cas' du kit DHIS2 pour le VIH est basée sur les dernières lignes directrices de l'OMS : [Lignes directrices unifiées relatives à l'information stratégique sur le VIH centrée sur la personne : renforcer les données de routine pour plus d'impact] (https://www.who.int/publications/i/item/9789240055315) (2022) et sur le kit d'adaptation numérique pour le VIH : exigences opérationnelles pour la mise en œuvre des recommandations et des normes de l'OMS dans les systèmes numériques, deuxième édition.
+
+Ce kit comprend :
+
+- Le programme Tracker de Surveillance des cas d'infection par le VIH basé sur DHIS2, qui est conforme aux normes de données du kit d'adaptation numérique de l'OMS pour la collecte de données individuelles et le suivi des personnes au niveau des établissements et au niveau communautaire.
+- Les analyses de tableaux de bord et indicateurs de base recommandés par l'OMS pour la surveillance des initiatives de soins et de traitement du VIH et l'utilisation de mesures clés pour ajuster la programmation et stimuler l'impact. 
+- Des ensembles de données et des éléments de données agrégés pour modéliser les données de Tracker agrégées en vue d'une analyse efficace et anonyme. 
+- Un mapping des échanges de données pour l'agrégation des données du Tracker DHIS2 pour les indicateurs de surveillance des cas d'infection par le VIH et l'intégration des indicateurs clés dans le HMIS national
+
+Le kit du VIH a été optimisée afin d'améliorer les systèmes d'information stratégiques dans les pays, ceci en vue de faciliter les prises de décision sur la base des données, ainsi que pour rationaliser les processus de gestion des données de routine. Le Tracker DHIS2 de surveillance des cas d'infection par le VIH n'est pas conçu pour fournir une aide à la décision clinique pour les services de soins et de traitement du VIH, mais sert plutôt d'outil opérationnel et de source de données individuelles pour suivre la riposte face au VIH.
+
+Le document de conception du système explique la configuration de référence dans DHIS2 pour le cas d'utilisation "Surveillance des cas d'infection par le VIH", y compris une description détaillée de la configuration du Tracker de DHIS2, de la conception du tableau de bord, de l'utilisation des indicateurs de programme, du mapping des données du Tracker avec le modèle de données agrégées et des mécanismes d'échange de données. De plus, ce document n'intègre pas les ressources et l'infrastructure nécessaires à l'implémentation d'un tel système, telles que les serveurs, l'alimentation électrique, les connexions internet, les sauvegardes, la formation et l'assistance aux utilisateurs ; ces points sont abordés dans le [Guide d'implémentation du Tracker de DHIS2](https://docs.dhis2.org/en/implement/tracker-implementation/target-audience.html).
+
+Les métadonnées de référence de cette boîte à outils sont disponibles à l'adresse suivante : [dhis2.org/metadata-downloads] (https://dhis2.org/metadata-downloads/).
+
+### Remerciements { #acknowledgements } 
+
+Le kit de surveillance des cas d'infection par le VIH a été élaborée en partenariat avec le Programme mondial de lutte contre le VIH de l'OMS et l'Organisation Panaméricaine de la Santé (OPS), avec le soutien du Fonds mondial. Nous remercions l'OMS et l'OPS d'avoir apporté leur expertise dans la conception et l'élaboration de ces outils, ainsi que les nombreux pays qui ont partagé avec nous leur expérience en matière d'implémentation.
+
+## Aperçu de la conception du système  { #system-design-overview } 
+
+### Contexte { #background } 
+
+Contexte
+Les efforts visant à mettre fin à l'épidémie de VIH d'ici à 2030 se heurtent à des difficultés persistantes, avec 1,3 million de nouvelles infections pour la seule année 2022. Les personnes clés et leurs partenaires sexuels représentaient 70 % des nouvelles infections dans le monde en 2021 (ONUSIDA, 2022), ce qui met en évidence les difficultés d'accès équitable au traitement. Il est primordial de mettre l'accent sur les données programmatiques de routine pour assurer le suivi des prestations de service, identifier les personnes à haut risque d'infection par le VIH et réaliser l'accès universel au trgrâce à une approche centrée sur la personne. La confidentialité et le caractère privé des données sont cruciaux, en particulier pour les populations vulnérables qui peuvent être confrontées à la stigmatisation et à la discrimination dans de nombreux contextes, ce qui nécessite une approche prudente de la collecte de données au niveau individuel et de l'anonymisation pour les besoins d'utilisation des données à un niveau supérieur à celui du service LIVRAISON.
+
+Une approche de suivi centrée sur la personne offre de nets avantages pour la collecte de données longitudinales sur le VIH, ce qui permet de suivre et d'enregistrer les services de soins et de traitement du VIH fournis à une personne dans le temps et l'espace (par exemple, les sites de prestations de service et les points de contact avec les programmes de soins et de traitement du VIH). L'intensification de la collecte de données au niveau individuel permet une désagrégation souple et une analyse améliorée en fonction de divers facteurs tels que le temps, le lieu, l'âge, le sexe, l'état clinique, les co-infections, le traitement et bien d'autres encore. Cette profondeur des informations améliore notre compréhension de l'épidémiologie du VIH et facilite le suivi des tendances. L'utilisation des données électroniques basées sur les cas devrait améliorer la qualité des données par la réduction des étapes de saisie, l'intégration des calculs et des validations automatiques, la correction rapide des enregistrements individuels incohérents ou incomplets et des doublons.
+
+Cependant, dans la plupart des PRFM, la digitalisation des systèmes de données individuels gérés par les ministères de la santé prend souvent des années avant d'atteindre le niveau voulu et doit s'accompagner de ressources internes conséquentes pour soutenir le système au fil du temps. En outre, les données historiques et d'autres données programmatiques sont souvent collectées ou représentées par le biais du modèle de données agrégées - telles que les dénominateurs basés sur les estimations de Spectrum pour les personnes vivant avec le VIH et les rapports agrégés des sites de prestation de services où le travail s'est fait sur papier en raison d'une connectivité faible ou inexistante, une disponibilité limitée des appareils et/ou des infrastructures faibles. 
+
+Par conséquent, le kit de surveillance des cas d'infection par le VIH s'appuie sur toutes les applications et tous les modèles de données de DHIS2 pour soutenir des approches pratiques et réalisables de collecte, d'analyse et d'utilisation efficace des données afin de gérer et de relier dans les programmes de traitement, les cas d'infection par le VIH nouvellement identifiés et les personnes qui reprennent les soins, et de garantir un bon suivi des personnes vivant avec le VIH. Ces outils peuvent être utilisés de façon modulaire pour répondre aux besoins de n'importe quel pays tout au long du modèle de maturité pour la digitalisation des données de santé - cela inclut l'implémentation hybride de systèmes papier et numérisés, ainsi que l'incorporation de données provenant d'autres outils électroniques tels que les DME des hôpitaux lorsqu'ils peuvent être utilisés.
+
+### Cas d'utilisation { #use-case } 
+
+Le kit de surveillance des cas d'infection par le VIH est conçue pour soutenir la collecte de données de routine pour les programmes qui aident les personnes vivant avec le VIH à s'inscrire dans un programme de lutte contre le VIH et à recevoir des services de dépistage, de soins et de traitement. Le système est conçu pour rassembler les données afin de générer des indicateurs granulaires sur la surveillance des cas d'infection par VIH et leurs désagrégations pour l'analyse des données de routine, le suivi et l'information stratégique basés sur la personne, ceci par le biais de tableaux de bord flexibles et d'analyses ad hoc avec les outils d'analyse de DHIS2. 
+
+Les éléments de saisie des données de la conception du système permettent au personnel des sites de prestation de services, ou à des niveaux plus élevés en fonction des contextes locaux, d'effectuer des saisies sur les principaux éléments de données lors des interactions de routine avec les participants au programme de soins et de traitement du VIH, ce qui permettra au personnel du programme de générer des indicateurs clés de performance, tel qu'indiqué dans les [Lignes directrices unifiées relatives à l'information stratégique sur le VIH centrée sur la personne (OMS, 2022)] de l'OMS (https://www.who.int/publications/i/item/9789240055315). Cette composante utilise le modèle de données du TrDHIS2 Tracker. Bien que le programme de suivi de la surveillance des cas de VIH du DHIS2 ne soit pas optimisé pour soutenir la gestion des cas cliniques ou l'aide à la décision, il sert de registre électronique utile qui soutient la saisie électronique décentralisée des données de surveillance des cas jusqu'à l'établissement de santé ou tout autre point de service de tous les types d'acteurs, y compris les services fournis au niveau de la communauté. Les données de suivi au niveau individuel sont agrégées à l'aide des indicateurs de programme du DHIS2, qui sont mis en correspondance avec des éléments de données agrégés et des ensembles de données pour alimenter les indicateurs de base et les tableaux de bord analytiques avec des données anonymes. 
+
+La structure du programme Tracker de DHIS2 a été harmonisée et suit la même logique que le programme Tracker de prévention du VIH. Cela permet à une personne inscrite à un programme de prévention d'intégrer le programme de surveillance des cas, si elle est testée positive au VIH. Dans certains contextes, la prévention et la surveillance des cas peuvent être intégrées dans un même programme Tracker. L'harmonisation des éléments de données entre les deux trackers permettra de réaliser des adaptations et intégrations au niveau local, tel que décrit plus en détail dans la section "Implémentation" du présent document. 
+
+#### Utilisateurs cibles { #intended-users } 
+
+La conception du système de surveillance des cas d'infection par le VIH vise à répondre aux besoins des utilisateurs finaux à tous les niveaux du système de santé, y compris les responsables de la mise en œuvre des programmes de lutte contre le VIH dans les pays. Ces utilisateurs peuvent être :
+
+- Les **Responsables et personnel des programmes de lutte contre le VIH (nationaux et infranationaux)** : il s'agit des utilisateurs de données chargés d'analyser régulièrement les données, de les utiliser pour améliorer les opérations et les stratégies des programmes, et de fournir un retour d'information au personnel des programmes, y compris aux partenaires de mise en œuvre, aux établissements et à d'autres points de prestation de services.
+- Les **Gestionnaires de données du programme de lutte contre le VIH** : il s'agit des utilisateurs chargés de superviser la collecte, la gestion et la qualité des données, ainsi que les fonctions d'analyse et d'établissement de rapports pour le programme national de lutte contre le VIH.
+- Les **Administrateurs du système/points focaux du HMIS** : Il s'agit du personnel du ministère de la santé et/ou de l'équipe centrale de DHIS2 chargée de la maintenance et de l'amélioration des systèmes de données pour les programmes de santé, de l'intégration des flux de données dans les plates-formes nationales, de la fourniture d'une assistance technique pour la conception du système, de l'adaptation et de l'assistance aux utilisateurs finaux, ainsi que de la maintenance du système DHIS2 au fil du temps. 
+- **Les sites de prestations de services** : le personnel des sites de prestations de services peut utiliser le programme Tracker de DHIS2 pour enregistrer les données des visites de routine, ainsi que les outils DHIS2 tels que les listes de tâches et les listes de lignes pour assurer le suivi des bénéficiaires et le recours aux services par les individus.
+- **Les partenaires de mise en œuvre** : il s'agit des organisations qui fournissent une assistance technique au programme national de lutte contre le VIH, collectent et analysent les données pour le compte de la stratégie globale du programme national. Ils peuvent également être responsables du fonctionnement des réseaux de prestations de services, tels que les services de conseil sur le VIH, les services éducatifs de proximité, les agents de santé communautaires, etc.
+
+### Structure de conception { #design-structure } 
+
+La configuration de la "Surveillance des cas d'infection par le VIH" dans DHIS2 est structurée en trois composantes principales :
+
+- **Le programme tracker** : un programme tracker basé dans DHIS2 a été configuré pour la collecte de données longitudinales au niveau individuel. Ce type de programme peut être utilisé avec les clients Web ou Android de DHIS2.
+- **Les tableaux de bord et les indicateurs** : les tableaux de bord et les indicateurs du système de surveillance des cas d'infection par le VIH sont tous alimentés à travers le modèle de données agrégées de DHIS2. Les tableaux de bord de surveillance des cas sont partagés avec le module VIH HMIS. 
+- **Les ensembles de données agrégées** : les ensembles de données agrégées, les éléments de données et les combinaisons de catégories associées sont configurés conformément au cadre d'analyse du VIH de l'OMS pour alimenter les indicateurs de base. Trois ensembles de données sont conçus pour recevoir des données Tracker agrégées (par exemple, via des indicateurs de programme) et modéliser ces données de manière efficace, en s'appuyant sur les avantages du modèle de données agrégées dans DHIS2 pour l'analyse. Ces ensembles de données peuvent également être utilisés pour produire des rapports agrégés sur papier ou pour stocker les données rapportées régulièrement par d'autres systèmes de données individuelles, tels que les sites utilisant des DME ou d'autres applications mobiles.
+  - Surveillance des cas d'infection par le VIH (mensuel)
+  - Surveillance des cas d'infection par le VIH (annuel)
+  - Estimations de la population 
+
+Ces composantes modulaires sont conçues en fonction de la nature hétérogène des systèmes de données sur le VIH dans les pays et soutiennent l'architecture typique de la mise en œuvre de systèmes de données basés sur les cas dans le cadre d'une infrastructure nationale intégrée HMIS : 
+
+![HIV illustrative architecture](resources/images/hiv_architecture_simple.png)
+
+## Tracker { #tracker } 
+
+### Structure du programme Tracker { #tracker-program-structure } 
+
+La structure du programme tracker est la suivante :
+
+![Case Surveillance tracker structure](resources/images/case_surveillance_program_structure.png)
+
+| **Étape**           | **Description**                                              |
+| ------------------- | ------------------------------------------------------------ |
+| Inscription          | L'étape d'inscription permet de collecter les données démographiques de base d'une personne, telles que les identifiants uniques, sous la forme d'attributs d'entités suivies (TEA). Bon nombre de ces TEA de base, tels que le nom de famille et le prénom, sont utilisés à travers tous les programmes Tracker de DHIS2. Le type d'entité suivie pour le programme de surveillance des cas d'infection par le VIH est "Personne". **L'étape est non répétable**. |
+| Rapport de cas initial | Cette étape peut être renseignée au moment de l'inscription du patient. Elle contient les informations relatives au diagnostic du VIH, à la voie de transmission probable et aux groupes de population clés. **Cette étape est non répétable**. |
+| Visite               | Étape principale de collecte de toutes les informations nécessaires au suivi du patient et du programme. **Cette étape est répétable** |
+|Suivi | Cette étape n'est liée à aucun indicateur et est purement conçue comme un outil d'enregistrement des visites avec les patients qui ont manqué des visites de traitement et qui devront être contactés. **Cette étape est répétable**.|
+
+### TrackedEntityType (Type d'entité suivie) { #tracked-entity-type } 
+
+Le programme Tracker de surveillance des cas d'infection par le VIH basé sur DHIS2 permet d'inscrire un type d'entité suivie [TET] "personne" dans le programme en question. Le TET est partagé avec le programme Tracker de prévention du VIH afin de permettre l'inscription d'une même TEI dans les deux programmes, ceci lorsqu'une personne bénéficiant de services de prévention est testée positive au VIH.
+
+### Inscription { #enrollment } 
+
+On suppose que le flux de travail de la surveillance des cas d'infection par le VIH commence par l'inscription de toute personne dont la séropositivité a été confirmée.
+
+Lorsqu'une personne est inscrite au programme de surveillance des cas d'infection par le VIH en tant qu'instance d'entité suivie (TEI), les attributs d'entité suivie (TEA) sont enregistrés pour former le profil du cas. Tous les TEA sont alignés et harmonisés avec ceux inclus dans le Tracker de prévention du VIH, ce qui permet d'effectuer les inscriptions dans les deux programmes ou de les fusionner en un seul programme Tracker si tel est voulu pour l'implémentation au niveau local. Notez que plusieurs TEA sont utilisés à travers les programmes Tracker DHIS2 non liés au VIH. Ils sont configurés avec un préfixe "GEN" (général) pour indiquer qu'ils sont partagés entre les programmes Tracker. Consultez la [Bibliothèque commune des métadonnées](https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/common-metadata-library/design.html) pour plus d'informations sur les métadonnées partagées du Tracker.
+
+L'attribut d'entité suivie **UID de programme** fait référence à un identifiant spécifique du programme de lutte contre le VIH. Il a été laissé intentionnellement vide car les processus de codage dépendent du contexte local. Voir la [documentation DHIS2 de l'utilisateur sur la configuration des identifiants uniques à l'échelle du système en tant que TEA de DHIS2] (https://docs.dhis2.org/en/use/user-guides/dhis-core-version-238/configuring-the-system/programs.html#create_tracked_entity_attribute:~:text=Select%20Unique%20to,same%20organisation%20unit.). L'utilisation de codes UID anonymes permet l'identification unique et le suivi longitudinal des personnes ayant accès aux services de prévention du VIH, sans collecte d'autres types d'informations d'identification personnelle (OMS, 2022).
+
+La **date de naissance et l'âge** peuvent être attribués de deux manières différentes :
+
+- Date de naissance connue : sélectionner la date de naissance.
+- Date de naissance inconnue : sélectionner l'option Date de naissance *inconnue* et saisir l'âge en années ou en mois.
+
+Une fois cette opération effectuée, un âge de naissance "probable" est attribué à la date de naissance en fonction de la valeur saisie pour la TEA 'Années' ou 'Mois'.
+
+![Date of Birth](resources/images/date_of_birth_unknown.gif)
+
+>**Remarque :**
+>
+>La date de naissance est obligatoire. Elle doit toujours avoir une valeur car elle est utilisée dans le calcul de tous les indicateurs de programme qui impliquent des groupes d'âge.
+
+### Étape 1 : Rapport initial sur le cas (non répétable) { #stage-1-initial-case-report-non-repeatable } 
+
+Les données recueillies au cours de cette étape concernent les informations relatives au diagnostic du VIH et l'identification des clients appartenant à un ou plusieurs groupes de populations clés. 
+
+Les règles de programme ont été configurées pour fournir l'âge au moment du diagnostic du VIH en se basant sur la différence entre l'âge à la naissance et la date du diagnostic du VIH.
+
+En ce qui concerne les informations sur les populations clés, nous recommandons aux responsables de la mise en œuvre du programme de consulter le document publié en 2022 par l'OMS : [Lignes directrices unifiées relatives à l'information stratégique sur le VIH basée sur la personne] (https://www.who.int/publications/i/item/9789240055315), et plus particulièrement la section 2.2.2 pour obtenir des conseils sur la collecte d'informations sur les populations clés en vue des interventions de prévention, afin de permettre cette désagrégation. Nous recommandons également les sections 5.1.1 et 6.4 qui portent sur la protection de la vie privée, la sécurité et la confidentialité des données en ce qui concerne les données saisies sur les populations clés.
+
+![Initial case report](resources/images/initial_case_report.png)
+
+Les détails du diagnostic du VIH et les données sur les populations clés sont collectés en tant qu'étape de programme afin de protéger davantage la sensibilité de ces données. Plus concrètement, en plaçant ces données uniquement dans l'étape de programme, elles ne seront pas accessibles lors de la recherche des TEI - lors de ces recherches, l'utilisateur pourrait avoir un accès plus large pour rechercher des clients. 
+
+Dans certaines implémentations, au lieu d'avoir les différents groupes de population clés listés comme des catégories sélectionnables, une série de questions a été proposée et, en fonction de la réponse, une identification de la population clé est attribuée aux clients. *Voir la section Considérations relatives à l'implémentation & adaptation locale*.
+
+Pour une personne inscrite à un programme de surveillance des cas d'infection par le VIH, il est possible que son association avec un groupe de populations clés change au fil du temps, étant donné que le risque de contracter le VIH, la participation à des comportements à haut risque et les besoins en matière de prévention du VIH varient au fil du temps. L'étape de programme est conçue spécialement pour être non répétable afin de permettre des analyses optimisées basées sur le groupe de populations clés. Toutefois, l'utilisateur peut revenir sur cette étape et modifier les groupes de populations clés si nécessaire.
+
+### Étape 2 : Visite [répétable] { #stage-2-visit-repeatable }
+
+#### Configuration des dates { #configuration-of-dates } 
+
+Cette étape de programme répétable recueille toutes les informations relatives aux visites/rencontres des personnes bénéficiant de services de soins et de traitement du VIH, quel que soit le type de service auquel elles ont accès. Elle permet de saisir des données sur plusieurs types de services fournis lors d'une visite. Elle fait partie intégrante d'un système de gestion et d'établissement de rapports complet et centré sur la personne. 
+
+Dans cette étape de programme, la "Date d'événement" du programme DHIS2 (ou la "Date de rapport" par défaut dans l'application Maintenance pour la configuration du programme) a été renommée pour représenter la "Date de visite". Cela signifie que toutes les analyses basées sur la date d'événement seront évaluées en fonction de la date de rencontre (visite) de la personne avec le prestataire des services de soins et de traitement du VIH.
+
+![DHIS2 Event Date](resources/images/event_date_visit_date.png)
+
+Outre la date de la visite, d'autres dates clés ont été configurées en tant qu'éléments de données Tracker liés à ces activités (par exemple, initiation au TAR, date du test IST, etc.) et ces dates doivent être déclarées pour permettre des analyses temporelles supplémentaires.
+
+#### Détails de la visite { #visit-details } 
+
+La section "Détails de la visite" permet à l'utilisateur d'indiquer le statut du patient lors de la visite et de sélectionner les services de dépistage, de soins et de traitement du VIH qui seront enregistrés pour ce rapport de visite. 
+
+Le statut sérologique du patient est une information clé qui doit être rapporté à chaque visite et qui est utilisée dans la plupart des indicateurs présents dans le programme.
+Les options attribuées sont :
+
+- PVVIH : le client est en vie et fait partie de la cohorte
+- Décès (documenté) : le client est décédé
+- Perdu de vue : le client est perdu de vue
+
+Si l'option "décès" ou "suivi" est sélectionnée, les dates relatives de décès et de déclaration de la perte de vue sont demandées.
+
+>**Remarque :**
+>
+>Le seuil recommandé pour désigner les personnes vivant avec le VIH sous TAR comme perdues de vue est '>28 jours' après le dernier rendez-vous manqué ou le dernier renouvellement d'ARV, afin de marquer la différence entre les services offerts pour le TAR. Pour plus d'informations, voir le chapitre 3 du document de l'OMS intitulé "Lignes directrices unifiées relatives à l'information stratégique sur le VIH centrée sur la personne".
+
+Une série de règles de programme permet d'afficher/masquer des sections en fonction du type de soins VIH à enregistrer. On suppose généralement que l'utilisateur crée un nouvel 'Événement' dans l'étape 'Visite' à chaque fois qu'il interagit avec un prestataire de services, quel que soit le nombre de services de soins liés au VIH auxquels il accède au cours de la visite. 
+
+Les options "Actuellement enceinte", "Cancer du col de l'utérus" et "Transmission verticale" ne s'afficheront que pour les PVVIH inscrites avec le TEA 'Sexe à la naissance' défini sur 'Femme' ou 'Autre', en fonction des règles du programme.
+
+![Section des détails de visite et sélection des services de soins du VIH](resources/images/visit_details_selections.gif)
+
+>**Remarque:**
+>
+>Masquer une section n'efface pas les données qui y sont enregistrées et tous les indicateurs du programme ne sont PAS filtrés par la sélection ou la section. Si des données ont été saisies par erreur, elles devront être supprimées manuellement une par une et non pas simplement en désélectionnant la section.
+
+#### Traitement { #treatment } 
+
+La section 'Traitement' est toujours présente et n'a pas besoin d'être sélectionnée dans la section "Détails de la visite" car le TAR est le pilier central de la prise en charge des PVVIH.
+
+L'information principale et obligatoire à rapporter est le statut des traitements. En fonction du statut du patient lors de la visite, une série d'options a été attribuée :
+
+- **initiation (nouveau)** : PVVIH commençant le TAR pour la première fois de sa vie
+- **initiation (après arrêt)** : PVVIH recommençant le TAR après une période d'interruption.
+- **Sous TAR** : PVVIH déjà sous TAR au moment de la visite
+- **Traitement refusé** : PVVIH refusant le TAR après avoir reçu des conseils.
+- **Arrêt du traitement** : PVVIH déclarant avoir arrêté le traitement
+
+L'information sur la charge virale ne sera affichée que si la différence entre la date de visite (date de l'événement DHIS2) et la date d'initiation au TAR est supérieure à 180 jours.
+
+Les modèles d'information de la PDS pour le TAR doivent être personnalisés avant l'implémentation, conformément aux directives nationales sur les prestations plurimensuelles de TAR.
+
+L'élément "Derniers jours avec le TAR" est attribué automatiquement en ajoutant le nombre de jours de TAR à la date de la visite (date d'événement DHIS2), considérée comme la date à laquelle le TAR a été fourni.
+
+![Section Traitement](resources/images/treatment_section.png)
+
+#### TB/VIH { #tbhiv } 
+
+Dans la section TB/VIH, les informations relatives au dépistage de la tuberculose, aux tests, au traitement actif et préventif de la tuberculose sont demandées.
+
+Une série de règles de programme sont définies pour :
+
+- Masquer toutes les informations relatives au 'dépistage, au test et au traitement préventif de la tuberculose' lorsque la PVVIH est atteinte de tuberculose.
+- Rapporter la date du "diagnostic de la TB" lors des visites suivantes (événement DHIS2) lorsque le patient a été déclaré et souffre toujours de la maladie.
+- Rapporter la date du "début du traitement de la TB" lors des visites suivantes (événement DHIS2) lorsque le patient a été déclaré et est toujours sous traitement.
+- Rapporter la date du "début du traitement préventif de la TB" lors des visites suivantes (événement DHIS2) lorsque le patient a été déclaré et est toujours sous traitement.
+
+![Section VIH/TB](resources/images/hiv_tb_section.png)
+
+#### Transmission verticale { #vertical-transmission } 
+
+Les informations collectées pour la transmission verticale ont été classées dans deux (2) différentes (sous-)sections en fonction du moment où la collecte des données doit avoir lieu :
+
+- Information à la naissance
+- Visite de suivi
+
+Dans la première section "Informations à la naissance", les informations demandées sont celles relatives à la date d'accouchement et au lieu d'accouchement, à la date de la première visite de CPN et au statut sérologique lors de cette visite, au statut TAR et à la charge virale ainsi qu'au statut TAR du nourrisson exposé au VIH.
+
+![Section d'information à la naissance](resources/images/information_birth_section.png)
+
+Dans la deuxième section "Visite de suivi", les informations demandées sont celles relatives à l'âge du nourrisson exposé au VIH lors de la visite, au statut de l'allaitement, au statut TAR de la mère et au dépistage du VIH chez le nourrisson exposé au VIH.
+
+![Visite de suivi](resources/images/information_FU_section.png)
+
+#### IST { #sti } 
+
+Dans la section sur les infections sexuellement transmissibles (IST), les informations relatives au syndrome d'IST diagnostiqué, au test d'IST effectué et au traitement administré sont collectées auprès des clients inscrits au programme de surveillance des cas d'infection par le VIH. 
+
+![Collecte de données sur les IST](resources/images/STI.png]
+
+#### Hépatites virales { #viral-hepatitis } 
+
+Dans la section Hépatites virales, les informations relatives à l'infection par le HBsAG et le HCV, aux tests effectués et à leurs résultats ainsi qu'au traitement sont collectées auprès des clients inscrits au programme de surveillance des cas d'infection par le VIH.
+
+S'il arrive qu'une personne vivant avec le VIH est infectée par le VHB et/ou le VHC, toutes les informations relatives au test seront cachées par une série de règles de programme.
+
+![Hépatites virales](resources/images/viral_hepatitis.png)
+
+#### Cancer du col de l'utérus { #cervical-cancer } 
+
+Dans la section sur le cancer du col de l'utérus, les informations demandées sont celles relatives au nombre de doses de vaccin anti-VPH reçues, au diagnostic du cancer du col de l'utérus et au dépistage du cancer du col de l'utérus avec résultat et au statut du traitement.
+
+Si une femme vivant avec le VIH a été diagnostiquée avec un cancer invasif du col de l'utérus, l'information relative au dépistage est cachée.
+
+![Cancer du col de l'utérus](resources/images/cervical_cancer.png)
+
+### Étape 3 : Suivi [répétable] { #stage-3-follow-up-repeteable } 
+
+Cette étape de programme répétable est conçue spécialement pour enregistrer toute rencontre avec des patients qui ont manqué des visites de traitement et qui devront être contactés.
+Elle n'est actuellement pas liée à des indicateurs et peut être retirée du programme en toute sécurité si elle n'est pas utilisée dans un cadre clinique, sans affecter les autres modules.
+
+Dans cette étape de programme, la "date d'événement" du programme DHIS2 (ou la "date du rapport" par défaut dans l'application Maintenance pour la configuration du programme) a été renommée pour représenter la "Date de la tentative de contact avec le client". 
+
+Elle enregistre la raison pour laquelle ce suivi est nécessaire (visite de soins cliniques manquée, récupération de médicaments manquée, visite non clinique manquée, TAR non commencé, statut VIH non concluant, réception des résultats des tests, autre motif de suivi), la méthode de suivi (SMS, appel téléphonique, visite à domicile ou autre) et le résultat du suivi (retour à l’établissement de santé, auto-référé ailleurs, hospitalisé, refus de revenir, patient non localisé, décès signalé, décès confirmé). Si, lors du suivi, le statut du traitement du patient a changé (par exemple, le patient a décidé d’arrêter le traitement), le programme invite l’utilisateur à compléter une option d’étape Visite et à l’enregistrer.
+
+![Étape de suivi](resources/images/follow_up.png)
+
+### Éléments de données du tracker { #tracker-data-elements } 
+
+Tous les éléments de données configurés pour le Tracker sont également intégrés dans le groupe d'éléments de données "Surveillance des cas d'infection par le VIH (Tracker)" [pGlRt4xB9rz]. Ce groupe sert de dictionnaire de données DHIS2 pour le cas d'utilisation de surveillance des cas d'infection par le VIH. Il permet d'exporter les éléments de données de DHIS2 et de les utiliser indépendamment de la configuration du programme Tracker, par exemple si le Tracker d'une implémentation est reconçu de toutes pièces pour les flux de travail locaux mais que l'on souhaite toujours rester conforme au dictionnaire de données de base recommandé par l'OMS et inclus dans le kit d'adaptation numérique.
+
+#### Éléments de données clonés pour la sélection d'options multiples { #cloned-data-elements-for-multiple-option-selection } 
+
+Dans les étapes du programme qui concernent la "déclaration initiale de cas" et les "visites", un certain nombre d'éléments de données sont clonés afin de rendre possible la sélection de plusieurs options pour un concept donné, lesquelles options appartiennent à un même ensemble d'options. Cette conception est implémentée comme suit :
+
+- Clonage des éléments de données pouvant faire l'objet d'un choix multi-options
+  - Le nombre de clones de l'élément de données doit être le même que le nombre d'options présentes dans l'ensemble d'options correspondant
+  - Chaque élément de données cloné a son propre UID, son propre nom et son propre code
+- Règles de programme
+  - Masquer les Éléments de Données conséquents si les précédents n'ont pas été sélectionnés
+  - Afficher une erreur si la même Option a été sélectionnée plus d'une fois dans le même groupe des Eléments de Données
+
+Par exemple, pour saisir plusieurs voies de transmission probables, des éléments de données sont clonés pour représenter chaque catégorie de voie de transmission : 
+
+- VIH - Voie de transmission probable - 1 [ODG7SJQHCBv]
+- VIH - Voie de transmission probable - 2 [jsXCQZT5f9c]
+- VIH - Voie de transmission probable - 3 [HxPpUO6SuXD]
+- VIH - Voie de transmission probable - 4 [TOLlMMdudRi]
+
+#### Éléments de données masqués et valeurs attribuées aux éléments de données { #hidden-data-elements-assigned-values-to-data-elements } 
+
+Tous les éléments de données mentionnés ci-dessous sont "masqués" et ne sont donc pas visibles lors de la saisie des données. Toutefois, ils sont nécessaires au calcul des indicateurs du programme. 
+
+Nous donnons ici un aperçu de tous les éléments de données "masqués" qui sont contenus dans l'étape de Visite répétable, où les règles de programme sont utilisées pour attribuer une valeur. Dans de nombreux cas, la règle de programme attribue simplement une valeur provenant d'une étape précédente du programme (par exemple la déclaration initiale) afin de permettre un calcul correct des indicateurs du programme. 
+
+**Attribution de la valeur de l'élément de données sur la population clé et la date du diagnostic du VIH à l'étape de Visite**.
+
+Les règles de programme sont utilisées pour copier la valeur du groupe de population clé du client et la date du diagnostic du VIH, laquelle valeur est enregistrée dans la déclaration initiale de cas, et l'attribuer à un champ d'élément de données masqué à l'étape de programme répétable "Visite". Cela permet de configurer tous les calculs et toutes les désagrégations basés sur les groupes de populations clés et la durée de l'infection, notamment en utilisant l'élément de données auto-attribué comme filtre dans l'indicateur de programme.
+
+Ces éléments de données sont identifiés par le postfixe "- VISITE"
+
+| Métadonnées     | UID         | Nom                                                                               |
+|--------------|-------------|------------------------------------------------------------------------------------|
+| Élément de données | mNeVBYWladf | VIH - Date du diagnostic positif - VISITES                                                       |
+| Élément de données | ySHCKMYGHD6 | VIH - Âge au moment du diagnostic - VISITES                                                    |
+| Élément de données | kXutCUTOxcq | VIH - Population clé - Hommes ayant des rapports sexuels avec des hommes - VISITES                          |
+| Élément de données | GSSOfwzb0DQ | VIH - Population clé - Personnes qui s'injectent des drogues - VISITES                            |
+| Élément de données | iqXxZbRDhYG | VIH - Population clé - Personnes vivant en prison et dans d'autres milieux fermés - VISITES |
+| Élément de données | kICLXq7IEuP | VIH - Population clé - Professionnels du sexe - VISITES                                         |
+| Élément de données | vZQyUQCKSc6 | VIH - Population clé - Personnes trans et de genre divers - VISITES                    |
+| Élément de données | kXutCUTOxcq | VIH - Population clé - Hommes ayant des rapports sexuels avec des hommes - VISITES                          |
+| Élément de données | GSSOfwzb0DQ | VIH - Population clé - Personnes qui s'injectent des drogues - VISITES                            |
+| Élément de données | iqXxZbRDhYG | VIH - Population clé - Personnes vivant en prison et dans d'autres milieux fermés - VISITES |
+| Élément de données | kICLXq7IEuP | VIH - Population clé - Travailleurs du sexe - VISITES                                         |
+| Élément de données | vZQyUQCKSc6 | VIH - Population clé - Personnes trans et de genre divers - VISITES                    |
+| Règle du programme | Bj2Z3glSvHy | VIH - Attribuer une valeur à la date du diagnostic de séropositivité.                               |
+| Règle du programme | FNCVV9kG0oi | VIH - Attribuer une valeur pour Âge au moment du diagnostic du VIH                                  |
+| Règle du programme | iLq9wgcYwAE | VIH - Attribuer la valeur VRAI - Hommes ayant des rapports sexuels avec des hommes                                |
+| Règle du programme | yYGoGwZ612X | VIH - Attribuer la valeur VRAI - Personne qui s'injecte des drogues                                 |
+| Règle du programme | X51QRO65q4p | VIH - Attribuer la valeur VRAI - Personnes en prison ou dans d'autres milieux fermés                |
+| Règle du programme | T3EGb8JMpRs | VIH - Attribuer la valeur VRAI - Professionnel(le) du sexe                                               |
+| Règle du programme | zFTfjVAEY42 | VIH - Attribuer la valeur VRAI - Personnes trans et de genre divers                          |
+| Règle du programme | mjrCXVhuYhe | VIH - Attribuer la valeur FAUX - Hommes ayant des rapports sexuels avec des hommes                               |
+| Règle du programme | HxtlnaW2LHW | VIH - Attribuer la valeur FAUX - Personne qui s'injecte des drogues                                |
+| Règle du programme | TBzZvKdia6D | VIH - Attribuer la valeur FAUX - Personnes en prison ou dans d'autres milieux fermés               |
+| Règle du programme | gs5hHXi3Q62 | VIH - Attribuer la valeur FAUX - Professionnel(le) du sexe                                              |
+| Règle du programme | X4GW8qfrm0j | VIH - Attribuer la valeur FAUX - Personnes trans et de genre divers                         |
+
+**HTS.1 Personnes vivant avec le VIH et qui connaissent leur statut sérologique**
+
+Pour pouvoir calculer cet indicateur de programme, nous devons utiliser des limites de période PERSONNALISÉES sur la base de la "date du diagnostic de séropositivité", car nous voulons compter tous les clients que nous avons eu depuis la date du diagnostic jusqu'à la date actuelle, s'ils sont encore en vie et font partie de la cohorte, ou jusqu'à la date de leur décès ou de leur perte de vue.
+Pour permettre ce comptage, l'élément de données "VIH - Date de la cohorte" [ CrFaWOLSKiK] a été créé et se voit attribuer la valeur de la date actuelle si le client est toujours en vie / dans la cohorte (PVVIH) et la date du décès / de la perte de vue si le client est décédé ou a été perdu de vue.
+
+| Métadonnées     | UID         | Nom                                                       |
+|--------------|-------------|------------------------------------------------------------|
+| Élément de données | CrFaWOLSKiK | VIH - Date de la cohorte                                          |
+| Règle du programme | ciDmWAbeFK4 | VIH - Attribuer la date du jour si aucun changement n'est intervenu concernant le statut du patient |
+| Règle du programme | f0dYm1jWn9B | HIV - Attribuer la date de décès si une valeur est disponible                   |
+| Règle du programme | O3JX3rziDw8 | HIV - Attribuer la date de perte de vue si une  valeur est disponible                    |
+
+**TAR.8 Deuxième test de charge virale approprié après les conseils**
+
+Dans le numérateur, nous devons calculer le nombre de PVVIH sous TAR qui ont subi un test de charge virale dans les trois (3) mois suivant un résultat de test de charge virale >=1000 copies/mL.
+Les éléments de données attribués à la date du dernier test de charge virale effectué et au dernier résultat sont utilisés dans le filtre de l'indicateur de programme pour comparer la date du dernier test de charge virale avec la date actuelle.
+
+| Métadonnées     | UID         | Nom                                     |
+|--------------|-------------|------------------------------------------|
+| Élément de données | yCF5h2RdrOP | VIH - Traitement : Date du dernier test de CV        |
+| Élément de données | Cx6DHpEoRpb | VIH - Traitement : Valeur du dernier test de CV       |
+| Règle du programme | dxPan4qsYWH | VIH - Attribuer la date du dernier test de CV si elle est disponible |
+| Règle du programme | QxPGCFykSDT | VIH - Valeur du dernier test de charge virale du VIH      |
+
+**PDS.2 Adoption des modèles de PDS pour le TAR par les personnes vivant avec le VIH**
+
+Dans le numérateur et le dénominateur, nous devons calculer le nombre de personnes nouvellement éligibles aux modèles de PDS pour le TAR. La valeur VRAI est attribuée à l'élément de données si le client n'était pas éligible à la visite précédente mais l'est à la visite actuelle. Ceci est utilisé dans le filtre de l'indicateur de programme.
+
+| Métadonnées     | UID         | Nom                                                                                                                     |
+|--------------|-------------|--------------------------------------------------------------------------------------------------------------------------|
+| Élément de données | w0s4IrXdJA1 | VIH - Traitement : Nouvellement éligible à la PDS pour le TAR                                                                              |
+| Règle du programme | zCZ4RdA6QvL | VIH - Attribuer la valeur "vrai" à "Nouvellement éligible à la PDS pour le TAR" si le client est éligible à la visite actuelle et pas éligible à la précédente        |
+| Règle du programme | CKCZoiLk2MR | VIH - Attribuer la valeur "faux" à "Nouvellement éligible à la PDS pour le TAR" si le client est éligible ou non à la visite actuelle et/ou éligible à la précédente |
+
+De plus, dans le numérateur, nous devons compter les personnes nouvellement inscrites aux modèles de PDS pour le TAR. La valeur VRAI est attribuée à l'élément de données si le client n'était pas inscrit pour la visite précédente mais l'est pour la visite actuelle. Ceci est utilisé dans le filtre de l'indicateur de programme.
+
+| Métadonnées     | UID         | Nom                                                                                                                     |
+|--------------|-------------|--------------------------------------------------------------------------------------------------------------------------|
+| Élément de données | Q7LmA2FMrzl | VIH - Traitement : Nouvellement inscrits aux modèles de PDS sur le TAR                                                                        |
+| Règle du programme | zNltrhsK3ZD | VIH - Attribuer la valeur "vrai" à "Nouvellement inscrit à la PDS pour le TAR" si le client est inscrit pour la visite actuelle et pas inscrit pour la précédente        |
+| Règle du programme | ikzuYLNkxiV | VIH - Attribuer la valeur "faux" à "Nouvellement inscrit à la PDS pour le TAR" si le client est éligible ou non à la visite actuelle et/ou inscrit à la précédente |
+
+**PDS.5 Suppression de la charge virale chez les personnes vivant avec le VIH et participant aux modèles de PDS pour le TAR**
+
+Dans le numérateur et le dénominateur de cet indicateur, nous devons compter les PVVIH qui sont inscrits aux modèles de PDS pour le TAR et qui ont subi un test pour déterminer leur charge virale (et dont la charge virale a été supprimée). Étant donné qu'il s'agit d'un indicateur de programme de type ÉVÉNEMENT et que dans le modèle de donnée, les informations relatives à la charge virale ne sont pas directement liées à l'inscription ou à la non participation aux modèles de PDS pour le TAR, un élément de données qui sera rempli automatiquement avec la dernière valeur disponible du statut d'inscription à la PDS pour le TAR (vrai ou faux) a été attribué à l'indicateur de programme.
+
+| Métadonnées     | UID         | Nom                                           |
+|--------------|-------------|------------------------------------------------|
+| Élément de données | PYFRaC4dJXg | VIH - Traitement : Dernier statut d'inscription à la PDS pour TAR  |
+| Règle du programme | zfcYNnMjDk6 | VIH - Attribuer "Inscrit à la PDS" si c'est le cas           |
+| Règle du programme | ZgaUPJHLPvO | VIH - Attribuer "Inscrit à la dernière PDS" si c'est le cas      |
+| Règle du programme | n0oipCCQK0x | VIH - Ne pas attribuer "Inscrit à la PDS" si ce n'est pas le cas |
+
+**DFT.3 Test de tuberculose chez les personnes dont le dépistage des symptômes est positif**
+
+L'indicateur doit compter le nombre de PVVIH qui, après avoir été dépisté positifs à la tuberculose, sont testés pour la tuberculose. Nous avons donc besoin de la date à laquelle le dernier dépistage a été effectué et nous devons nous assurer que le dépistage a eu lieu avant le test.
+
+| Métadonnées     | UID         | Nom                                                           |
+|--------------|-------------|----------------------------------------------------------------|
+| Élément de données | nWrIpSGAdVj | VIH - VIH/TB : Date du dépistage positif pour les symptômes de la TB           |
+| Règle du programme | jFviS9zNghE | VIH - Attribuer la date du dernier dépistage si elle est disponible                |
+| Règle du programme | NqbC1zxf46M | VIH - Attribuer la valeur "vrai" si le dépistage positif à la TB s'est fait dans l'événement actuel |
+
+**TBH.3 Type de test diagnostique de la TB**
+
+Dans le numérateur, nous devons compter uniquement les PVVIH dont le premier test de dépistage de la TB est un test moléculaire de dépistage rapide de la TB approuvé par l'OMS.
+Il est créé un élément de données qui attribue la valeur VRAI si le premier test a été un test mWRD (test moléculaire de diagnostic rapide recommandé par l'OMS) ; et cet élément de données fait l'objet de rapportage pour les événements suivants.
+
+| Métadonnées     | UID         | Nom                                                                                 |
+|--------------|-------------|--------------------------------------------------------------------------------------|
+| Élément de données | dJJVB3fkwKd | VIH - VIH/TB : Premier test de TB en tant que mWRD                                                  |
+| Règle du programme | WTONjptEnGe | VIH - Attribuer la valeur "vrai" au premier test en tant que mWRD et la date si c'est le premier test utilisé. |
+| Règle du programme | WQaVtgqajwh | VIH - Attribuer la valeur "faux" au premier test en tant que mWRD si ce n'est pas le premier test utilisé.         |
+| Règle du programme | LuBGQxFdoZ5 | VIH - Attribuer la valeur "vrai" au premier test de TB en tant mWRD si le premier test a été effectué antérieurement.       |
+
+En outre, un autre élément de données qui indique la date du premier test de TB (s'il s'agit d'un mWRD) est créé et la valeur est rapportée dans les événements suivants
+
+| Métadonnées     | UID         | Nom                                                                                 |
+|--------------|-------------|--------------------------------------------------------------------------------------|
+| Élément de données | ay8M5cOVV6g | VIH - VIH/TB : Premier test de TB en tant que date du mWRD                                             |
+| Règle du programme | WTONjptEnGe | VIH - Attribuer la valeur "vrai" au premier test en tant que mWRD et la date si c'est le premier test utilisé. |
+| Règle du programme | mTg0iaPC4BK | VIH - Attribuer la valeur précédente du premier test de TB comme date du mWRD si elle est présente                |
+
+**IST.8 Diagnostic répété du syndrome d'IST**
+
+Dans le numérateur, nous devons calculer le nombre de personnes qui se rendent aux services de soins et de traitement du VIH, et chez qui un syndrome d'IST particulier a été diagnostiqué deux fois ou plus. Les éléments de données attribués à la dernière date à laquelle un syndrome d'IST spécifique a été signalé sont utilisés dans le filtre de PI pour comparer la date du dernier diagnostic avec le diagnostic actuel ; si la différence est inférieure à 12 mois, notre client sera pris en compte. Pour ce faire, cinq (5) éléments de données sont attribués avec la "date du dernier diagnostic" pour chaque syndrome d'IST possible diagnostiqué.
+
+| Métadonnées     | UID         | Nom                                                                             |
+|--------------|-------------|----------------------------------------------------------------------------------|
+| Élément de données | DI8O2sFAjIZ | VIH - IST : Date du dernier diagnostic du syndrome d'écoulement urétral                       |
+| Élément de données | PMYnHPcLOrg | VIH - IST : Date du dernier diagnostic du syndrome d'écoulement vaginal                        |
+| Élément de données | fGg6Qx8AzDw | VIH - IST : Date du dernier diagnostique de douleur abdominale basse                              |
+| Élément de données | Nxjc5ElxwEj | VIH - IST : Date du dernier diagnostic du syndrome d'ulcère génital                    |
+| Élément de données | bEFauzOj4ov | VIH - IST : Date du dernier diagnostic d'écoulement anorectal                               |
+| Règle de programme | xgt6RIk6jJg | VIH - Attribuer la date du denier diagnostic de syndrome d'écoulement urétral si le diagnostic a été effectué           |
+| Règle de programme | RkeUbXxbAxf | VIH - Attribuer la date du précédent écoulement urétral en cas d'absence de nouveau diagnostic             |
+| Règle de programme | wKskErfCnRy | VIH - Attribuer la date du dernier écoulement vaginal s'il est diagnostiqué            |
+| Règle de programme | o9Je9CMIOOO | VIH - Attribuer la date du précédent écoulement vaginal en cas d'absence de nouveau diagnostic              |
+| Règle de programme | GMfpQZONK6N | VIH - Attribuer la date de la dernière manifestation de douleur abdominale basse si elle est diagnostiquée                  |
+| Règle de programme | vAtYaFpk9CI | VIH - Attribuer la date de la précédente manifestation de douleur abdominale basse en cas d'absence de nouveau diagnostic           |
+| Règle de programme | qJVXmzaqmCR | VIH - Attribuer la date de la dernière manifestation du syndrome d'ulcère génital s'il est diagnostiqué        |
+| Règle de programme | vzE0J0fo7F4 | VIH - Attribuer la date de la précédente manifestation du syndrome d'ulcère génital en l'absence d'un nouveau diagnostic |
+| Règle de programme | ES3S2qANfLw | VIH - Attribuer la date du dernier écoulement anorectal s'il est diagnostiqué                   |
+| Règle de programme | pW1lTs8KeDM | VIH - Attribuer la date du précédent écoulement anorectal en l'absence d'un nouveau diagnostic            |
+
+**Indicateurs de transmission verticale (VER.1 → VER.4)**
+
+Les indicateurs de transmission verticale (formulaires VER.1 à VER.4 inclus) doivent indiquer le jour de l'accouchement. Étant donné que ce sont des indicateurs de programme de type ÉVÉNEMENT, un élément de données a été créé pour rapporter la date du dernier accouchement, car les informations nécessaires au calcul des indicateurs VER.1 → VER.4 peuvent être collectées lors de différentes visites.
+
+| Métadonnées     | UID         | Nom                                                      |
+|--------------|-------------|-----------------------------------------------------------|
+| Élément de données | s2ITWwTvqC0 | VIH - PTME : Date du dernier accouchement                           |
+| Règle du programme | z16QguGzYY6 | VIH - Attribuer la date d'accouchement s'il a eu lieu              |
+| Règle du programme | pgb8Pr2ldfM | HIV - Attribuer la date du précédent accouchement si une valeur est disponible |
+| Règle du programme | aPpennvPlIL | VIH - Ne pas attribuer la date d'accouchement s'il n'a pas eu lieu    |
+
+**HEP.7 VHC guéri chez les personnes vivant avec le VIH**
+
+Dans le numérateur et le dénominateur, l'indicateur de programme utilisé est de type ÉVÉNEMENT. Nous devons donc indiquer le statut du dernier traitement anti-VHC car l'achèvement du traitement et le test de confirmation d'une réponse virologique soutenue peuvent avoir lieu lors de différentes visites.
+
+| Métadonnées     | UID         | Nom                                                   |
+|--------------|-------------|--------------------------------------------------------|
+| Élément de données | GSK3oZtzrMS | VIH - Hépatite virale : Statut du dernier traitement anti-VHC        |
+| Règle du programme | C6iTbpA4n46 | VIH - Attribuer le statut du traitement s'il est présent               |
+| Règle de programme | jC5pahYGKuz | VIH - Attribuer le statut du précédent traitement s'il est disponible |
+| Règle du programme | o51CPtUmxsl | VIH - Ne pas attribuer de statut de traitement s'il n'est pas présent     |
+
+**CCa.4 Survie au cancer du col de l'utérus**
+
+Dans le numérateur de cet indicateur, nous devons compter les FVVIH (femmes vivant avec le VIH) atteintes du cancer du col de l'utérus et qui sont encore en vie. Un élément de données a été créé pour rapporter le dernier diagnostic.
+
+| Métadonnées     | UID         | Nom                                                        |
+|--------------|-------------|-------------------------------------------------------------|
+| Élément de données | ntKnCH7bMGR | VIH - Cancer du col de l'utérus : Dernier diagnostic du cancer du col de l'utérus       |
+| Règle de programme | kSfwWuCTwOu | VIH - Attribuer le diagnostic du cancer du col de l'utérus s'il est présent           |
+| Règle du programme | juN7w5x3gKo | VIH - Attribuer le dernier diagnostic du cancer du col de l'utérus s'il est présent      |
+| Règle du programme | YmEXnBJNKFc | VIH - Ne pas attribuer de diagnostic du cancer du col de l'utérus s'il n'y en a pas  |
+
+### Indicateurs de programme { #program-indicators } 
+
+**Les indicateurs de programme** sont utilisés pour agréger les données individuelles saisies selon le modèle de données du Tracker et les adapter au modèle de données agrégées. Ces données pourront ainsi être présentées, consommées et utilisées dans les applications d'analyse et les tableaux de bord de DHIS2. L'utilisation de l'application d'échange de données de DHIS2 pour transférer les valeurs des indicateurs de programme vers les éléments de données agrégées est décrite plus en détail dans la section sur le "Mapping des métadonnées et l'échange de données". 
+
+Les indicateurs de programme sont organisés en deux groupes d'indicateurs : 
+- *Surveillance des cas de VIH - Échange de données* [s7DBTTX68Lk] contient tous les indicateurs de programme qui sont mappés avec les éléments de données agrégées cibles correspondants à des fins d'analyse. 
+- *Prévention du VIH - liste standard de l'OMS* [KKvBWmeIsvN] contient tous les indicateurs de programme qui figurent sur la liste standard des indicateurs de l'OMS (chaque indicateur de programme représente généralement un numérateur ou un dénominateur de la liste standard des lignes directrices relatives à l'information stratégique).
+
+>**Avertissement**
+>
+>La majorité des indicateurs de programme sont de type ÉVÉNEMENT et utilisent des limites de période PERSONNALISÉES, lesquelles seront adaptées. Nous avons fourni des représentations précises des indicateurs de programme en nous basant sur le modèle de données générique. Toutefois, l'organisation chargée de l'implémentation décidera du type de dimension d'unité d'organisation à attribuer à chaque indicateur de programme, conformément aux directives nationales et après avoir consulté les utilisateurs finaux. Veuillez consulter la section sur les éléments à prendre en compte pour l'adaptation et l'implémentation locales pour obtenir plus d'informations sur la manière d'ajuster les indicateurs et les calculs de programme pendant la localisation et l'adaptation au niveau national.
+
+#### Filtre de population clé dans les indicateurs de programme { #key-population-filter-in-program-indicators } 
+
+Tel que décrit dans la section *Éléments de données masqués et valeurs attribuées*, les règles de programme sont utilisées pour copier le groupe de population clé de la TEI qui est enregistré dans la déclaration initiale de cas, et l'attribuer à un champ d'élément de données masqué à l'étape de programme répétable "Visite". Cela permet de configurer tous les calculs de l'indicateur de programme basés sur le groupe de population clé, notamment en utilisant l'élément de données auto-attribué comme filtre dans l'indicateur de programme. 
+
+Pour ajuster les indicateurs de programme qui filtrent en fonction du groupe de population clé, vous devez utiliser les éléments de données qui contiennent le postfixe "- VISITE" :
+
+- VIH - Population clé - Hommes ayant des rapports sexuels avec des hommes - VISITES [kXutCUTOxcq]
+- VIH - Population clé - Personnes qui s'injectent des drogues - VISITES [GSSOfwzb0DQ]
+- VIH - Population clé - Personnes vivant en prison et dans d'autres milieux fermés - VISITES [iqXxZbRDhYG]
+- VIH - Population clé - Professionnels du sexe - VISITES [kICLXq7IEuP]
+- VIH - Population clé - Personnes trans et de genre divers - VISITES [vZQyUQCKSc6]
+
+#### PVVIH actuellement sous TAR { #plhiv-currently-on-art } 
+
+Certains indicateurs de programme doivent compter le nombre de PVVIH en cours de traitement, soit à la date actuelle, soit pour une période de référence spécifique.
+Pour permettre ce type de calcul, nous devons travailler sur deux parties différentes de la formule des indicateurs de programme :
+
+- Limites de période
+- Filtre
+
+Dans la section des limites de période, nous devons utiliser une combinaison de deux dates PERSONNALISÉES différentes, car nous voulons compter toutes les PVVIH à partir du moment où ils commencent le TAR jusqu'au dernier jour de traitement. Les dates à utiliser sont donc les suivantes :
+
+- Avant la fin de la période de déclaration : Date du début du traitement [Lv3c5VSA9t3]
+- Après le début de la période de déclaration : Dernier jour de TAR [EGjmPoKhHpM]
+
+Du côté du filtre, nous devons être en mesure de compter les personnes qui suivront encore le traitement après la fin de la période de déclaration ou après la date actuelle, car il se peut que la date actuelle se situe dans la période d'analyse (par exemple, si la date actuelle est le 1er novembre 2023 et que l'analyse porte sur les personnes qui sont encore sous TAR en 2023).
+Voici un aperçu du filtre :
+
+*(d2:daysBetween(V{analytics_period_end},#{Last day with ART})>=0
+|| d2:daysBetween(V{current_date},#{Last day with ART})>=0)*
+
+#### Configuration des indicateurs de programme notables { #notable-program-indicators-configuration } 
+
+**HTS.1 Personnes vivant avec le VIH qui connaissent leur statut sérologique** : Pour pouvoir calculer cet indicateur de programme, nous devons utiliser des limites de période PERSONNALISÉES en nous basant sur la "date du diagnostic de séropositivité", car nous voulons compter tous les clients que nous avons eu depuis la date du diagnostic jusqu'à la date actuelle, pour ceux qui sont encore en vie et font partie de la cohorte, ou jusqu'à la date de leur décès ou de leur perte de vue.
+Pour permettre ce comptage, l'élément de données "VIH - Date de la cohorte" [ CrFaWOLSKiK] a été créé et se voit attribuer la valeur de la date actuelle si le client est toujours en vie / dans la cohorte (PVVIH) et la date du décès / de la perte de vue si le client est décédé ou est perdu de vue.
+De cette manière, il est attribué à l'indicateur de programme 'VIH SC - HTS.1 Personnes vivant avec le VIH qui connaissent leur statut sérologique' [HY5WGeOQPmC] les limites de période suivantes :
+
+- Avant la fin de la période de déclaration : Date du diagnostic de séropositivité
+- Après le début de la période de déclaration : Date de la cohorte
+
+L'indicateur de programme est de type ENROLLMENT car nous voulons connaître les informations collectées lors de la dernière visite (événement DHIS2).
+
+**TAR.8 Deuxième test de charge virale approprié après le conseil en matière d'observance**
+Le numérateur est un indicateur de programme de type ÉVÉNEMENT qui doit calculer le nombre de PVVIH sous TAR et dont la charge virale a été testé dans les trois (3) mois suivant un premier résultat >=1000 copies/mL.
+Les éléments de données auxquels sont attribués la date du dernier test de charge virale effectué et le dernier résultat, sont utilisés dans le filtre d'indicateur de programme pour comparer la date du dernier test de charge virale avec la date actuelle. Si la différence est inférieure à trois (3) mois et que le résultat du précédent test de charge virale est >=1000 copies/mL, alors notre client sera pris en compte.
+En ce qui concerne les limites de période, ce sont celles qui sont PERSONNALISÉES avec l'élément 'Date du test de charge virale' [v4K5u8wftrq] qui doivent être utilisées car nous voulons que la valeur renvoyée corresponde à la charge virale actuelle et non à celle qui se situe dans les trois (3) mois suivant le précédent test.
+
+**PDS.2 Adoption des modèles de PDS pour le TAR par les personnes vivant avec le VIH**
+
+Pour pouvoir calculer cet indicateur, nous devons calculer dans le numérateur et le dénominateur (indicateurs de programme de type EVENEMENT) le nombre de clients qui sont nouvellement éligibles aux modèles de PDS pour le TAR.
+La valeur VRAI est attribuée à l'élément de données si le client n'était pas éligible à la visite précédente mais l'est à la visite actuelle. Ceci est utilisé dans le filtre des indicateurs de programme.
+
+De plus, dans le numérateur, nous devons compter les personnes nouvellement inscrites aux modèles de PDS pour le TAR. La valeur VRAI est attribuée à l'élément de données si le client n'était pas inscrit pour la visite précédente mais l'est pour la visite actuelle. Ceci est utilisé dans le filtre de l'indicateur de programme.
+
+**PDS.5 Suppression de la charge virale chez les personnes vivant avec le VIH et participant aux modèles de PDS pour le TAR**
+
+Dans le numérateur et le dénominateur de cet indicateur, nous devons compter les PVVIH qui sont inscrits aux modèles de PDS pour le TAR et qui ont subi un test pour déterminer leur charge virale (et dont la charge virale a été supprimée). Étant donné qu'il s'agit d'un indicateur de programme de type ÉVÉNEMENT et que dans le modèle de donnée, les informations relatives à la charge virale ne sont pas directement liées à l'inscription ou à la non participation aux modèles de PDS pour le TAR, un élément de données qui sera rempli automatiquement avec la dernière valeur disponible du statut d'inscription à la PDS pour le TAR (vrai ou faux) a été attribué à l'indicateur de programme.
+
+**TBH.3 Type de test diagnostique de la TB**
+
+Dans le numérateur, nous devons compter uniquement les PVVIH dont le premier test de dépistage de la TB est un test moléculaire de dépistage rapide de la TB approuvé par l'OMS.
+Il est créé un élément de données qui attribue la valeur VRAI si le premier test a été un test mWRD (test moléculaire de diagnostic rapide recommandé par l'OMS) ; et cet élément de données fait l'objet de déclaration de valeurs pour les événements suivants.
+En outre, un autre élément de données qui indique la date du premier test de TB (s'il s'agit d'un mWRD) est créé et la valeur est rapportée dans les événements suivants
+
+**STI.8 Diagnostic répété de syndrome d'IST**
+La période de référence de l'indicateur a été fixée sur les "12 derniers mois". Le résultat sera donc la proportion de clients chez qui un syndrome d'IST particulier a été diagnostiqué deux fois ou plus au cours des 12 derniers mois.
+
+Dans le numérateur, nous devons calculer le nombre de personnes qui se rendent aux services de prévention du VIH et chez qui une IST particulière a été diagnostiquée deux fois ou plus. Ce filtre repose sur les éléments de données masqués auxquels sont attribuées des valeurs pour la "date du dernier diagnostic" :
+
+- VIH - IST : Date du dernier diagnostic du syndrome d'écoulement urétral [DI8O2sFAjIZ]
+- VIH - IST : Date du dernier diagnostic du syndrome d'écoulement vaginal [PMYnHPcLOrg]
+- VIH - IST : Date du dernier diagnostic de douleur abdominale basse [fGg6Qx8AzDw]
+- VIH - IST : Date du dernier diagnostic du syndrome d'ulcère génital [Nxjc5ElxwEj]
+- VIH - IST : Date du dernier diagnostic d'écoulement anorectal [bEFauzOj4ov]
+
+S'il faut ajouter/supprimer un syndrome d'IST en fonction des besoins de l'implémentation, le modèle de données doit être reproduit pour des diagnostics d'IST supplémentaires ou supprimé des calculs de l'indicateur de programme pour les diagnostics d'IST non pertinents.
+
+**Indicateurs de transmission verticale (VER.1 → VER.4)**
+
+Les indicateurs de transmission verticale (formulaires VER.1 à VER.4 inclus) doivent indiquer le jour de l'accouchement. Étant donné que ce sont des indicateurs de programme de type ÉVÉNEMENT, un élément de données a été créé pour rapporter la date du dernier accouchement, puisque les informations nécessaires au calcul des indicateurs VER.1 → VER.4 peuvent être collectées lors de différentes visites.
+Dans les limites de période pour tous les indicateurs du programme, nous devons donc utiliser l'élément de données suivant : *VIH - PTME : Date du dernier accouchement*
+De même, pour l'indicateur *VER.2 Couverture du diagnostic précoce chez le nourrisson (DPN)*, nous devons utiliser l'élément de données *VIH - PTME : Date du dernier accouchement* car les informations relatives au test du nourrisson exposé au VIH sont collectées lors d'une visite ultérieure.
+
+**HEP.7 VHC guéri chez les personnes vivant avec le VIH**
+
+Dans le numérateur et le dénominateur, l'indicateur de programme utilisé est de type ÉVÉNEMENT. Nous devons donc indiquer le statut du dernier traitement anti-VHC car l'achèvement du traitement et le test de confirmation d'une réponse virologique soutenue peuvent avoir lieu lors de différentes visites.
+Dans le numérateur et le dénominateur, nous devons filtrer le statut du traitement avec l'élément de données suivant :  *VIH - Hépatite virale : Statut du dernier traitement anti-VHC*
+
+**CCa.4 Survie au cancer du col de l'utérus**
+
+Dans le numérateur de cet indicateur, nous devons compter les FVVIH atteintes du cancer du col de l'utérus et qui sont encore en vie. L'élément de données **VIH - Cancer du col de l'utérus : Dernier diagnostic du cancer du col de l'utérus** [ntKnCH7bMGR] a été créé pour rapporter le dernier diagnostic. Cet élément de données est utilisé dans le filtre et possède les mêmes ensembles d'options que l'élément de données *VIH - Cancer du col de l'utérus : Diagnostic du cancer du col de l'utérus*
+
+## Mapping des métadonnées et échange de données { #metadata-mapping-data-exchange } 
+
+Comme décrit plus haut, tous les tableaux de bord et indicateurs s'appuient sur un modèle de données agrégées. Cela permet d'utiliser des méthodes mixtes pour rapporter des données de sources électroniques et papier, et de les rassembler à des fins d'analyse et d'utilisation, comme dans un HMIS intégré.
+
+Dans les cas où les éléments de données agrégées cibles peuvent être remplis en agrégeant les données Tracker du système de surveillance des cas d'infection par le VIH, nous avons préconfiguré un ensemble d'indicateurs de programme et intégré le mapping des dimensions agrégées cibles (CODE de l'élément de données et CODE de la combinaison d'options de catégorie).
+
+Voir [documentation DHIS2 de l'utilisateur sur l'utilisation de l'application d'échange de données](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-240/exchanging-data/data-exchange.html). 
+
+Voir la [documentation DHIS2 du développeur sur les API DHIS2 pour l'échange de données agrégées] (https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-240/data-exchange.html?h=aggregate+data+exchange+2.40#create-aggregate-data-exchange) pour plus d'informations.
+
+Les métadonnées ont été alignées sur les dictionnaires de données et les références d'indicateurs publiés dans le kit d'adaptation numérique (KAN) de l'OMS pour le VIH, deuxième édition (voir l'annexe Web A du kit d'adaptation numérique pour le dictionnaire de données). Il convient de noter que le Tracker n'est pas conçu pour prendre en charge tous les aspects des directives en matière de soins cliniques et de gestion des cas, dont certains sont contenus dans le KAN pour le VIH ; il n'est pas non plus conçu pour remplacer les DME robustes des établissements. Toutefois, les données des DME peuvent être consommées dans le registre national du VIH à des fins d'analyse et d'utilisation.
+
+[Ici] (resources/files/data_exchange_mapping_cs.xlsx) vous pouvez trouver le mapping entre les métadonnées de DHIS2 et le dictionnaire de données du KAN VIH.
+
+> **Remarque**
+>
+> En raison du volume des indicateurs de programme qui doivent alimenter le modèle de données agrégées des co-répondants, l'"échange de données" ne sera pas utilisé avec l'application, mais seulement programmé en tant que tâche backend.
+
+## Considérations relatives à la mise en œuvre & à l'adaptation locale { #implementation-considerations-local-adaptation } 
+
+Ce chapitre aborde quelques possibilités d'adaptation de la configuration au contexte et aux besoins locaux, ainsi que les éléments à prendre en compte pour l'implémentation qui sont importants pour le cas d'utilisation 'Surveillance des cas d'infection par le VIH'.
+
+### Protection et confidentialité des données { #data-privacy-confidentiality } 
+
+La collecte de données sur les populations clés pose certains problèmes, en particulier lorsque les informations sont reliées ou partagées entre les prestataires de services et les programmes. Toutes les données sanitaires individuelles, y compris celles des populations clés, doivent être classées comme des données personnelles sensibles ou identifiables, qui requièrent un niveau élevé de sûreté et de sécurité. Tous les systèmes d'information sanitaire doivent être dotés de protocoles solides de sécurité et de confidentialité des données, soutenus par des lois et des politiques de protection d'informations sanitaires. Le traitement des données sanitaires à caractère personnel doit tenir compte de la cybersécurité, de la confiance, de la responsabilité et de la gouvernance, de l'éthique, de l'équité, du renforcement des capacités et de la culture numérique. 
+
+Lorsque la sécurité et le risque de décourager les personnes d'accéder aux services deviennent des préoccupations, la collecte systématique des informations sur les populations clés n'est pas conseillée et devrait être retirée du programme Tracker numérisé de DHIS2 sur la surveillance des cas. De même, avant de saisir des données personnelles identifiables telles que le nom du client, sa date de naissance et d'autres données indirectement identifiables, il convient de procéder à une évaluation des risques et à un examen de la sécurité des systèmes électroniques et des procédures opérationnelles normalisées pour tous les utilisateurs, et aussi de combler les lacunes.
+
+### Adaptation de la structure du Tracker { #tracker-structure-adaptation } 
+
+La structure du Tracker de surveillance des cas d'infection par le VIH est essentiellement une structure plate avec une seule étape principale répétable qui permet d'enregistrer les activités pour tout type de visite de prévention. Cette structure simplifiée à dessein rend plus flexible l'adaptation locale et la paramétrage. Par exemple : 
+
+- Les sections peuvent être facilement converties en étapes si différents utilisateurs doivent saisir des informations différentes (comme indiqué précédemment, le service de surveillance des cas d'infection par le VIH est très transversal et peut impliquer plusieurs acteurs dans la prestations des services).
+- Le nombre de règles de programme est réduit et elles sont bien identifiées par la section ciblée
+- Si une activité spécifique (intervention de soins pour le VIH, cas du cancer du col de l'utérus) n'est pas pertinente pour les services de soins et de traitement du VIH offerts dans votre pays, vous pouvez simplement supprimer une section entière sans que cela n'affecte le reste du modèle de données. 
+
+#### Intégration de la surveillance des cas d'infection par le VIH et le Tracker de prévention du VIH { #integration-of-hiv-case-surveillance-and-hiv-prevention-tracker } 
+
+En fonction du contexte local, certaines implémentations peuvent avoir besoin que l'on intègre la prévention du VIH et la surveillance des cas dans un seul programme Tracker DHIS2. L'option d'un programme Tracker intégré a été envisagée pour le guide de conception global, mais elle a finalement été écartée pour laisser place à deux programmes Tracker pour les raisons suivantes :
+
+- Échelle : le nombre de personnes (TEI) inscrites à un programme de prévention devrait être largement plus élevé que le nombre de personnes (TEI) diagnostiquées positives et inscrites à un programme de surveillance des cas d'infection par le VIH. Cela peut affecter les performances et nécessite également une infrastructure de serveur adéquate pour un déploiement à grande échelle du Tracker.
+- Types de prestataires de services : dans de nombreux pays, un grand nombre et une grande variété de prestataires de services peuvent être engagés dans des services de prévention du VIH, tels que les agents de santé communautaires, les ONG/OSC, etc. en tant que partenaires d'implémentation. Souvent, ces prestataires de services de prévention ne sont pas responsables du suivi des personnes atteintes du VIH tout au long de leur traitement à vie et ne devraient pas avoir accès aux données sanitaires des clients après que ces derniers soit identifiés comme séropositifs. Par conséquent, la séparation des programmes Tracker permet de mieux gérer cette variété de situations et contribue à garantir la protection et la confidentialité des données des personnes vivant avec le VIH. 
+- Les indicateurs inclus dans les lignes directrices relatives à l'information stratégique de l'OMS et dans le KAN ne nécessitent pas d'analyse "inter-programmes". Tous les indicateurs peuvent être générés dans DHIS2 à l'aide de deux programmes distincts.
+- Pour faire passer un client des services de prévention vers les services de surveillance des cas d'infection par le VIH, il suffit de fermer l'inscription dans un programme Tracker de prévention et d'ouvrir une nouvelle inscription dans le programme de surveillance des cas. La personne (TEI) sera reliée à la fois au programme de prévention et au programme de surveillance des cas si une analyse ad hoc est requise pour un traitement avancé hors DHIS2 des données programmatiques. 
+
+Il est possible d'implémenter une conception intégrée en tirant parti des nombreuses métadonnées de DHIS2, par exemple la bibliothèque des éléments de données du Tracker. Les deux programmes Tracker suivent une structure similaire avec une déclaration initiale de cas et une étape de "visite" intégrée et répétable pour tout le suivi ultérieur. 
+Les métadonnées du Tracker communes à la prévention du VIH et à la surveillance des cas d'infection par le VIH sont partagées entre les deux programmes (en utilisant les mêmes UID) comme suit :
+
+- Tous les attributs d'entités suivies : tous les TEA sont identiques
+- Déclaration initiale de cas : les éléments de données relatifs à l'identification de la population clé sont les mêmes.
+- Étape de  visite :
+  - Les éléments de données pour les IST sont les mêmes
+  - Hépatite virale : Les éléments de données relatifs au test, à la date et au résultat sont les mêmes.
+
+Les implémenteurs doivent être attentifs aux questions de protection de la vie privée et de confidentialité qui résultent de la liaison des données des patients d'un Tracker de prévention à un Tracker de surveillance des cas. Certains éléments de données qui contiennent des informations sensibles sur les patients, comme le statut de population clé d'un patient, devront peut-être être supprimés si le dossier d'un patient se trouve dans le cas. En outre, il n'est pas conseillé de relier les Trackers de prévention et de surveillance des cas si la protection de la vie privée, la sécurité et la confidentialité ne peuvent être garantis pour les patients (voir le chapitre 2 : Prévention et le chapitre 6 : Données sanitaires numériques du document de l'OMS 2022 intitulé "Lignes directrices unifiées relaves à l'information stratégique sur le VIH centrée sur la personne" pour plus de détails).
+
+![Structure d'un programme Tracker intégré sur la prévention et la surveillance des cas](/resources/images/integrated_prev_cs_structure.jpg)
+
+### Analyse et calculs d'indicateurs { #analytics-indicator-calculations } 
+
+#### Analyse de la propriété { #ownership-analytics } 
+
+À partir de DHIS2 v40, une nouvelle fonctionnalité permet de calculer des indicateurs de programme en fonction de l'unité d'organisation "propriétaire" d'une inscription donnée. Par exemple, vous pouvez compter le nombre de clients qui bénéficient des services de soins et de traitement du VIH dans un établissement, même s'ils n'ont pas été initialement inscrits dans cet établissement ou s'ils n'ont pas été officiellement transférés.
+
+Les indicateurs de programme peuvent définir la **dimension d'unité d'organisation** à utiliser dans les analyses. Les choix incluent l'unité d'organisation pour l'événement, l'inscription, l'enregistrement, l'élément de données de l'unité d'organisation et la propriété de l'instance d'entité suivie au début ou à la fin de la période de déclaration. L'analyse de la propriété ne s'applique qu'aux indicateurs de programme configurés *sur la base de l'inscription*.
+
+Des conseils plus détaillés sur l'analyse de la propriété peuvent être trouvés dans le [Guide de conception du Tracker] (https://docs.dhis2.org/en/implement/database-design/tracker-system-design/tracker-analytics.html#common-challenge-3-transfers-and-ownership).
+
+>**Remarque:**
+>
+>Pour les implémentations qui utilisent la version 2.39 ou les versions inférieures du logiciel DHIS2, les indicateurs de programme générés à tout niveau inférieur au niveau national ne reflèteront pas l'unité d'organisation "propriétaire" actuelle. Cela signifie qu'une TEI (personne) qui a été transféré de façon permanente d'une unité d'organisation (établissement de santé A) à une autre (établissement de santé B) dans le cadre d'une inscription à un programme Tracker *sera toujours compté comme appartenant à l'établissement de santé A*, pour les besoins des indicateurs du programme. De façon pratique, cela signifie que lorsqu'un patient passe d'un site à une autre, tous les indicateurs longitudinaux de ce patient ne sont pas réattribués au dernier site, mais restent attribués au premier site où il a été inscrit au programme. Ceci constitue une grande contrainte pour les cas d'utilisation typiques liés au VIH, où les mesures de performance au niveau du site, telles que les pertes de vue, doivent être générées avec précision au niveau infranational ou au niveau de l'établissement. Si votre implémentation utilise DHIS2 v2.39 ou une version inférieure, veuillez examiner attentivement votre configuration pour voir si vous avez tenu compte de l'exclusion des personnes "référées ailleurs" sur la base de la propriété de l'inscription à l'unité d'organisation.
+
+#### Date d'événement vs Date personnalisée { #event-date-vs-custom-date } 
+
+Comme décrit précédemment, une série de dates est demandée pour toutes ces activités qui peuvent être menées en dehors d'un service de prévention du VIH, mais dont les informations sont toujours pertinentes pour un système de gestion et de rapport complet et centré sur la personne.
+
+La grande majorité des indicateurs de programme utilisent cette date à la fois dans les limites de période (en tant que date PERSONNALISÉE) et/ou dans le filtre. Si pour l'implémentation, il est décidé d'utiliser la date d'événement ("date de visite") comme date par défaut pour l'une ou l'autre des activités, cela devra également se refléter dans les indicateurs de programme.
+
+#### Analyse des données du Tracker { #tracker-data-analysis } 
+
+Pour les utilisateurs disposant des autorisations nécessaires pour accéder aux données personnelles identifiables saisies via le programme Tracker de surveillance des cas d'infection par le VIH, une analyse ad hoc supplémentaire des données Tracker peut être réalisée à l'aide de l'application Line-list (listage de lignes) et d'une configuration des listes de tâches dans le cadre du programme Tracker de DHIS2 (remarque : uniquement pour les utilisateurs qui ont accès à l'application Saisie pour la collecte de données). 
+
+En général, il est recommandé d'effectuer des analyses de routine pour le suivi du programme, via le modèle de données agrégées et en utilisant les indicateurs de programme et les services d'échange de données tels qu'ils sont implémentés dans cette conception. Cela s'explique en partie par le fait que le modèle de données agrégées de DHIS2 offre une dimensionnalité optimisée pour l'analyse (par exemple, la possibilité de diviser et de filtrer par catégories et par combinaisons de catégories dans l'application Visualiseur de Données). Cela permet également de faire de meilleures analyses, car le traitement des requêtes sur de grandes bases de données contenant des données individuelles sur plusieurs années peut créer une pression inutile sur le serveur. 
+
+Les analyses ad hoc et l'extraction de données individuelles sont généralement réservées aux utilisateurs autorisés du secteur de la santé publique (tels que les gestionnaires de données du programme de lutte contre le VIH) pour les analyses avancées, et aux utilisateurs des points de prestations de services (établissements) pour les activités de suivi opérationnel, la prise de contact avec les clients ou la réalisation de contrôles et d'analyses de routine de la qualité des données individuelles qu'ils sont chargés de collecter.
+
+### Opérationnalisation des variables pour les populations clés { #operationalizing-variables-for-key-populations } 
+
+Certains pays ont rencontré des difficultés pour définir l'appartenance des demandeurs de services à une population clé donnée, car la divulgation de ce type d'information peut les exposer à la discrimination, à la stigmatisation et, dans certains contextes, à des sanctions juridiques.
+
+Pour faciliter l'opérationnalisation des définitions des populations clés, le tableau suivant, tiré du "[Cadre de suivi des services VIH/IST pour les populations clés en Amérique latine et dans les Caraïbes](https://www.paho.org/en/documents/framework-surveillance-hivsti-services-key-populations-latin-america-and-caribbean-2019)", offre un outil sensible et spécifique pour normaliser la collecte d'informations à l'aide d'un ensemble minimum de variables qui permet de classer les personnes dans des groupes de populations clés. Cet outil peut être intégré dans le Tracker de prévention de DHIS2 à travers la configuration d'un nouvel ensemble d'éléments de données qui suivent la structure du questionnaire :
+
+![Questionnaire de l'OPS pour l'opérationnalisation des variables de populations clés](resources/images/PAHO_questions_key_pop.png)
+
+D'après les données recueillies à l'aide du questionnaire, le client peut être identifié dans un ou plusieurs groupes en raison des pratiques qui se chevauchent et des vulnérabilités. Un pays peut également avoir des populations clés et des définitions différentes des autres ; l'outil devrait donc être adapté au contexte national. L'affectation d'une personne à un groupe de population clé spécifique peut être réalisée en utilisant des règles de programme pour attribuer une valeur aux éléments de données de base des groupes de populations clés inclus dans les métadonnées du Tracker de prévention de DHIS2.
+
+![OPS - Interprétation des réponses pour le suivi et l'analyse des données](resources/images/PAHO_key_pop_answers.png)
+
+## Références { #references } 
+
+OMS (2022). Lignes directrices unifiées relatives à l'information stratégique sur le VIH centrée sur la personne : renforcer les données de routine pour plus d'impact [https://www.who.int/publications/i/item/9789240055315](https://www.who.int/publications/i/item/9789240055315)
+
+ONUSIDA (2022) EN DANGER : Le point sur le sida dans le monde 2022. Genève : Programme commun des Nations Unies sur le VIH/SIDA [https://www.unaids.org/en/resources/documents/2022/in-danger-global-aids-update](https://www.unaids.org/en/resources/documents/2022/in-danger-global-aids-update)
+

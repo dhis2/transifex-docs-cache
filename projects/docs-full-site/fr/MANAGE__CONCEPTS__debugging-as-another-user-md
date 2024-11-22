@@ -1,0 +1,68 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/new_install_docs/src/sysadmin/concepts/user-impersonation.md"
+revision_date: '2024-11-01'
+tags:
+- Gestion
+---
+
+# Utilisation de la fonction d'usurpation d'identité dans DHIS2 { #user_impersonation }
+
+## Présentation { #overview } 
+
+Le déguisement, également appelé changement d'utilisateur, est une fonction puissante de DHIS2 qui permet aux utilisateurs administrateurs de se connecter en tant qu'autre utilisateur. Cette fonction est particulièrement utile pour le dépannage ou la résolution de problèmes liés à l'utilisateur, car elle permet à l'administrateur d'expérimenter DHIS2 exactement comme l'utilisateur.
+
+Cette fonctionnalité est basée sur le filtre `SwitchUserFilter` de Spring Security, mais avec des options de configuration supplémentaires.
+
+> **Remarque**
+>
+> La fonctionnalité est **désactivée** par défaut. Pour l'activer, vous devez définir la propriété `switch_user_feature.enabled` sur `true` dans votre fichier de configuration `dhis.conf`. 
+Cette fonctionnalité est considérée comme **expérimentale** et n'est censée être appelée qu'à partir d'adresses IP configurées. Par conséquent, pour l'utiliser, vous devez connaître l'adresse IP à partir de laquelle vous l'appellerez et configurer la propriété `switch_user_allow_listed_ips` dans le fichier `dhis.conf`. Cette restriction pourrait être retirée à l'avenir.
+>>>>>>>>
+
+## Comment ça marche { #how-it-works } 
+
+La fonction de déguisement fonctionne de la manière suivante :
+
+1. Un utilisateur administrateur envoie une requête à une URL spécifique (par exemple, `/impersonate?username=USERNAME`) avec le paramètre `username` 
+   paramètre du segment
+   indiquant le nom d'utilisateur de l'utilisateur qu'il souhaite usurper.
+
+2. La fonction de déguisement intercepte cette requête, bascule le `SecurityContext` vers le nouvel utilisateur, et le redirige 
+   vers la page d'accueil.
+
+3. En se faisant passer pour un autre utilisateur, l'administrateur peut faire des requêtes comme s'il était l'utilisateur dont il a usurpé l'identité.
+
+4. Pour revenir à l'utilisateur initial, l'administrateur envoie une requête à une autre URL (
+   par exemple, `/impersonateExit`). La fonction de déguisement intercepte cette requête, ramène le `SecurityContext` 
+   à l'utilisateur initial et redirige vers la page d'accueil.
+
+## Comment l'utiliser { #how-to-use } 
+
+Procédez comme suit pour utiliser la fonction de déguissement :
+
+1. Connectez-vous en tant qu'utilisateur administrateur avec l'autorité `ALL` ou `F_IMPERSONATE_USER`.
+2. Accédez à l'URL de la fonction de déguisement (par exemple, `/impersonate?username=USERNAME`).
+3. Fournissez le `nom d'utilisateur` de l'utilisateur que vous voulez usurper.
+4. Le système basculera votre session vers celle de l'utilisateur usurpé, et vous serez redirigé vers la page d'accueil.
+5. Effectuez toutes les actions nécessaires au dépannage ou à l'assistance aux utilisateurs.
+6. Lorsque vous avez terminé, revenez à l'URL pour mettre fin au déguisement (par exemple, `/impersonateExit`). Votre session sera 
+   votre instance initiale.
+
+## Configuration { #configuration }
+
+Les options de configuration de la fonction de déguisement.
+
+* `switch_user_feature.enabled` (Activer ou désactiver la fonction, par défaut : `disabled` (désactivé))
+* `switch_user_allow_listed_ips` (Les IP autorisées par défaut sont : `localhost,127.0.0.1,[0:0:0:0:0:0:0:1]`)
+
+## Restrictions de sécurité { #security-restrictions } 
+* Cette fonction doit être activée dans le fichier de configuration `dhis.conf`. La valeur par défaut est `disabled` (désactivé).
+* Les utilisateurs qui tentent de se faire passer pour d'autres doivent envoyer des requêtes à partir d'une adresse IP autorisée.
+* Les utilisateurs qui n'ont pas l'autorité `ALL` ne peuvent pas se faire passer pour un autre utilisateur qui a l'autorité `ALL`.
+* Les utilisateurs ne peuvent utiliser la fonction sur eux-mêmes.
+## Implications en matière de sécurité { #security-implications } 
+
+Cette fonction doit être utilisée avec prudence en raison de ses implications inhérentes en matière de sécurité. Seuls les administrateurs de confiance doivent être autorisés à se faire passer pour d'autres utilisateurs. Il est également recommandé de prêter attention aux événements de journal liés au déguisement.
+
+Les événements de déguisement sont enregistrés au format suivant : `Evénement d'authentification : AuthenticationSwitchUserEvent ; username : USER_DOING_THE_IMPERSONATION ; targetUser : USER_BEING_IMPERSONATED;`
+
