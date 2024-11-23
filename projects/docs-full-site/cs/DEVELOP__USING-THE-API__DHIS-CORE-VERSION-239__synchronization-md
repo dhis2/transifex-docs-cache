@@ -1,0 +1,30 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.39/src/developer/web-api/synchronization.md"
+revision_date: '2022-05-05'
+tags:
+- Vývoj
+- DHIS základní verze 2.39
+---
+
+# Synchronizace { #webapi_synchronization }
+
+Tato část pojednává o stahování a odesílání dat a metadat.
+
+## Push datové hodnoty { #webapi_sync_data_push }
+
+Chcete-li zahájit odeslání datové hodnoty na vzdálený server, musíte nejprve nakonfigurovat adresu URL a přihlašovací údaje pro příslušný server v části Nastavení systému > Synchronizace, poté provést požadavek POST na následující prostředek:
+
+    /api/33/synchronization/dataPush
+
+## Stahování metadat { #webapi_sync_metadata_pull }
+
+Chcete-li zahájit načítání metadat ze vzdáleného dokumentu JSON, můžete provést požadavek POST s *url* jako datovou částí požadavku na následující prostředek:
+
+    /api/33/synchronization/metadataPull
+
+## Kontrola dostupnosti { #webapi_sync_availability_check } 
+
+Chcete-li zkontrolovat dostupnost vzdáleného datového serveru a ověřit pověření uživatele, můžete odeslat požadavek GET na následující prostředek:
+
+    /api/33/synchronization/availability
+

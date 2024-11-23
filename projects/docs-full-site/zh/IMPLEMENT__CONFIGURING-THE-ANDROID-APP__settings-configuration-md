@@ -1,0 +1,299 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-capture-app/blob/master/docs/src/commonmark/en/content/capture-app/app-android-settings-configuration.md"
+revision_date: "2021-07-20"
+---
+
+# Android设定网路应用程式 { #capture_app_andoid_settings_webapp }
+
+## 总览 { #capture_app_andoid_settings_webapp_overview }
+
+本节重点介绍Android设置网络应用的实现。
+
+Android 设置 Web 应用程序允许管理员为 DHIS2 Android 捕获应用程序配置同步参数，加密 Android 设备的本地数据库，自定义程序、数据集和主屏幕的外观，以及添加 TEI 分析项目。此 Web 应用程序中定义的配置参数将覆盖使用 DHIS2 Android Capture 应用程序的所有 Android 设备的设置。
+
+请注意，在此版本的Web应用程序中，只有具有“ ALL”权限的用户才能在配置中定义这些参数。有权访问该Web应用程序的其他用户可以看到参数的值，但不能对其进行编辑。
+
+> **警告**
+>
+> 此版本具有改进和破坏性功能，因此不再支持以前的版本，存储在那里的设置将被删除。
+
+## 常规设置 { #capture_app_andoid_settings_webapp_general }
+
+包括 Matomo URL 和项目 ID、每个 TEI 下载的保留值数量以及加密设备数据库等配置。
+
+![](resources/images/capture-app-general-settings.png)
+
+**Matomo 配置：** 如果您已有 Matomo 实例，请添加 Matomo URL 和项目 ID。
+
+**移动配置：** 此部分允许管理员用户编辑短信网关广告结果发送者电话号码。
+
+**保留值：** 这将指定保留在设备中下载的每个 TEI 属性的值数量。
+
+**加密设备数据库：**
+
+> **警告**
+>
+> 这是一个关键操作，会影响所有与服务器同步的 Android 设备的本地数据库（不会影响服务器 DHIS2 数据库）。
+>
+> 默认情况下，Android 应用程序数据库未加密，但管理员可以检查_加密设备数据库_以加密每个设备中存储的元数据和数据。加密数据库会对数据库容量和Android应用程序的性能产生影响。请注意，选择或取消选择此选项时，不会丢失任何数据（即使之前尚未与服务器同步）
+
+**禁用所有设置：** 通过单击此按钮，用户将删除所有 Android 配置设置。不会将任何配置应用于 Android Capture 应用程序（如果是这种情况，则应用的同步参数是 Android Capture 应用程序中定义的参数）。
+
+## 同步化 { #capture_app_andoid_settings_webapp_synchronization }
+
+它提供了额外的参数来控制元数据/数据同步。
+
+### 全局 { #capture_app_andoid_settings_webapp_synchronization_global }
+
+**元数据同步：**管理员用户可以选择元数据同步的频率。例如每24小时同步一次元数据。
+
+**数据同步：**管理员用户可以选择数据同步的频率。例如每6小时同步一次数据。
+
+![](resources/images/capture-app-sync-global.png)
+
+### 程序 { #capture_app_andoid_settings_webapp_synchronization_program }
+
+该部分控制程序数据同步参数。它有一个部分定义用于所有程序同步的全局或默认参数。
+
+#### 全局设置 { #capture_app_andoid_settings_webapp_synchronization_program_global }
+
+全局设置适用于android用户有权访问的所有程序。
+
+![](resources/images/capture-app-program-global-settings.png)
+
+**要下载的TEI：**要从服务器下载的最大TEI数。
+
+** TEI下载期：**它将下载在一段时间内已更新的TEI。例如上个月内已更新的TEI
+
+**要下载的事件：**要下载的最大事件数。
+
+**事件下载时间：**它下载事件日期属于特定时间段的事件。
+
+#### 具体设定 { #capture_app_andoid_settings_webapp_synchronization_program_specific }
+
+此部分允许管理员用户指定同步数据时特定程序的行为。特定配置将覆盖本节中列出的程序的常规设置。要添加特定程序的设置：
+
+- 单击_添加特定于程序的设置_，将出现一个对话框。
+- 在“每个程序的值”标题下，单击并查找程序列表。
+- 单击程序将显示要配置的不同参数。参数的数量取决于程序类型（有或没有注册）。
+
+**无需注册的程序设置**
+
+![](resources/images/capture-app-program-specific-dialog-without_registration.png)
+
+**注册程序的设置**
+
+![](resources/images/capture-app-program-specific-dialog-with_registration.png)
+
+如果已保存任何特定设置，表格将显示每个程序的特定配置的摘要，以及编辑或删除这些设置的选项。
+
+![](resources/images/capture-app-program-specific-table.png)
+
+> **注意**
+>
+> 对每个程序使用特定设置可能会对下载的 TEI 数量产生意外结果，并且总数量可能会超过全局设置中定义的数量。这是由于应用程序从服务器下载 TEI 的方式所致。 Android 客户端将首先根据用户有权访问的组织单位和 LastUpdate 字段从服务器下载最大数量的 TEI。然后，它将从特定程序下载最大数量的 TEI。因此，如果从全局设置下载的 TEI（上例中为 500）比特定程序中的任何 TEI（疟疾病例诊断、治疗和调查为 500）的更新时间更晚，则 Android 客户端最终将下载 1000 TEI。
+>
+> 乍一看这可能会令人困惑，但一旦理解，就可以用来确保下载特定程序的最小（和最大）数量的 TEI，这在特定实现中非常有用。
+>
+> 想象一个实现，必须确保 Android 用户在服务器中拥有特定程序的所有 TEI，其中同一用户可以访问其他组织单位，而其他 TEI 可能在另一个程序中注册。该计划称为“社区关怀”，它有 17 个 TEI，这些 TEI 很久以前就已更新。管理员可以通过在全局设置中设置任何内容（如果需要减少带宽，应设置非常低的值）来确保下载 17 个 TEI，并且特定程序至少下载 17 个 TEI，如下图所示：
+>
+> ![](resources/images/capture-app-program-specific-example-web.png)
+>
+> 当触发初始同步时，Android 设备将首先下载服务器上最新更新的 TEI（根据我们的示例，该 TEI 不属于特定程序），然后从特定程序下载最多 20 个 TEI，从而导致以下结果（注意该程序的所有 TEI 均已下载）：
+>
+> ![](resources/images/capture-app-program-specific-example-mobile1.png)
+>
+> 通过进入设置，可以了解 TEI 总数是预期的 37 个，其中 20 个来自全局设置，17 个来自特定程序。
+>
+> ![](resources/images/capture-app-program-specific-example-mobile2.png)
+
+#### 重设所有值 { #capture_app_andoid_settings_webapp_synchronization_program_reset_all }
+
+通过单击_重置所有值_，管理员用户将恢复程序部分的默认设置值。请注意，在这种情况下，这意味着每个程序没有特定的设置。
+
+要保存任何配置，管理员用户需要单击 _Save_ 按钮（对于没有 "ALL "权限的用户，该按钮不起作用）
+
+### 资料集 { #capture_app_andoid_settings_webapp_synchronization_data }
+
+此部分控制聚合数据同步参数。
+
+#### 全局设置 { #capture_app_andoid_settings_webapp_synchronization_data_global }
+
+第一部分是适用于android用户有权访问的所有数据集的全局设置。
+
+![](resources/images/capture-app-dataset-global-settings.png)
+
+**周期数：**最大下载周期数。
+
+#### 具体设定 { #capture_app_andoid_settings_webapp_synchronization_data_specific }
+
+要添加特定设置：
+
+- 单击_添加数据集特定设置_，将出现一个包含数据集列表的对话框。
+- 单击数据集，该字段将根据数据集周期类型自动填写默认值。
+
+![](resources/images/capture-app-dataset-specific-dialog.png)
+
+![](resources/images/capture-app-dataset-specific-table.png)
+
+### 用户同步测试 { #capture_app_andoid_settings_webapp_synchronization_user_sync_test }
+
+此部分检查用户将同步到他/她的设备的数据和元数据量。您可以对您有权访问的任何用户运行此测试。此测试显示 Android 用户可以访问的组织单元、数据集、程序规则、程序等的数量（因此 Android 应用程序将下载的资源），以及元数据和数据下载大小（大约估计）。请注意，用户不需要具有“ALL”权限来运行此测试。
+
+![](resources/images/capture-app-user-sync-test.png)
+
+> **注：**
+>
+> 以红色突出显示的值是因为该值被认为大于最大推荐值。
+
+## 外观{ #capture_app_andoid_settings_webapp_appearance }
+
+这些设置可以控制数据输入和列表表单的外观。
+
+- 过滤器：它定义了可以在不同应用程序菜单中启用的过滤器。
+- 完成微调器：它打开/关闭在数据输入表单中显示进度的完成微调器。
+
+这些设置涉及视觉组件，因此它们必须由应用程序使用。
+
+### 主屏幕 { #capture_app_andoid_settings_webapp_appearance_home_screen }
+
+它允许管理员用户启用或禁用在主屏幕上显示与日期、组织单位、同步状态和分配给我相关的过滤器的选项。
+
+![](resources/images/capture-app-appearance-home.png)
+
+### 程序 { #capture_app_andoid_settings_webapp_appearance_program }
+
+它允许管理员用户指定应显示哪些过滤器，并启用或禁用显示数据输入表单的完成百分比的选项。
+
+#### 全局设置 { #capture_app_andoid_settings_webapp_appearance_program_global }
+
+全局设置适用于android用户有权访问的所有程序。
+
+![](resources/images/capture-app-appearance-program-global.png)
+
+#### 具体设定 { #capture_app_andoid_settings_webapp_appearance_program_specific }
+
+此部分允许管理员用户自定义过滤器和完成百分比外观选项。要添加特定设置：
+
+- 单击_添加程序设置_，将出现一个对话框。
+- 单击将显示程序列表的下拉列表。
+- 单击程序将显示要配置的不同过滤器。类别组合过滤器取决于类别组合名称。
+
+![](resources/images/capture-app-appearance-program-specific.png)
+
+如果保存了任何特定设置，表格将总结每个程序的特定配置，以及编辑或删除这些设置的选项。
+
+![](resources/images/capture-app-appearance-program-table.png)
+
+### 资料集 { #capture_app_andoid_settings_webapp_appearance_data }
+
+它允许管理员启用/禁用数据集部分的过滤器
+
+#### 全局设置 { #capture_app_andoid_settings_webapp_appearance_data_global }
+
+第一部分是适用于android用户有权访问的所有数据集的全局设置。
+
+![](resources/images/capture-app-appearance-dataset-global.png)
+
+#### 具体设定 { #capture_app_andoid_settings_webapp_appearance_data_specific }
+
+要添加特定设置：
+
+- 单击_添加数据集设置_。将弹出一个对话框，其中包含一个包含数据集列表的下拉列表。
+- 单击数据集，将显示启用或禁用过滤器的选项列表。
+
+![](resources/images/capture-app-appearance-dataset-specific.png)
+
+![](resources/images/capture-app-appearance-dataset-table.png)
+
+## 分析工具 { #capture_app_andoid_settings_webapp_analytics }
+
+分析设置定义将向用户显示的 TEI 分析项目（图表、表格）。分析的范围是 TEI，因此可视化结果将显示在 Android 应用程序的 TEI 仪表板中。
+
+设置应用程序中定义的任何项目都将覆盖 Android 应用程序的默认行为，仅显示设置应用程序中定义的项目。本节的目的是定义可视化以显示数据元素和程序指标随时间的演变。基于此，将仅考虑属于可重复程序阶段的数据元素，或者公式中包含至少一个属于可重复程序阶段的数据元素的程序指标。
+
+要创建 **TEI Analytics** 项目：
+
+- 单击_添加 TEI 分析_。将弹出一个带有小表格的对话框。
+- 选择一个程序和一个可重复的程序阶段，然后填写表格。 **简称** 是唯一的可选字段。
+- 如果选择了 WHO 营养以外的项目可视化，则下一个要选择的字段是周期类型（每月、每周、每天）、元素类型（计划指标、数据元素）以及基于该元素的元素键入先前选择的内容。请记住，这些元素与开始时选择的程序和可重复程序阶段相关。
+
+![](resources/images/capture-app-analytics-item.png)
+
+要创建 **WHO 营养分析** 项目：
+
+- 选择一个计划、一个计划阶段和世界卫生组织营养作为可视化类型。
+- 选择 WHO 可视化类型，可以是年龄别身高 (HFA)、年龄别体重 (WFA) 或身高体重 (WFH)。
+- 选择代表性别的 trackedentity 属性。然后，您必须指定男性“男性头衔”选项和女性“女性头衔”选项。通常它们是选项代码。
+- 选择将在水平 (x) 轴上显示的数据元素/程序指示器
+- 选择将在垂直 (y) 轴上显示的数据元素/程序指示器
+
+![](resources/images/capture-app-analytics-who-item.png)
+
+如果已创建任何 TEI Analytics 项目，表格将显示该项目的标题和程序名称，以及用于删除或编辑该项目的操作按钮。
+
+![](resources/images/capture-app-analytics-table.png)
+
+## 安装 { #capture_app_andoid_settings_webapp_installation }
+
+用户可以登录DHIS2并转到**应用程序管理**来轻松安装Android设置网络应用程序。
+
+- 点击** App Store **
+- 前往_Android 设置应用程序_
+- 点击_安装V2.0.0_
+
+![](resources/images/capture-app-app-hub-install.png)
+
+## 登录和首次设置 { #capture_app_andoid_settings_webapp_login }
+
+用户首次安装并启动 Android 设置 Web 应用程序后，该 Web 应用程序将要求设置并保存配置的默认值。这会将默认设置应用于连接到该实例的所有 Android 设备。
+
+![](resources/images/capture-app-first-time-setup.png)
+
+> **警告**
+>
+> 请注意，以前的版本已被弃用，因此您将从新的默认配置开始。
+
+![](resources/images/capture-app-first-setup-with-deprecation-message.png)
+
+> **警告**
+>
+>只有用户具有’ALL‘权限才能_保存或更新_配置，但是一旦创建，任何用户都将具有视图访问权限。
+
+![](resources/images/capture-app-first-setup-no-authorities.png)
+
+## 输入并保存配置参数 { #capture_app_andoid_settings_webapp_enter_and_save }
+
+### 数据存储 { #capture_app_andoid_settings_webapp_datastore }
+
+内部所有设置都以JSON格式存储在[Datastore]（https://docs.dhis2.org/master/zh/developer/html/webapi_data_store.html）中。
+
+数据存储结构：
+
+| 项目      | 描述                                 | 数据类型 |
+| --------- | ------------------------------------------- | --------- |
+| 命名空间 | 条目组织的命名空间       | 串    |
+| 键       | 识别价值的钥匙            | 串    |
+| 值     | 包含条目信息的值 | JSON格式      |
+
+### 保存配置参数 { #capture_app_andoid_settings_webapp_save_config }
+
+在所有设置部分的表单页脚中，管理员用户可以找到_保存_按钮。
+
+![](resources/images/capture-app-save_button.png)
+
+仅当管理员用户单击此按钮时，对当前部分所做的所有更改都会保存在数据存储中。当 Android Capture 应用程序同步其配置时，这些更改将应用于它们。
+
+**未保存的更改：**
+
+如果管理员用户想要在还有一些未保存的更改的情况下转到另一个部分，则会在离开当前部分之前显示警报。如果用户接受离开页面，则未保存的更改将丢失。
+
+![](resources/images/capture-app-unsaved-changes.png)
+
+#### 将所有值重置为默认值 { #capture_app_andoid_settings_webapp_reset_all }
+
+管理员用户可以随时还原设置。在所有设置部分的表单页脚中都有一个_将所有值重置为default_按钮。
+
+![](resources/images/capture-app-reset-default.png)
+
+默认值只会在数据存储上恢复并在单击_保存_后应用。
