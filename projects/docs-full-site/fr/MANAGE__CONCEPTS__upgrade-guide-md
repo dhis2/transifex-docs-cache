@@ -1,0 +1,242 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/new_install_docs/src/sysadmin/concepts/Upgrade-Guide.md"
+revision_date: '2024-12-05'
+tags:
+- Gestion
+---
+
+# Guide de mise à jour de DHIS2 { #dhis2-upgrade-guide } 
+
+## Introduction { #introduction } 
+
+Ce document est un guide complet qui décrit le processus de mise à niveau de DHIS2. Il est conçu pour faciliter la transition d'une version à l'autre en décomposant le processus de mise à jour en actions gérables. En outre, il fournit des détails sur des aspects cruciaux tels que les sauvegardes, afin de s'assurer qu'aucune étape essentielle n'est négligée.
+
+Bien que la mise à niveau de DHIS2 puisse sembler simple, il s'agit en réalité d'un processus complexe qui nécessite une planification et une exécution minutieuses. Bien que des outils d'automatisation comme `apt` puissent rationaliser certaines parties de la mise à jour, la gestion des dépendances et la résolution des problèmes restent en définitive la responsabilité de l'utilisateur. Par conséquent, il est impératif d'anticiper et de se préparer à des défis potentiels au cours du processus de mise à jour.
+
+La nature manuelle de l'installation et de la mise à jour de DHIS2 souligne l'importance de disposer d'une stratégie bien définie. Une préparation minutieuse et une planification stratégique sont essentielles pour augmenter les chances de réussite de la mise à jour. Il s'agit notamment d'identifier les risques potentiels et d'élaborer des stratégies pour les atténuer efficacement. En suivant ce guide général et en mettant en œuvre les meilleures pratiques, les organisations peuvent minimiser les perturbations et assurer une transition fluide vers la dernière version de DHIS2.
+
+### À qui est destiné ce document ? { #who-is-this-document-for } 
+
+- Ce document est principalement destiné aux administrateurs système et à toute personne gérant une instance DHIS2 obsolète et qui envisage une mise à jour.
+- Bien que DHIS2 soit une application libre que tout le monde peut installer et déployer, les mises à jour nécessitent des compétences de base de Linux. Les administrateurs système sont généralement responsables de la maintenance du serveur et de l'application et dirigent habituellement le processus de mise à jour. Le présent document constitue un guide de haut niveau pour aider à planifier efficacement les mises à jour, tout en reconnaissant que le processus de mise à jour reste manuel malgré les nouvelles versions régulières de DHIS2.
+
+### Pourquoi avons-nous besoin d'une mise à jour ? { #why-do-we-need-to-upgrade } 
+
+Des mises à jour régulières du logiciel sont essentielles, d'autant plus que seules trois versions majeures de DHIS2 sont activement prises en charge. Les principales raisons pour lesquelles une mise à jour s'impose sont les suivantes : 
+
+- Maintenir la prise en charge de votre version de DHIS2
+- Recevoir les derniers patchs et mises à jour de sécurité
+- Bénéficier de corrections de bugs et d'améliorations des performances
+- Accéder aux nouvelles fonctionnalités
+- Respecter les dépendances requises
+
+La mise à niveau de DHIS2 est une tâche pratique qui nécessite une planification minutieuse et une bonne compréhension des dépendances. Bien que la mise à niveau vers la dernière version puisse sembler attrayante, les nouvelles versions peuvent parfois introduire des régressions ou des ruptures. C'est pourquoi il est important d'élaborer un plan de mise à jour complet.
+
+### Types de mise à jour { #types-of-upgrade } 
+
+Les mises à jour de DHIS2 englobent divers composants, car il ne s'agit pas d'un logiciel autonome. Le système dépend de plusieurs composants tels que Java, Tomcat, PostgreSQL et le système d'exploitation. Voici les principaux types de mises à jour :
+
+1. **Mise à jour du système d'exploitation**:
+    - Mettez d'abord à jour le système d'exploitation, en veillant à ce que DHIS2 reste inchangé au cours de ce processus.
+    - Vérifier la stabilité du système.
+    - Procéder à la mise à jour de l'application.
+
+2. **Mise à jour de la base de données**:
+    - Les systèmes de base de données tels que PostgreSQL ont des cycles de vie spécifiques, ne supportant généralement que les cinq dernières versions majeures.
+    - Les mises à jour de PostgreSQL via les gestionnaires de package sont généralement simples mais peuvent entraîner des changements affectant les fonctionnalités de DHIS2.
+
+3. **Mise à jour des dépendances** :
+    - Les composants logiciels qui les supportent nécessitent des mises à jour régulières pour des raisons de sécurité et de compatibilité. Sur les systèmes Linux, les gestionnaires de package comme `apt` et `yum` peuvent aider à gérer ces mises à jour. Vérifiez toujours les exigences en matière de dépendances avant de procéder aux mises à jour.
+
+4. **Mise à jour de l'application DHIS2** :
+    - **Mise à jour majeure** : Elle implique des changements importants entre les versions (par exemple, de 2.38 à 2.39, ou de v41 à v42), y compris des changements dans le schéma de la base de données et de nouvelles fonctionnalités.
+    - **Mise à jour mineure** : Elle comprend des améliorations incrémentales et des corrections de bogues avec un risque minimal.
+    - **Hot-fix** : Il résout les problèmes critiques et peut être appliqué en toute sécurité aux systèmes utilisant la mise à jour précédente du correctif.
+
+> **Remarque**
+>
+> La documentation récente de DHIS2 a remplacé le préfixe `2.` par `v` (version). Le format de la version est le suivant :
+> `<major>.<patch>.<hotfix>`
+> *Cela correspond au versionnage sémantique traditionnel (`<major>.<minor>.<patch>`)*
+
+### Élaboration d'un plan de mise à jour { #developing-an-upgrade-plan } 
+
+Bien que ce guide propose des étapes de mise à jour complètes, vous devez l'adapter à vos besoins spécifiques. Avant de commencer, visualisez et documentez l'ensemble de votre processus de mise à jour - cela deviendra votre plan de mise à jour. Bien que ce guide vise à couvrir toutes les exigences en matière de mise à jour, des configurations différentes exigent des approches différentes. Par exemple, il se peut que vous exécutiez DHIS2 sous Windows ou que votre base de données soit très obsolète et doive d'abord être mise à jour. Passez en revue les notes de mise à jour en gardant à l'esprit leur caractère général.
+
+Lorsque vous commencez la mise à jour proprement dite, élaborez un plan spécifique adapté à votre situation. La planification est essentielle à la réussite, car elle permet de diviser une tâche importante en petites tâches faciles à gérer. Cette perspective claire facilite grandement l'accomplissement des tâches individuelles.
+
+#### Champ d'application de la mise à jour { #scope-of-the-upgrade } 
+
+Il est à noter que la mise à jour ne concerne pas uniquement le système DHIS2. Le système d'exploitation de base, la base de données PostgreSQL et d'autres dépendances nécessitent également des mises à jour. Une bonne compréhension de l'étendue de la mise à jour est essentielle pour la réussite de l'opération.
+
+#### Examiner les notes de version et de mise à jour { #review-release-and-upgrade-notes } 
+
+Recueillir les informations nécessaires dans les notes de version et de mise à jour, car elles contiennent des précautions importantes à prendre avant de poursuivre. Il est important de comprendre les exigences, en particulier en ce qui concerne les dépendances et les exigences relatives à la version du logiciel.
+
+#### Besoins en ressources matérielles{ #hardware-resource-requirements } 
+
+Avant de procéder à la mise à jour, vous devez allouer un budget pour les ressources de test nécessaires. Il est essentiel de tester votre processus de mise à jour avant de le mettre en œuvre dans la production. Votre infrastructure doit disposer des éléments suivants : 
+
+- Une bonne connexion internet : Pour les environnements distribués, les connexions doivent fonctionner sur des liens de 1Gbps.
+- Stockage de haute performance : La base de données PostgreSQL de DHIS2 est consommatrice d'E/S et nécessite des disques rapides, de préférence des disques SSD.
+
+#### Calendrier de mise à jour { #upgrade-schedule } 
+
+- **Moment idéal:** Vendredi ou lundi ?
+    - S'assurer que tout le personnel requis est disponible.
+    - Se conformer au calendrier de publication de versions de DHIS2.
+
+- **Planification et programmation** :
+    - Délais : Planifiez les tâches avec des délais clairs.
+    - Faisabilité : Veiller à ce que le plan soit réaliste, en tenant compte des ressources, des contraintes et des défis.
+
+- **Coordination de l'équipe** :
+    - Rôles et responsabilités : Comprendre qui est responsable de quoi.
+    - Processus de collaboration : Connaître son équipe.
+
+- ** Suivi et évaluation en continu** :
+    - Flexibilité : Réviser régulièrement le plan et l'adapter au besoin.
+
+- **Planification des ressources** :
+    - Environnement de test : Planifier les besoins en ressources pour le banc d'essai.
+    - Formation : Prévoir une phase de formation pour l'équipe.
+    - Phase de transition : Moment optimal (par exemple, le lundi matin ou le vendredi soir) et envisager une compensation pour le travail de fin de semaine.
+
+- **Gestion des risques et plans d'urgence** :
+    - Gestion des risques : Identifier et atténuer les risques potentiels.
+    - Sauvegardes : Prévoyez des sauvegardes avec un stockage adéquat, y compris des sauvegardes hors site.
+
+- **Points d'action** :
+  - Décomposition détaillée : Décomposer le plan en étapes réalisables.
+
+- **Activités post-mise à jour** :
+    - Post-mise à jour : planifier les activités post-mise à jour telles que la surveillance du système, l'évaluation des performances et la résolution d'éventuels problèmes : 
+
+### Qui doit être impliqué { #who-needs-to-be-involved } 
+
+- Les **Administrateurs système** - Ils sont chargés de la gestion des serveurs, des mises à jour et des tâches liées aux serveurs.
+- Les **Utilisateurs de DHIS2** - Il peut s'agir de développeurs/d'implémenteurs, de ceux qui saisissent les données et de ceux qui utilisent les rapports générés.
+- L' **Équipe réseau** - Dans certaines organisations, une équipe réseau distincte et autonome peut être nécessaire pour aider à la configuration et à la sécurisation du réseau, y compris la configuration des pare-feux.
+- L' **Équipe infrastructure** - Elle est chargée de créer des ressources virtuelles (par exemple, des machines virtuelles, des pools de stockage). Elle fournit généralement l'environnement de test requis.
+- **Administrateur DNS**
+- **Parties prenantes/Gestion** :
+    - Les propriétaires de systèmes (par exemple, les entités gouvernementales)
+    - Les bailleurs de fonds
+    - Les gestionnaires
+
+### Post - mis à jour { #post-upgrade } 
+
+- Mettre en place des canaux d'essai et de retour d'information.
+- Mettre en œuvre le système de suivi et d'évaluation
+- Effectuer les optimisations nécessaires.
+- Configurer les procédures de sauvegarde.
+
+## Considérations détaillées { #detailed-considerations } 
+
+### Les sauvegardes { #backups } 
+
+Il est essentiel de conserver des sauvegardes complètes pour se remettre d'éventuels problèmes de mise à jour. De nombreux problèmes peuvent survenir au cours du processus, ce qui rend les sauvegardes essentielles. Si le système ne fonctionne pas comme prévu après une mise à jour, la restauration à partir des sauvegardes est souvent la meilleure solution.
+
+L'idéal est de disposer d'un snapshot complet du système. Toutefois, si cela n'est pas possible, une sauvegarde de la base de données suffit. Les données ont une valeur immense, et il est essentiel de maintenir des sauvegardes régulières de la base de données, à la fois pendant les mises à niveau et en tant que pratique standard pour assurer la continuité des données.
+
+Il existe plusieurs méthodes de sauvegarde des bases de données, l'utilitaire `pg_dump` est l'un des plus couramment utilisés.
+
+#### Types de sauvegardes { #types-of-backups } 
+
+- Sauvegarde complète du système d'exploitation, snapshot
+- Sauvegarde de la base de données
+- Sauvegardes locales
+- Sauvegardes à distance
+- Sauvegarde du cloud
+- Sauvegarde de l'application
+
+#### Que devez-vous sauvegarder ? { #what-do-you-need-to-backup } 
+
+- Les bases de données
+- Le stockage de fichiers de DHIS2
+- Fichier `dhis.conf` (parfois il contient les mots de passe de cryptage de la base de données)
+- Les fichiers statiques de l'application (par exemple, les logos personnalisés)
+- le fichier `dhis2.war` (surtout s'il est personnalisé)
+- Prendre des notes de sauvegarde (par exemple, informations sur la version de DHIS2, version de PostgreSQL, version du proxy)
+
+#### Conseils de sauvegarde : { #backup-tips } 
+
+- Assurez-vous d'avoir suffisamment d'espace sur le disque pour stocker les sauvegardes locales (`df -h` vous permet de vérifier l'espace disponible sur le disque).
+- Assurer un emplacement distant pour le stockage des sauvegardes ( endpoint de stockage d'objets, NAS, serveur de sauvegarde).
+- Envisagez des sauvegardes par version pour restaurer un point précis dans le temps.
+- Crypter les sauvegardes pour sécuriser vos données, en particulier les informations sensibles.
+- Documenter les procédures de restauration et les conserver dans un endroit accessible.
+- Utiliser des solutions de sauvegarde basées sur le cloud pour assurer l'évolutivité, la redondance et la facilité d'accès.
+- Si cela est pris en charge, utilisez des sauvegardes instantanées pour créer des copies ponctuelles de vos données et de vos systèmes.
+- Compresser les sauvegardes pour réduire les besoins en stockage et accélérer les processus.
+
+#### Conseils de restauration : { #restore-tips } 
+
+- Testez régulièrement la restauration des sauvegardes, notez le temps de restauration et assurez-vous de leur fonctionnalité.
+- Valider l'intégrité et la fonctionnalité des données et des applications après la restauration.
+
+### Évaluation des besoins en serveurs pour la mise à jour { #assessing-server-requirements-for-upgrade } 
+
+Les besoins en serveurs sont généralement influencés par des facteurs tels que la taille de la base de données, la croissance prévue et le nombre d'utilisateurs attendus. Une surveillance régulière de l'utilisation des ressources à l'aide d'outils tels que Zabbix et Munin permet de mieux comprendre les besoins d'évolution. Les serveurs déployés dans le nuage offrent une extensibilité aisée.
+
+- **RAM:** Au moins 4 Go pour une petite instance, 12 Go pour une instance moyenne, 64 Go ou plus pour une grande instance.
+- **Cœurs de CPU:** 4 cœurs de CPU pour une petite instance, 8 cœurs de CPU ou plus pour les instances moyennes et grandes.
+- **Disque:** Il est recommandé d'utiliser un disque SSD avec une vitesse de lecture minimale de 150 Mb/s, 200 Mb/s est une bonne chose, et 350 Mb/s ou plus est idéal. Il est recommandé de disposer d'au moins 100 Go d'espace disque, mais les besoins réels dépendent de la quantité de données. Les tables analytiques nécessitent un espace disque important. Planifiez et assurez-vous que votre serveur peut être mis à niveau avec plus d'espace disque.
+
+### Exigences du logiciel pour la nouvelle version { #software-requirements-for-the-new-version } 
+
+Les versions plus récentes de DHIS2 nécessitent les versions de logiciel suivantes :
+1. Un système d'exploitation compatible avec Java JDK ou JRE version 8 ou 11. Linux est recommandé.
+2. Java JDK (OpenJDK est recommandé).
+    - DHIS 2 version 2.38 et plus: JDK 11 est requis.
+    - DHIS 2 version 2.35 et plus: JDK 11 est recommandé; JDK 8 ou plus est requis.
+    - Les versions DHIS 2 antérieures à 2.35: JDK 8 est requis.
+    - DHIS 2 version 2.41 et plus: JDK 17 est requis.
+3. Base de données PostgreSQL version 9.6 ou plus. La version 13 est recommandée.
+4. Extension de base de données PostGIS version 2.2 ou plus.
+5. Conteneur de servlet Tomcat version 8.5.50 ou plus, ou tout conteneur compatible avec l'API Servlet 3.1.
+
+### Que se passe-t-il si vous devez également mettre à jour d'autres composants tels que le système d'exploitation et la base de données ? { #what-if-you-also-need-to-upgrade-other-components-like-the-os-and-database } 
+
+Si vous devez mettre à jour le système d'exploitation de base et d'autres composants, l'approche recommandée consiste à configurer un nouvel environnement avec la version du système d'exploitation et les bases de données requises.
+
+### Comment évaluez-vous les métadonnées existantes ? { #how-do-you-assess-the-existing-metadata } 
+
+Une cause fréquente de l'échec d'une mise à jour est la présence d'anomalies dans les métadonnées existantes qui peuvent être « acceptables » dans la version actuelle, mais qui provoquent des erreurs dans la nouvelle version. Il est donc utile de profiter d'une mise à jour pour nettoyer vos métadonnées et éviter les problèmes.
+
+- Exécutez les scripts d'évaluation des métadonnées sur l'instance de test (avant la mise à jour) : [[Évaluation des métadonnées](https://github.com/dhis2/metadata-assessment).
+- Corrigez autant d'erreurs que possible.
+
+### Comment procéder à un test ?  { #how-do-you-test } 
+
+- Établissez une liste de contrôle.
+- Impliquer les utilisateurs dans le processus de test.
+- Identifier les erreurs dans les fichiers des journaux.
+- Évaluer les performances avant et après la mise à jour.
+
+## Mise à jour de DHIS2 (Version abrégée) { #upgrading-dhis2-short-version } 
+
+| Étape  | Tâche | Description | Statut |
+|---|-----|--------|---|
+| 1  | Premiers pas | Identification de tous les systèmes nationaux et des applications personnalisées critiques, versions pour les différentes instances : <br><br>- Applications personnalisées <br>- Versions des logiciels (Java, Tomcat, DHIS2, PostgreSQL, proxy nginx/apache2, etc.) <br>- Ressources - Tester la disponibilité du serveur <br>- Portée - Inclut-elle le système d'exploitation et la base de données ? | En attente <br>- En cours <br>- Terminé |
+| 2  | Système de sauvegarde actuel | Identifier l'environnement de sauvegarde et les spécifications requises. Effectuer des sauvegardes pour au moins les éléments suivants : <br><br>- Base de données DHIS2 <br>- Fichiers de configuration <br>- Applications personnalisées <br>- Intégrations externes <br><br>- Documentation de sauvegarde <br>- Noter le temps nécessaire pour les sauvegardes. | - En attente <br>- En cours <br>- Terminé |
+| 3  | Examiner les notes de version de DHIS2 | Examinez les notes de publication de la nouvelle version pour comprendre : <br><br>- les nouvelles fonctionnalités <br>- les corrections <br>- les modifications susceptibles d'entraîner des ruptures. | |
+| 4  | Mise en place d'un environnement de simulation | Répliquer la configuration de production dans un environnement. Créez des cas de test et testez l'environnement sur la configuration de simulation : <br><br>- Conserver les versions telles qu'elles sont sur la prod <br>- Restaurer la base de données prod ; noter l'heure de la restauration <br>-S'assurer que la simulation fonctionne comme prévu | |
+| 5  | Tester la mise à jour dans la simulation  | Exécuter la mise à jour dans un environnement d'essai pour identifier et résoudre les problèmes ou les conflits avant de la mettre en œuvre dans la production : <br><br>- Impliquer les utilisateurs pendant les tests <br>- Effectuer le nettoyage des métadonnées à l'aide de l'outil [ici] (https://github.com/dhis2/metadata-assessment) <br>- Mettre en œuvre les cas de test créés <br>- Valider les applications et les fonctionnalités <br>- Résoudre les problèmes identifiés. | |
+| 6  | Notifier les parties prenantes | Informer tous les utilisateurs de DHIS2 de la mise à jour prévue et de la durée d'indisponibilité attendue afin de les y préparer. | |
+| 7  | Créer un plan de restauration | Sauvegarder l'instance DHIS2 (application et base de données) comme stratégie de restauration en cas de problème pendant la mise à jour. | |
+| 8  | Mettre à jour la Production | Une fois satisfaits des tests de simulation, procédez à la mise à jour du système de production. | |
+| 9  | Tests après la mise à jour | Tester les principales fonctions dans l'environnement de production pour s'assurer que tout fonctionne correctement. | |
+| 10 | Surveiller le Système | Surveillez en permanence les performances du système et les journaux afin de détecter rapidement tout problème inattendu. | |
+| 11 | Documenter le Processus | Documenter le processus de mise à jour, les difficultés rencontrées, les solutions utilisées et les enseignements tirés pour référence ultérieure. | |
+| 12 | Recueillir les commentaires des utilisateurs | Recueillir les commentaires des utilisateurs de DHIS2 sur les performances et les fonctionnalités de la nouvelle version, ainsi que sur les éventuels problèmes qu'ils rencontrent après la mise à jour. | |
+
+## Le calendrier des mises à jour (exemple) { #the-upgrade-calendar-example } 
+
+| Mois | Activité | Implication des ressources |
+|---|---|---|
+| Avril (pré-version) | Évaluation et nettoyage des métadonnées <br>Lancement des tests, possibilité de participer au programme de test bêta | Ressources humaines pour le nettoyage des métadonnées<br>Ressources serveur pour les tests<br>Ressources administrateur système pour l'installation<br>Ressources pour les tests |
+| Mai (nouvelle version) | Publication du test<br>Commencer à planifier la formation, la formation des formateurs, le matériel en ligne, etc. | Ressources serveur pour les tests<br>Ressources humaines pour la préparation de la formation et la formation des formateurs |
+| Juin | Formation | Ressources de l'administrateur système pour l'installation<br>Ressources du serveur pour la formation<br>Organisation d'événements de formation physiques ou virtuels |
+| Juillet | Mettre à jour la Production | Ressources destinées à l'administrateur système pour l'installation |
+
