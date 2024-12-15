@@ -1,0 +1,196 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/new_install_docs/src/sysadmin/how-to/tomcat-clustering.md"
+revision_date: '2024-11-01'
+tags:
+- 管理
+---
+
+# Web服务器群集配置 { #install_web_server_cluster_configuration } 
+
+本节介绍如何设置DHIS 2应用程序以在
+簇。
+
+# 群集概述 { #install_cluster_configuration_introduction } 
+
+集群是提高系统可扩展性和可用性的常用技术。
+可用性的常用技术。集群是指设置多个网络服务器，如
+Tomcat 实例，让它们为一个应用程序服务。集群
+可以*扩展*应用程序，即可以添加新的服务器来提高性能。
+以提高性能。它还允许*高
+可用性*，因为系统可以容忍实例宕机，而不会
+使用户无法访问系统。
+
+有一些方面需要配置才能运行DHIS 2
+在集群中。
+
+* 必须安装Redis数据存储，并且必须提供连接信息
+在`dhis2.conf`中为每个 DHIS 2 应用实例提供。
+
+* DHIS 2 实例和服务器必须共享同一 *files* 文件夹。 
+应用程序和文件上传，通过* AWS S3云文件存储*选项
+或共享的网络驱动器。
+
+* 必须启用 DHIS 2 实例缓存失效。
+
+* 应配置负载平衡器（如 nginx）来分发网络请求
+跨集群实例。
+
+## 使用 Redis 取消 DHIS 2 实例缓存{ #install_cluster_cache_invalidation_redis }
+
+DHIS 2 可以通过监听从 Redis 服务器发送和发出的事件（如果配置了这样的功能）来使各种实例的缓存失效。
+
+如果已计划使用 [Redis for
+共享数据存储集群配置](#install_cluster_configuration_redis)，它将同时共享这台 Redis 服务器。
+
+### 先决条件{ #prerequisites } 
+
+* [ 安装 ](https://docs.kipkurgat.com/server-admin/how-to-guides/installing-redis.html) Redis 服务器
+
+### Redis 配置{ #redis-configuration } 
+
+DHIS 2 缓存失效不需要在 Redis 中进行特定配置。
+
+选择启用 Redis 共享数据存储集群配置时，将与缓存失效系统共享 Redis 主机/端口配置。
+配置。换句话说，你只能配置**一**个共享 Redis 服务器。
+
+### DHIS 2 配置{ #dhis-2-configuration } 
+
+必须在 DHIS 2 `dhis.conf` 配置文件中指定以下属性：
+
+```属性
+# 缓存失效配置
+
+redis.cache.invalidation.enabled = on
+
+# 共享 Redis 配置
+redis.host = REDIS_HOST
+redis.port = REDIS_PORT
+redis.password = PASSWORD（可选，仅在 Redis 服务器上启用时有效）
+redis.use.ssl = true（可选，仅在 Redis 服务器上启用时有效） 
+```
+
+## Redis共享数据存储集群配置 { #install_cluster_configuration_redis } 
+
+在集群设置中，需要一个 Redis 服务器，它将处理
+共享用户会话、应用程序缓存和集群节点领导。
+
+为获得最佳性能，需要在 Redis 服务器中启用*Redis Keyspace 事件*的 _generic commands_。 
+和 _expired events_ 需要在 Redis 服务器中启用。如果您 
+使用云平台管理的 Redis 服务器（如 *AWS ElastiCache for Redis***  
+或 *Azure Cache for Redis*），则必须使用相应的云控制台界面启用密钥空间事件通知。 
+启用密钥空间事件通知。如果您设置的是独立的 
+Redis 服务器，则可在 
+redis.conf文件中添加或取消注释以下一行：
+
+```
+notify-keyspace-events Egx
+```
+
+如果将 `dhis.conf` 中的 *redis.enabled* 配置属性设置为 *on* ，DHIS2 就会连接 Redis。
+
+- * redis.host *：指定Redis服务器在何处运行。默认为* localhost *。必选
+
+- * redis.port *：指定Redis服务器正在侦听的端口。默认为* 6379 *。可选的。
+
+- * redis.password *：指定身份验证密码。如果不需要密码，可以将其留空。
+
+- * redis.use.ssl *：指定Redis服务器是否启用了SSL。默认为false。可选的。默认为* false *。
+
+启用 Redis 后，DHIS2 会自动指定其中一个运行中的
+运行实例作为群集的领导者。领导实例将
+用于执行应由一个实例专门运行的作业或计划任务。
+的工作或计划任务。您可以选择配置
+`dhis.conf`中的*leader.time.to.live.minutes*属性，以设置领导者选举的频率。
+领导者选举的频率。它还提供了
+还可显示在前一个领导者退出后，另一个实例
+接任领导者所需的时间。默认值为
+默认值为 2 分钟。请注意，只有在启用 Redis
+只有在启用 Redis 时才会进行。配置文件 `dhis.conf` 的示例片段
+配置文件的示例片段。
+配置的示例代码段如下。
+
+```属性
+# Redis 配置
+
+redis.enabled = on
+
+# 共享 Redis 配置
+redis.host = REDIS_HOST
+redis.port = REDIS_PORT
+redis.password = PASSWORD（可选，仅在 Redis 服务器上启用时有效）
+redis.use.ssl = true（可选，仅在 Redis 服务器上启用时有效）
+
+# 可选，默认为 2 分钟
+leader.time.to.live.minutes=4 
+```
+
+### 文件文件夹配置 { #files-folder-configuration } 
+
+DHIS 2将在应用程序本身之外存储几种类型的文件，
+例如应用程序，保存在数据输入中的文件和用户头像。部署时
+在群集中，这些文件的位置必须在所有实例之间共享。
+在本地文件系统上，位置为：
+
+```
+{DHIS2_HOME} /文件
+```
+
+这里，`DHIS2_HOME `指的是 DHIS 2 配置文件的位置，由 DHIS 2 环境变量指定。
+ 而 `files` 则是紧随其后的文件文件夹。
+
+有两种方法可以实现共享位置：
+
+* 使用* AWS S3云文件存储*选项。文件将存储在
+S3存储桶，由群集中的所有DHIS 2实例自动共享。
+请参阅*文件存储配置*部分以获取指导。
+* 设置一个在所有DHIS 2实例之间共享的共享文件夹，并且
+集群中的服务器。在Linux上，可以使用* NFS *（网络文件系统）来实现
+这是一个分布式文件系统协议。注意只有`files`
+在 `DHIS2_HOME` 下的子文件夹应该被共享，而不是父文件夹。 
+
+## 负载均衡器配置 { #install_load_balancing } 
+
+设置了Tomcat实例集群，这是路由的常用方法
+传入Web请求到参与
+集群正在使用*负载均衡器*。负载均衡器将确保
+负载在群集实例之间平均分配。它也会
+检测实例是否不可用，如果是，则停止例程
+对该实例的请求，而是使用其他可用实例。
+
+负载平衡可以通过多种方式实现。一个简单的方法是
+使用* nginx *，在这种情况下，您将定义一个* upstream *元素，
+枚举后端实例的位置，以后再使用
+* proxy *位置块中的元素。
+
+```text
+http {
+
+  # Upstream element with sticky sessions
+
+  upstream dhis_cluster {
+    ip_hash;
+    server 193.157.199.131:8080;
+    server 193.157.199.132:8080;
+  }
+
+  # Proxy pass to backend servers in cluster
+
+  server {
+    listen 80;
+
+    location / {
+      proxy_pass   http://dhis_cluster/;
+    }
+  }
+}
+```
+
+DHIS 2在一定程度上将用户会话的服务器端状态保持不变。
+使用“粘性会话”是避免复制
+服务器会话状态，方法是将请求从同一客户端路由到
+同一台服务器。上游元素中的* ip \ _hash *指令可确保
+这个。
+
+请注意，为简洁起见，已省略了几条说明
+上面的例子。请查阅反向代理部分以获取详细指南。
+
