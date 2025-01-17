@@ -1,0 +1,319 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/new_install_docs/src/sysadmin/getting-started/linux-manual-install.md"
+revision_date: '2024-11-22'
+tags:
+- Gestion
+---
+
+# Installation manuelle sur un serveur Ubuntu { #getting_started_linux_manual_install } 
+## Introduction { #install_server_setup } 
+Ce guide explique comment installer manuellement DHIS2 sur Ubuntu 22.04
+avec PostgreSQL et Tomcat comme serveur. Il suggère également
+d'utiliser un proxy (comme nginx ou Apache) et des outils de surveillance (comme Munin ou
+Zabbix) pour améliorer les performances. Bien que tous les composants puissent être hébergés
+séparément, ce guide est axé sur une configuration simple, à serveur unique.
+
+Ce guide est principalement destiné à servir de référence pour les pratiques générales 
+d'installation. Les étapes de l'installation peuvent varier en fonction de facteurs tels que le système d'exploitation, 
+le choix de la base de données et d'autres configurations. Il est donc fortement 
+recommandé d'automatiser l'installation, et pour les configurations de 
+production, de se référer à [ Installation automatisée sur Ubuntu] (#getting_started_linux_automated_install).
+
+Pour des performances optimales, il est recommandé d'allouer à la base de données PostgreSQL 
+plus de la moitié de la RAM disponible, l'autre moitié étant partagée entre 
+vos instances dhis2 et certains systèmes d'exploitation. Les étapes marquées comme
+*optionnelles*, comme l'étape de réglage des performances, peuvent être effectuées ultérieurement.
+
+Ici, le terme `invoquer` fait référence à l'exécution d'une commande directement dans le terminal.
+
+## Prérequis { #prerequisites } 
+* Serveur fonctionnant sous Ubuntu 22.04
+* Accès SSH avec un utilisateur `non root` avec les privilèges `sudo`.
+
+## Création d'un utilisateur pour faire fonctionner DHIS2 { #install_creating_user }
+DHIS2 sur Tomcat ne doit jamais être exécuté en tant qu'utilisateur `principal`. Créez plutôt un
+utilisateur standard et utilisez-le pour exécuter l'instance Tomcat afin d'améliorer la sécurité.,
+
+> **Important**
+>
+> Vous ne devez pas opérer le serveur DHIS2 en tant qu'utilisateur privilégié, par exemple super-utilisateur.
+
+* Créer un utilisateur système dhis2 
+   ```sh
+   sudo useradd -d /home/dhis -m dhis -s /bin/false
+   ```
+
+* Définir le mot de passe de l'utilisateur créé
+   ```sh
+   sudo passwd dhis
+   ```
+   Créez un mot de passe sécurisé comportant au moins 15 caractères aléatoires.
+
+## Création du répertoire de configuration { #install_creating_config_directory }
+* Créer un répertoire de configuration pour l'instance DHIS2. Ce répertoire sera également
+  utilisé pour les applications, les fichiers et les fichiers journaux. 
+   ```sh
+   sudo -u dhis mkdir /home/dhis/config
+   ```
+* DHIS2 recherchera une variable d'environnement appelée `DHIS2_HOME` pour localiser le 
+  répertoire de configuration de DHIS2. Ce répertoire sera appelé
+  `DHIS2_HOME` dans ce guide d'installation. Nous définirons la variable d'environnement 
+  dans une étape ultérieure du processus d'installation.
+* Si aucune variable d'environnement `DHIS2_HOME` n'est trouvée, le fichier de configuration 
+  par défaut `/opt/dhis2` est utilisé.
+
+## Définition du fuseau horaire et de l'emplacement du serveur  { #install_setting_server_tz } 
+* Il peut être nécessaire de reconfigurer le fuseau horaire du serveur pour qu'il corresponde 
+  au fuseau horaire de l'endroit que couvrira le serveur DHIS2. Si vous 
+  utilisez un serveur privé virtuel, le fuseau horaire par défaut peut ne pas correspondre au 
+  fuseau horaire de votre site DHIS2. Vous pouvez facilement reconfigurer le fuseau horaire 
+  en invoquant la commande ci-dessous et en suivant les instructions.
+   ```sh
+   sudo dpkg-reconfigure tzdata
+   ```
+
+* PostgreSQL est sensible aux langues, il est donc possible que vous ayez à installer votre langue 
+  en premier. Pour vérifier les langues existantes et en installer de nouvelles (par exemple, Anglais US) :
+   ```sh
+   locale -a
+   sudo locale-gen en_US.utf8
+   ```
+
+## Installation de PostgreSQL { #install_postgresql_installation }
+
+Installer PostgreSQL en suivant les étapes ci-dessous
+
+*  Ajouter le référentiel PostgreSQL
+   ```
+   sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+   ```
+* Importer la clé de signature du référentiel PostgreSQL :
+   ```
+   curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc|sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+   ```
+* Mettre à jour les listes de package
+   ```
+   sudo apt update -y && sudo apt upgrade -y 
+   ```
+* Installer PostgreSQL 16
+   ```
+   sudo apt-get install -y postgresql-16 postgresql-16-postgis-3
+   ```
+
+*  S'assurer que postgresql est lancé et activé
+   ```
+   sudo systemctl start postgresql
+   sudo systemctl enable postgresql
+   ```
+
+* Créez un utilisateur de base de données non privilégié `dhis` avec la `commande` ci-dessous :
+   ```sh
+   sudo -u postgres createuser -SDRP dhis
+   ```
+   Saisissez un mot de passe sécurisé à la demande : <br>
+
+   > **Note**
+   >
+   > This database user and password will be used by your DHIS2 application to
+   > connect to the database. You will need to write down this user and password
+   > in the  `dhis.conf`  file at a later stage.
+
+*  Créez une base de données nommée `dhis` appartenant à l'utilisateur de base de données `dhis` en appelant :
+   ```sh
+   sudo -u postgres createdb -O dhis dhis;
+   ```
+* L'extension *PostGIS* est nécessaire au fonctionnement de plusieurs fonctions SIG/et de mapping.
+   DHIS2 tentera d'installer l'extension PostGIS au démarrage, mais cela 
+   ne fonctionnera pas car cet utilisateur n'est pas le superutilisateur. Pour ajouter des index trigrammes 
+   et les combiner avec des types de colonnes primitives, deux extensions doivent 
+   être créées dans la base de données pour DHIS 2 version 2.38 et ultérieures. Ces 
+   extensions font déjà partie de l'installation par défaut de posgresql : Puisque 
+   l'utilisateur de la base de données DHIS2 n'a pas la permission de créer des extensions, créez-
+   les à partir de la console en utilisant l'utilisateur `postgres` avec les commandes suivantes :
+   ```sh
+   sudo -u postgres psql -c "create extension postgis;" dhis
+   sudo -u postgres psql -c "create extension btree_gin;" dhis
+   sudo -u postgres psql -c "create extension pg_trgm;" dhis
+   ```
+   Vérifiez [PostgreSQL Performance Tuning](#install_postgresql_performance_tuning) pour les paramètres d'optimisation.
+<!-- Quittez la console et revenez à votre utilisateur précédent avec *\\q* suivi de -->
+<!-- *quitter*. -->
+## Installation de Java { #install_java_installation }
+---
+| Version de DHIS2 | JDK recommandé | JDK requis | Tomcat requis | 
+|:--------------|:---------------:|:------------:|:---------------:|  
+| 2.41          | 17              | 17           | 8.5.50
+| 2.40          | 17              | 11           | 8.5.50
+| 2.38          | 11              | 11           | 8.5.50
+| 2.35          | 11              | 8            |
+| pre 2.35      | 8               | 8            |
+
+Le JDK Java recommandé pour DHIS2 2.40 et les versions supérieures est OpenJDK 17, il est requis pour la version 2.41. 
+```
+sudo apt-get install -y openjdk-17-jdk
+```
+Le JDK Java recommandé pour DHIS2 2.35 - 2.40 est OpenJDK 11. Installez-le en exécutant la commande ci-dessous, 
+```
+sudo apt-get install -y openjdk-11-jdk
+```
+Pour les versions de dhis2 inférieures à 2.35, OpenJDK 8 est requis. Installez-le en exécutant la commande ci-dessous, 
+```
+sudo apt-get install -y openjdk-8-jdk
+```
+Vérifiez que votre installation est correcte en appelant :
+```
+java -version
+```
+
+## Configuration de DHIS2 { #install_database_configuration }
+
+Les informations de connexion à la base de données sont fournies à DHIS2 via 
+un fichier de configuration appelé `dhis.conf`. Créez ce fichier et sauvegardez-le dans 
+le répertoire `DHIS2_HOME`. À titre d'exemple, cet emplacement pourrait être:
+
+```sh
+sudo -u dhis touch /home/dhis/config/dhis.conf
+```
+
+Un fichier de configuration pour PostgreSQL correspondant à la configuration ci-dessus a les propriétés suivantes :
+
+Modifiez le fichier et ajoutez le contenu comme ci-dessous, 
+
+```
+sudo -u dhis vim /home/dhis/config/dhis.conf
+```
+
+```propriétés
+# ----------------------------------------------------------------------
+# Connexion à la base de données
+# ----------------------------------------------------------------------
+
+# Classe du pilote JDBC
+connection.driver_class = org.postgresql.Driver
+
+# URL de connexion à la base de données
+connection.url = jdbc:postgresql:dhis
+
+# Nom d'utilisateur de la base de données
+connection.username = dhis
+
+# Mot de passe de la base de données
+connection.password = xxxx
+```
+
+### Installation de Tomcat et DHIS2 { #install_tomcat_dhis2_installation }
+
+*  Pour installer le conteneur de servlets Tomcat, nous utiliserons l'utilisateur Tomcat
+   Installez-le à l'aide de la commande ci-dessous,
+   ```
+   sudo apt-get install -y tomcat9-user
+   ```
+   Ce package permet de créer une nouvelle instance Tomcat. L'instance sera 
+   créée dans le répertoire courant. Un emplacement approprié est le répertoire 
+   personnel de l'utilisateur `dhis` :
+*  Utilisez la commande suivante pour créer une instance nommée `tomcat-dhis` dans le répertoire `/home/dhis/tomcat-dhis`.
+   ```
+   sudo tomcat9-instance-create /home/dhis/tomcat-dhis
+   sudo chown -R dhis:dhis /home/dhis/tomcat-dhis/
+   ```
+   > **Note** 
+   >
+   > `tomcat9-user` package allows for creating any number of DHIS2 instances if
+   > that is desired.
+
+*  Editez le fichier `/home/dhis/tomcat-dhis/bin/setenv.sh` et ajoutez les lignes suivantes
+   à la fin du fichier. 
+   `sudo -u dhis vim /home/dhis/tomcat-dhis/bin/setenv.sh`
+   ```
+   export JAVA_HOME='/usr/lib/jvm/java-11-openjdk-amd64/'
+   export JAVA_OPTS='-Xms4000m -Xmx7000m'
+   export DHIS2_HOME='/home/dhis/config'
+   ```
+      * `JAVA_HOME` définit l'emplacement de l'installation du JDK.
+      * `JAVA_OPTS` transmet les paramètres à la JVM.
+         * `-Xms` définit l'allocation initiale de mémoire à l'espace de mémoire du tas Java.
+         * `-Xmx` définit l'allocation maximale de mémoire à l'espace mémoire du tas Java. Cela doit refléter la quantité de mémoire que vous voulez allouer à l'application logicielle DHIS 2 sur votre serveur.
+      * `DHIS2_HOME` définit l'emplacement du fichier de configuration `dhis.conf` pour DHIS2.
+   Vérifiez que le chemin des binaires Java est correct car il peut varier d'un 
+   système à l'autre, par exemple sur les systèmes AMD vous pourriez voir 
+   `/java-11-openjdk-amd64`. Notez que vous devez adapter ces valeurs à votre 
+   environnement.
+
+* DHIS2 ne doit jamais être exécuté en tant qu'utilisateur privilégié. Après avoir modifié le 
+  fichier `setenv.sh`, modifiez le script `startup.sh` pour vérifier que le
+  script n'a pas été exécuté en tant que racine.
+  ```
+   sudo -u dhis vim  /home/dhis/tomcat-dhis/bin/startup.sh
+  ```
+  ```sh
+  #!/bin/sh
+  set -e
+
+  if [ "$(id -u)" -eq "0" ]; then
+    echo "This script must NOT be run as root" 1>&2
+    exit 1
+  fi
+
+  export CATALINA_BASE="/home/dhis/tomcat-dhis"
+  /usr/share/tomcat9/bin/startup.sh
+  echo "Tomcat started"
+  ```
+
+*  Le fichier de configuration de Tomcat est situé dans 
+   `/home/dhis/tomcat-dhis/conf/server.xml`. L'élément qui définit la 
+   connexion au DHIS est l'élément *Connecteur* avec le port 8080. Vous pouvez changer 
+   le numéro de port dans l'élément Connecteur pour un port désiré si nécessaire. 
+   L'attribut `relaxedQueryChars` (Requête assouplie) est nécessaire pour autoriser certains caractères dans
+     les URLs utilisées par l'interface DHIS2.
+   ```xml
+   <Connector port="8080" protocol="HTTP/1.1"
+     connectionTimeout="20000"
+     redirectPort="8443"
+     relaxedQueryChars="[]" />
+   ```
+
+*  L'étape suivante consiste à télécharger le fichier WAR DHIS2 et à le placer dans le
+   répertoire _webapps_ de Tomcat. Vous pouvez télécharger les fichiers WAR DHIS2 à partir de
+   l'emplacement suivant : 
+   ```sh
+   https://releases.dhis2.org/
+   ```
+   Exemple de téléchargement de la version 40.3.0 de dhis2
+   ```
+   wget -O dhis.war https://releases.dhis2.org/40/dhis2-stable-40.3.0.war
+   ```
+   Déplacez le fichier WAR dans le répertoire Tomcat `webapps`. Nous voulons appeler le 
+   fichier WAR `ROOT.war` afin de le rendre disponible à `localhost` (l'hôte local) directement 
+   sans chemin d'accès contextuel : Utilisation du fichier WAR téléchargé avec l'exemple wget ci-dessus : 
+
+   ```sh
+   sudo mv dhis.war /home/dhis/tomcat-dhis/webapps/ROOT.war
+   ```
+
+## Fonctionnement de DHIS2 { #install_running_dhis2 }
+
+*  Démarrez l'instance DHIS2 à l'aide de la commande ci-dessous,
+   ```sh
+   sudo -u dhis /home/dhis/tomcat-dhis/bin/startup.sh
+   ```
+
+> :bulb : **Important**
+> 
+> Le serveur DHIS2 ne doit jamais être exécuté en tant que super-utilisateur ou autre utilisateur privilégié.
+
+* Consulter les journaux en direct
+   ```
+   tail -f /home/dhis/tomcat-dhis/logs/catalina.out
+   ```
+
+* Arrêter l'instance dhis2
+   ```
+   sudo -u dhis /home/dhis/tomcat-dhis/bin/shutdown.sh
+   ```
+
+* Si le fichier WAR déployé dans le `webapps` est nommé ROOT.war, vous pouvez maintenant accéder à votre instance DHIS2 à l'URL suivante :
+
+    http://localhost:8080
+
+## Création d'un service de système pour gérer l'instance { #creating-systemd-service-to-manage-the-instance } 
+
