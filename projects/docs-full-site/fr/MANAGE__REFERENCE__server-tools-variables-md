@@ -1,0 +1,242 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-server-tools/blob/main/docs/Variables.md"
+revision_date: '2024-11-25'
+tags:
+- Gestion
+---
+
+# Variables des Outils du Serveur { #dhis2_server_tools_variables }
+Ansible utilise des variables pour gérer les écarts entre les systèmes. Dans dhis2-server-tools, 
+des variables spécifiques sont définies pour PostgreSQL, l'instance dhis2, le proxy et les systèmes de surveillance. Bien que vous 
+puissiez définir des variables à différents endroits comme les playbooks, les rôles, ou les fichiers d'hôtes, nous 
+les définissons principalement dans le fichier `dhis2-server-tools/deploy/inventory/hosts`, 
+créé à partir de `hosts.template.` Personnalisez ces variables pour qu'elles s'adaptent à votre environnement.
+
+Dans le fichier hosts de l'inventaire, les hôtes sont regroupés en [noms de_groupe], dans notre cas nous 
+avons les groupes `[bases de données]`,`[instances]`,`[web]` et `[surveillance]` Les variables qui ne sont pas affectées 
+à un groupe spécifique appartiennent au groupe `[ tous]`. Pour lier 
+des variables à un groupe particulier, placez-les sous `[ nom de_groupe:vars]`, par exemple, 
+`[instances:vars]`.  Si vous voulez qu'une variable s'applique à un hôte spécifique, ajoutez-la 
+à la ligne de l'hôte. Par exemple, pour ajouter `base de_données` et `version_de dhis2` à 
+l'hôte dhis dans le groupe `instances`, utilisez le format suivant :
+
+```
+[instances]
+dhis  ansible_host=172.19.2.11  database_host=postgres  dhis2_version=2.39 
+```
+Une autre option est de créer un fichier dans le répertoire `inventory/host_vars/` (invention/hôte vars/) 
+avec le même nom que l'hôte dans votre fichier `inventory/hosts` (invention/hôte). L'avantage de 
+cette approche est que vous pouvez crypter le fichier en utilisant `ansible-vault` (voute-ansible) pour plus de 
+sécurité. Toutes les variables que vous définissez dans le répertoire `host_vars` (variables d'hôtes) auront la 
+priorité sur celles du fichier `inventory/hosts` (invention/hôtes). 
+
+```
+touch inventory/host_vars/dhis
+vim inventory/host_vars/dhis
+```
+Ajouter les variables en utilisant la syntaxe `yaml` comme indiqué ci-dessous 
+
+```
+ansible_host: 172.19.2.11
+database_host: postgres
+dhis2_version: 2.39
+```
+
+## Voici la liste des paramètres de configuration disponibles et leurs valeurs par défaut { #heres-the-list-of-available-configuration-parameters-and-their-default-values } 
+### Variables générales { #dhis2_server_tools_general_variables } 
+---
+<table>
+  <tr>
+    <th style="text-align: left; vertical-align: top;">Variable</th>
+    <th style="text-align: left; vertical-align: top;">Commentaires</th>
+  </tr>
+  <tr>
+    <td style="vertical-align: top; text-align: left;"><code>fuseau horaire</code></td>
+    <td>lister tous les <code>fuseaux horaires</code> disponibles avec <code>timedatectl
+    liste des fuseaux horaires</code>  <br>Exemples</strong> <br>
+    <ul><li><code>Europe/Oslo</code>
+    </li><li><code>Afrique/Nairobi</code></li></ul></td>
+  </tr>
+
+  <tr>
+     <td style="vertical-align: top; text-align: left;"><code>connexion_ansible</code></td>
+    <td>Dépend de <a
+    href="./docs/Deployment-Architectures.md">l'architecture</a> que vous
+    adoptez, la valeur par défaut est <code>lxd</code> <br> <strong>Options</strong> <br>
+    <ul><li>lxd ← (par défaut), pour une architecture à serveur unique </li><li>ssh ←
+    Architecture de distribution</li></ul> </td>
+  </tr>
+<tr>
+     <td style="vertical-align: top; text-align: left;"><code>réseau_lxd</code></td>
+    <td>Vous définissez ici le réseau dans lequel vos serveurs seront créés, le réseau,
+    par défaut est <code>172.19.2.1/24</code> </td>
+  </tr>
+ <tr>
+<tr>
+     <td style="vertical-align: top; text-align: left;"><code>interface_pont_lxd</code></td>
+    <td>Le nom par défaut du pont lxd créé est <code>lxdbr1</code> </td>
+  </tr>
+ <tr>
+</table>
+
+### Variables de l'instance { #dhis2_server_tools_instance_variables }
+<table>
+ <tr>
+    <th style="text-align: left; vertical-align: top;">Variable</th>
+    <th style="text-align: left; vertical-align: top;">Commentaires</th>
+  </tr>
+  <tr>
+    <td style="vertical-align: top; text-align: left;"> <code>fqdn</code></td>
+    <td> Il s'agit du domaine utilisé pour accéder à l'application dhis2 <br>Strictement nécessaire pour que "Letsencrypt" fonctionne </td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top; text-align: left;"><code>créer_db</code></td>
+    <td> Whether the database should be created or not <br>Choices:</strong>
+    <br> <ul><li>Vrai  ← (par défaut) </li><li>Faux</li></ul> </td>
+  </tr>
+ <tr>
+    <td style="vertical-align: top; text-align: left;"><code>hébergeur_de la base de données</code></td>
+    <td> Hébergeur à utiliser comme serveur de base de données <br> Par Défaut=<code>postgres</code> </td>
+  </tr>
+<tr>
+    <td style="vertical-align: top; text-align: left;"><code>Fichier_dhis2_war</code></td>
+    <td> La source de votre fichier war dhis2, peut être distante ou disponible
+   localement sous forme de fichier  <br>Exemples</strong> <br>
+    <ul><li><code>"https://releases.dhis2.org/2.38/dhis2-stable-2.38.0.war"</code>
+    </li><li><code>/full/path/for/your/dhis2.war</code></li></ul> </td>
+  </tr>
+<tr>
+    <td style="vertical-align: top; text-align: left;"><code>Version_dhis2</code></td>
+    <td> Vous pouvez spécifier uniquement la version principale de dhis2 et il obtiendra sa
+    dernière version stable à partir de  <a href="
+    https://releases.dhis2.org">https://releases.dhis2.org</a>. <br>Si vous
+    avez défini à la fois <code> le fichier_dhis2_war </code>  et <code>la version_dhis2, </code>
+    c'est<code>le fichier_dhis2_war</code>  qui l'emporte,
+    <br>Exemples</strong> <br> <ul><li><code>2.39</code>
+    </li><li><code>2.38</code></li></ul> </td>
+ <tr>
+    <td style="vertical-align: top; text-align: left;"><code>heap_memory_size</code></td>
+    <td> Il s'agit de la taille de la mémoire aloué à la machine virtuelle Java,   <br>Exemple</strong> <br>
+    <code>heap_memory_size=2G </code> </td>
+  </tr> </tr>
+</table>
+
+### Les variables de PostgreSQL { #dhis2_server_tools_postgresql_variables }
+<table>
+ <tr>
+    <th style="text-align: left; vertical-align: top;">Variable</th>
+    <th style="text-align: left; vertical-align: top;">Commentaires</th>
+  </tr>
+<tr>
+    <td style="vertical-align: top; text-align: left;"><code>postgresql_version</code></td>
+    <td> Version de PostgreSQL à installer. Lors d'une nouvelle installation, la version par défaut est la suivante: `16` </td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top; text-align: left;"><code>pg_max_connections</code></td>
+    <td> Nombre maximum de connexions autorisées à la base de données </td>
+  </tr>
+   <tr>
+    <td style="vertical-align: top; text-align: left;"><code>pg_shared_buffers</code></td>
+    <td> Shared Buffers for postgresql,<br> recommended <code>0.25 x Available_RAM</code> for PostgreSQL </td>
+  </tr>
+   <tr>
+    <td style="vertical-align: top; text-align: left;"><code>pg_work_mem</code></td>
+    <td> Tampons partagés pour postgresql,  <br> Recommandé = <code>(0.25 x Available_RAM)/max_connections</code> </td>
+  </tr>
+   <tr>
+    <td style="vertical-align: top; text-align: left;"><code>pg_maintenance_work_mem</code></td>
+    <td> Autant que vous pouvez raisonnablement vous le permettre. Il aide à générer des index lors de la tâche de génération d'analyses. <br> </td>
+  </tr>
+   <tr>
+    <td style="vertical-align: top; text-align: left;"><code>pg_effective_cache_size</code></td>
+    <td> Approx <code>80% of (Available RAM - maintenance_work_mem - max_connections*work_mem)</code> </td>
+  </tr>
+</table>
+
+### Variables de proxy { #dhis2_server_tools_proxy_variables}
+<table>
+ <tr>
+    <th style="text-align: left; vertical-align: top;">Variable</th>
+    <th style="text-align: left; vertical-align: top;">Commentaires</th>
+  </tr>
+  <tr>
+    <td style="vertical-align: top; text-align: left;"><code>email</code></td>
+    <td>Strictement indispensable si vous utilisez Letsencrypt</td>
+  </tr>
+<tr>
+    <td style="vertical-align: top; text-align: left;"><code>proxy</code></td>
+    <td> Logiciel proxy de votre choix <br> <strong>Options</strong> <br>
+    <ul><li>nginx  ← (par défaut)</li><li>apache2</li></ul> </td>
+  </tr>
+ <tr>
+    <td style="vertical-align: top; text-align: left;"><code>SSL_TYPE</code></td>
+    <td> Ce paramètre permet de préciser si l'on souhaite utiliser 
+    <code>letsencrypt</code> ou votre propre <code>certificat</code>
+    customssl,<br> <strong>Options</strong> <br> <ul><li>letsencrypt ←
+    (par défaut)</li><li>customssl</li></ul> </td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top; text-align: left;"><code>munin_base_path</code></td>
+    <td> Chemin de base pour accéder à munin, par ex.:
+    https://domain.example.com/munin_base_path  defaults to <code>munin</code>
+    </td>
+</tr>
+<tr>
+    <td style="vertical-align: top; text-align: left;"><code>munin_users</code></td>
+    <td>Liste des utilisateurs autorisés à se connecter à munin, avec leurs mots de passe correspondants: 
+    Exemple: 
+   <pre>
+   <code>
+munin_users:
+  - nom: admin
+    mot de passe: admin_mot de passe
+  - nom: utilisateur2
+    mot de passe: utilisateur2_mot de passe
+  </code>
+  </pre>
+  Le nom d'utilisateur et le mot de passe par défaut sont respectivement admin et district. 
+ </tr>
+</table>
+
+
+### Variables relatives à la sauvegarde { #backup-related-variables } 
+Ces variables concernent le serveur de la base de données PostgreSQL et contiennent des informations 
+sensibles. Il est conseillé de les sécuriser en utilisant le cryptage ansible-vault. Vous 
+avez la possibilité de définir ces variables à différents endroits, mais il 
+est recommandé de les placer dans le fichier host du répertoire host_vars,
+comme indiqué ci-dessous :
+
+`dhis2-server-tools/deploy/inventory/host_vars/postgres`
+
+<table>
+  <tr>
+    <th style="text-align: left; vertical-align: top;">Variable</th>
+    <th style="text-align: left; vertical-align: top;">Commentaires</th>
+  </tr>
+  <tr>
+    <td style="vertical-align: top; text-align: left;"> <code>s3_access_key</code></td>
+    <td> Il s'agit d'un identifiant unique pour l'utilisateur du cloud ou l'entité programmatique
+    (comme une application) qui doit interagir avec le stockage d'objets.  </td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top; text-align: left;"> <code>s3_secret_key</code></td>
+    <td> Il s'agit d'une information secrète associée à la
+    clé d'accès. Elle est utilisée pour signer numériquement les demandes de stockage d'objets
+    et éventuellement d'autres services. Cette clé d'accès secrète doit rester confidentielle,
+    car elle est utilisée pour authentifier et autoriser les demandes au nom de la clé 
+   d'accès. </td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top; text-align: left;"> <code>s3_cluster_id</code></td>
+    <td> L'URL du cluster pour le stockage d'objets est propre à chaque centre
+    de données, les différents centres de données ont des IDS de cluster uniques, voir 
+    <a href="https://www.linode.com/docs/products/storage/object-storage/guides/urls/#cluster-url-s3-endpoint">le Guide du stockage d'objets Linode</a>
+    pour Linode. </td>
+  </tr>
+  <tr>
+    <td style="vertical-align: top; text-align: left;"> <code>s3_bucket</code></td>
+    <td> Il s'agit d'un conteneur ou d'une ressource de stockage pour les fichiers dans le 
+    contexte du stockage d'objets.</t>
+  </tr>
+</table>
+
