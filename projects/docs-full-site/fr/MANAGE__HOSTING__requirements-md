@@ -1,0 +1,86 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/new_install_docs/src/sysadmin/hosting/requirements.md"
+revision_date: '2024-11-04'
+tags:
+- Gestion
+---
+
+# Conditions requises { #requirements } 
+
+<!-- 1. Un serveur -->
+<!-- 2. Bonne Alimentation électrique -->
+<!-- 3. Bonne connexion Internet -->
+<!-- 4. Bon stockage -->
+<!-- 5. Réseau d'interconnexion rapide -->
+
+## Le matériel { #hardware } 
+
+La configuration matérielle requise dépend de la taille de votre base de données, les bases de données plus volumineuses nécessitant davantage de ressources. Il est important de surveiller les performances du système pour en comprendre l'utilisation. Si vous gérez votre propre infrastructure (non basée sur le cloud), assurez-vous que vos connexions réseau sont solides, en n'utilisant pas moins de 1 Gbps entre les hôtes. Les disques SSD rapides sont essentiels, en particulier pour les bases de données PostgreSQL, car ils offrent de meilleures vitesses de lecture/écriture et des latences de disque plus faibles, ce qui améliore les performances globales.
+
+## Le Système d'Exploitation { #operating-system } 
+
+DHIS2 a été largement testé sur Ubuntu 22.04 et 24.04. Il est recommandé de l'exécuter sur la dernière version LTS d'un serveur Ubuntu.
+
+### Architecture de DHIS2 { #dhis2-architecture } 
+
+DHIS2 a besoin de serveurs pour fonctionner. Il dispose de différentes composantes : le fichier war de DHIS2, la base de données PostgreSQL, le serveur de surveillance et le proxy. Vous pouvez installer tous ces composants sur un seul serveur ou les répartir sur plusieurs serveurs. Bien que l'architecture elle-même puisse sembler simple, son fonctionnement dans un environnement réel (production) nécessite une planification importante.
+
+Les facteurs à prendre en compte lors de l'hébergement
+
+- **La fiabilité:** - l'application doit être disponible 24 heures sur 24, 7 jours sur 7, avec des fenêtres clairement définies pour la maintenance programmée et un risque minimal de temps d'arrêt imprévu.
+- **La sécurité des données:** - Si les données sont sensibles, par exemple les informations d'identification personnelle (PII), des mesures de sécurité robustes sont cruciales.
+- **La Performance et l'évolutivité:** - Les grands sites peuvent avoir des dizaines de milliers d'utilisateurs et des millions d'enregistrements.
+- **La maintenabilité:** - Le système devra être activement entretenu et mis à jour.
+- **L'évolutivité:** - Le système doit être évolutif pour s'adapter à la croissance future du volume de données, de la base d'utilisateurs ou de la fonctionnalité. Cela peut impliquer la mise en œuvre de fonctionnalités telles que la mise à l'échelle horizontale ou l'utilisation d'architectures réparties.
+
+Ces exigences se traduisent par la nécessité de disposer du matériel adéquat (infrastructure physique), de pratiques de sécurité rigoureuses et d'une bonne performance globale. Cela signifie également que les personnes chargées de la maintenance du système doivent disposer d'un large éventail de compétences techniques. Cette complexité n'est pas forcément évidente si l'on regarde uniquement l'architecture de dhis2.
+
+Il est donc essentiel de planifier la mise en œuvre du serveur dès le départ. De cette manière, vous pouvez vous assurer les ressources nécessaires (matériel et personnel qualifié) pour répondre à ces demandes et garantir le bon fonctionnement de l'application dans un environnement de production.
+
+### Les composantes de l'application DHIS2 { #dhis2-application-components } 
+
+Une application DHIS2 nécessite au minimum trois composantes pour fonctionner :
+
+- **Le conteneur de servlets (obligatoire):** Comme tomcat (ou jetty). Il exécute l'application web Java DHIS2 et héberge d'autres applications.
+- **Un serveur de base de données (obligatoire):** Les versions récentes de DHIS2 nécessitent une base de données postgresql avec une version supérieure à 9.6.
+- **Un proxy web frontal (optionnel):** La fonction principale de ce proxy est la terminaison SSL et éventuellement le partage de la charge. Nginx et apache2 sont couramment utilisés.
+- **La surveillance (optionnelle):** Pour une utilisation réelle (production), il est crucial de garder un oeil sur la santé de l'application et du serveur. Cela peut être fait avec des outils comme Prometheus (moderne et susceptible d'être directement intégré au système dhis2) ou Munin/Zabbix. Les alertes peuvent être envoyées par courriel ou intégrées à des applications de messagerie comme Telegram ou Slack.
+
+Il était courant d'installer les quatre composantes sur une seule machine ou sur une machine virtuelle, ce que l'on pourrait appeler l'approche « boombox » et qui ne devrait plus être considérée comme une bonne pratique, sauf dans le cas des installations très basiques pour la collecte de données agrégées. Il existe un certain nombre de bonnes raisons qui justifient la nécessité d'isoler ces composantes :
+
+- **La sécurité:**- Il s'agit d'une raison importante, en particulier si vous avez un certain nombre d'applications web en cours d'exécution. Si votre application web est piratée, vous devez vous assurer que les dommages potentiels sont limités.
+- **La surveillance et la performance:**- Lorsque toutes les composantes fonctionnent ensemble, il peut être difficile de déterminer la cause sous-jacente de l'épuisement de la mémoire ou du processeur et de les approvisionner de manière appropriée.
+- **L'évolutivité:**- Pour pouvoir faire évoluer horizontalement l'application web ou la base de données, les réplicas doivent se voir attribuer leurs propres ressources.
+- **Une maintenance plus facile:**- La mise à jour ou la maintenance des différentes composantes est plus simple lorsqu'ils ne sont pas liés les uns aux autres.
+- **Une stabilité améliorée:**- L'isolation des composantes permet d'éviter que des problèmes dans un domaine n'entraînent des pannes dans toutes les autres.
+
+L'isolement peut se faire à différents niveaux de granularité :
+
+- **Les machines physiques séparées:** - Cela permet l'isolation, mais c'est une solution un peu rigide (et coûteuse) au problème. La seule exception à cette règle pourrait être le serveur de base de données postgresql, pour lequel il peut y avoir un certain avantage en termes de performances à fonctionner sur une machine physique avec un accès direct à la matrice de disques, mais c'est un choix coûteux.
+- **Les machines virtuelles séparées:** - Il peut s'agir d'une solution très judicieuse, qui consiste à dédier une machine virtuelle interne ou un serveur virtuel hébergé dans le cloud à chaque proxy, serveur d'application et base de données. Un problème de sécurité doit être pris en compte car, par défaut, le trafic passe de manière non cryptée sur le réseau entre les différentes composantes. Cela peut être considéré comme acceptable si le réseau est fiable, mais dans de nombreux cas, vous aurez besoin de mettre en œuvre le protocole SSL sur tomcat et postgres pour assurer un cryptage adéquat en transit.
+- **Les serveurs séparés:** - Il peut s'agir d'une solution élégante et légère pour assurer l'isolation entre les composantes. Elle est particulièrement intéressante lorsque vous louez un seul serveur VPS auprès d'un fournisseur de services en cloud. Il existe différentes solutions de conteneurisation Linux avec des avantages et des inconvénients différents. La plupart des gens utilisent docker ou lxc ou une combinaison des deux. Ce guide décrit une solution utilisant lxc, mais nous y ajouterons également de la documentation sur docker.
+
+Quelle que soit la manière dont vous isolez les composantes du système (serveur web, serveur d'application, base de données, etc.), elles doivent avoir un accès limité les unes par rapport aux autres. Voici quelques exemples de ce que cela signifie :
+
+- **Le serveur proxy (par exemple, Nginx):** Seul le serveur proxy peut accéder aux conteneurs Tomcat par l'intermédiaire du port HTTP.
+- **Le serveur d'application (par exemple, Tomcat):** ne doit pas permettre l'accès direct via SSH à partir d'autres composantes.
+- **Le serveur de base de données (par exemple, PostgreSQL):** ne doit pas être accessible directement par le serveur proxy.
+
+**Bloquer le système:** Les pare-feu de vos serveurs (physiques ou virtuels) et de vos conteneurs doivent être activés et ne autoriser que les connexions en provenance de sources autorisées. Cela minimise le risque qu'une composante compromise affecte les autres.
+
+## Autres considérations importantes { #other-important-considerations } 
+
+### Budget: { #budget } 
+
+- La sauvegarde et l'archivage des données (cela nécessite des ressources de serveur supplémentaires)
+- Les systèmes de test, de mise à disposition et de formation (pour tester les mises à jour de la version DHIS2 et d'autres changements majeurs qui présentent un faible risque pour le système).
+- Mises à jour majeures du système d'exploitation et du serveur de base de données (tous les 2-3 ans)
+
+> **Remarque**
+>
+> Les pays utilisent généralement chaque système DHIS2 (HMIS, HIV Tracker, TB Tracker, COVID-19) sur des serveurs distincts, dont chacun doit être approvisionné. Ces serveurs doivent être gérés et budgétisés dans leur ensemble. Avec les systèmes en cloud/virtuels, les serveurs de test n'ont pas besoin d'être allumés en permanence, mais peuvent être activés à la demande tant que des ressources suffisantes sont disponibles.
+
+## Conclusion { #conclusion } 
+
+Les décisions relatives à l'hébergement ne sont pas définitives. Les pays peuvent commencer par une option d'hébergement avec un plan à long terme de transition vers une autre option, par exemple en hébergeant localement et en prévoyant de passer au cloud ou vice versa. De nombreux pays ont l'ambition à long terme de construire un centre de données national et d'acquérir les compétences nécessaires pour le gérer. Il est possible d'avoir cette ambition à long terme tout en évitant des décisions d'hébergement risquées à court terme (comme essayer d'héberger des données localement avant que les compétences et l'infrastructure nécessaires ne soient en place).
+

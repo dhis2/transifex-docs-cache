@@ -1,0 +1,107 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/new_install_docs/src/sysadmin/hosting/physical-hosting.md"
+revision_date: '2024-11-04'
+tags:
+- Gestion
+---
+
+# L'hébergement physique { #physical-hosting } 
+
+## Introduction { #introduction } 
+
+L'hébergement physique consiste à faire fonctionner les serveurs DHIS2 dans un pays, où les organisations gèrent leurs propres serveurs physiques, soit dans les locaux du ministère, soit de manière centralisée dans un centre de données national. Lorsque le ministère ou le gouvernement dispose de ressources techniques et humaines et d'une infrastructure suffisantes, l'hébergement physique peut être une option privilégiée.
+
+Comme nous l'avons mentionné, l'hébergement physique peut être subdivisé en hébergement local et en hébergement centralisé.
+
+## L'hébergement physique local { #local-physical-hosting } 
+
+Le ministère de la santé installe généralement son serveur dans une salle dédiée à cet effet. Cette salle abrite souvent plusieurs serveurs, et non un seul. Ces serveurs sont souvent regroupés pour garantir une disponibilité et une fiabilité élevées.
+
+### Les avantages { #advantages } 
+
+- Contrôle direct : Offre le plus haut niveau de contrôle sur les ressources et les données du serveur.
+- Accessibilité : la présence du serveur sur place garantit un accès physique facile pour la maintenance,
+
+### Les inconvénients { #drawbacks } 
+
+- La conception, l'installation et la maintenance requièrent une expertise technique importante.
+- Les coûts d'investissement initiaux sont élevés.
+- Il présente divers défis physiques tels que la fiabilité de l'alimentation électrique, la lutte contre les parasites, le contrôle de l'environnement ( l'eau, l'aération), la sécurité physique et l'accès au bâtiment 24 heures sur 24.
+
+En raison des coûts et des risques encourus, nous ne conseillons pas, dans la plupart des cas, d'opter pour cette méthode.
+
+## L'hébergement physique centralisé { #centralized-physical-hosting } 
+
+Les applications du ministère de la Santé (MoH) résident dans un centre de données central du gouvernement, qui fait office de service partagé pour les différents ministères et secteurs. Ce centre de données utilise généralement la technologie de virtualisation pour créer et partager des ressources de manière efficace.
+
+En termes plus simples, le ministère de la santé n'est qu'un locataire parmi d'autres dans ce grand centre de données « du cloud », qui partage ses ressources avec d'autres entités gouvernementales.
+
+### Les avantages { #advantages } 
+
+- Il s'aligne sur les politiques nationales en matière de souveraineté des données
+- Le ministère de la santé n'a pas besoin d'entretenir directement l'infrastructure du serveur.
+- Seules des compétences d'administrateur de système sont requises
+
+### Les inconvénients { #drawbacks } 
+
+- Le coût peut être plus élevé que celui des fournisseurs d'hébergement dans le cloud
+- Cela dépend du niveau de compétence et de l'infrastructure de l'équipe du centre de données.
+- L'accès aux services peut être entravé par des procédures bureaucratiques
+- Nous constatons souvent des problèmes de performance dans ces installations
+
+## Autres aspects de l'hébergement physique { #other-considerations-for-physical-hosting } 
+
+### Le serveur { #the-server } 
+
+Il s'agit du serveur sur lequel vous disposez généralement de ressources de calcul et de mémoire. Le plus souvent, un serveur physique dispose également d'un espace de stockage directement rattaché. Dans la plupart des cas, un centre de données aura plus d'un serveur en fonctionnement, et les différents serveurs ont des fonctions différentes en fonction de l'application qu'ils exécutent. Les charges de travail ont des besoins en ressources différents : certaines sont gourmandes en calcul, d'autres dépendent trop de la mémoire, etc. Les serveurs sont généralement interconnectés à l'aide de commutateurs rapides.
+
+Un serveur PostgreSQL s'épanouit avec de bonnes ressources, y compris une bonne part de CPU et de RAM. Pour des performances optimales, des disques rapides sont essentiels, les disques d'État solides (SSD) étant le meilleur choix. La commande suivante, par exemple, donne un aperçu rapide des performances de votre disque en termes de latence. Toute latence supérieure à 3 secondes peut indiquer un problème potentiel.
+
+```
+dd if=/dev/zero of=/tmp/test2.img bs=512 count=1000 oflag=dsync
+```
+
+### La mise en réseau { #networking } 
+
+Lorsque vous construisez un cluster de serveurs, vous avez généralement besoin d'une connectivité rapide entre vos serveurs physiques. Il est recommandé d'avoir des liens en fibre optique pouvant aller jusqu'à 40G pour relier vos serveurs. Cela implique un commutateur de réseau moderne dans votre salle de serveurs. Si vous avez l'intention d'exécuter vos charges de travail sur un système de stockage en réseau (NAS), assurez-vous que cette ressource dispose d'un excellent réseau avec votre pile de serveurs. Les serveurs en cluster ont généralement besoin d'un réseau ultra-rapide pour fonctionner de manière optimale.
+
+#### La Connectivité Internet { #internet-connectivity } 
+
+_Le Trafic entrant:_ l'accès des utilisateurs à l'application DHIS2 se fera via l'internet. Il est donc nécessaire de disposer d'une bande passante suffisante pour gérer efficacement le trafic des utilisateurs.
+
+_Le trafic sortant:_ Les mises à jour périodiques du logiciel et du système nécessitent un accès sortant à Internet pour le serveur.
+
+_Recommandation:_Pour garantir une expérience utilisateur fluide et des processus de mise à jour efficaces, une connexion internet à large bande passante (par exemple 1 gigabit par seconde) est recommandée pour votre centre de données.
+
+#### Le réseau DMZ { #dmz-network } 
+
+Dans un centre de données, vous disposez d'une passerelle vers votre infrastructure, il s'agit généralement d'un proxy inverse. La passerelle doit avoir une adresse IP publique pour être accessible depuis l'internet. Une bonne pratique consiste à placer ce serveur dans un réseau séparé, une zone démilitarisée (DMZ). Un autre serveur qui peut être exécuté dans ce réseau est un SSH JumpHost.
+
+#### Le réseau interne { #internal-network } 
+
+Vous avez d'autres serveurs qui ne devraient pas être accessibles depuis l'internet. Il s'agit par exemple du serveur d'application, sur lequel vous ferez tourner votre application dhis2, et du serveur de base de données, sur lequel vous ferez tourner la base de données PostgreSQL. Ces serveurs doivent se trouver sur un réseau privé, sans accès direct depuis l'internet. Ces serveurs ne sont alors accessibles qu'à partir de ssh JumpHost pour l'accès ssh ou à partir du proxy (nginx, apache2 ou HAProxy) pour l'accès à l'application web.
+
+### Haute Disponibilité { #high-availability } 
+
+Une configuration à haute disponibilité (HA) est définie de manière générale comme une infrastructure sans point de défaillance unique. C'est une bonne pratique que d'avoir une redondance aux différents niveaux, c'est-à-dire le serveur, le réseau et le stockage.
+
+### Les Sauvegardes et planification en cas de catastrophe { #backups-and-disaster-planning } 
+
+Les sauvegardes et l'archivage nécessitent des ressources de serveur supplémentaires. Envisagez un plan de récupération après un sinistre avec des sauvegardes dans un centre de données séparé pour plus de sécurité.
+
+### L'environnement de test { #testing-environment } 
+
+Un environnement de test dédié (serveurs séparés) est essentiel pour tester en toute sécurité les mises à jour de DHIS2 et d'autres modifications majeures avant de les déployer en production. Cela permet de minimiser les risques pour votre système.
+
+Prévoir un budget pour des serveurs supplémentaires afin de faciliter un environnement de test robuste. Prévoir des mises à niveau majeures des systèmes d'exploitation et des serveurs de base de données tous les 2-3 ans.
+
+Le test de ces mises à niveau dans l'environnement dédié permet d'assurer une transition en douceur lors de la mise en œuvre.
+
+### Accorder une priorité à la sécurité physique : { #prioritize-physical-security } 
+
+_Mettre en place un contrôle d'accès rigoureux:_ Appliquer des protocoles d'accès stricts au centre de données. Cela peut inclure l'utilisation de badges de sécurité, de systèmes d'authentification biométrique et de caméras de sécurité pour surveiller les points d'entrée et les zones critiques.
+
+_Atténuer les risques environnementaux:_ Élaborer un programme complet de lutte contre les parasites pour se protéger des rongeurs et d'autres menaces potentielles. En outre, envisagez des mesures pour atténuer d'autres risques environnementaux tels que les inondations ou les incendies.
+
+_Maintenir l'infrastructure des câbles:_ Inspecter et entretenir régulièrement les câbles de réseau et d'alimentation pour éviter qu'ils ne soient endommagés ou détériorés.
+
