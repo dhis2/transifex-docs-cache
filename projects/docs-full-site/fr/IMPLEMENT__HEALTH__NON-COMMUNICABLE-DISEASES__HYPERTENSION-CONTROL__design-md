@@ -1,0 +1,219 @@
+---
+edit_url: "https://github.com/dhis2-metadata/NCD_HTN/blob/master/docs/ncd_htn-design.md"
+revision_date: '2022-09-27'
+tags:
+- Implémentation
+---
+
+# Conception du système pour le registre de l'hypertension { #ncd-htn-design }
+
+## Introduction { #introduction } 
+
+### Objectif { #purpose } 
+
+Ce document, intitulé « Guide de conception du système de registre de l'hypertension », donne un aperçu de la conception utilisée pour configurer un programme tracker DHIS2 destiné à enregistrer les patients hypertendus et à leur assurer un suivi de routine. Ce document est destiné aux responsables de la mise en œuvre de DHIS2 au niveau national et régional, afin qu'ils puissent soutenir la mise en œuvre et la localisation du package. Les flux de travail locaux et les directives nationales doivent toujours être pris en compte lors de la localisation et de l'adaptation de ce package de configuration.
+
+### Contexte { #background } 
+
+L'hypertension ̶ ou tension artérielle élevée ̶ est une affection grave qui augmente considérablement les risques de maladies cardiaques, cérébrales, rénales et autres. Selon l'OMS, on estime que 1,28 milliard d'adultes âgés de 30 à 79 ans souffrent d'hypertension dans le monde, la plupart (deux tiers) vivant dans des pays à revenu faible ou intermédiaire. Seul un adulte hypertendu sur cinq (21 %) contrôle sa tension artérielle [^premier].
+
+Cet ensemble est basé sur un tracker DHIS2 pour les soins de l'hypertension configuré et déployé dans les États de Kano et d'Ogun au Nigéria en 2021-2022, en collaboration entre le ministère fédéral de la Santé du Nigéria, l'Agence nationale de développement des soins de santé primaires, HISP-Nigéria, l'OMS et Resolve to Save Lives. En juillet 2022, plus de 16 000 patients hypertendus sont pris en charge par cet outil dans plus de 104 établissements de soins de santé primaires. Le programme est basé sur la conception et les principes de la [Simple App] (https://www.simple.org/), une application mobile personnalisée développée par RTSL et déployée dans 4 pays, qui a permis d'inscrire plus de 2 millions de patients dans le traitement de l'hypertension à partir d'avril 2022. Les indicateurs du package ont été dérivés du package technique HEARTS pour la prise en charge de l'hypertension.
+
+Avant l' [Initiative du Nigeria pour le contrôle de l'hypertension] (https://www.afro.who.int/news/nigeria-collaborates-who-curb-hypertension-introduces-control-initiative) (NHCI), il n'existait pas d'outils permettant de suivre la prise en charge de l'HTN par les patients et seules les données d'incidence « cas suspects » étaient disponibles sur l'instance nationale de DHIS2. La NHCI a facilité le développement d'outils sur support papier pour suivre la prise en charge de l'HTN et le suivi longitudinal des patients, mais elle s'est heurtée à des difficultés opérationnelles (augmentation de la charge de travail et du fardeau des travailleurs de la santé) et à des problèmes de qualité des données (incohérences, données manquantes, erreurs de totalisation, données non actualisées) qui empêchaient les gestionnaires de programmes et les décideurs de disposer de données précises pour la prise de décision. Ces facteurs ont conduit au déploiement du Tracker de DHIS2 dans les établissements soutenus par le NHCI dans les États de Kano et d'Ogun.
+
+L'objectif principal de ce package est d'améliorer l'actualité et la précision des données, d'améliorer l'utilisation des données pour la prise de décision et d'augmenter l'efficacité de la prise en charge de l'hypertension au niveau des soins de santé primaires. Comme la Simple App, il s'efforce d'obtenir un ensemble minimal de données sur les soins de routine de l'hypertension afin d'améliorer l'analyse au niveau de l'établissement, tout en minimisant la charge de travail des prestataires de soins en ce qui concerne les rapports.
+
+## Aperçu de la conception du système { #system-design-overview } 
+
+### Cas d'utilisation { #use-case } 
+
+![Utilisateur de HTN au Nigéria](resources/images/ncd_htn_001.jpg){ .largeur du centre=50% }
+
+Les principaux utilisateurs finaux de ce système sont les prestataires de soins des centres de santé primaires qui reçoivent des patients pour des services mensuels liés à l'hypertension. Étant donné que l'hypertension touche généralement une large proportion de la population, dans de nombreux contextes, les prestataires de soins n'ont pas le temps de saisir des données détaillées sur les patients atteints d'hypertension. Par conséquent, l'accent est mis sur la collecte d'un _ensemble limité d'éléments de données_ pour produire trois indicateurs clés : le pourcentage de patients dont la tension artérielle est contrôlée, le pourcentage de patients dont la tension artérielle n'est pas contrôlée et le pourcentage de patients qui n'ont pas effectué de visites mensuelles.
+
+Ces indicateurs peuvent être suivis au niveau de l'établissement ou aux niveaux supérieurs du district et du pays sur des tableaux de bord (voir ci-dessous). Les résultats agrégés peuvent ensuite être transférés dans une instance nationale du HMIS.
+
+D'autres éléments de données collectés sont essentiels à la prise en charge de l'hypertension. Par exemple, les prestataires saisissent les traitements de l'hypertension et les médicaments fournis. Cependant, les patients doivent être diagnostiqués comme souffrant d'hypertension pour être inscrits au programme.
+
+Étant donné que les centres de soins de santé primaires ne disposent souvent pas d'une connexion Internet fiable, le tracker est conçu pour la saisie de données hors ligne à l'aide de l'application DHIS2 Android. Il peut également être exécuté dans un navigateur avec l'application DHIS2 Tracker Capture.
+
+![Diagramme de conception](resources/images/ncd_htn_002.jpg)
+
+### Justification de la structure du programme { #rationale-for-program-structure } 
+
+L'objectif fondamental du programme est d'enregistrer les contrôles mensuels de la tension artérielle des patients hypertendus et de documenter les médicaments administrés. Les données collectées ne sont nécessaires qu'à l'identification des patients et à la prise en charge de l'hypertension, et doivent être saisies le plus rapidement possible.
+
+Toutefois, le registre de l'hypertension pourrait être élargi pour couvrir les maladies non transmissibles (MNT) connexes, telles que le diabète ou les maladies cardiovasculaires. Ceci est particulièrement utile dans les scénarios où les comorbidités sont fréquemment suivies et gérées par le clinicien lors d'une visite pour hypertension, comme le diabète ou les maladies cardiovasculaires.
+
+Lors de l'adaptation du programme à une utilisation locale, le diagnostic de ces autres maladies non transmissibles pourrait donc être considéré comme une éligibilité à l'inscription dans ce qui est actuellement le « registre de l'hypertension ». Par conséquent, l'attribut d'entité suivie « Ce patient souffre-t-il d'hypertension ? » est rempli automatiquement avec la valeur « Oui » lors de l'inscription, et les indicateurs du programme pour les rapports sur l'hypertension requièrent cette valeur. Cette approche offre une certaine souplesse de mise en œuvre qui permet d'ajouter d'autres maladies non transmissibles au programme une fois que celui-ci a commencé à être déployé.
+
+En outre, les tests de laboratoire, généralement effectués de manière asynchrone avec les visites d'installations, peuvent également être ajoutés en tant que nouvelles étapes du programme.
+
+## Configuration du programme { #program-configuration } 
+
+### L'inscription { #registration } 
+
+Pour qu'un nouveau patient soit enregistré dans le registre de l'hypertension de DHIS2, l'utilisateur doit d'abord saisir un certain nombre d'attributs d'entités suivies dans la page d'inscription. Les attributs d'entités suivies rassemblent des informations personnelles identifiables (telles que le nom, la date de naissance, le numéro d'identification) à des fins de recherche et de validation des patients.
+
+Dans le programme du Registre de l'hypertension, seize attributs d'entités suivies sont inclus, mais seuls cinq d'entre eux sont consultables en tant qu'identifiants. La liste complète est disponible dans le fichier de référence des métadonnées.
+
+| Début de l'enregistrement             |  Fin de l'enregistrement |
+|:-------------------------:|:-------------------------:|
+| ![Début de l'enregistrement](resources/images/ncd_htn_003.png) | ![Fin de l'enregistrement](resources/images/ncd_htn_004.png) |
+
+Quatre champs sont obligatoires lors de l'enregistrement, marqués d'un astérisque (*)
+
+* **Date de naissance**. Si le patient ne connaît pas sa date de naissance, le prestataire de soins doit fournir une date de naissance estimée et cocher la case « la date de naissance est estimée », ce qui signifie que la date de naissance ne doit pas être considérée comme un identifiant fiable pour les critères de recherche. La saisie d'une date de naissance de moins de 10 ans et de plus de 140 ans entraîne une erreur. Après avoir saisi la date de naissance, l'âge _actuel_ est calculé en tant qu'indicateur de programme et s'affiche dans le widget des indicateurs.
+
+* **Consentement à l'enregistrement des données**. Le patient doit donner son consentement à l'enregistrement électronique de ses données personnelles avant de sauvegarder l'inscription. Ce consentement est signalé par un attribut d'entité suivi obligatoire de type « oui uniquement ».
+
+* **Le patient a-t-il été traité pour l'hypertension dans le passé ? ** Le prestataire de soins sera invité à demander s'il s'agit d'un nouveau diagnostic ou si le patient a déjà été traité.
+
+* **Statut du patient**. Lors de l'enregistrement, le patient est supposé avoir un statut ACTIF, cette valeur est donc remplie automatiquement. Voir [Fermeture du dossier](#closing-the-record) pour plus de détails.
+
+Lors de l'enregistrement, le patient est également supposé souffrir d'hypertension, de sorte que cet attribut est également rempli automatiquement. Voir [ Justification de la structure du programme ] (#rationale-for-program-structure) pour plus de détails.
+
+Les informations relatives à l'accompagnateur du patient sont également saisies afin de faciliter les enquêtes de "perdu de vue".
+
+NB : étant donné que ces données démographiques et d'identification sont souvent réutilisables dans les programmes Tracker, les attributs des entités suivies peuvent être partagés par plusieurs packages de DHIS2 Tracker. Ces métadonnées se trouvent dans la [bibliothèque commune de métadonnées](https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/common-metadata-library/design.html) (et sont préfixées par « GEN - » dans le nom de l'attribut).
+
+Une fois que l'utilisateur a cliqué sur l'icône Enregistrer, le patient est considéré comme inscrit dans le registre de l'hypertension, et le premier événement de visite d'hypertension s'ouvre immédiatement.
+
+### Visite de HTN { #htn-visit } 
+
+L'unique étape du programme est la visite HTN (visite d'hypertension). On suppose qu'elle se répète tous les mois après l'inscription.
+
+La visite comporte une section obligatoire et une section facultative :
+
+* Dossiers d'hypertension (obligatoire)
+* Mesures de l'IMC (facultatif)
+
+La section _Enregistrements d'hypertension_ est l'endroit où la tension artérielle systolique et diastolique est enregistrée. Les valeurs de tension artérielle non valides (inférieures à 60 ou supérieures à 260) sont interdites par les règles du programme.
+
+Si une patiente hypertendue est enceinte, une pression artérielle élevée peut indiquer une hypertension gestationnelle. Par conséquent, si la patiente est de sexe féminin, une question apparaîtra ici pour confirmer l'état de grossesse de la patiente. (L'élément de données « état de grossesse » se trouve dans la bibliothèque commune de métadonnées).
+
+Cette section permet également de saisir les médicaments prescrits pour l'hypertension. Les médicaments précédemment saisis seront répertoriés dans le widget des indicateurs du programme, ainsi que le nombre de jours écoulés depuis la dernière consultation pour hypertension.
+
+À la fin de cette section, l'utilisateur peut choisir de prendre une mesure de l'IMC. En cliquant sur « Oui » à l'une ou l'autre de ces questions, la section s'ouvrira. Notez que les sections sont précédées du préfixe « Tapez pour ajouter [X] » pour aider l'utilisateur d'Android à ouvrir ces sections.
+
+La section _Mesures de l'IMC_ permet de saisir la taille et le poids du patient. La saisie de valeurs improbables pour le poids (moins de 35 ou plus de 180) et la taille (moins de 130 ou plus de 210) du patient déclenche des avertissements par le biais d'une règle du programme.
+
+L'Indice de Masse Corporelle (IMC) est ensuite autocalculé, de même qu'une classification standard de l'IMC en sous-poids, normal, surpoids, obésité et obésité sévère.
+
+Ces classifications sont basées sur les normes de l'OMS pour l'obésité et le surpoids (le surpoids est un IMC supérieur ou égal à 25 ; l'obésité est un IMC supérieur ou égal à 30)[^deuxièmement]. Les normes britanniques du NHS pour l'obésité sévère (IMC supérieur à 40) et l'insuffisance pondérale (IMC inférieur à 18,5) complètent ces définitions aux extrêmes inférieur et supérieur[^troisième].
+
+Une fois saisi, le dernier IMC enregistré du patient s'affiche dans le widget des indicateurs de programme.
+
+![Saisir l'IMC du patient](resources/images/ncd_htn_005.gif)
+
+### Fermeture d'un dossier { #closing-the-record } 
+
+Si un patient n'est plus pris en charge par l'établissement de santé, il est important de mettre à jour son statut, ce qui supprimera son dossier des dénominateurs des indicateurs clés de performance.
+
+Lorsqu'un utilisateur rencontre un dossier concernant une personne qui n'est plus censée se trouver dans l'établissement de santé, que ce soit en raison d'un décès ou d'un transfert vers un autre établissement, le statut du patient peut être mis à jour.
+
+Pour ce faire, l'utilisateur se rend sur le profil TEI, puis clique sur « Mettre à jour le statut du patient ». Le statut du patient est alors déverrouillé et peut être modifié de « Actif » à « Décès » ou « Transféré ». Le profil doit ensuite être sauvegardé. Notez que le statut du patient est un champ obligatoire et qu'il ne peut donc pas être vide avant l'enregistrement du profil.
+
+Les systèmes de santé peuvent avoir des approches différentes en ce qui concerne le suivi des patients. Lors de l'adaptation au contexte local, il est important de prendre en compte la personne qui sera chargée de clôturer le dossier et la fréquence de ce processus. Au Nigeria, les agents de santé assurent le suivi des patients lors de visites à domicile ou par téléphone, et mettent à jour le dossier du patient en conséquence. Dans d'autres contextes, les gestionnaires des données de santé peuvent procéder à un nettoyage régulier des données pour supprimer les doublons, ou contacter une liste de patients perdus de vue depuis longtemps. D'autres encore peuvent avoir un lien avec un système national CRVS, grâce auquel les patients décédés peuvent être identifiés par leur numéro d'identification national.
+
+![Fermer le dossier](resources/images/ncd_htn_006.gif)
+
+## Analyse  { #analytics } 
+
+### Les Indicateurs de programme au niveau individuel{ #individual-level-program-indicators } 
+
+Il y a 23 indicateurs de programme et 8 indicateurs inclus dans le package. La plupart des indicateurs de programme produisent des comptes de personnes et d'événements, tandis que la plupart des indicateurs sont des pourcentages.
+
+En dehors des indicateurs de programme utilisés dans le tableau de bord de surveillance de l'hypertension, cinq indicateurs de programme doivent être utilisés exclusivement au niveau du patient. Ces indicateurs de programme sont marqués comme « Afficher dans les rapports » dans l'application de maintenance et sont regroupés avec le groupe d'indicateurs de programme « HTN - niveau individuel ».
+
+* Âge actuel
+* IMC du Patient
+* Nombre total de visites du patient
+* Nombre de jours depuis la dernière visite du patient
+
+Les valeurs individuelles des patients se trouvent dans le widget Indicateur de programme dans Saisie Tracker, ou dans l'onglet _Analyses_ de l'application Saisie Android (voir ci-dessous). Il est important que ces indicateurs de programme au niveau individuel ne soient pas agrégés dans des applications d'analyse telles que le visualiseur de données, car les valeurs peuvent être mal interprétées. Les graphiques à afficher peuvent être configurés dans l'application Paramètres Android.
+
+![Analyses du patient](resources/images/ncd_htn_007.gif)
+
+## Tableaux de bord { #dashboards } 
+
+Le seul tableau de bord inclus dans ce package est le tableau de bord **Surveillance de l'hypertension**, qui fournit un aperçu des indicateurs clés pour la prise en charge des patients hypertendus et le contrôle de la tension artérielle. Le tableau de bord peut être consulté par un administrateur de programme de haut niveau ou au niveau d'un établissement local.
+
+Les définitions des indicateurs du tableau de bord s'inspirent étroitement des définitions pour la communication des [données agrégées provenant du Simple app] (https://docs.simple.org/reports/what-we-report) ainsi que du [Package Technique HEARTS de l'OMS] (https://www.who.int/publications/i/item/9789240001367). Les définitions figurent ci-dessous et dans un cadre textuel au bas du tableau de bord.
+
+Trois sections du tableau de bord sont à prendre en considération.
+
+### Les Indicateurs clés de performance { #key-performance-indicators } 
+
+![Tableau de bord - fig.1](resources/images/ncd_htn_008.png)
+
+Les trois premiers graphiques mensuels présentent les principaux indicateurs de performance relatifs au contrôle de la tension artérielle des patients hypertendus enregistrés et actifs. Ils prennent en compte les visites effectuées au cours des trois derniers mois pour tous les patients actifs enregistrés avant les trois mois précédents. Pour les patients qui ont consulté au cours des trois derniers mois, les indicateurs vérifient si la tension artérielle a été contrôlée lors de leur _dernière_ visite.
+
+Le graphique suivant compare les nouveaux enregistrements mensuels et cumulés dans le registre de l'hypertension.
+
+* **% de patients dont la tension artérielle a été contrôlée:** pourcentage de patients inscrits dans un établissement avant les 3 derniers mois, dont la tension artérielle a été prise et est <140/90 au cours des trois derniers mois et dont le statut de patient est actif.
+* **% de patients dont la tension artérielle n'a pas été contrôlée:** pourcentage de patients inscrits dans un établissement avant les 3 derniers mois, dont la tension artérielle a été prise et est ≥140/90 au cours des 3 derniers mois et dont le statut de patient est Actif.
+* **% Patients perdus de vue depuis 3 mois:** Pourcentage de patients inscrits dans un établissement avant les 3 derniers mois, qui n'ont pas effectué de visite au cours des 3 derniers mois et dont le statut de patient est Actif.
+* **Patients enregistrés pour hypertension:** Nombre de patients enregistrés dans un établissement où le patient souffre d'hypertension.
+* **Patients enregistrés pour l'hypertension (cumulatif):** Nombre total de patients souffrant d'hypertension enregistrés dans un établissement.
+
+### Chiffres clés, visites mensuelles et rapport trimestriel sur les cohortes { #headline-figures-monthly-visits-and-quarterly-cohort-report } 
+
+![Tableau de bord - fig.2](resources/images/ncd_htn_009.png)
+
+La section suivante présente le nombre total de patients enregistrés pour l'hypertension et le pourcentage de contrôle de la tension artérielle au cours du mois dernier. Ces deux cartes reprennent les informations de la section précédente pour les mettre en évidence. Un tableau des visites mensuelles pour l'hypertension indique ensuite le nombre total de visites chaque mois, réparties entre les visites effectuées le jour même de l'enregistrement et les visites de suivi.
+
+Sous ces cartes se trouve le rapport trimestriel sur les cohortes, présenté sous la forme d'un diagramme à barres et d'un tableau. Il comporte une case d'appel spéciale pour faciliter l'interprétation :
+
+#### Description du rapport trimestriel de la cohorte HTN { #htn-quarterly-cohort-report-description } 
+
+Les rapports trimestriels de cohorte HTN regroupent tous les patients enregistrés au cours d'un trimestre et indiquent le résultat de leur visite au cours du trimestre suivant. Par exemple, les patients qui appartiennent à la cohorte Avril - Juin ont été enregistrés au cours du trimestre Janvier - Mars, et étaient attendus pour une visite au cours du trimestre Avril - Juin.
+
+#### Définitions { #definitions } 
+
+* **Visites pour Hypertension, Total:** Le nombre total de visites initiales ou de suivi d'un patient hypertendu dans l'établissement.
+* ( _Cohorte trimestrielle_) **Numérateur de la TA contrôlée:** Le nombre de patients ayant une TA <140/90 lors de leur dernière visite au cours du trimestre suivant le trimestre où ils ont été enregistrés.
+* ( _Cohorte trimestrielle_) **Numérateur de la TA non contrôlée:** Le nombre de patients ayant une TA ≥140/90 lors de leur dernière visite au cours du trimestre suivant le trimestre où ils ont été enregistrés.
+* ( _Cohorte trimestrielle_) **Numérateur des perdus de vue:** Le nombre de patients n'ayant pas eu de visite au cours du trimestre suivant le trimestre où ils ont été enregistrés.
+* (_Dénominateur de la cohorte trimestrielle_) **Inscrits pour hypertension au cours du trimestre précédent:** Nombre de patients inscrits dans un établissement au cours du trimestre précédent et dont le statut de patient est Actif.
+
+### Résumé au niveau de l'établissement et transferts de patients/décès/PDV { #facility-level-summary-and-patient-transfersdeathsltfu } 
+
+![Tableau de bord - fig.3](resources/images/ncd_htn_010.png)
+
+La dernière section reproduit d'abord les informations des graphiques du haut, décomposées par niveau d'établissement (utilisateur UO x 2) pour le mois écoulé. Cela peut s'avérer très utile pour un superutilisateur au niveau du district ou de la province, qui peut ainsi voir les performances élevées et faibles des établissements. Si l'utilisateur n'a le droit de consulter le tableau de bord qu'au niveau de l'établissement, le même message sera répété.
+
+La partie suivante de cette section présente le nombre total de transferts, le nombre total de décès et le nombre total de patients hypertendus perdus de vue sur 12 mois (au début du mois en cours). Il est important de rappeler que si les patients décédés et Référé ailleurs sont exclus du système et de la plupart des _dénominateurs des indicateurs ci-dessus, les patients perdus de vue pendant 12 mois sont toujours considérés comme actifs et sont donc inclus dans tous les dénominateurs_. Le nombre total d'enregistrements et le nombre total de visites incluent les patients décédés ou référés ailleurs.
+
+* **Transferts de patients:** Total des patients enregistrés pour l'hypertension dont le statut est actuellement marqué « Reféré ailleurs »
+* **Décès des patients:** Total des patients enregistrés pour l'hypertension dont le statut est actuellement marqué « Décédé ».
+* **Pourcentage de patients perdus de vue depuis 12 mois** : Pourcentage de patients enregistrés dans l'établissement qui n'ont pas eu de visite pour hypertension au cours des 12 derniers mois.
+
+## Groupes d'utilisateurs { #user-groups } 
+
+Les utilisateurs sont affectés au groupe d'utilisateurs approprié en fonction de leur rôle dans le système. Le partage des autres objets du package peut être ajusté en fonction de la configuration. Pour plus d'informations, consultez la [Documentation de DHIS2 sur le partage] (https://docs.dhis2.org/en/topics/metadata/crvs-mortality/rapid-mortality-surveillance-events/installation.html#sharing).
+
+| Groupe d’utilisateurs | Tableau de bord | Métadonnées du programme | Données de programme |
+|-|-|-|-|
+| Admin de la HTN | Lecture et saisie | Lecture et saisie | Aucun accès |
+| Accès à la HTN | Lecture et saisie | Lecture seule | Lecture seule |
+| Saisie de données sur la HTN | Pas d'accès | Lecture seule | Peut saisir et visualiser |
+
+## Application Paramètres d'Android { #android-settings-app } 
+
+Le registre de l'hypertension est conçu pour être utilisé hors ligne sur les appareils Android et pour saisir les données de milliers de patients chaque mois. Il est donc essentiel de prendre en compte les paramètres de synchronisation Android, qui se trouvent dans l'application Paramètres Android de DHIS2 ([voir la documentation ici](https://docs.dhis2.org/en/use/android-app/settings-configuration.html)).
+
+Vous pouvez par exemple envisager un cadre dans lequel un dispositif au niveau de l'établissement télécharge automatiquement tous les patients affectés à chaque établissement, qui ont eu un événement ou un enregistrement d'HTN au cours des trois mois précédents. Si un patient qui ne répond pas à ces critères se présente dans l'établissement, l'utilisateur devra effectuer une recherche en ligne pour retrouver son dossier.
+
+Les métadonnées et les données doivent être synchronisées en même temps, si possible quotidiennement, afin d'éviter les erreurs.
+
+Dans l'application Paramètres Android, différents paramètres relatifs à l'apparence et à la visualisation de l'application Android peuvent également être configurés pour le système. Ces paramètres sont à explorer lors de la phase d'adaptation et de test avant tout déploiement.
+
+## Références { #references } 
+
+[^first]: Organisation Mondiale de la Santé (25/08/2021). Les principaux faits de l'hypertension. Tiré de : <https://www.who.int/news-room/fact-sheets/detail/hypertension> (Consulté le 19/09/2022)
+
+[^second]: Organisation Mondiale de la Santé (09/06/2021). Fiche d'information sur l'obésité et le surpoids. Extrait de : [https://www.who.int/news-room/fact-sheets/detail/obesity-and-overweight](https://www.who.int/news-room/fact-sheets/detail/obesity-and-overweight) (Consulté le 19/09/2022)
+
+[^third]: Service National de Santé (16/05/2022). Aperçu général : Obésité. Extrait de : [https://www.nhs.uk/conditions/obesity/](https://www.nhs.uk/conditions/obesity/) (Consulté le 19/09/2022)
+
