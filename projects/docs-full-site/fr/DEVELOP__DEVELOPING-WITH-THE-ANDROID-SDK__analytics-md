@@ -1,0 +1,619 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-sdk/blob/master/docs/content/developer/analytics.md"
+revision_date: '2024-12-18'
+tags:
+- Développement
+---
+
+# Analyse { #android_sdk_analytics }
+
+Le module d'analyse offre une sorte de données analytiques locales, c'est-à-dire des valeurs analytiques basées sur les données stockées dans l'appareil. Actuellement, il n'est pas intégré au module d'analyse du serveur, bien qu'ils partagent des concepts de base, tels que les visualisations, les périodes relatives, les unités relatives, etc.
+
+## Analyse agrégée { #android_sdk_aggregated_analytics }
+
+Ce module permet de présenter des valeurs analytiques sous une forme agrégée. Les valeurs peuvent provenir de données agrégées ou de données tracker. Si vous maîtrisez les outils d'analyse web, vous verrez que ce module ressemble beaucoup au Visualiseur de Données (tableaux, graphiques, etc.).
+
+### Analyse brute { #android_sdk_raw_analytics }
+
+Ce module suit des concepts similaires à ceux du endpoint d'analyse dans l'API web. Deux paramètres de base doivent être fournis au moteur d'analyse pour qu'il effectue une évaluation : les dimensions et les filtres.
+
+Par exemple, une requête de base permettant d'obtenir le nombre de "CPN 1ère visite" (DataElement "fbfJHSPpUQD") au cours des 3 derniers mois (RelativePeriod) et filtrée sur l'unité d'organisation "Ngelehun CHC" (Absolute OrganisationUnit "DiszpKrYNg8") va ressembler à ceci :
+
+```java
+d2.analyticsModule().analytics()
+        .withDimension(new DimensionItem.DataItem.DataElementItem("fbfJHSPpUQD"))
+        .withDimension(new DimensionItem.PeriodItem.Relative(RelativePeriod.LAST_3_MONTHS))
+        .withFilter(new DimensionItem.OrganisationUnitItem.Absolute("DiszpKrYNg8"))
+        .evaluate();
+```
+
+Le moteur renverra un objet `Result` qui contient soit une `DimensionalResponse`, soit une `AnalyticsException`. Regardons la structure de la `DimensionalResponse`. Nous utilisons la représentation Kotlin pour des raisons de commodité, mais la représentation Java serait très similaire :
+
+```kt
+DimensionalResponse(
+        metadata = mapOf(
+            "fbfJHSPpUQD" to MetadataItem.DataElementItem,
+            "DiszpKrYNg8" to MetadataItem.OrganisationUnitItem,
+            "202108" to MetadataItem.PeriodItem,
+            "202109" to MetadataItem.PeriodItem,
+            "202110" to MetadataItem.PeriodItem
+        ),
+        dimensions = listOf(
+            Dimension.Data, 
+            Dimension.Period
+        ),
+        dimensionItems = mapOf(
+            Dimension.Data to listOf(
+                DimensionItem.DataItem.DataElementItem(uid=fbfJHSPpUQD)
+            ),
+            Dimension.Period to listOf(
+                DimensionItem.PeriodItem.Relative(relative=RelativePeriod.LAST_3_MONTHS)
+            ),
+            Dimension.OrganisationUnit to listOf(
+                DimensionItem.OrganisationUnitItem.Absolute(uid=DiszpKrYNg8)
+            )
+        ),
+        filters = listOf(
+            "DiszpKrYNg8"
+        ),
+        values = listOf(
+            DimensionalValue(
+                dimensions = listOf("fbfJHSPpUQD", "202108"),
+                value = "17"
+            ),
+            DimensionalValue(
+                dimensions = listOf("fbfJHSPpUQD", "202109"),
+                value = "112"
+            ),
+            DimensionalValue(
+                dimensions = listOf("fbfJHSPpUQD", "202110"),
+                value = "20"
+            )
+        )
+    )
+```
+
+Propriétés incluses dans l'objet `DimensionalResponse` :
+
+- **Metadata** : elle contient une table de correspondance des identifiants pour `MetadataItem`. Les identifiants sont des chaînes de caractères qui identifient les éléments de données, les périodes (relatives ou absolues), les unités d'organisation, etc. Voici quelques exemples d'identifiants : "fbfJHSPpUQD", "202108", "LAST_3_MONTHS", "USER_ORGUNIT",etc. L'objectif de cette table de correspondance est d'obtenir rapidement une représentation imprimable de tout identifiant utilisé dans les autres propriétés (éléments de dimension, filtres ou valeurs). L'interface `MetadataItem` contient deux propriétés de base, `id` et `displayName` et elle peut être facilement associée à la classe sous-jacente pour obtenir plus d'informations sur l'élément de données, l'Indicateur, la période, etc.
+- **Dimensions** : liste ordonnée des dimensions dans lesquelles les valeurs sont désagrégées. Dans l'exemple ci-dessus, la première dimension est `Data`, ce qui signifie que la première dimension de la propriété `dimensions` dans les valeurs appartient à la dimension `Data`. La seconde est "Period".
+- **DimensionItems** : elle contient une table de correspondance des éléments regroupés par type de dimension. Elle contient les éléments utilisés à l'origine pour construire la requête : dans l'exemple ci-dessus, la période était relative, donc la dimension "Period" inclut la période relative `LAST_3_MONTHS`.
+- **Filters** : liste des identifiants qui agissent comme un filtre dans la requête.
+- **Values** : liste de `DimensionalValue`. Chaque valeur contient une liste ordonnée d'identifiants qui définissent la valeur. Dans l'exemple ci-dessus, la valeur "17" correspond à "CPN 1ère visite" ("fbfJHSPpUQD") et "Août 2021" ("202108"). Vous pouvez utiliser la table de correspondance des métadonnées pour obtenir plus d'informations à partir de ces identifiants.
+
+Les éléments de dimension peuvent être utilisés comme dimensions ou comme filtres. Plusieurs éléments de la même dimension peuvent être combinés dans la même requête. Par exemple, cette requête permet d'obtenir "CPN 1ère visite" (élément de données "fbfJHSPpUQD") et "CPN 1-3 Taux d'abandon" (Indicateur "ReUHfIn0pTQ") désagrégés par la catégorie "Lieu : Fixe/Proximité" (Catégorie "fMZEcRHuamy") en utilisant les options "Fixe" (Option de catégorie "qkPbeWaFsnU") et "Proximité" (Option de catégorie "wbrDrL2aYEc") au cours des 3 derniers mois (Période relative) dans l'unité d'organisation de l'utilisateur (Unité d'organisation relative), en classant les valeurs par ensemble de légendes d'élément de données et en remplaçant le type d'agrégation :
+
+```java
+d2.analyticsModule().analytics()
+        .withDimension(new DimensionItem.DataItem.DataElementItem("fbfJHSPpUQD"))
+        .withDimension(new DimensionItem.DataItem.IndicatorItem("ReUHfIn0pTQ"))
+        .withDimension(new DimensionItem.CategoryItem("fMZEcRHuamy", "qkPbeWaFsnU"))
+        .withDimension(new DimensionItem.CategoryItem("fMZEcRHuamy", "wbrDrL2aYEc"))
+
+        .withFilter(new DimensionItem.PeriodItem.Relative(RelativePeriod.LAST_3_MONTHS))
+        .withFilter(new DimensionItem.OrganisationUnitItem.Relative(RelativeOrganisationUnit.USER_ORGUNIT))
+
+        .withLegendStrategy(AnalyticsLegendStrategy.ByDataItem.INSTANCE)
+
+        .withAggregationType(AggregationType.LAST)
+
+        .evaluate();
+```
+
+L'évaluateur impose certaines restrictions aux paramètres utilisés en tant que dimensions ou filtres (elles sont similaires à celles imposées par l'api web d'analyse) :
+
+1. Au moins un élément de dimension doit être inclus comme propriété de dimension.
+2. Au moins un élément de dimension **data** doit être inclus soit en tant que dimension, soit en tant que filtre.
+
+En outre, la requête est évaluée par rapport aux métadonnées et aux données locales, ce qui impose des restrictions supplémentaires :
+
+1. Les éléments de dimension (élément de données, indicateurs, unités d'organisation, etc.) doivent être téléchargés dans l'appareil. Par défaut, le SDK télécharge tous les ensembles de données et les programmes accessibles à l'utilisateur, ainsi que les métadonnées correspondantes.
+2. Les données doivent être téléchargées dans l'appareil. L'évaluation ne prend en compte que les données stockées dans la base de données locale.
+
+Trois options permettent de définir la stratégie legendSet. La classe `AnalyticsLegendStrategy` est une classe scellée en Kotlin, le mot-clé `INSTANCE` doit donc être ajouté à la fin des valeurs de l'objet lors du codage en Java. Exemples de code :
+
+```java
+d2.analyticsModule().analytics()
+        .withLegendStrategy(AnalyticsLegendStrategy.ByDataItem.INSTANCE)       // Data items use their own LegendSet
+        .withLegendStrategy(AnalyticsLegendStrategy.None.INSTANCE)             // LegendSets are not used
+        .withLegendStrategy(new AnalyticsLegendStrategy.Fixed("fqs276KXCXi"))  // The provided LegendSet will be used for all data items
+```
+
+### Analyse de visualisation { #android_sdk_visualization_analytics }
+
+Le moteur d'analyse de visualisation offre des méthodes pratiques pour évaluer les objets de visualisation. Ce moteur est implémenté au-dessus du moteur d'analyse brute et remplit essentiellement deux objectifs :
+
+1. Traduire un objet de visualisation en une requête pour le moteur d'analyse.
+2. Renvoyer un résultat formaté suivant les lignes, les colonnes et les filtres définis dans la visualisation.
+
+Pour pouvoir utiliser les objets de visualisation, ils doivent être définis dans la section "Analyse" de l'application web Paramètres Android. Actuellement, il n'est pas possible de télécharger des visualisations à la demande à partir du serveur, mais seulement à partir de l'application web Paramètres Android.
+
+Supposons par exemple que nous ayons une visualisation avec les paramètres suivants :
+
+- Visualisation ("SwtkWZFhrFQ").
+- Colonnes :
+    - Données : deux éléments de données (CPN 1ère visite "fbfJHSPpUQD", CPN 2ème visite "cYeuwXTCPkU").
+    - Catégorie : Lieu Fixe/Proximité ("fMZEcRHuamy").
+- Lignes:
+    - Période : 3_DERNIERS_MOIS.
+- Filtre:
+    - Unité d'organisation : Badja ("YuQRtpLP10I").
+
+La représentation attendue de la visualisation serait à peu près la suivante :
+
+![](resources/images/analytics_visualization.png){ width=50% }
+
+Nous pouvons obtenir le résultat de la visualisation en appelant le référentiel des "visualisations" dans le module d'analyse. En option, nous pouvons écraser les valeurs de 'période' et d''unité d'organisation'. Ceci permet d'exposer des filtres dans l'interface utilisateur afin de faciliter les modifications des résultats.
+
+```java
+d2.analyticsModule().visualizations()
+        .withVisualization("SwtkWZFhrFQ")
+        [.withPeriods()]
+        [.withOrganisationUnits()]
+        .evaluate();
+```
+
+La méthode renverra un `Result` avec deux valeurs possibles : un `GridAnalyticsResponse` et un `AnalyticsResponse`. Regardons la structure de la `GridAnalyticsResponse`. Nous utilisons la représentation Kotlin pour des raisons de commodité :
+
+```kt
+GridAnalyticsResponse(
+        metadata = mapOf(
+            "fbfJHSPpUQD" to MetadataItem.DataElementItem,
+            "cYeuwXTCPkU" to MetadataItem.DataElementItem,
+            "fMZEcRHuamy" to MetadataItem.CategoryItem,
+            "qkPbeWaFsnU" to MetadataItem.CategoryOptionItem,
+            "wbrDrL2aYEc" to MetadataItem.CategoryOptionItem,
+            "YuQRtpLP10I" to MetadataItem.OrganisationUnitItem,
+            "202108" to MetadataItem.PeriodItem,
+            "202109" to MetadataItem.PeriodItem,
+            "202110" to MetadataItem.PeriodItem
+        ),
+        headers = GridHeader(
+            columns = listOf(
+                listOf(
+                    GridHeaderItem(id=fbfJHSPpUQD, weight=2),
+                    GridHeaderItem(id=cYeuwXTCPkU, weight=2)
+                ),
+                listOf(
+                    GridHeaderItem(id=qkPbeWaFsnU, weight=1),
+                    GridHeaderItem(id=wbrDrL2aYEc, weight=1),
+                    GridHeaderItem(id=qkPbeWaFsnU, weight=1),
+                    GridHeaderItem(id=wbrDrL2aYEc, weight=1)
+                )
+            ),
+            rows = listOf(
+                listOf(
+                    GridHeaderItem(id=202108, weight=1),
+                    GridHeaderItem(id=202109, weight=1),
+                    GridHeaderItem(id=202110, weight=1)
+                )
+            )
+        ),
+        dimensions = GridDimension(
+            columns = listOf(
+                Dimension.Data,
+                Dimension.Category(uid=fMZEcRHuamy)
+            ),
+            rows = listOf(
+                Dimension.Period
+            )
+        ),
+        dimensionItems = mapOf(
+            Dimension.Data to listOf(
+                DimensionItem.DataItem.DataElementItem(uid=fbfJHSPpUQD),
+                DimensionItem.DataItem.DataElementItem(uid=cYeuwXTCPkU)
+            ),
+            Dimension.Period to listOf(
+                DimensionItem.PeriodItem.Relative(relative=LAST_3_MONTHS)
+            ),
+            Dimension.Category(uid=fMZEcRHuamy) to listOf(
+                DimensionItem.CategoryItem(uid=fMZEcRHuamy, categoryOption=qkPbeWaFsnU),
+                DimensionItem.CategoryItem(uid=fMZEcRHuamy, categoryOption=wbrDrL2aYEc)
+            ),
+            Dimension.OrganisationUnit to listOf(
+                DimensionItem.OrganisationUnitItem.Absolute(uid=YuQRtpLP10I)
+            )
+        ),
+        filters = listOf(
+            "YuQRtpLP10I"
+        ),
+        values = listOf(
+            listOf(
+                GridResponseValue(
+                    columns=[fbfJHSPpUQD, qkPbeWaFsnU], 
+                    rows=[202108], 
+                    value=23
+                ),
+                GridResponseValue(
+                    columns=[fbfJHSPpUQD, wbrDrL2aYEc], 
+                    rows=[202108], 
+                    value=3
+                ),
+                GridResponseValue(
+                    columns=[cYeuwXTCPkU, qkPbeWaFsnU], 
+                    rows=[202108], 
+                    value=46
+                ),
+                GridResponseValue(
+                    columns=[cYeuwXTCPkU, wbrDrL2aYEc], 
+                    rows=[202108], 
+                    value=3
+                )
+            ),
+            listOf(
+                GridResponseValue(
+                    columns=[fbfJHSPpUQD, qkPbeWaFsnU], 
+                    rows=[202109], 
+                    value=21
+                ),
+                GridResponseValue(
+                    columns=[fbfJHSPpUQD, wbrDrL2aYEc], 
+                    rows=[202109], 
+                    value=10
+                ),
+                GridResponseValue(
+                    columns=[cYeuwXTCPkU, qkPbeWaFsnU], 
+                    rows=[202109], 
+                    value=23
+                ),
+                GridResponseValue(
+                    columns=[cYeuwXTCPkU, wbrDrL2aYEc], 
+                    rows=[202109], 
+                    value=8
+                )
+            ),
+            listOf(
+                GridResponseValue(
+                    columns=[fbfJHSPpUQD, qkPbeWaFsnU], 
+                    rows=[202110], 
+                    value=24
+                ),
+                GridResponseValue(
+                    columns=[fbfJHSPpUQD, wbrDrL2aYEc], 
+                    rows=[202110], 
+                    value=1
+                ),
+                GridResponseValue(
+                    columns=[cYeuwXTCPkU, qkPbeWaFsnU], 
+                    rows=[202110], 
+                    value=47
+                ),
+                GridResponseValue(
+                    columns=[cYeuwXTCPkU, wbrDrL2aYEc], 
+                    rows=[202110], 
+                    value=2
+                )
+            )
+        )
+)
+```
+
+Comme nous pouvons le voir, la réponse `GridDimensionalResponse` est très similaire à la réponse `DimensionalResponse` avec des informations supplémentaires sur les colonnes et les lignes définies dans la visualisation.
+
+Propriétés incluses dans l'objet `GridDimensionalResponse` :
+
+- **Metadata** : elle a le même format et poursuit le même objectif que dans `DimensionalResponse`.
+- **Headers** : elle définit la structure des en-têtes du tableau. Chaque entrée dans les colonnes et les lignes représente une dimension. Le poids représente le nombre de colonnes et de lignes auxquels elle s'applique. Dans l'exemple, la première dimension des colonnes (dataElements) a un poids de 2, tandis que la deuxième dimension (categoryOptions) a un poids de 1. Le tableau permet de mieux comprendre cet aspect.
+- **Dimensions** : son objectif est le même que celui de `DimensionalResponse`, mais les dimensions sont regroupées par colonnes et par lignes.
+- **DimensionItems** : elle a le même format et poursuit le même objectif que dans `DimensionalResponse`.
+- **Filters** : elle a le même format et poursuit le même objectif que dans `DimensionalResponse`.
+- **Values** : elle contient des informations supplémentaires sur la représentation des valeurs. Chaque entrée du tableau "values" représente une ligne dans le tableau. Cette entrée est une liste de `GridResponseValue`, qui représente une cellule du tableau. Chaque `GridResponseValue` contient des informations contextuelles sur les colonnes et les lignes auxquelles la valeur appartient. Ce format permet d'imprimer facilement le résultat sous forme de tableau sans traitement supplémentaire.
+
+### Prise en charge des dimensions { #android_sdk_analytics_dimension_support }
+
+| Dimension                 | Élément                           | Prise en charge   |
+|---------------------------|-----------------------------------|-----------|
+| **Données:**                 | Indicateurs                        | Oui*      |
+|                           | Éléments de données                      | Oui       |
+|                           | Détails des éléments de données              | Oui       |
+|                           | Items de données d'événements                  | Oui       |
+|                           | Indicateurs de programme                | Oui**     |
+|                           | Ensembles de données : Taux de déclaration          | Non        |
+|                           | Ensembles de données : Taux de déclaration dans les délais  | Non        |
+|                           | Ensembles de données : Rapports effectifs          | Non        |
+|                           | Ensembles de données : Rapports effectifs dans les délais  | Non        |
+|                           | Ensembles de données : Rapports attendus        | Non        |
+| **Période:**               | Fixe                             | Oui       |
+|                           | Relative                          | Oui       |
+| **Unité d'organisation :**    | Fixe                             | Oui       |
+|                           | Relative                          | Oui       |
+|                           | Niveau                             | Oui       |
+|                           | Groupes d'unités d'organisation                         | Oui       |
+| **Autres :**                | Catégories (options de catégorie)      | Oui***    |
+|                           | Ensembles de groupes d'options de catégorie        | Non        |
+|                           | Ensembles de groupes d'unités d'organisation      | Non        |
+
+*Consultez le tableau [Prise en charge des indicateurs](#android_sdk_analytics_indicator_support) pour plus de détails.
+
+**Consultez le tableau [Prise en charge des indicateurs de programme](#android_sdk_analytics_program_indicator_support) pour plus de détails.
+
+***Pour ce qui est des indicateurs de programme, ils ne sont appliqués qu'aux indicateurs de programmes d'ÉVÈNEMENT.
+
+### Prise en charge des indicateurs { #android_sdk_analytics_indicator_support }
+
+Ce tableau montre la fonctionnalité prise en charge par l'élément de dimension de l'indicateur par rapport à l'analyse backend.
+
+| Type              | Élément              | Backend   | Android SDK |
+|-------------------|----------------------|-----------|-------------|
+| **Mathématique :** | Parenthèse          | Oui       | Oui         |     
+|                   | Plus (+)             | Oui       | Oui         |
+|                   | Moins (-)            | Oui       | Oui         |
+|                   | Puissance (^)            | Oui       | Non          |
+|                   | Multiplier (*)         | Oui       | Oui         |
+|                   | Diviser (/)           | Oui       | Oui         |
+|                   | Pourcentage (%)          | Oui       | Oui         |
+| **Logique :**      | NOT                  | Oui       | Oui         |
+|                   | !                    | Oui       | Oui         |
+|                   | AND                  | Oui       | Oui         |
+|                   | &&                   | Oui       | Oui         |
+|                   | OR                   | Oui       | Oui         |
+|                   | &#124;&#124;         | Oui       | Oui         |
+| **Comparaison :**   | Égal (==)           | Oui       | Oui         |
+|                   | Pas égal (!=)        | Oui       | Oui         |
+|                   | Supérieur à (>)               | Oui       | Oui         |
+|                   | Inférieur à (<)               | Oui       | Oui         |
+|                   | Supérieur ou égal à (>=)              | Oui       | Oui         |
+|                   | Inférieur ou égal à (<=)              | Oui       | Oui         |
+| **Littéral :**     | nul                 | Oui       | Oui         |
+| **Fonctions :**    | FirstNonNull         | Oui       | Oui         |
+|                   | Greatest             | Oui       | Oui         |
+|                   | If                   | Oui       | Oui         |
+|                   | IsNotNull            | Oui       | Oui         |
+|                   | IsNull               | Oui       | Oui         |
+|                   | Least                | Oui       | Oui         |
+|                   | Log                  | Oui       | Non          |
+|                   | Log10                | Oui       | Non          |
+|                   | Sous-expression        | Oui       | Non          |
+|                   | .aggregationType     | Oui       | Oui         |
+|                   | .maxDate             | Oui       | Oui         |
+|                   | .minDate             | Oui       | Oui         |
+|                   | .periodOffset        | Oui       | Oui         |
+|                   | .yearToDate          | Oui       | Oui         |
+| **Dimensions :**   | Constant             | Oui       | Oui         |
+|                   | DataElement          | Oui       | Oui         |
+|                   | ProgramAttribute     | Oui       | Oui         |
+|                   | ProgramDataElement   | Oui       | Oui         |
+|                   | ProgramIndicator     | Oui       | Oui         |
+|                   | OrgUnitGroup         | Oui       | Non          |
+|                   | ReportingRate        | Oui       | Non          |
+|                   | Jours                 | Oui       | Oui         |
+|                   | PeriodInYear         | Oui       | Oui         |
+|                   | YearlyPeriodCount    | Oui       | Oui         |
+|                   | N_Brace (indicateurs) | Oui       | Non          |
+
+### Prise en charge des indicateurs de programme { #android_sdk_analytics_program_indicator_support }
+
+Ce tableau montre la fonctionnalité prise en charge par l'élément de dimension de l'indicateur de programme par rapport à l'analyse backend.
+
+| Type                       | Élément              | Backend   | Android SDK |
+|----------------------------|----------------------|-----------|-------------|
+| **Mathématique :**          | Parenthèse          | Oui       | Oui         |     
+|                            | Plus (+)             | Oui       | Oui         |
+|                            | Moins (-)            | Oui       | Oui         |
+|                            | Puissance (^)            | Oui       | Non          |
+|                            | Multiplier (*)         | Oui       | Oui         |
+|                            | Diviser (/)           | Oui       | Oui         |
+|                            | Pourcentage (%)          | Oui       | Oui         |
+| **Logique :**               | NON                  | Oui       | Oui         |
+|                            | !                    | Oui       | Oui         |
+|                            | AND                  | Oui       | Oui         |
+|                            | &&                   | Oui       | Oui         |
+|                            | OU                   | Oui       | Oui         |
+|                            | &#124;&#124;         | Oui       | Oui         |
+| **Comparaison :**            | Égal (==)           | Oui       | Oui         |
+|                            | Pas égal (!=)        | Oui       | Oui         |
+|                            | Supérieur à (>)               | Oui       | Oui         |
+|                            | Inférieur à (<)               | Oui       | Oui         |
+|                            | Supérieur ou égal à (>=)              | Oui       | Oui         |
+|                            | Inférieur ou égal à (<=)              | Oui       | Oui         |
+| **Littéral :**              | null                 | Oui       | Oui         |
+| **Fonctions :**             | FirstNonNull         | Oui       | Oui         |
+|                            | Greatest             | Oui       | Oui         |
+|                            | If                   | Oui       | Oui         |
+|                            | IsNotNull            | Oui       | Oui         |
+|                            | IsNull               | Oui       | Oui         |
+|                            | Least                | Oui       | Oui         |
+|                            | Log                  | Oui       | Non          |
+|                            | Log10                | Oui       | Non          |
+|                            | PeriodOffset         | Oui       | Non          |
+|                            | Contains             | Oui       | Oui         |
+|                            | ContainsItems        | Oui       | Oui         |
+| **Fonctions D2:**          | D2AddDays            | Non        | Non          |
+|                            | D2Ceil               | Non        | Non          |
+|                            | D2Concatenate        | Non        | Non          |
+|                            | D2Condition          | Oui       | Oui         |
+|                            | D2Count              | Oui       | Oui         |
+|                            | D2CountIfCondition   | Oui       | Oui         |
+|                            | D2CountIfValue       | Oui       | Oui         |
+|                            | D2DaysBetween        | Oui       | Oui         |
+|                            | D2Floor              | Non        | Non          |
+|                            | D2HasValue           | Oui       | Oui         |
+|                            | D2Left               | Non        | Non          |
+|                            | D2Length             | Non        | Non          |
+|                            | D2MaxValue           | Oui       | Oui         |
+|                            | D2MinutesBetween     | Oui       | Oui         |
+|                            | D2MinValue           | Oui       | Oui         |
+|                            | D2Modulus            | Non        | Non          |
+|                            | D2MonthsBetween      | Oui       | Oui         |
+|                            | D2Oizp               | Oui       | Oui         |
+|                            | D2RelationshipCount  | Oui       | Oui         |
+|                            | D2Right              | Non        | Non          |
+|                            | D2Round              | Non        | Non          |
+|                            | D2Split              | Non        | Non          |
+|                            | D2Substring          | Non        | Non          |
+|                            | D2ValidatePattern    | Non        | Non          |
+|                            | D2WeeksBetween       | Oui       | Oui         |
+|                            | D2YearsBetween       | Oui       | Oui         |
+|                            | D2Zing               | Oui       | Oui         |
+|                            | D2Zpvc               | Oui       | Oui         |
+|                            | D2LastEventDate      | Non        | Non          |
+|                            | D2AddControlDigits   | Non        | Non          |
+|                            | D2CheckControlDigits | Non        | Non          |
+|                            | D2ZScoreWFA          | Non        | Non          |
+|                            | D2ZScoreWFH          | Non        | Non          |
+|                            | D2ZScoreHFA          | Non        | Non          |
+|                            | D2InOrgUnitGroup     | Non        | Non          |
+|                            | D2HasUserRole        | Non        | Non          |
+| **Fonctions d'agrégation :** | avg                  | Oui       | Non          |
+|                            | count                | Oui       | Non          |
+|                            | max                  | Oui       | Non          |
+|                            | min                  | Oui       | Non          |
+|                            | percentileCont       | Oui       | Non          |
+|                            | stddev               | Oui       | Non          |
+|                            | stddevPop            | Oui       | Non          |
+|                            | stddevSamp           | Oui       | Non          |
+|                            | sum                  | Oui       | Non          |
+|                            | variance             | Oui       | Non          |
+| **Variables :**             | AnalyticsPeriodEnd   | Oui       | Oui         |
+|                            | AnalyticsPeriodStart | Oui       | Oui         |
+|                            | CreationDate         | Oui       | Oui         |
+|                            | CurrentDate          | Oui       | Oui         |
+|                            | CompletedDate        | Oui       | Oui         |
+|                            | DueDate              | Oui       | Oui         |
+|                            | EnrollmentCount      | Oui       | Oui         |
+|                            | EnrollmentDate       | Oui       | Oui         |
+|                            | EnrollmentStatus     | Oui       | Oui         |
+|                            | EventStatus          | Oui       | Oui         |
+|                            | EventCount           | Oui       | Oui         |
+|                            | ExecutionDate        | Oui       | Oui         |
+|                            | EventDate            | Oui       | Oui         |
+|                            | IncidentDate         | Oui       | Oui         |
+|                            | OrgunitCount         | Oui       | Oui         |
+|                            | ProgramStageId       | Oui       | Oui         |
+|                            | ProgramStageName     | Oui       | Oui         |
+|                            | SyncDate             | Oui       | Oui         |
+|                            | TeiCount             | Oui       | Oui         |
+|                            | ValueCount           | Oui       | Oui         |
+|                            | ZeroPosValueCount    | Oui       | Oui         |
+| **Autre :**                 | Constant             | Oui       | Oui         |
+|                            | ProgramStageElement  | Oui       | Oui         |
+|                            | Attribut de programme     | Oui       | Oui         |
+|                            | PS_EVENTDATE         | Oui       | Oui         |
+
+### Prise en charge du type d'agrégation { #android_sdk_analytics_aggregation_type_support }
+
+| Type                            | Android SDK |
+|---------------------------------|-------------|
+| SUM                             | Oui         |
+| AVERAGE                         | Oui         |
+| AVERAGE_SUM_ORG_UNIT            | Oui         |
+| DERNIÈRE                            | Oui         |
+| LAST_AVERAGE_ORG_UNIT           | Oui         |
+| LAST_IN_PERIOD                  | Oui         |
+| LAST_IN_PERIOD_AVERAGE_ORG_UNIT | Oui         |
+| LAST_LAST_ORG_UNIT              | Oui         |
+| PREMIÈRE                           | Oui         |
+| FIRST_AVERAGE_ORG_UNIT          | Oui         |
+| FIRST_FIRST_ORG_UNIT            | Oui         |
+| COUNT                           | Oui         |
+| STDDEV                          | Non          |
+| VARIANCE                        | Non          |
+| MIN                             | Oui         |
+| MIN_SUM_ORG_UNIT                | Oui         |
+| MAX                             | Oui         |
+| MAX_SUM_ORG_UNIT                | Oui         |
+| NONE                            | Non          |
+| CUSTOM                          | Non          |
+| DEFAULT                         | Non          |
+
+## Liste de lignes du Tracker { #android_sdk_tracker_line_list }
+
+Ce type d'analyse est similaire à celui obtenu avec l'application web Liste de lignes. Cette application permet de générer des listes de lignes au niveau de l'événement ou de l'inscription. Ces listes peuvent inclure des éléments de données, des attributs, des indicateurs de programme, des variables et éventuellement filtrer ces entrées avec les valeurs contenues de leurs colonnes.
+
+Un cas d'utilisation courant consiste à générer une liste d'événements ou d'inscriptions qui répondent à certains critères, tels qu'une valeur appartenant à une fourchette, un statut ou une date spécifiques.
+
+Par exemple, une requête contenant toutes les inscriptions ACTIVES au programme "fbfJHSPpUQD" dont l'attribut "p4mRWMtCxtB" a une valeur comprise entre 40 et 50 ressemblera à ceci. Notez que le statut est inclus en tant que filtre et n'a donc pas de colonne explicite.
+
+```kt
+d2.analyticsModule().trackerLineList()
+            .withEnrollmentOutput("fbfJHSPpUQD")
+            .withFilter(
+                TrackerLineListItem.ProgramStatusItem(
+                    filters = listOf(
+                        EnumFilter.EqualTo(EnrollmentStatus.ACTIVE.name)
+                    )
+                )
+            )
+            .withColumn(TrackerLineListItem.OrganisationUnitItem())
+            .withColumn(
+                TrackerLineListItem.ProgramAttribute(
+                    uid = "p4mRWMtCxtB",
+                    filters = listOf(
+                        DataFilter.GreaterThan("40"),
+                        DataFilter.LowerThan("50"),
+                    ),
+                ),
+            )
+            .evaluate()
+```
+
+La réponse est un objet 'Result' de 'TrackerLineListResponse', qui a la structure suivante :
+
+```kt
+TrackerLineListResponse(
+  metadata = mapOf(
+      "p4mRWMtCxtB" to MetadataItem.TrackedEntityAttributeItem
+  ),
+  headers = listOf(
+    TrackerLineListItem.OrganisationUnitItem, 
+    TrackerLineListItem.ProgramAttribute
+  ), 
+  filters = listOf(
+    TrackerLineListItem.ProgramStatusItem
+  ),
+  rows = listOf(
+    listOf(
+      TrackerLineListValue(id = "ouItem", value = "Child 1"),
+      TrackerLineListValue(id = "p4mRWMtCxtB", value = "45")
+    ),
+    listOf(
+      TrackerLineListValue(id = "ouItem", value = "Child 2"),
+      TrackerLineListValue(id = "p4mRWMtCxtB", value = "49")
+    ),
+    listOf(
+      TrackerLineListValue(id = "ouItem", value = "Child 2"),
+      TrackerLineListValue(id = "p4mRWMtCxtB", value = "41")
+    )
+  )
+)
+```
+
+En option, il est possible d'utiliser un objet TrackerVisualization (appelé EventVisualization dans l'API) pour évaluer une liste de lignes prédéfinie. L'objet TrackerVisualization doit être de type LINE_LIST. Il est également possible de remplacer une valeur.
+
+Par exemple, cette requête utilise la configuration du TrackerVisualization "s85urBIkN0z" et ajoute ou écrase la colonne ProgramStatusItem avec un filtrage sur ACTIVE.
+
+```kt
+d2.analyticsModule().trackerLineList()
+  .withTrackerVisualization("s85urBIkN0z")
+  .withColumn(
+    TrackerLineListItem.ProgramStatusItem(
+      filters = listOf(
+        EnumFilter.EqualTo(EnrollmentStatus.ACTIVE.name)
+      )
+    )
+  )
+  .evaluate()
+```
+
+Pour pouvoir utiliser les objets TrackerVisualization, ils doivent être définis dans la section "Analyse" de l'application web Paramètres Android. Actuellement, il n'est pas possible de télécharger des visualisations à la demande à partir du serveur, mais seulement à partir de l'application web Paramètres Android.
+
+## Liste de lignes d'événements { #android_sdk_event_line_list }
+
+Il s'agit d'analyses basées sur des événements. Si vous maîtrisez les outils d'analyse web, vous remarquerez qu'ils sont très similaires aux rapports d'événements (liste de lignes). C'est un cas simplifié de la Liste de Lignes du Tracker.
+
+Un cas d'utilisation courant consiste à générer une liste d'événements pour une étape répétable et pour le compte d'une TEI donnée afin de montrer l'évolution d'une valeur particulière à travers les événements. 
+
+Par exemple, supposons que nous ayons une étape répétable avec deux éléments de données (taille et poids) et un indicateur basé sur ces valeurs (IMC ou Indice de masse corporelle). Nous aimerions montrer l'évolution de ces valeurs à travers les événements
+
+```java
+d2.analyticsModule().eventLineList()
+        .byProgramStage().eq("stage_id")
+        .byTrackedEntityInstance().eq("tei_id")
+        .withDataElement("height_id")
+        .withDataElement("weight_id")
+        .withProgramIndicator("BMI_id")
+        .evaluate();
+```
+
+Le résultat sera une liste d'événements avec les valeurs évaluées (éléments de données et indicateurs) ainsi que quelques propriétés `displayName` pratiques pour afficher le résultat dans un tableau ou un graphique.
+
