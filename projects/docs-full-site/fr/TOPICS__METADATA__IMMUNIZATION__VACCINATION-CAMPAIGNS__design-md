@@ -1,0 +1,145 @@
+---
+edit_url: "https://github.com/dhis2-metadata/GEN_DOCS/blob/master/IMM_VC/design.md"
+revision_date: '2022-10-30'
+tags:
+- Métadonnées
+---
+
+# Suivi en temps Réel des Campagnes de Vaccination - Conception { #imm-vc-design }
+
+## Introduction { #introduction } 
+
+Ce guide de conception est destiné aux **chargés de la mise en œuvre de DHIS2 et aux concepteurs de systèmes**. Il fournit des conseils et des suggestions pratiques pour la configuration et la personnalisation de DHIS2 en vue d'un suivi en temps réel des campagnes de vaccination. Ce document complète le guide d'utilisation de la boîte à outils de la campagne en fournissant des conseils techniques pour évaluer les options de configuration afin de parvenir à une conception pragmatique et solide dans le cadre des contraintes réelles du contexte local de la campagne.
+
+Bien que de nombreux modèles innovants puissent être utilisés pour divers aspects de la planification, de la mise en œuvre et de l'évaluation des campagnes, le guide de conception se concentre spécifiquement sur le suivi des performances de la mise en œuvre de la campagne en temps réel et comprend les éléments suivants :
+
+- Mise en place d'une hiérarchie d'unités d'organisation adaptée aux opérations et au suivi de la campagne
+- Modélisation des populations cibles et des objectifs de la campagne sur la base du microplan
+- Prend en charge l'établissement de rapports en temps réel (quotidiens)
+- Tableaux de bord en temps réel pour un accès à plusieurs niveaux pendant la campagne
+- Aspects à prendre en compte pour l'intégration des données de la campagne (par exemple, la couverture) dans le HMIS
+
+## Aperçu de la conception du système { #system-design-overview } 
+
+Les métadonnées qui permettent de saisir les doses administrées ( désagrégées par tranches d'âge et autres dimensions en fonction de l'antigène et de la population cible), le stock/le gaspillage et les dénominateurs représentant les groupes cibles pour les indicateurs de couverture sont remarquablement similaires à celles qui sont saisies dans le cadre des rapports de routine des établissements de santé. Dans certains cas, des métadonnées supplémentaires sont créées pour faciliter le suivi quotidien des opérations, comme le personnel disponible pour la campagne.
+
+L'optimisation d'une configuration DHIS2 pour la surveillance en temps réel des AVS nécessite une attention particulière :
+
+- **Structure de la hiérarchie de l'unité d'organisation** - qui s'étend souvent en dessous du district et comprend des unités de vaccination sous-district ou des sites de vaccination individuels ;
+- **Fréquence des rapports** - au moins une fois par jour pour répondre aux besoins de suivi en temps réel
+Gestion des utilisateurs - qui élargit souvent la base d'utilisateurs de DHIS2 à un grand nombre de membres du personnel de la campagne pour la saisie des données.
+- **La conception du tableau de bord** - qui peut nécessiter une personnalisation pour les utilisateurs non traditionnels qui consomment et utilisent les données, tels que les Centres de Commandes et même les bureaux du Premier Ministre qui contrôlent les performances de la campagne.
+
+Les métadonnées de vaccination de DHIS2 définies avec l'OMS pour les campagnes de vaccination de routine et les campagnes de vaccination COVID-19 suivent en grande partie la même structure. Ce principe s'applique également à la création d'ensembles de données pour les AVS. Il est recommandé de suivre des structures de métadonnées similaires pour les campagnes d'AVS afin de faciliter l'intégration des données d'AVS dans le HMIS après la campagne et de permettre la triangulation avec les données de vaccination systématique. Les ensembles de métadonnées suivants, approuvés par l'OMS, peuvent être consultés lors de la création de métadonnées pour les AVS :
+
+- [**Module de vaccination de routine pour le HMIS ( Package de l'agrégat du PEV)**](https://docs.dhis2.org/en/topics/metadata/immunization/immunization-aggregate/design.html)
+- [**Package agrégé d'administration de vaccins COVID-19 pour la gestion en temps réel**](https://docs.dhis2.org/en/topics/metadata/covid-19-vaccine-delivery/covac-aggregate/version-110/design.html)
+
+En fonction des choix de mise en œuvre au niveau local, les métadonnées des AVS peuvent être **clonées** et modifiées à l'aide des modèles fournis ici (par exemple, doses administrées par groupe cible/âge, disponibilité du personnel, données sur la population, suivi des stocks). Comme indiqué dans le document d'orientation [ « Planifier et mettre en œuvre des approches de suivi en temps réel pour renforcer les campagnes de vaccination »] (https://www.gavi.org/sites/default/files/evaluations/Planning-Implementing-RTM-Approaches-Strengthen-Vaccination-Campaigns.pdf), only data that is useful for decision making should be collected (e.g. population data - **children and pregnant women -, targets, uptake, disease incidence for reactive campaigns, adverse events following immunization, staff, cold chain, and stock data**; and the most **sensitive data (such as data tracking individual children) should be collected infrequently and anonymized**. For this reason, this guidance document focuses on an aggregate real-time monitoring solution. The RTM design can be supplemented by use of routine DHIS2 Tracker-based solutions ([**Immunization registry**](https://docs.dhis2.org/en/topics/metadata/immunization/eir-immunization-eregistry/design.html) et le [**Tracker MAPI**](https://docs.dhis2.org/en/topics/metadata/immunization/adverse-events-following-immunization-aefi-tracker/design.html)).
+
+### Re-modélisation des métadonnées de la vaccination systématique de l'OMS (PEV) pour les AVS { #re-modeling-who-routine-immunisation-epi-metadata-for-sias } 
+
+Le contenu de l'exemple présenté dans cette section a pour but d'orienter la conception des métadonnées de l'AVS en s'appuyant sur le package existant du PEV. En particulier, cet exercice illustrera un exemple de campagne de ratissage pour le penta-HepB-Hib.
+Les suggestions et les informations fournies dans ces sections pratiques pourraient bien sûr être reproduites pour n'importe quel vaccin. De même, elles peuvent être appliquées à l'utilisation d'un package différent comme point de départ, par exemple le COVAC ou le COVIDVAC.
+
+Il existe deux approches principales pour la création des métadonnées de l'AVS : l'une est plus manuelle et implique la création des métadonnées directement dans le système, l'autre est plus automatisée et implique l'utilisation d'un fichier standard à importer dans le système.
+L'approche **manuelle implique le clonage non automatique des métadonnées existantes du PEV**.
+Le clonage permettra une mise à jour rapide des préfixes (par exemple du PEV à l'AVS) pour **adapter le nom, le code et le nom du formulaire, la description et le recyclage des combinaisons de chats et des légendes, si nécessaire**. Et surtout, **il attribuera automatiquement un nouvel identifiant**. Ceci est d'une importance capitale pour brancher l'ED de l'AVS sur l'ED originale du PEV afin de pouvoir importer toutes les métadonnées dans la même instance et de trianguler les données du SIA avec les données du PEV et de l'IDSR.
+Le même principe s'applique aux indicateurs, avec en plus l'adaptation de la formule en utilisant les ED de l'AVS.
+
+![Duplication des ED du PEV](resources/images/SIA_014.png){ .center }
+
+![Du PEV au AVS](resources/images/SIA_015.png){ .center }
+
+Ces approches peuvent également être appliquées à la reproduction de l'ensemble de données sur les stocks au besoin.
+
+![Stock du PEV au AVS](resources/images/SIA_018.png){ .center }
+
+L'utilisation d'un **fichier plat** réduit sans aucun doute le temps nécessaire à l'adaptation des métadonnées, mais nécessite des connaissances techniques suffisantes pour comprendre la structure du fichier plat et pour exporter et réimporter les métadonnées. Cette approche permettra facilement de **changer les préfixes ou toute autre mise à jour nécessaire des ED**, des indicateurs, mais elle nécessitera le **changement manuel de l'ID pour chaque nouveau type de métadonnées** à utiliser au cours de la campagne. Une fois de plus, ceci est d'une importance capitale afin d'importer plus tard les données de l'AVS dans le HMIS pour la triangulation des résultats par rapport aux activités de routine.
+
+## Fréquence des rapports { #frequency-of-reporting } 
+
+La différence la plus importante entre les métadonnées de vaccination de routine et les métadonnées de campagne serait à ce stade la périodicité de la communication des données. Les packages mondiaux ont été publiés avec une périodicité hebdomadaire/mensuelle par défaut, alors que les AVS devraient normalement faire l'objet d'un rapport **quotidien** afin de permettre un suivi en temps réel des activités. Les aspects relatifs à la mise en œuvre doivent donc tenir compte des utilisateurs, de l'infrastructure, des communications et des serveurs qui peuvent supporter un travail quotidien intense pendant la durée de la campagne.
+
+
+Une autre question importante liée aux cycles temporels est celle de la population cible de la campagne. Alors que les **données de population** affectées aux activités de vaccination de routine sont normalement définies comme un ensemble de données annuelles, la population cible de la campagne est très définie en termes de nombre, d'espace et de temps dans le cadre du lieu et de la périodicité des activités elles-mêmes. De plus amples informations sur les données démographiques et les dénominateurs sont disponibles dans les sections [« Microplanification »](#geoenabled-microplanning) et [« Indicateurs »](#indicators).
+
+### PEV à AVS: Fréquence et population cible { #epi-to-sia-frequency-and-target-population } 
+
+![Périodicité](resources/images/SIA_016.png){ .center }
+
+Un **ensemble de données AVS séparé** contenant les métadonnées AVS devra être créé. Comme indiqué plus haut, les activités d'une campagne de vaccination sont généralement limitées dans le temps et nécessiteraient probablement un **ensemble de données journalières**. De plus, étant donné la courte durée de vie des campagnes, l'ensemble de données pourrait être configuré de manière à avoir des **données d'ouverture et de fermeture pour les entrées de données**. Cela pourrait être particulièrement intéressant pour les sites où les AVS sont réalisées plus souvent ou lorsque plusieurs campagnes sont menées en parallèle. En fonction de la structure de la hiérarchie, les campagnes peuvent créer une certaine confusion parmi les personnes chargées de la saisie des données, qui peuvent saisir des données dans le mauvais site/ensemble de données.
+
+La population visée par la campagne de vaccination est normalement très ciblée et, tout comme les activités, elle n'est fixée que pour une courte période. En général, des sites spécifiques et des efforts de vaccination visent un nombre ciblé d'individus. Une approche à cet égard consisterait à **additionner une section pour la population cible directement dans l'ensemble de données sur la distribution des vaccins**. Cette méthode, combinée aux informations fournies dans la section [« Indicateurs »](#indicateurs), devrait fournir des indicateurs de couverture solides et fiables.
+
+![Périodicité](resources/images/SIA_017.png){ .center }
+
+Dans cet exemple pratique particulier, la section population comprend les femmes enceintes et la population par groupes d'âge. En fonction de la logistique, de l'antigène du vaccin et des cibles spécifiques, les groupes d'âge et les points de données peuvent être modifiés et appliqués en conséquence. Cette population sera le dénominateur pour ce site de vaccination spécifique et pour ce jour spécifique. Pour obtenir une vue d'ensemble des efforts de vaccination, les utilisateurs devront probablement analyser les données à un niveau plus élevé (par exemple les districts) et sur la période des activités en sélectionnant « **Périodes fixes** » au cours de l'analyse.
+
+## Structure de l'unité d'organisation { #organisation-unit-structure } 
+
+Parmi les nombreux éléments à prendre en compte lors des étapes de planification, le rôle de la hiérarchie [Unité d'organisation] (https://www.youtube.com/watch?v=UDwmYw0W9gg) et de ses niveaux est l'un des points clés les plus **critiques** à considérer en tandem avec le type de collecte de données prévu (agrégat ? tracker ?). Par exemple, quel **type de sites** appartient à la hiérarchie (établissements de santé ? Communautés ? Structures non liées à la santé ?), et quels **niveaux** (hiérarchie administrative ? Districts de santé ?) inclure.
+Les points ci-dessous présentent quelques réflexions fondamentales à prendre en considération lors de la conception d'activités de type campagne dans le système.
+Les niveaux de la [hiérarchie] (https://docs.dhis2.org/en/implement/database-design/organisation-units.html)doivent être sélectionnés en fonction du fait que les métadonnées de la campagne seront entièrement intégrées dans le HMIS national ou dans une instance séparée. Dans l'ensemble, **l'alignement de la hiérarchie du HMIS sur le niveau sous-national pertinent est fortement recommandé** pour soutenir l'analyse et l'intégration future des données, même si une instance DHIS2 distincte est utilisée pendant la campagne elle-même.
+
+> **Exemple**
+>
+> **DHIS2 EN COURS D'UTILISATION:**
+>
+> Pour la **campagne de vaccination contre la polio** menée au **Mozambique** en octobre 2022, HISP Mozambique a opté pour la mise en place d'une **instance indépendante** à utiliser exclusivement pour la période de l'AVS. La structure de l'UO de l'instance AVS comprenait des niveaux qui ne sont normalement pas inclus dans la hiérarchie de l'UO du HMIS national : les quartiers. Comme les quartiers font partie des zones de recrutement spécifiques des structures de santé, le mappage des données pour l'inclusion des valeurs de l'AVS dans le HMIS a permis de relier les structures de santé à des districts spécifiques. Comme les données ont ensuite été agrégées au niveau du district en synchronisant quotidiennement les valeurs de l'instance AVS, **la structure UO de l'AVS correspondait parfaitement à la hiérarchie UO du HMIS national**.
+
+Les activités de vaccination supplémentaires (AVS) telles que les campagnes de vaccination de masse nécessitent généralement des **unités organisationnelles supplémentaires au niveau du sous-district et des sites de vaccination hors FS** (tels que des centres communautaires, des écoles et d'autres structures) qui sont d'une grande importance pour le suivi en temps réel des efforts déployés dans le cadre de la campagne. Les changements apportés à la hiérarchie des rapports de routine des établissements (unité d'organisation) pour tenir compte de la structure opérationnelle de la campagne (par exemple, les équipes de campagne des sous-districts, les sites de livraison ruraux ou urbains, les sessions de sensibilisation de la communauté) peuvent entraîner un nombre beaucoup plus élevé d'unités d'organisation dans le système.
+
+> **Exemple**
+>
+> **DHIS2 EN COURS D'UTILISATION:**
+>
+> Au début de la campagne de masse en **Ouganda**, on a essayé d'utiliser les **sites de vaccination hors établissements de santé**, comme les écoles et les centres commerciaux, comme unités d'organisation des rapports, mais cela s'est avéré trop compliqué à introduire et à gérer dans la hiérarchie habituelle des unités d'organisation des rapports. Actuellement, ils ont choisi d'utiliser les sous-comtés (niveau du sous-district) comme UO de notification et c'est également à ce niveau que le microplanning/ciblage est utilisé pour la vaccination, même lorsque les sites qui ne sont pas des formations sanitaires sont utilisés pour la vaccination.
+
+Pour faciliter l'analyse des hiérarchies étendues, les sites pourraient se voir attribuer un [« **type de site** »] (https://docs.dhis2.org/en/implement/database-design/organisation-units.html#organisation-unit-groups-and-group-sets) qui peut être regroupé à des fins d'analyse. Une approche similaire est décrite dans le guide de conception du Package Mondial d'agrégat pour le Paludisme, dans lequel les utilisateurs reçoivent une vue d'ensemble de [comment désagréger par propriété du site] (https://docs.dhis2.org/en/topics/metadata/malaria/malaria-aggregate/version-200/design.html#special-considerations-malaria-data-disaggregated-by-public-facility-vs-private-sector-vs-community-service-delivery) - dans le cas d'utilisation du paludisme, la désagrégation n'affiche que deux types de propriété ( établissements publics et privés), bien que pour les besoins des AVS, les types pourraient être configurés pour inclure également les sites de vaccination, les centres communautaires, les postes de santé, ou les écoles et d'autres sites non liés à la santé.
+
+Les chargés de la mise en œuvre peuvent également exploiter le modèle d'accès de DHIS2 pour permettre l'analyse et le suivi des données à tous les niveaux des campagnes en **concevant des utilisateurs avec différents droits** en fonction de leur rôle dans la campagne, et/ou avec différents niveaux d'accès à la hiérarchie - par exemple, les équipes de vaccination peuvent avoir accès uniquement à certains sites spécifiques qui leur sont assignés, ou les responsables d'équipe peuvent avoir accès à une région ou à un district prédéfini(e).
+
+## La supervision en tant que dimension { #supervision-as-a-dimension } 
+
+**Le suivi de la répartition et des performances du personnel de la campagne** peut être utile pour optimiser les opérations et réaffecter les ressources humaines au cours de la campagne. Alors que les packages mondiaux fournissent déjà les métadonnées pertinentes pour concevoir les points de données de base permettant de suivre la disponibilité du personnel, il n'existe pas d'éléments de données prédéfinis pour suivre les vaccinateurs individuels ou les équipes de vaccination. La conception des ensembles de données pour les AVS pourrait bénéficier de l'ajout du « **nombre d'équipes** “ ou de ” **vaccinateurs** » comme élément de données ou comme **attribut d'ensemble de données** pour mieux contrôler le respect des lignes directrices et la prestation de l'équipe sur le terrain.
+
+Une **Combinaison de Catégories** peut également être attribuée comme attribut à un programme tracker ou à un ensemble de données où les options d'une catégorie sont partagées pour la saisie des données exclusivement avec un groupe ou un utilisateur spécifique. Cela permet de désagréger les données dans les rapports afin d'identifier le nombre d'événements attribués à un utilisateur ou à un groupe d'utilisateurs spécifique pour une unité d'organisation donnée. Dans ce cas d'utilisation, la combinaison de catégories peut contenir une liste d'unités de vaccination afin d'offrir la possibilité de découper les données dans les applications analytiques et de comparer les performances par unité de vaccination. Le nombre d'options de catégories configurées dans la combinaison de catégories doit être gérable, tout en offrant une utilité pour l'analyse.
+
+> **Exemple**
+>
+> **DHIS2 EN COURS D'UTILISATION:**
+>
+> **Au Nigéria**, 10 unités mobiles rattachées à chacun des plus de 40 000 établissements de santé n'ont pas nécessité la création de 40 000 Options de Catégorie. Au lieu de cela, **10 Options de Catégorie** combinées avec les dimensions de l'unité d'organisation et les groupes d'utilisateurs ont été suffisantes pour analyser la performance par unité mobile à partir du niveau de l'établissement.
+
+## Analyse  { #analytics } 
+
+### Indicateurs { #indicators } 
+
+La **couverture** est l'un des principaux indicateurs surveillés lors des AVS (UNICEF, 2021] (<https://www.unicef.org/media/93781/file/gavi-unicef-digital-technology-immunization-2021.pdf>). La mauvaise qualité des données et un suivi insuffisant obscurcissent la couverture et rendent plus difficile l'identification des lacunes, ce qui a un effet négatif sur la planification et le ciblage. En outre, la périodicité mensuelle des rapports de routine par rapport à la fréquence accrue (quotidienne) de la collecte de données lors d'une campagne peut fausser les résultats de la couverture.
+
+Il est recommandé d'utiliser des [**indicateurs agrégés cumulés dans le temps**] (https://docs.dhis2.org/en/use/user-guides/dhis-core-version-235/configuring-the-system/metadata.html#manage_indicator) pour garantir des calculs précis de la couverture. Cela est possible grâce à la fonction **periodOffset** des indicateurs dans les versions supérieures à 2.35.12. En conséquence, les indicateurs de couverture utilisent la somme des 12 derniers mois comme numérateur au lieu d'annualiser l'indicateur. Cette méthode de calcul des indicateurs de couverture est plus précise que l'annualisation.
+
+Des exemples d'expressions d'indicateurs cumulés dans le temps qui utilisent la fonction periodOffset peuvent être référencés dans le [kit de vaccination systématique] (https://dhis2.org/metadata-package-downloads/)
+
+| | |
+|-----------|-----------|
+| Indicateur | **PEV - Couverture BCG (%) - période de compensation** |
+| UID | `lnC0fWd3sD4` |
+| Numérateur | **Doses de BCG < 1 an ce mois-ci et les 11 derniers mois** <br> _PEV - doses de BCG administrées <1 an + PEV - doses de BCG administrées <1 an                                         year.periodOffset(-1) +PEV - doses de BCG administrées <1 year.periodOffset(-2) + PEV - doses de BCG administrées <1 year.periodOffset(-3) + PEV - doses de BCG administrées <1 year.periodOffset(-4) + PEV - doses de BCG administrées <1 year.periodOffset(-5) + PEV - doses de BCG administrées <1 year.periodOffset(-6) + PEV - doses de BCG administrées <1 year.periodOffset(-7) + PEV - doses de BCG administrées <1 year.periodOffset(-8) + PEV - doses de BCG administrées <1 year.periodOffset(-9) + PEV - doses de BCG administrées <1 year.periodOffset(-10) + PEV - doses de BCG administrées <1 year.periodOffset(-11)_ |
+| Dénominateur | **Naissances vivantes** <br> _GEN - Naissances vivantes au sein de la population_ |
+
+| | |
+|-----------|-----------|
+| Indicateur | **PEV - Penta-HepB-Hib 1 couverture (%) - période de décalage** |
+| UID | `WhCBfgiqVbr`|
+| Numérateur | **Penta- 1 dose < 1 an ce mois-ci + les 11 derniers mois** <br> _PEV - Penta-HepB-HIB 1 dose administrée <1 an + PEV - Penta-HepB-HIB 1                                                                   doses administrées <1 year.periodOffset(-1) + PEV - Penta-HepB-HIB 1                                                                                         doses administrées <1 year.periodOffset(-2) + PEV - Penta-HepB-HIB 1                                                                                          doses administrées <1 year.periodOffset(-3) + PEV - Penta-HepB-HIB 1                                                                                        doses administrées <1 year.periodOffset(-4) + PEV - Penta-HepB-HIB 1                                                                                         doses administrées <1 year.periodOffset(-5) + PEV - Penta-HepB-HIB 1                                                                                        doses administrées <1 year.periodOffset(-6) + PEV - Penta-HepB-HIB 1                                                                                        doses administrées <1 year.periodOffset(-7) + PEV - Penta-HepB-HIB 1                                                                                         doses administrées <1 year.periodOffset(-8) + PEV - Penta-HepB-HIB 1                                                                                        doses administrées <1 year.periodOffset(-9) + PEV - Penta-HepB-HIB 1                                                                                         doses administrées <1 year.periodOffset(-10) + PEV - Penta-HepB-HIB 1                                                                                          doses administrées <1 year.periodOffset(-11)_ |
+| Dénominateur | **Population < 1 an** <br> _GEN - Population < 1 an_ |
+
+| | |
+|-----------|-----------|
+| Indicateur | **PEV - Couverture des VPI (%) - période de décalage** |
+| UID | `w3NhG64hp9v`|
+| Numérateur | **Doses de VPI administrées < 1 an ce mois + 11 derniers mois** <br> _EPI - doses de VPI administrées <1 an + PEV - doses de VPI administrées <1                                                      year.periodOffset(-1) + PEV - doses de VPI administrées <1 year.periodOffset(-2) + PEV - doses de VPI administrées <1 year.periodOffset(-3) + PEV - doses de VPI administrées <1 year.periodOffset(-4) + PEV - doses de VPI administrées <1 year.periodOffset(-5) + PEV - Doses de VPI administrées <1 year.periodOffset(-6) + PEV - Doses de VPI administrées <1 year.periodOffset(-7) + PEV - Doses de VPI administrées <1 year.periodOffset(-8) + PEV - Doses de VPI administrées <1 year.periodOffset(-9) + PEV - Doses de VPI administrées <1 year.periodOffset(-10) + PEV - Doses de VPI administrées <1 year.periodOffset(-11)_ |
+| Dénominateur | **Population < 1 an** <br> _GEN - Population < 1 an_ |
+

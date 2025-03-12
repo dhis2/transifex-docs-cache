@@ -1,0 +1,448 @@
+---
+edit_url: "https://github.com/dhis2-metadata/REHAB_AGG/blob/master/docs/rehab_agg-installation.md"
+revision_date: '2022-12-19'
+tags:
+- Implémentation
+---
+
+# Réadaptation - Guide d'installation de l'agrégé { #rehab-agg-installation }
+
+Ce document contient un guide d'installation pour le package agrégé de la réadaptation.
+
+Langue par défaut du système : Anglais
+
+Traductions disponibles : Français, Espagnol, Portugais, Arabe
+
+## Installation { #installation }
+
+L'installation du module se fait en plusieurs étapes :
+
+1. [Préparation du fichier de métadonnées avec les métadonnées DHIS2](#preparing-the-metadata-file)
+2. [Importation des métadonnées dans DHIS2](#importing-metadata)
+3. [Configuration des métadonnées importées](#configuration)
+4. [Adaptation du programme après importation](#adaptation-du-programme)
+
+Nous vous recommandons de lire tout d’abord chaque section du guide d’installation avant de commencer le processus d’installation et de configuration dans le système DHIS2. Identifiez les sections applicables en fonction du type d’importation :
+
+1. importation dans une instance DHIS2 vide
+2. importation dans une instance DHIS2 avec des métadonnées existantes.
+
+Les étapes décrites dans ce document doivent être testées dans une instance DHIS2 de test/transit avant d’être appliquées à un environnement de production.
+
+## Conditions requises { #requirements } 
+
+Pour installer le module, vous devez avoir un compte administrateur dans le système DHIS2.
+
+Il est important de s’assurer que le serveur et l’application DHIS2 sont bien sécurisés et de configurer les droits d’accès aux données collectées. Les détails sur la sécurisation d’un système DHIS2 sortent du cadre de ce document. Veuillez consulter le site [Documentation sur le DHIS2](https://docs.dhis2.org/).
+
+## Fichiers de métadonnées { #metadata-files } 
+
+Bien que ce ne soit pas toujours nécessaire, il peut souvent être avantageux d'apporter certaines modifications au fichier de métadonnées avant son importation dans DHIS2.
+
+## Préparation du fichier de métadonnées { #preparing-the-metadata-file } 
+
+### Dimension de données par défaut { #default-data-dimension } 
+
+Dans les premières versions du système DHIS2, les UID des dimensions de données par défaut étaient générés automatiquement. Ainsi, bien que toutes les instances du système DHIS2 possèdent une option de catégorie par défaut, une catégorie d’élément de données, une combinaison de catégories et une combinaison d’options de catégorie, les UID de ces valeurs par défaut peuvent être différents. Les versions ultérieures du système DHIS2 utilisent des UID codés en dur pour la taille par défaut, lesquels sont utilisés dans les packages de configuration.
+
+Pour éviter tout conflit lors de l’importation des métadonnées, nous vous recommandons de rechercher et de remplacer toutes les occurrences de ces objets par défaut dans l’ensemble du fichier .json, en remplaçant les UID du fichier .json par ceux de l’instance dans laquelle le fichier sera importé. Le tableau 1 présente les UID à remplacer, ainsi que les points de terminaison d’API permettant d’identifier les UID existants.
+
+|Objet                       | UID           | Chemin vers l'API                                              |
+|-----------------------------|---------------|-----------------------------------------------------------|
+| Catégorie                    | `GLevLNI9wkl` | `../api/categories.json?filter=name:eq:default`           |
+| Option de catégorie             | `xYerKDKCefk` | `../api/categoryOptions.json?filter=name:eq:default`      |
+| La combinaison de catégories        | `bjDvmb4bfuf` | `../api/categoryCombos.json?filter=name:eq:default`       |
+| Combinaison d’options catégorie | `HllvX50cXC0` | `../api/categoryOptionCombos.json?filter=name:eq:default` |
+
+Identifiez les UID des tailles par défaut de votre instance à l’aide des requêtes API affichées et remplacez les UID dans le fichier .json par ceux de l’instance.
+
+> **N.B.**
+>
+> Notez que cette opération de recherche et de remplacement doit être effectuée via un éditeur de texte brut, et non un traitement de texte comme Microsoft Word.
+
+### Types d'indicateurs { #indicator-types } 
+
+Le type d’indicateur est également un type d’objet susceptible de créer un conflit lors de l’importation, car certains noms sont utilisés dans différentes bases de données DHIS2 (par ex. « Pourcentage »). Comme les types d’indicateurs sont définis par leur facteur (y compris 1 pour les indicateurs « numérateur seulement »), ils ne laissent aucune ambiguïté et peuvent être remplacés en recherchant et remplaçant des UID. Cette méthode permet d’éviter les éventuels conflits d’importation et empêche le responsable de la mise en œuvre de créer des doublons de types d’indicateurs. Le tableau ci-dessous contient les UID pouvant être remplacés, ainsi que les points de terminaison d’API permettant d’identifier les UID existants :
+
+|Objet                  | UID           | Chemin vers l'API                                                          |
+|------------------------|---------------|-----------------------------------------------------------------------|
+| Numérateur seulement (nombre)| `kHy61PbChXr` | `../api/indicatorTypes.json?filter=number:eq:true&filter=factor:eq:1` |
+
+### Visualisations à l'aide de l'UID de l'unité d'organisation de base { #visualizations-using-root-organisation-unit-uid } 
+
+Les visualisations, les rapports d’événements, les tableaux de rapports et les cartes affectés à un niveau d’unité d’organisation spécifique ou à un groupe d’unités d’organisation comportent un renvoi à l’unité d’organisation de base (niveau 1). Ces objets, s’ils sont présents dans le fichier de métadonnées, contiennent une balise `<OU_ROOT_UID>`. Utilisez la fonction de recherche de l’éditeur de fichiers .json pour trouver cette balise et la remplacer par l’UID de l’unité d’organisation de niveau 1 dans l’instance cible.
+
+### Codes d'option { #option-codes } 
+
+Selon les conventions d'appellation du système DHIS2, les codes de métadonnées utilisent des lettres majuscules, des caractères de soulignement et aucun espace. Certaines exceptions susceptibles de survenir sont spécifiées dans la documentation du package correspondant. Tous les codes inclus dans les objets de métadonnées du package actuel correspondent aux conventions d'appellation. Il peut arriver que les codes des objets de métadonnées existants utilisés dans la base de données cible utilisent des caractères minuscules. Dans ce cas, il faudra mettre à jour ces valeurs directement dans la base de données.
+
+> **Important**
+>
+> Pendant l’importation, les codes d’option existants seront remplacés par les nouveaux codes en majuscules. 
+> Afin de mettre à jour les valeurs des données existantes dans la base de données, vous devez mettre à jour les valeurs stockées dans la base de données en utilisant les commandes de la base de données. 
+> Assurez-vous de mapper les anciens codes d’option avec les nouveaux avant de remplacer les valeurs. Utilisez d’abord l’instance de staging, avant d’effectuer les modifications sur le serveur de production.
+
+Pour les valeurs des éléments de données, utilisez :
+
+```SQL
+UPDATE programstageinstance
+SET eventdatavalues = jsonb_set(eventdatavalues, '{"<affected data element uid>","value"}', '"<new value>"')
+WHERE eventdatavalues @> '{"<affected data element uid>":{"value": "<old value>"}}'::jsonb
+AND programstageid=<database_programsatgeid>;
+```
+
+### Ordre de tri pour les options { #sort-order-for-options } 
+
+Vérifiez si l’ordre de tri `sortOrder` des options de votre système correspond à celui contenu dans le package de métadonnées. Cela ne s’applique que si le fichier .json et l’instance cible contiennent des options et des ensembles d’options avec le même UID.
+
+Après l’importation, assurez-vous que l’ordre de tri des options d’un ensemble d’options commence par 1. Les valeurs de l’ordre de tri ne doivent avoir aucun écart (par exemple 1, 2, 3, 5, 6).
+
+L’ordre de tri peut être modifié dans l’application Maintenance.
+
+1. Accédez à l’ensemble d’options applicable
+2. Ouvrez la section "Options"
+3. Utilisez « TRIER PAR NOM », « TRIER PAR CODE/VALEUR » ou « TRIER MANUELLEMENT » comme alternative.
+
+Le package Réadaptation contient un ensemble d'options et deux options :
+
+```json
+{
+    "optionSets": [
+        {
+            "name": "YES/NO (numeric)",
+            "id": "TdDqpX1kdd2",
+            "code": "YES_NO_NUM",
+            "valueType": "INTEGER_ZERO_OR_POSITIVE",
+            "options": [
+                {
+                    "id": "VavIEUmBv8j"
+                },
+                {
+                    "id": "Xu8ieCbS7jH"
+                }
+            ]
+        }
+    ],
+    "options": [
+        {
+            "name": "Yes",
+            "id": "VavIEUmBv8j",
+            "code": "1",
+            "sortOrder": 1,
+            "optionSet": {
+                "id": "TdDqpX1kdd2"
+            }
+        },
+        {
+            "name": "No",
+            "id": "Xu8ieCbS7jH",
+            "code": "0",
+            "sortOrder": 2,
+            "optionSet": {
+                "id": "TdDqpX1kdd2"
+            }
+        }
+    ]
+}
+```
+
+Cet ensemble d'options Oui/Non est basé sur des valeurs d'options "INTEGER_ZERO_OR_POSITIVE" qui sont évaluées dans les prédicteurs afin de déterminer **la disponibilité des packs essentiels de réadaptation au niveau des SSP ** et de compter le nombre d'établissements qui proposent ces packs.
+
+### Groupes d'unités d'organisation et ensembles de groupes { #rehab-orgunitgroups }
+
+Le package contient les groupes d'unités d'organisation suivants :
+
+| Nom                         | UID           | Description                                                               | Objectif                        |
+|------------------------------|---------------|---------------------------------------------------------------------------|--------------------------------|
+| REHAB - Liste des établissements principaux | `Uvefj6bDfzo` | Comprend tous les établissements qui déclarent des données sur la réadaptation                       | Affectation d'ensembles de données, analyse |
+| SSP                          | `aT5pkgRLbw5` | Comprend tous les établissements de soins de santé primaires                                            | Analyses |
+| Établissements de SSP chargés d'affecter les professionnels aux différents services de réadaptation                           | `JCgLXxVGcRS` | Comprend les établissements de soins de santé primaires chargés d'affecter les professionnels aux différents services de réadaptation                                             | Analyses |
+| REHAB - SSP                  | `bbsxlCu3Vya` | Comprend tous les établissements de soins de santé primaires qui déclarent des données sur la réadaptation   | Analyses                      |
+| SSS                          | `RbJ4hRSGQaH` | Comprend tous les établissements de soins de santé secondaires | Analyses                      |
+| REHAB - SSS                  | `wZJCB2cj9jg` | Comprend tous les établissements de soins de santé secondaires qui déclarent des données sur la réadaptation | Analyses                      |
+| SST                  | `dV8Ec2zJrze` | Comprend tous les établissements de soins de santé tertiaires | Analyses                      |
+| REHAB - SST                  | `Re0iJ3vtBzE` | Comprend tous les établissements de soins de santé tertiaires qui déclarent des données sur la réadaptation  | Analyses                      |
+| Service de réadaptation pour patients hospitalisés         | `AGK6oOK4ncb` | Comprend tous les établissements dotés d'un service de réadaptation              | Analyses                      |
+| District hospitalier            | `Y9lBaYVm9j7` | Comprend tous les hôpitaux de district                                           | Analyses                      |
+
+Selon le contexte du pays, des désagrégations supplémentaires peuvent être nécessaires.
+
+> **Exemple**
+>
+> Si les données collectées pour les établissements de SSP doivent être désagrégées par hôpitaux de district et centres de santé, il vous faudra créer et maintenir les groupes d'unités d'organisation **REHAB - Hôpitaux de SSP** et **REHAB - Centres de santé de SSP** dans l'ensemble de groupes d'unités d'organisation **REHAB - SSP**.
+
+Le package comprend les ensembles de groupes d'unités d'organisation suivants :
+
+| Nom                          | UID           | Description                                                               | Objectif   |
+|------------------------------ |---------------|---------------------------------------------------------------------------|-----------|
+| Niveaux administratifs des soins | `dSwpdHITQ85` | Niveaux administratifs des soins, par exemple SSP, SSS, SST                           | Analyses |
+| REHAB - Niveaux administratifs | `wkjpdklqOIt` | Niveaux des soins de réadaptation, par exemple : REHAB - SSP, REHAB - SSS, REHAB - SST         | Analyses |
+| Type                          | `VQT2m5uMawR` | Inclut les types d'établissement, par exemple les hôpitaux de district, les centres de santé, etc. | Analyses |
+
+Ces objets de métadonnées doivent être configurés.
+
+1. Si l'instance cible ne contient aucun groupe d'unités d'organisation correspondant à la description des groupes contenus dans le packages, suivez les étapes suivantes lors de la configuration et de l'importation :
+    1. Importer le package avec les groupes d'unités d'organisation.
+    2. Attribuer les établissements applicables aux nouveaux groupes d'unités d'organisation dans l'application Maintenance.
+
+2. Si l'instance cible contient déjà des groupes d'unités d'organisation qui correspondent à la description des objets de métadonnées spécifiés, suivez les étapes suivantes lors de la configuration et de l'importation :
+
+    1. Noter les UID des groupes d'unités d'organisation correspondants dans l'instance cible.
+    2. Remplacer toutes les occurrences des UID de groupes d'unités d'organisation dans le fichier json des métadonnées par les UID correspondants notés à l'étape 1.
+    3. Supprimer les objets de métadonnées des groupes d'unités d'organisation du fichier json avant l'importation. Cette étape est très importante, sinon l'affectation des unités d'organisation aux groupes existants dans l'instance cible sera écrasée.
+    4. Procéder à l'importation du package si aucune autre préconfiguration/édition n'est nécessaire.
+
+3. Si l'instance cible ne contient pas de groupes d'unités d'organisation correspondant à la description fournie, ces groupes d'unités d'organisation doivent être importés dans l'instance cible. Les groupes d'unités d'organisation applicables doivent être ajoutés aux ensembles de groupes d'unités d'organisation dans l'interface utilisateur ou à l'aide de l'API.
+
+4. Si l'instance cible contient déjà des ensembles de groupes d'unités d'organisation correspondant à la description fournie, suivez les étapes suivantes lors de la configuration et de l'importation :
+
+    1. Remplacer les UID des ensembles de groupes d'unités d'organisation correspondants dans le fichier de métadonnées par les UID correspondants des ensembles de groupes d'unités d'organisation de l'instance cible.
+    2. Supprimer les objets des ensembles de groupes d'unités d'organisation du fichier de métadonnées avant l'importation. Cette étape est très importante, sinon l'affectation des groupes d'unités d'organisation aux ensembles de groupes existants dans l'instance cible sera écrasée.
+    3. Ajouter les groupes d'unités d'organisation nouvellement importés aux ensembles de groupes d'unités d'organisation. (Voir les tableaux ci-dessus).
+
+> **Exemple**
+>
+> L'instance cible peut déjà contenir le groupe d'unités d'organisation SSP. Dans ce cas, remplacez l'UID `aT5pkgRLbw5` du groupe et toutes ses occurrences dans le fichier json par l'UID correspondant de l'instance cible avant l'importation. Ensuite, supprimez l'objet de métadonnées du groupe d'unités d'organisation "SSP" du fichier json. Vous le trouverez sous ` "organisationUnitGroups" `.
+
+### Données sur la population, l'incidence et la densité du personnel { #population-incidence-and-personnel-density-data } 
+
+Le package Réadaptation comprend des éléments de données, des indicateurs et d'autres objets de métadonnées qui utilisent des données sur la **population**, l'**incidence** et la **densité du personnel**.
+
+Les niveaux d'unité d'organisation auxquels les données sur la population sont saisies dans l'instance cible peuvent varier.
+
+Dans le package générique Réadaptation, ces métadonnées sont ajoutées aux ensembles de données de niveau établissement énumérés dans le tableau ci-dessous.
+
+| Élément de données                   | UID           | Nom de l'ensemble de données                          | UID de l'ensemble de données  | Type de période de l'ensemble des données | Groupe d'unité d'organisation de l'ensemble des données |
+|--------------------------------|---------------|----------------------------------------|---------------|----------------------|----------------------------------|
+| GEN - Population               | `DkmMEcubiPv` | REHAB - densité du personnel              | `Sm2fALTZROS` | Annuel               | RÉADAPTATION - Liste des établissements principaux     |
+| REHAB - Incidence des amputations % | `jEc1P0VAPcs` | REHAB - données sur la densité de lits et l'incidence | `giKizLegiUW` | Annuel               | Service de réadaptation pour patients hospitalisés             |
+| REHAB - Incidence des brûlures %      | `rtYJONzb7OY` | REHAB - données sur la densité de lits et l'incidence | `giKizLegiUW` | Annuel               | Service de réadaptation pour patients hospitalisés             |
+| REHAB - Incidence du MMT %        | `jlS0RS2LplZ` | REHAB - données sur la densité de lits et l'incidence | `giKizLegiUW` | Annuel               | Service de réadaptation pour patients hospitalisés             |
+| REHAB - incidence du traumatisme médullaire %        | `Iy6ylb65g4V` | REHAB - données sur la densité de lits et l'incidence | `giKizLegiUW` | Annuel               | Service de réadaptation pour patients hospitalisés             |
+| REHAB - incidence de l'AVC %     | `OIADGq0kCHW` | REHAB - données sur la densité de lits et l'incidence | `giKizLegiUW` | Annuel               | Service de réadaptation pour patients hospitalisés             |
+| REHAB - incidence du traumatisme cérébral %        | `rzVRv6GpduW` | REHAB - données sur la densité de lits et l'incidence | `giKizLegiUW` | Annuel               | Service de réadaptation pour patients hospitalisés             |
+
+Si l'instance cible dispose déjà d'une infrastructure de métadonnées, utilisée pour collecter des **données sur la population, le personnel ou l'incidence**, référez-vous aux étapes ci-dessous :
+
+1. Choisir la stratégie permettant d'aligner les métadonnées de population dans l'instance cible et dans le fichier .json.
+   - Option 1 : Remplacer les UID des éléments de données et de toutes leurs occurrences dans le fichier json par les UID du système cible.
+   - Option 2 : Envisager de remplacer les UID de ces éléments de données dans le système cible par les UID du fichier json. Les éléments de données GEN font partie de la bibliothèque de métadonnées de base DHIS2 et sont utilisés dans d'autres packages de métadonnées.
+
+2. Les indicateurs qui utilisent les **données sur la population, le personnel ou l'incidence** vont agréger les données au(x) niveau(x) où elles sont saisies.
+
+3. Un mapping et une configuration supplémentaires peuvent être nécessaires après l'importation du package. Consultez la section [configuration des ensembles de données] (#rehab-dataset-config) pour plus d'informations.
+
+> **REMARQUE**
+>
+> Lorsque vous mettez à jour l'UID d'un élément de métadonnées dans l'instance DHIS2 existante, vous devez exécuter une commande SQL dans la base de données et remplacer toutes les occurrences et références de son UID dans d'autres objets de métadonnées : prédicteurs, indicateurs, expressions de règles de validation, etc.
+
+### Predicteurs { #rehab-predictors }
+
+Le package Réadaptation utilise des prédicteurs pour calculer :
+
+1. la disponibilité des packs essentiels de réadaptation dans les établissements de santé
+2. la disponibilité du personnel sur la base des groupes professionnels spécifiques
+3. la disponibilité d'un groupe professionnel spécifique dans un établissement qui déclare ses données.
+4. le nombre d'établissements qui déclarent leurs données sur la réadaptation à un niveau administratif spécifique chaque année.
+
+> **IMPORTANT**
+>
+> Le package de réadaptation comprend des indicateurs qui rapportent le pourcentage des établissements d'un niveau administratif spécifique qui déclarent des données sur la réadaptation (Rehab SSP, Rehab SSS, Rehab SST) avec un nombre minimum de groupes professionnels (au moins 1, 2 ou 3).
+> Le dénominateur de ces indicateurs est le nombre total d'établissements au sein d'un niveau administratif de soins spécifique (SSP habilité à affecter des travailleurs à la réadaptation, SSS, SST). Il existe plusieurs façons d'obtenir des données pour ce dénominateur.
+>
+> 1. Comptage des groupes d'unités d'organisation. Il est possible d'utiliser le nombre de groupes d'unités d'organisation `OUG{<UID>}` pour trouver le nombre d'établissements qui appartiennent à un groupe spécifique. Cependant, cette approche ne permet pas de suivre les changements sur le long terme.
+> 2. Éléments de données dans un ensemble de données annuel, où le nombre d'établissements pour un niveau administratif spécifique peut être saisi manuellement.
+> 3. Éléments de données qui reçoivent des valeurs annuelles provenant de prédicteurs qui fonctionnent sur une base annuelle et génèrent le nombre d'établissements à partir du comptage des groupes d'unités d'organisation réalisé chaque année. Cette solution est utilisée dans le package générique actuel. Gardez à l'esprit le risque d'écraser les données générées pour une période passée lorsque le nombre d'établissements au sein d'un niveau administratif spécifique a changé.
+
+Les métadonnées du prédicteur comprennent les niveaux d'unité d'organisation utilisés pour l'agrégation des valeurs des données. Le fichier de métadonnées du package contient des caractères de remplacement qui doivent être remplacés par les UID des niveaux d'unités d'organisation correspondants dans la base de données cible.
+
+Les étapes à suivre pour préparer les prédicteurs à l'importation sont décrites ci-dessous :
+
+1. Identifier l'UID du niveau d'unité d'organisation établissement auquel les données des prédicteurs seront agrégées. Utiliser le endpoint d'API suivant pour identifier l'UID requis : `../api/organisationUnitLevels.json?fields=id,name`.
+2. Trouver les caractères génériques de niveau d'unité d'organisation suivants dans le fichier json : `<OU_LEVEL_FACILITY_UID>`
+3. Remplacer les caractères génériques par l'UID du niveau établissement identifié dans l'instance cible.
+4. Identifier le numéro du niveau établissement dans l'instance cible.
+5. Rechercher les propriétés des **éléments de données de sortie** dans le fichier json, en utilisant les UID fournis dans la colonne "Élément de données de sortie - UID".
+6. Rechercher la propriété : `"aggregationLevels" : [4]`
+7. Si le niveau correspond à celui de l'instance cible, conservez le numéro tel quel. Si le numéro du niveau établissement dans l'instance cible est différent, ajustez le numéro en conséquence.
+
+### Règles de validation { #rehab-validation-rules }
+
+Les règles de validation contenues dans le package sont regroupées dans les ensembles de données pour lesquels elles ont été configurées.
+
+Tous les groupes de règles de validation et les règles de validation correspondantes sont énumérés dans l'annexe de ce guide d'installation :
+
+[Réadaptation - règles de validation] (resources/rehab_validation_rules.xlsx)
+
+Pour toutes les règles de validation, les groupes d'unités d'organisation sont définis sur le niveau établissement. La valeur de ce niveau se trouve dans la propriété `"organisationUnitLevels"` de chaque règle de validation. Elle est fixée à `4` par défaut. Ajustez ces niveaux dans le fichier de métadonnées pour qu'ils correspondent au niveau établissement dans l'instance cible avant l'importation du package.
+
+## Importation de métadonnées { #importing-metadata } 
+
+Utilisez l’application DHIS2 [Import/Export](#import_export) pour importer des packages de métadonnées. Nous vous recommandons d’utiliser la fonction « test » pour identifier les problèmes avant de tenter d’effectuer une importation réelle des métadonnées. Si le « test » signale des problèmes ou des conflits, consultez la section [conflits lors de l’importation](#handling-import-conflicts) ci-dessous. Si aucune erreur n’est signalée lors de l’importation « test »/« validée », essayez d’importer les métadonnées. Si l’importation s’est déroulée sans erreur, vous pouvez passer à la [configuration](#configuration) du module. Dans certains cas, les conflits ou les problèmes d’importation n’apparaissent pas pendant le test, mais durant l’importation réelle. Dans ce cas, le résumé de l’importation indiquera les erreurs à résoudre.
+
+### Gestion des erreurs d'importation { #handling-import-conflicts } 
+
+> **REMARQUE**
+>
+> Si vous importez le package dans une nouvelle instance du système DHIS2, il n’y aura aucune erreur lors de l’importation, car la base de données cible ne contient aucune métadonnée. Après avoir importé les métadonnées, passez à la section "[Configuration](#configuration)".
+
+Différents types d'erreurs peuvent survenir, mais le plus courant est le fait que le nom, le nom abrégé et/ou le code des objets de métadonnées du package de configuration existent déjà dans la base de données cible. Il existe plusieurs solutions alternatives à ces problèmes, chacun avec ses avantages et ses inconvénients. La solution la plus appropriée dépend, par exemple, du type d’objet à l’origine de l'erreur.
+
+#### Option 1 { #alternative-1 } 
+
+Renommez l'objet existant dans votre base de données DHIS2 pour lequel il existe une erreur. L'avantage de cette approche est qu'il n'est pas nécessaire de modifier le fichier .json, les changements étant effectués par l'interface utilisateur de DHIS2. Il est probable que cela soit moins sujet à des erreurs. Cela signifie également que le package de configuration est laissé tel quel, ce qui peut être un avantage, par exemple lorsque des mises à jour du package sont publiées. Les objets du package d'origine sont également souvent référencés dans le matériel de formation et la documentation.
+
+#### Option 2 { #alternative-2 } 
+
+Renommez l'objet pour lequel il y a une erreur dans le fichier .json. L'avantage de cette approche est que les métadonnées DHIS2 existantes sont laissées telles quelles. Cela peut être un utile lorsqu'il y a du matériel de formation ou de la documentation, comme les procédures opérationnelles normalisées des dictionnaires de données liés à l'objet en question, et cela ne risque pas de créer de la confusion chez les utilisateurs lorsqu'ils modifient des métadonnées.
+
+Notez que pour les deux options 1 et 2, la modification peut être aussi simple que l'ajout d'un petit pré/post-fixe au nom, pour minimiser le risque de confusion.
+
+#### Option 3 { #alternative-3 } 
+
+Une troisième approche, plus complexe, consiste à modifier le fichier .json pour réutiliser les métadonnées existantes. Par exemple, dans les cas où un ensemble d'options existe déjà pour un certain concept (par exemple "sexe"), cet ensemble d'options pourrait être supprimé du fichier .json et toutes les références à son UID remplacées par l'ensemble d'options correspondant qui existe déjà dans la base de données. Le grand avantage de cette méthode (qui n'est pas limitée seulement aux cas où il y a une erreur d'importation directe) est d'éviter de créer des métadonnées dupliquées dans la base de données. Il y a des aspects essentiels à prendre en compte lors de ce type de modification :
+
+- Il nécessite une connaissance approfondie de la structure détaillée des métadonnées du DHIS2
+- Cette approche ne fonctionne pas pour tous les types d'objets. Plus précisément, certains types d'objets ont des dépendances qui sont difficiles à résoudre grâce à cette approche, par exemple lorsqu'il s'agit des désagrégations.
+- Il sera compliqué d'effectuer des mises à jour au package de configuration.
+
+## Configuration { #configuration }
+
+Une fois que toutes les métadonnées sont importées avec succès, des étapes doivent être observées avant que le module ne soit fonctionnel.
+
+### Partage { #sharing } 
+
+Tout d'abord, vous devrez utiliser la fonctionnalité *Partage* de DHIS2 pour configurer quels utilisateurs (groupes d'utilisateurs) doivent voir les métadonnées et les données associées au programme ainsi que qui peut enregistrer/saisir des données dans le programme. Par défaut, le partage a été configuré pour ce qui suit :
+
+- Tableaux de bord
+- Visualisations, cartes, rapports d’événement et tableaux de rapports
+- Ensembles de données
+- Options de catégorie
+
+Veuillez consulter le site [Documentation de DHIS2](#sharing) pour plus d’informations sur le partage.
+
+Trois groupes d'utilisateurs de base sont inclus dans le package :
+
+- Rehab Accès (visualisation des métadonnées/visualisation des données)
+- Rehab admin (visualisation et modification des métadonnées/aucun accès aux données)
+- Rehab - (visualisation des métadonnées/saisie et visualisation des données)
+
+Les utilisateurs sont affectés au groupe d’utilisateurs approprié en fonction de leur rôle dans le système. Le partage des autres objets du package peut être ajusté en fonction de la configuration. Consultez le site [Documentation sur le partage de DHIS2](#sharing) pour plus d’informations.
+
+### Rôles d'utilisateurs { #user-roles } 
+
+Les utilisateurs auront besoin de rôles d'utilisateur pour pouvoir utiliser les différentes applications de DHIS2. Les rôles minimums suivants sont recommandés :
+
+1. Analyse des données Tracker : permet de visualiser des analyses d'événements et accéder aux tableaux de bord, aux rapports d'événements, au visualiseur d'événements, au visualiseur de données, aux tableaux croisés dynamiques, aux rapports et aux cartes.
+2. Saisie des données Tracker : permet d'ajouter des valeurs de données, de mettre à jour les entités suivies, de rechercher des entités suivies dans les unités d'organisation et d'accéder à l'application Saisie Tracker
+
+Consultez la [Documentation de DHIS2](https://docs.dhis2.org/) pour plus d’informations sur la configuration des rôles des utilisateurs.
+
+### Affectation aux unités d'organisation{ #organisation-unit-assignment } 
+
+Les ensembles de données doivent être affectés à des unités d'organisation dans la hiérarchie existante afin d'être accessibles via l'application Saisie. Le tableau ci-dessous fournit des informations sur l'affectation des unités d'organisation pour les ensembles de données sur la réadaptation :
+
+| Ensemble de données                              | UID           | Type de formulaire de l'ensemble de données | Période de collecte des données | Types d'établissement                                                                                             |
+|---------------------------------------|---------------|--------------------|------------------------|------------------------------------------------------------------------------------------------------------|
+| Données sur la densité de lits et l'incidence        | `giKizLegiUW` | défaut            | annuel                 | Établissements de réadaptation avec un service d'hospitalisation dédié la réadaptation                                   |
+| Disponibilité du pack essentiel de SSP | `MGzqZDWvPhL` | section            | annuel                 | Établissements de soins de santé primaires déclarant des données sur la réadaptation (Rehab SSP)                                      |
+| Densité du personnel                     | `Sm2fALTZROS` | section            | annuel                 | Tous les établissements déclarant des données sur la réadaptation (Liste des établissements principaux)                                                   |
+| Rapport sur les patients hospitalisés                      | `WjN1YoDtlOd` | personnalisé             | mensuel                | Tous les établissements qui disposent d'un service d'hospitalisation (non dédiée à la réadaptation) et qui déclarent des données sur la réadaptation (Liste des établissements principaux) |
+| Rapport du service de réadaptation                      | `tP8et8TNWgF` | personnalisé             | mensuel                | Tous les établissements qui disposent d'un service d'hospitalisation dédiée à la réadaptation et qui établissent des rapports sur la réadaptation (Liste des établissements principaux)    |
+| Rapport sur les patients externes                     | `zInFVXb98JD` | personnalisé             | mensuel                | Tous les établissements qui disposent d'un service de consultations externes et qui déclarent des données sur la réadaptation (Liste des établissements principaux)                     |
+
+### Affectation aux groupes d'unités d'organisation { #organisation-unit-group-assignment }
+
+Les unités d'organisation du système cible doivent être affectées aux groupes d'unités d'organisation sur la réadaptation en fonction de la présentation de la section [Groupes d'unités d'organisation](#rehab-orgunitgroups).
+
+### Ensembles de données { #rehab-dataset-config }
+
+Les ensembles de données suivants nécessitent une configuration supplémentaire après l'importation :
+
+#### Densité des lits { #bed-density } 
+
+Si les données annuelles sur le nombre total de lits de réadaptation sont déjà collectées dans le SIGS en place, l'ensemble de données sur la densité des lits de réadaptation n'est pas nécessaire. Veillez à remplacer toutes les occurrences de l'élément de données **"Lits de réadaptation disponibles (total) "** `K0Y94lADtGw` par l'UID de l'élément de données existant dans tous les objets de métadonnées où cet élément de données est référencé :
+
+| UID de l'objet de métadonnées | Type de l'objet de métadonnées | Détails                                     |
+|---------------------|----------------------|---------------------------------------------|
+| `VOdQ2YRmSzf`       | Indicateur            | L'élément de données est référencé dans le numérateur |
+
+#### Densité du personnel { #personnel-density } 
+
+Si les données annuelles sur la population sont déjà collectées dans le SIGS en place, l'élément de données **"GEN - Population "** `DkmMEcubiPv` peut être supprimé de l'ensemble de données `Sm2fALTZROS`. Veillez à remplacer toutes les occurrences de l'élément de données *"GEN - Population "** par l'UID de l'élément de données existant dans tous les objets de métadonnées où cet élément de données est référencé :
+
+| UID de l'objet de métadonnées | Type de l'objet de métadonnées | Détails                                       |
+|---------------------|----------------------|-----------------------------------------------|
+| `OnxT9nXB9yB`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `hLkZBsoxgwG`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `VOdQ2YRmSzf`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `n0cE7LiP4j8`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `peWxNUcIjZw`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `dXNfY2I7umm`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `hpP5GW43n1J`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `s9SRcnMtI0K`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `RRCtatVRlI0`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `PuSDjaFs2we`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `tsIeJwq6x8L`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `U5tL3Eqq3Vj`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `NcA1znaVgFH`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `M0UPequfEYf`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `U5WwSS3zxlX`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `fhZ9MI3qTaA`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `YEjkkya4JCJ`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `xW6TcvEMhwG`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `TNjjTJr7fLe`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `uKK11dDx8HH`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `qTq20E3B08y`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `ePjfu6Fr4Jq`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `zNzm3AUiQ3B`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `Vq98oh9BIB1`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `klNqjksyNAL`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `bW75ZyPq9aZ`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `ME2YCnift7x`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `HTZ7STQR648`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `Z2f5wDvVxUL`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `XlISfeHbzxc`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `NVbwb4XlTVo`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `t26ObhmhjOb`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `FjVJNnVOu6S`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `fDj7xDywd5C`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `BLUTcTXPhts`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+| `RFVOIDIULVO`       | Indicateur            | L'élément de données est référencé dans le dénominateur |
+
+Le niveau de collecte des données sur l'**incidence** doit être identique ou inférieur au niveau de collecte des données sur la **population**.
+
+L'affectation de l'unité d'organisation pour l'ensemble de données **Densité du personnel** doit rester au niveau de l'établissement pour les besoins des résultats d'analyse.
+
+### Métadonnées dupliquées { #duplicated-metadata } 
+
+> **REMARQUE**
+>
+> Cette section ne s’applique que si vous importez dans une base de données DHIS2 qui comporte déjà des métadonnées. Si vous travaillez avec une nouvelle instance du système DHIS2, veuillez ignorer cette section et accédez à [Adaptation du programme Tracker](#adapting-the-tracker-program). 
+> Si vous utilisez des applications tierces qui reposent sur les métadonnées actuelles, sachez que cette mise à jour pourrait les interrompre."
+
+Même lorsque les métadonnées sont importées avec succès sans aucun conflit d'importation, il peut y avoir des doublons dans les métadonnées - éléments de données, attributs d'entités suivies ou ensembles d'options qui existent déjà. Comme indiqué dans la section ci-dessus sur la résolution des conflits, il est important de garder à l'esprit que les décisions relatives à la modification des métadonnées dans le DHIS2 doivent également tenir compte d'autres documents et ressources associés de différentes manières aux métadonnées existantes et aux métadonnées importées par le biais du package de configuration. La résolution des doublons ne consiste donc pas seulement à "nettoyer la base de données", mais aussi à s'assurer que cela est fait sans, par exemple, briser le potentiel d'intégration avec d'autres systèmes, la possibilité d'utiliser du matériel de formation, la rupture des SOP, etc. Cela dépend beaucoup du contexte.
+
+Il est important de garder à l’esprit que le DHIS2 dispose d’outils pouvant dissimuler certaines des complexités des duplications potentielles dans les métadonnées. Par exemple, lorsqu’il existe des ensembles d’options en double, ils peuvent être masqués pour des groupes d’utilisateurs par le biais de [Partage](#sharing).
+
+## Adaptation du programme { #adapting-the-program } 
+
+Une fois le programme importé, il est possible que vous souhaitiez y apporter certaines modifications. Voici quelques exemples d'adaptations locales que vous *pourrez* effectuer :
+
+- Ajout de variables supplémentaires au formulaire.
+- Adaptation des noms des éléments de données/options en fonction des usages au niveau national.
+- Ajout des traductions aux variables et/ou au formulaire de saisie des données.
+- Modification des indicateurs en fonction des définitions de cas au niveau local
+
+Toutefois, il est fortement recommandé de faire preuve d'une grande prudence si vous décidez de modifier ou de supprimer l'un des formulaires/métadonnées inclus. Il y a donc un risque que des modifications brisent des fonctionnalités, par exemple les règles du programme et les indicateurs du programme.
+
+### Mapping des indicateurs { #indicator-mapping } 
+
+Pour une implémentation partielle du package Réadaptation, c'est-à-dire l'implémentation d'un ensemble d'indicateurs de base de l'OMS personnalisé, veuillez vous référer au [tableau de correspondance des indicateurs de l'OMS vers DHIS2] (resources/rehab_indicator_mapping.xlsx).
+
+Lorsque vous adaptez des métadonnées, veillez à identifier les visualisations et les tableaux de bord dans lesquels les indicateurs applicables sont utilisés, ainsi que les éléments de données et les combinaisons de catégories utilisés dans les ensembles de données correspondants.
+
+## Suppression des métadonnées { #removing-metadata } 
+
+Pour maintenir votre instance propre et éviter les erreurs, il est recommandé de supprimer les métadonnées inutiles de votre instance. La suppression des métadonnées inutiles nécessite une connaissance avancée de DHIS2 et de ses différentes ressources.
+
