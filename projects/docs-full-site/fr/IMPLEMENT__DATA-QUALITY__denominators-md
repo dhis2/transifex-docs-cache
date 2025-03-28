@@ -1,0 +1,343 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs-implementation/blob/master/content/database_design/data-quality-05-denominators.md"
+revision_date: '2025-03-17'
+tags:
+- Implémentation
+---
+
+# Dénominateurs { #denominators } 
+
+La qualité des dénominateurs est un élément essentiel de la qualité des données à évaluer. Bien qu'il ne s'agisse souvent pas d'un problème spécifique à DHIS2, ce dernier dispose de plusieurs outils qui vous permettent de comparer vos dénominateurs, et ce, sur le long terme. 
+
+## Pourquoi les dénominateurs sont-ils importants ? { #why-are-denominators-important } 
+
+- La fiabilité des couvertures de routine dépend de la fiabilité des dénominateurs.
+- Au fur et à mesure que la couverture augmente, les estimations sont de plus en plus sensibles aux erreurs dans les dénominateurs.
+
+À titre d'exemple, voyons l'effet d'une erreur de 10 % dans les estimations de la population cible sur la couverture estimée.
+
+![](resources/images/dq_denominator_estimates.png)
+
+Pour en savoir plus sur les dénominateurs et la manière dont ils peuvent être évalués, veuillez consulter les ressources suivantes :
+
+- [Document d'orientation de l'OMS sur les dénominateurs - Évaluer et améliorer l'exactitude des estimations de la population cible pour la couverture vaccinale] (https://www.who.int/publications/m/item/assessing-and-improving-the-accuracy-of-target-population-estimates-for-immunization-coverage)
+
+- [Une présentation préparée par l'UiO de HISP sur les dénominateurs] (https://docs.google.com/presentation/d/1SpF0ATmYOB7cyS3vrrbdHNlnzgtXLRmwnwyy5bOJYVU/edit?usp=sharing)
+
+## Évaluation des données démographiques dans DHIS2 { #assessing-population-data-in-dhis2 } 
+
+Nous avons essayé d'utiliser les lignes directrices existantes pour l'évaluation des dénominateurs et de montrer comment elles peuvent être appliquées directement dans DHIS2. Les méthodes que nous allons mettre en évidence sont les suivantes :
+
+1. Comparer votre population dans DHIS2 avec d'autres sources (totaux, naissances, par âge/sexe, etc.).
+    - Mettre en évidence les différences qui sont ≥ 10%
+2. Comparer les taux implicites (par exemple, taux brut de natalité et de mortalité infantile) avec d'autres sources
+    - Mettre en évidence les différences qui sont ≥ 20%
+3.  Évaluer le taux de croissance annuel
+    - Mettre en évidence les différences qui sont ≥ 10%
+4.  Comparer les estimations de couverture de routine aux estimations de couverture de l'enquête
+    - Mettre en évidence les différences qui sont ≥ 10%
+5.  Comparer les objectifs nationaux (ex. naissances, population totale, etc.) avec la somme des objectifs infranationaux.
+    - Signaler lorsque les objectifs nationaux ≠ la somme des objectifs infranationaux
+6. Examiner les tendances de vos données dans le temps
+    - Tracer les données du numérateur et du dénominateur ensemble et chercher les incohérences dans les rapports.
+
+### Sources de données pour la comparaison { #sources-of-data-for-comparison } 
+
+Afin d'évaluer vos données existantes (données nationales, données de recensement, etc.) dans DHIS2, vous aurez besoin de données provenant d'une source externe. Voici quelques exemples de sources d'où vous pouvez obtenir des données de comparaison :
+
+- Perspectives démographiques mondiales
+  - https://population.un.org/wpp/ 
+- Banque mondiale (utilise diverses sources, ne fait pas ses propres calculs)
+  - https://data.worldbank.org/indicator/ 
+- IGME (Groupe inter-agences des Nations unies pour l'estimation de la mortalité infantile)
+  - https://childmortality.org/
+
+### Importation de données pour la comparaison { #importing-data-for-comparison } 
+
+Pour que ces comparaisons soient possibles dans DHIS2, vous devrez y exporter les données d'une ou de plusieurs de ces sources (ou de sources similaires). 
+
+Vous pouvez également télécharger les données de DHIS2 et d'une autre source dans un outil comme Excel afin d'effectuer ces comparaisons. 
+
+Ce guide utilisera des exemples dans lesquels les données ont été importées dans DHIS2 à partir de différentes sources. Vous pouvez également voir des exemples d'analyses similaires réalisées à l'aide d'Excel dans [cette présentation] (https://docs.google.com/presentation/d/1SpF0ATmYOB7cyS3vrrbdHNlnzgtXLRmwnwyy5bOJYVU/edit?usp=sharing).
+
+## Comparer vos données de population dans DHIS2 avec d'autres sources { #comparing-your-dhis2-population-data-with-other-sources } 
+
+La première méthode que nous décrivons consiste à comparer vos données de population existantes dans DHIS2 avec des données provenant d'une source externe. Dans cet exemple, nos données externes proviennent des [Projections démographiques mondiales de l'ONU] (https://population.un.org/wpp/) qui ont été importées dans notre instance DHIS2, et nos données existantes proviennent du Bureau des Statistiques du Lao - une source interne utilisée par le ministère de la santé de la RDP Lao et qui se trouve déjà dans leurs instances DHIS2 locales (également via des importations). 
+
+Quelques remarques sur la préparation de vos données avant d'effectuer ces comparaisons :
+
+- Gardez à l'esprit les désagrégations par âge qui figurent dans vos données existantes. Les données provenant de sources externes peuvent fournir des informations en groupes âge/sexe d'un an que vous devrez agréger pour les faire correspondre à vos propres désagrégations que vous utilisez en interne.
+- Vérifiez la géographie des données. Les sources externes peuvent disposer uniquement de données nationales que vous pouvez utiliser à des fins de comparaison - mais plus la comparaison est granulaire (par exemple, province, district, etc.), mieux c'est.
+
+Voici un exemple de cette comparaison dans DHIS2 à l'aide d'un tableau croisé dynamique dans le Visualiseur de données :
+
+![](resources/images/dq_pop_data_comparison.png)
+
+Quelques règles à suivre pour effectuer cette comparaison :
+
+- Mettre en évidence les différences ≥ 10%
+- Essayez de déterminer les éventuelles raisons des incohérences importantes (par exemple, la méthode utilisée par votre bureau de statistiques pour projeter la population, la modification des paramètres sur la base de nouvelles études, etc.)
+
+La principale raison d'effectuer cette analyse est de déterminer le degré de confiance que vous pouvez avoir dans vos chiffres sur la population ou le dénominateur. Cela peut être utilisé comme preuve en interne, mais aussi avec des partenaires, si vous n'avez qu'une faible variation par rapport à des sources externes qui utilisent une méthode différente de calcul des estimations pour la même localité.
+
+Si vous identifiez à plusieurs reprises des différences significatives dans vos données, vous devrez peut-être revoir les estimations que vous utilisez.
+
+### Étapes à suivre pour réaliser cette visualisation { #steps-for-making-this-visualization } 
+
+***Tout d'abord, assurez-vous que vos données existantes et vos données externes sont disponibles dans DHIS2.***
+
+Pour calculer la différence entre les deux populations, créez un indicateur à l'aide de la formule suivante :
+
+> **Exemple**
+>
+> Type d'indicateur : pourcentage (facteur de 100)
+>
+> Numérateur : Population 1 - Population 2
+> 
+> Dénominateur : Population 1
+>
+> \[
+> Indicateur = {\frac{Population1-Population2}{Population1}} \fois 100
+> \]
+
+Pour mettre en évidence les différences ≥ 10 %, créez une légende et appliquez-la à votre indicateur. 
+
+Créez la légende dans Maintenance
+
+![](resources/images/dq_comparison_legend.png)
+
+Appliquez-la à votre indicateur dans la section "légendes" de l'indicateur.
+
+![](resources/images/dq_apply_legend.png)
+
+Créez un tableau croisé dynamique dans le Visualiseur de données. Ajoutez les deux éléments de données sur la population que vous comparez, ainsi que l'indicateur de comparaison. Si vous utilisez des désagrégations, ajoutez-les également au tableau. Filtrez-les par unité d'organisation ou affichez-les toutes, selon vos besoins. 
+
+Appliquez la légende à votre tableau
+
+![](resources/images/dq_pop_comparison_legend.png)
+
+Ci-dessous, un exemple de présentation, avec la sortie.
+
+![](resources/images/dq_pop_comparison_layout.png)
+
+## Comparaison de vos taux implicites avec d'autres sources { #comparing-your-implied-rates-with-other-sources } 
+
+Les taux implicites sont des taux calculés qui ne sont pas directement mesurés mais qui sont dérivés des données disponibles. Le taux brut de natalité et le taux de mortalité infantile en sont des exemples. 
+
+Dans cet exemple, nous pouvons utiliser les [Projections démographiques mondiales de l'ONU] (https://population.un.org/wpp/) comme source de données externes.  
+
+Nous pouvons importer ces informations dans un élément de données DHIS2 si les taux sont déjà calculés sans que vous ne fournissiez le numérateur et le dénominateur, ou créer un indicateur si nous sommes en mesure d'obtenir le numérateur et le dénominateur pour l'importation.
+
+Voici un exemple de cette comparaison :
+
+![](resources/images/dq_implied_rate_comparison.png)
+
+Quelques règles à respecter pour effectuer cette comparaison :
+
+- Mettre en évidence les différences qui sont ≥ 20%
+- Comparez votre taux implicite au fil du temps avec les tendances mondiales. Vos tendances sont-elles similaires aux tendances mondiales ?
+
+Si vous constatez des différences importantes ≥ 20 %, vous devrez vérifier la cohérence du numérateur et du dénominateur.
+
+### Étapes à suivre pour réaliser cette visualisation { #steps-for-making-this-visualization } 
+
+***Tout d'abord, assurez-vous que vos données existantes et vos données externes sont disponibles dans DHIS2.***
+
+Pour calculer la différence entre les deux populations, créez un indicateur à l'aide de la formule suivante :
+
+> **Exemple**
+>
+> Type d'indicateur : pourcentage (facteur de 100)
+>
+> Numérateur : Taux 1 - Taux 2
+> 
+> Dénominateur : Taux 1
+>
+> \[
+> Indicateur = {\frac{Taux1-Taux2}{Taux1}} \fois 100
+> \]
+
+Pour mettre en évidence les différences ≥ 20 %, créez une légende et appliquez-la à votre indicateur. 
+
+Créez la légende dans Maintenance
+
+![](resources/images/dq_rate_legend.png)
+
+Appliquez-la à votre indicateur dans la section "légendes" de l'indicateur.
+
+![](resources/images/dq_apply_legend.png)
+
+Créez un tableau croisé dynamique dans le Visualiseur de données. Ajoutez les deux taux implicites que vous comparez, ainsi que votre indicateur de comparaison. Filtrez-les par unité d'organisation ou affichez-les toutes, selon vos besoins. 
+
+## Évaluation de votre taux de croissance annuel { #assessing-your-annual-growth-rate } 
+
+Le taux de croissance vous permettra de déterminer si vos dénominateurs se situent dans une fourchette précise lorsque vous comparez les années. Lorsque vous calculez ce taux, assurez-vous que les dénominateurs que vous comparez entre les années proviennent de la même source (par exemple, un dénominateur de 2024 provenant du recensement et un dénominateur de 2023 provenant des perspectives démographiques de l'ONU ne devraient ***pas*** être utilisés pour calculer votre taux de croissance). 
+
+Voici un exemple de taux de croissance dans DHIS2 :
+
+![](resources/images/dq_growth_rate.png)
+
+Quelques règles à respecter pour effectuer cette comparaison :
+
+- Mettre en évidence les différences qui sont ≥ 10%
+- Votre taux de croissance doit être relativement stable. Il ne doit pas être instable et changer de manière significative d'une année à l'autre (c'est-à-dire qu'il ne doit pas y avoir de fortes augmentations ou diminutions d'une année à l'autre).
+- Si le taux de croissance est négatif, cela signifie que la population se contracte ou diminue (au moins sur la base des seules naissances, d'autres facteurs tels que l'immigration peuvent également influer sur ce taux).
+
+### Étapes à suivre pour réaliser cette visualisation { #steps-for-making-this-visualization } 
+
+***Tout d'abord, assurez-vous que vos données démographiques sont disponibles dans DHIS2***.
+
+Pour calculer la différence entre les deux populations, créez un indicateur à l'aide de la formule suivante :
+
+> **Exemple**
+>
+> Type d'indicateur : pourcentage (facteur de 100)
+>
+> Numérateur : Population/naissances de l'année 2 - Population/naissances de l'année 1
+> 
+> Dénominateur : Population/naissances de l'année 1
+>
+> \[
+> Indicateur = {\frac{Population/Naissances de l'année 2 - Population/Naissances de l'année 1}{Population/Naissances de l'année 1}} \fois 100
+> \]
+>
+> \[
+> Indicateur = {\frac{naissances vivantes en 2024 - naissances vivantes en 2023}{naissances vivantes en 2023}} \fois 100
+> \]
+
+Pour créer un indicateur à partir des données de l'année précédente dans DHIS2, procédez comme suit :
+
+- Créez votre nouvel indicateur
+- L'indicateur est de type pourcentage (x 100)
+- Créez la formule du numérateur comme suit :
+  - #{DEUID} - #{DEUID}.periodOffset(-1)
+- Le dénominateur est : #{DEUID}
+
+Voici un exemple de configuration du numérateur :
+
+![](resources/images/dq_growthrate_numerator.png)
+
+La fonction .periodOffset(-1) prend la valeur de la période précédente. Dans ce cas, il s'agira probablement de l'année précédente.
+
+À partir de là, vous pouvez utiliser cet indicateur dans le Visualiseur de données pour réaliser les visualisations nécessaires.
+
+## Comparer les estimations de couverture de routine aux estimations de couverture de l'enquête { #compare-routine-coverage-estimates-to-survey-coverage-estimates } 
+
+Pour avoir une idée de la précision de vos estimations de couverture, vous pouvez comparer les couvertures qui ont été calculées à l'aide d'une méthode différente pour estimer à la fois le numérateur et le dénominateur. En raison de la rigueur de leur conception, les enquêtes sont souvent considérées comme exactes. Si vos estimations de routine concordent avec les données d'enquête, cela peut être un bon moyen de déterminer leur exactitude. 
+
+Nous pouvons effectuer ce type de comparaison à la fois directement dans le Visualiseur de données et en utilisant l'application [Rapport annuel sur la qualité des données] (https://apps.dhis2.org/app/73f87a14-d71c-40b8-8363-0d956745ba06).
+
+Voici un exemple de cette comparaison à partir de l'application Visualiseur de données :
+
+![](resources/images/dq_dv_survey_comparison.png)
+
+Et un exemple tiré de l'application Rapport annuel sur la qualité des données :
+
+![](resources/images/dq_ar_survey_comparison.png)
+
+Quelques règles à respecter pour effectuer cette comparaison :
+
+- Vous pouvez fixer un seuil de qualité pour la différence acceptable entre vos estimations de routine et les estimations de couverture de l'enquête. Cependant, nous pouvons utiliser ≥ 10 % comme règle générale.
+
+Si vous constatez des différences importantes qui sont ≥ 10 %, il vous faudra vérifier la cohérence du numérateur et du dénominateur. Plus précisément, lorsque vous comparez les dénominateurs, vous devez chercher à comprendre la méthode utilisée par l'enquête pour estimer ses dénominateurs et savoir si cela peut vous aider à rendre vos objectifs internes plus précis.
+
+### Étapes à suivre pour réaliser cette visualisation { #steps-for-making-this-visualization } 
+
+***Tout d'abord, assurez-vous que vos données existantes et vos données externes sont disponibles dans DHIS2.***
+
+Si vous utilisez le Visualiseur de données, vous pouvez créer un graphique à barres, à colonnes ou linéaire et identifier visuellement les différences qui dépassent votre seuil. Vous pouvez également créer un tableau croisé dynamique afin de calculer (à l'aide d'un indicateur et d'une légende que vous créez) et de mettre en évidence les différences importantes si nécessaire. 
+
+Si vous utilisez l'application Rapport annuel sur la qualité des données, il vous faut configurer vos comparaisons sous l'onglet "comparaison de données externes".
+
+## Comparer les objectifs nationaux avec la somme des objectifs infranationaux { #compare-national-targets-with-the-sum-of-subnational-targets } 
+
+> NB : Utilisez cette comparaison lorsque les objectifs/dénominateurs ne sont pas utilisés de manière cohérente à l'échelle nationale pour identifier l'étendue du problème et demander aux programmes de se rationaliser si possible. Cela peut arriver lorsque les programmes créent leurs propres dénominateurs, par exemple.
+
+Dans les scénarios où vous calculez/estimez séparément les dénominateurs infranationaux et nationaux, les totaux infranationaux devraient normalement être égaux ou proches du total national. 
+
+En voici un exemple dans le tableau ci-dessous :
+
+|                                   | 2022  | 2023  | 2024  | Ajustement 2024 |
+|-----------------------------------|-------|-------|-------|---------------|
+| Estimation du programme : Province 1      | 10166 | 10037 | 10243 | 9636          |
+| Estimation du programme : Province 2      | 19678 | 19426 | 20167 | 18971         |
+| Estimation du programme : Province 3      | 28467 | 26689 | 29329 | 27589         |
+| Total du programme                     | 58401 | 56152 | 59739 | 56196         |
+| Total du recensement                      | 49654 | 51876 | 52654 | 56196         |
+| Ratio : Programme/Recensement             | 1.17  | 1.08  | 1.13  |               |
+| Valeur moyenne : Programme et recensement | 54027 | 54014 | 56196 |               |
+| Ratio : Moyenne/Programme            | 0.925 | 0.962 | 0.941 |               |
+
+Dans cet exemple, nous comparons les données démographiques générées par un programme au niveau provincial avec les estimations du recensement. Nous pouvons constater que le total du programme ne correspond pas à l'estimation du recensement. La dernière colonne du tableau corrige les données au niveau infranational pour une année.
+
+Lorsque nous identifions cette inadéquation, nous avons deux options à considérer
+
+- Une méthode est plus précise que l'autre, avec les données disponibles au niveau infranational que vous examinez : Dans ce scénario, par exemple, si le recensement est jugé plus précis en raison de sa méthode d'estimation et si les valeurs provinciales du recensement sont disponibles, nous pourrions les utiliser dans nos calculs au lieu des dénominateurs du programme.
+- Une méthode est plus précise que l'autre, mais les estimations ne sont pas disponibles au(x) niveau(x) infranational(aux) qui intéresse(nt) le programme : Dans ce cas, vous pouvez ajuster vos totaux infranationaux en vous basant sur la méthode la plus précise. Cette méthode s'articule comme suit :
+  - Calcul de la moyenne entre le recensement et les estimations du programme au niveau national.
+  - Division de cette moyenne par le total du programme pour obtenir un ratio d'ajustement.
+  - Ajustement des estimations infranationaux du programme en les multipliant par ce ratio
+
+Après avoir choisi votre méthode, vous devrez peut-être mettre à jour les formules de vos indicateurs pour utiliser un nouveau dénominateur. Il est utile de comparer les calculs effectués avec l'ancien et le nouveau dénominateur (conservez les anciens indicateurs, créez de nouveaux indicateurs et comparez-les dans le Visualiseur de données) afin de déterminer la part d'erreur possible dans les valeurs de vos indicateurs.
+
+## Examiner les tendances de vos données dans le temps { #review-the-trends-of-your-data-over-time } 
+
+L'examen de vos données au fil du temps, y compris l'examen de vos numérateurs et dénominateurs sur différents axes, ou l'examen de plusieurs indicateurs au fil du temps, peut vous donner une idée des tendances incorrectes sur la base des schémas normaux que vous identifiez dans les données. 
+
+Voici un exemple de visualisation dans DHIS2 où nous examinons la couverture du BCG. 
+
+![](resources/images/dq_trend1.png)
+
+L'on y voit le nombre de doses administrées et de nourrissons survivants sur l'axe des ordonnées de gauche, et le pourcentage de couverture du BCG sur l'axe des ordonnées de droite, les années étant indiquées sur l'axe des abscisses. 
+
+Nous recherchons des incohérences dans les données qui pourraient nécessiter des explications supplémentaires. Dans l'image ci-dessus, tirée de DHIS2, les données suivent un schéma assez cohérent et ne semblent pas poser de problème.
+
+Voici un autre exemple avec les mêmes informations
+
+![](resources/images/dq_trend2.png)
+
+[Source de l'image - Évaluer et améliorer l'exactitude des estimations de la population cible pour la couverture vaccinale] (https://www.who.int/publications/m/item/assessing-and-improving-the-accuracy-of-target-population-estimates-for-immunization-coverage)
+
+Ici, nous voyons le nombre de vaccinations et la couverture vaccinale augmenter rapidement, mais la couverture atteint > 100 % en 2006, alors que la population diminue cette même année. Après 2006, on observe une forte augmentation de la population, en corrélation avec une forte baisse de la couverture, puis une nouvelle forte augmentation en 2009. 
+
+Cette instabilité dans nos données indique que les estimations de la population semblent incorrectes. Compte tenu de ce que nous savons des taux de croissance, il est peu probable de voir une augmentation aussi rapide de la population naturellement, et le dénominateur peut donc nécessiter un ajustement ou une modification, faute de quoi nous aurons des conclusions erronées qui affecteront la performance de notre système de santé et la couverture de ce vaccin. 
+
+Il n'existe malheureusement pas de règles fixes pour examiner ces données, car vous essayez de repérer des tendances incohérentes au vu des informations qui vous sont présentées. D'une manière générale, vous voulez savoir :
+
+- Les taux de couverture sont-ils > 100 % ?
+- La population augmente-t-elle ou diminue-t-elle régulièrement ou y a-t-il des augmentations ou des diminutions soudaines ? Si c'est le cas, comment cela s'explique-t-il ?
+- Une augmentation/diminution rapide de la couverture est-elle le résultat de mesures introduites par le programme (augmentation) ou de difficultés liées au programme (diminution), ou d'un problème quelconque lié à l'estimation de la population ?
+
+### Étapes à suivre pour réaliser cette visualisation { #steps-for-making-this-visualization } 
+
+Vous pouvez créer ce graphique dans ***Visualiseur de données***.
+
+- Type de graphique : Linéaire
+- Données : Numérateur, Dénominateur et l'Indicateur que vous voulez utiliser
+- Période : Les périodes que vous voulez comparer
+- Unités d'organisation : Les unité(s) d'organisation que vous voulez examiner
+- Pour créer les axes de différence, allez dans options-> séries
+
+![](resources/images/dq_multiaxis.png)
+
+- Présentation (à modifier selon les besoins) 
+  - Série : Données
+  - Catégorie : Période
+  - Filtre : Unité d'organisation
+
+## Création d'un tableau de bord { #creating-a-dashboard } 
+
+Comme vous l'avez vu, vous pouvez effectuer ces analyses directement dans DHIS2. Pour ce faire, nous vous recommandons de créer un tableau de bord et d'y ajouter ces visualisations.
+
+![](resources/images/dq_dashboard.png)
+
+## Révision des estimations { #revising-your-estimates } 
+
+Si, après avoir effectué vos différentes comparaisons et déterminé qu'il est nécessaire d'améliorer vos dénominateurs, vous pouvez envisager ce qui suit :
+
+1. Réviser les estimations nationales de votre population
+2. Réviser les estimations infranationales de votre population
+3. Réviser d'autres estimations connexes, telles que les nourrissons survivants et le nombre estimé de femmes enceintes, au niveau infranational [les additionner pour obtenir les totaux nationaux].
+
+Veuillez consulter le [Document d'orientation de l'OMS sur les dénominateurs - Évaluer et améliorer l'exactitude des estimations de la population cible pour la couverture vaccinale] (https://www.who.int/publications/m/item/assessing-and-improving-the-accuracy-of-target-population-estimates-for-immunization-coverage) pour plus d'informations. Vous pouvez également vous adresser à votre service de statistiques et, le cas échéant, à un démographe, qui pourra vous aider à réviser ces estimations si nécessaire.
+
