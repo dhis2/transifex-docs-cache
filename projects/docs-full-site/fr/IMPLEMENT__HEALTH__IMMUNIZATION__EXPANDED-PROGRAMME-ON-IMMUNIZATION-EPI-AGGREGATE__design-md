@@ -1,0 +1,202 @@
+---
+edit_url: "https://github.com/dhis2-metadata/IMM_AGG/blob/master/docs/imm_agg-design.md"
+revision_date: '2024-07-25'
+tags:
+- Implémentation
+---
+
+# Programme Elargi de Vaccination (PEV) - Document de conception du système { #imm-agg-design }
+
+## Contexte et objectif { #background-and-purpose } 
+
+Ce document décrit la conception d'un module de vaccination dans DHIS2 optimisé pour l'intégration avec un HMIS national. Ce module est surtout utilisé par les pays qui ont intégré leur **Programme élargi de vaccination (PEV)** dans le HMIS.
+
+Le module comprend des indicateurs et des tableaux de bord standard pour soutenir les analyses de base des programmes de vaccination recommandées par le [**Guide de l'OMS sur l'analyse et l'utilisation des données des établissements de santé à l'intention des responsables des programmes de vaccination**] (https://www.who.int/publications/m/item/analysis-and-use-of-health-facility-data-guidance-for-immunization-programme-managers). Le module contient des ensembles de données mensuelles agrégées qui peuvent être utilisées avec souplesse en fonction de la maturité du système :
+
+- Pour les **déclarations directs de routine** dans DHIS2 lorsque les données de l'établissement restent sur papier (la saisie des données peut être effectuée au niveau de l'établissement ou du district) ; ou
+- **Les données électroniques individuelles** provenant du tracker DHIS2 ou d'un autre système ont été agrégées dans les dimensions agrégées prédéfinies nécessaires pour soutenir le cadre d'analyse des données.
+
+## Structure du package { #package-structure } 
+
+| Les ensembles de données      | Description                                                                                                                                             |
+|--------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Vaccination | Ensemble de données **Mensuelles**. <br> Déclaration relative aux activités de vaccination (y compris les activités de sensibilisation), aux Manifestations post-vaccinales indésirables, au stock et à la chaîne du froid. |
+
+> **Remarque**
+>
+> Cet ensemble de données a été conçu à l’aide d’un formulaire personnalisé dans le système DHIS2, afin de tenir compte notamment de la section Stock de cet ensemble de données. Si un formulaire à section est utilisé, la majorité des utilisateurs, lesquels ne disposent pas de moniteur haute définition, devront faire défiler leur écran vers la gauche ou la droite pour saisir des données dans la section stock, car leur écran ne pourra pas l’afficher entièrement.
+
+## Utilisateurs cibles { #intended-users } 
+
+- **Utilisateurs des établissements de santé** : saisir et rapporter des données clés sur les activités de vaccination
+- **Gestionnaires de programmes** : les gestionnaires au niveau national et infranational peuvent être chargés de soutenir la saisie et l'analyse des données.
+- **Autorités sanitaires nationales et locales** : suivre et analyser la surveillance des données à l'aide de tableaux de bord et d'outils d'analyse ; faire des évaluations de risques et planifier les mesures de riposte ; produire des rapports pour le compte de rapports régionaux et mondiaux.
+
+## Informations sur l'ensemble de données { #dataset-details } 
+
+### Sessions de sensibilisation { #outreach-sessions } 
+
+![Saisie de données pour les sessions de sensibilisation](resources/images/imm-epiagg-1.0.0-001.png)
+
+Les informations relatives aux sessions de sensibilisation ont été conçues comme des éléments de données individuels sans aucune désagrégation, bien qu'une combinaison de catégories puisse être ajoutée si nécessaire. Si les activités ne comprennent pas de sessions de sensibilisation, la section peut être supprimée de l'ensemble de données.
+
+### Vaccinations - Enfants { #vaccinations-children } 
+
+![Saisie des données pour les enfants vaccinés - la capture d'écran ne comprend pas le tableau complet](resources/images/imm-epiagg-1.0.0-002.png)
+
+Cette section a été configurée en utilisant une **désagrégation par âge (<1, >=1)** pour chaque élément de données de la section. D'un point de vue analytique, cela permet d'ajouter rapidement les subdivisions par âge et de les faire pivoter selon les besoins. Les totaux sont calculés automatiquement.
+Certaines cellules, comme par exemple la cellule pour le VPO 0 pour les enfants de plus d'un an, sont bloquées et **effacées pour empêcher la saisie de données** selon les indications des directives mondiales - par exemple, le VPO 0 est normalement administré à la naissance. Les cellules peuvent être débloquées en cas de besoin si les directives locales diffèrent des directives globales.
+
+### Vaccinations - femmes en âge de procréer { #vaccinations-women-of-childbearing-age }
+
+![Saisie des données pour les femmes vaccinées](resources/images/imm-epiagg-1.0.0-003.png)
+
+Cette section a été configurée en utilisant une **désagrégation pour les femmes enceintes (Enceinte, Autre)**.
+D'un point de vue analytique, cette solution permet d'ajouter rapidement la subdivision de l'état de grossesse et de la faire pivoter selon les besoins. La désagrégation et la liste des vaccins peuvent et doivent être modifiées localement pour mieux représenter les besoins contextuels si nécessaire.
+
+### Manifestation post-vaccinale indésirable { #adverse-events-following-immunization } 
+
+![Saisie des données relatives aux MAPI déclarées](resources/images/imm-epiagg-1.0.0-004.png)
+
+Ce tableau de base indique le nombre de MAPI par gravité. Si les AEFI nécessitent un formulaire de rapport plus détaillé, les packages globaux DHIS2 incluent également un [**tracker MAPI **] (#aefi-design) qui peut être utilisé et développé à cette fin.
+
+### Stock { #stock } 
+
+![Saisie des données pour le stock - la capture d'écran ne comporte pas le tableau complet](resources/images/imm-epiagg-1.0.0-005.png)
+
+![Détails de la désagrégation des stocks](resources/images/imm-epiagg-1.0.0-006.png)
+
+La configuration par défaut de la section stock ne comprend qu'une poignée de vaccins ainsi que quelques articles de base normalement utilisés dans les activités de vaccination (par exemple, les boîtes de sécurité et les cartes de vaccination). La **liste doit être améliorée et complétée localement** pour mieux refléter le stock local réel.
+
+Une structure **"plane" a été appliquée ** à la section Stock (cela signifie qu’aucune ventilation n’a été appliquée et que cette section se compose uniquement d’éléments de données individuels).
+
+Cette structure est nécessaire car la colonne « stock utilisé » est constituée par le calcul suivant : (solde initial + reçu) - (PCV + congelé + périmé + cassé + manquant + solde final). L'utilisation de deux options de catégories distinctes (c'est-à-dire solde initial, reçu, mis au rebut -PCV, congelé, périmé, cassé, manquant-, solde final) ne serait pas appropriée étant donné qu'un certain nombre de ces options ne s'appliquent pas à plusieurs des éléments de données de cette section. Il a donc été décidé que l'application de structures différentes à des éléments de données liés thématiquement n'était pas l'approche la plus efficace.
+Bien que l'utilisation de ce type de structure augmente considérablement le nombre d'éléments de données, l'utilisation d'une combinaison d'options de catégorie qui additionnerait tous ces éléments ne fonctionnerait pas dans le cadre de cette structure, étant donné qu'un total ne fournit pas d'informations significatives lors de l'examen de la colonne « stock utilisé ».
+
+La section sur les stocks a été ajoutée pour simplifier la collecte des données. Si une feuille de décompte séparée s'avère plus utile, un [**ensemble de données logistiques**] (https://docs.dhis2.org/en/topics/metadata/immunization/epi-logistics/lmis-design.html)est également disponible sous la forme d'un package autonome à éditer localement.
+
+### Chaîne du froid { #cold-chain } 
+
+Les informations relatives à la chaîne du froid ont été conçues comme des éléments de données individuels sans aucune désagrégation.
+
+## Analyses et indicateurs { #analytics-and-indicators } 
+
+Que ce soit par manque de données fiables ou par des erreurs de calcul, les données démographiques et leur utilisation dans les dénominateurs constituent souvent une tâche difficile.
+
+Avant toute version de DHIS2 antérieure à la 2.35.12, les cibles et les couvertures étaient simplement basées sur l'antigène administré à la population cible pendant toute la durée (mois de l'année) ; cumulativement, la population cible a été divisée par 12 (mois) puisque la population cible a été saisie annuellement. Les indicateurs auraient dû être ajustés en fonction de la périodicité de l'analyse (trimestrielle/annuelle/etc.) et de la périodicité avec laquelle la population cible est rapportée ; tandis que la couverture aurait simplement été basée sur l'annualisation de l'indicateur.
+Il est recommandé d'utiliser des [indicateurs agrégés cumulés dans le temps] (https://docs.dhis2.org/en/use/user-guides/dhis-core-version-235/configuring-the-system/metadata.html#manage_indicator) pour garantir des calculs précis de la couverture. Ceci est possible en utilisant la fonction **periodOffset** dans les indicateurs des versions supérieures à 2.35.12. En conséquence, les indicateurs de couverture utilisent la somme des 12 derniers mois comme numérateur au lieu d'annualiser l'indicateur. Cette méthode de calcul des indicateurs de couverture est plus précise que l'annualisation.
+
+Ci-dessous, vous trouverez un exemple du type d'indicateurs qui sont maintenant disponibles pour mieux calculer la couverture.
+
+|             |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+|-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Indicateur   | **PEV - Couverture BCG (%) - période de compensation**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| UID         | `lnC0fWd3sD4`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Numérateur   | **Doses de BCG < 1 an ce mois-ci et les 11 derniers mois** <br> _PEV - doses de BCG administrées <1 an + PEV - doses de BCG administrées <1 an                                         year.periodOffset(-1) +PEV - doses de BCG administrées <1 year.periodOffset(-2) + PEV - doses de BCG administrées <1 year.periodOffset(-3) + PEV - doses de BCG administrées <1 year.periodOffset(-4) + PEV - doses de BCG administrées <1 year.periodOffset(-5) + PEV - doses de BCG administrées <1 year.periodOffset(-6) + PEV - doses de BCG administrées <1 year.periodOffset(-7) + PEV - doses de BCG administrées <1 year.periodOffset(-8) + PEV - doses de BCG administrées <1 year.periodOffset(-9) + PEV - doses de BCG administrées <1 year.periodOffset(-10) + PEV - doses de BCG administrées <1 year.periodOffset(-11)_ |
+| Dénominateur |  **Naissances vivantes** <br> _GEN - Naissances vivantes au sein de la population_                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+
+Au recto des **performances de vaccination**, le package contient maintenant un score attribué aux différentes UO. Le score est basé sur la combinaison de la couverture et du taux d'abandon des antigènes grâce à l'utilisation d'une déclaration logique dans la formule (possible à partir de la version 2.36).
+
+## Règles de validation { #validation-rules } 
+
+Les règles de validation pour le package de la Vaccination sont regroupées dans le groupe de règles de validation « Vaccination ».
+Les règles sont exécutées au niveau de la saisie des données (bouton « Exécuter la validation ») afin de signaler toute erreur potentielle dans la saisie des données.
+
+![Exemple d'erreurs signalées par la validation des données](resources/images/imm-epiagg-1.0.0-007.png)
+
+## Tableaux de bord { #dashboards } 
+
+Le package de la Vaccination comprend un tableau de bord prédéfini. Le tableau ci-dessous ne reprend que les éléments contenant des notes d'intérêt pour la mise en œuvre du package et la configuration du tableau de bord.
+
+| Élément                                                   | Commentaire                                                                                                                                                                                                                                                                         |
+|--------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Catégorisation des résultats de vaccination par district | Catégorisation des unités d'organisation en quatre catégories (1,2,3,4) en fonction de leur performance : <br>- 1 : Couverture > 90% / Taux d'abandon < 10% <br>- 2 : Couverture > 90% / Taux d'abandon > 10% <br>- 3 : Couverture < 90% / Taux d'abandon < 10% <br>- 4 : Couverture < 90% / Taux d'abandon > 10%  |
+
+## Visualisations issues de l'application de vaccination { #visualizations-from-the-immunization-app } 
+
+Au cours des dernières versions de DHIS2, des travaux ont été menés pour étendre les fonctionnalités analytiques de base afin de répondre aux exigences qui ont conduit au développement de l'analyse personnalisée de la vaccination.
+Les visualisations représentatives de l'« **application d'analyse des vaccinations** » présentes dans le tableau de bord sont les suivantes :
+
+- PEV - Doses et couverture par antigènes - mois cette année
+- Tableau de surveillance des antigènes administrés aux enfants <1 an - Mois concernés cette année
+- Tableau de surveillance des antigènes administrés aux nouveaux nés - Mois concernés cette année
+- Catégorisation des taux de couverture et d'abandon - 12 derniers mois
+- Catégorisation des résultats de vaccination par district - 12 derniers mois
+
+Dans la description de chaque visualisation, vous trouverez des informations pertinentes sur le contenu et la structure.
+
+## Groupes d'utilisateurs { #user-groups } 
+
+Des groupes d'utilisateurs ont été créés dans le cadre de la configuration du package afin de gérer les paramètres de partage dans les métadonnées de tous les modules. Les métadonnées de base qui utilisent ces paramètres de partage comprennent principalement les ensembles de données, les tableaux de bord, les indicateurs et les éléments de données.
+
+Les trois groupes d'utilisateurs créés sont les suivants : 
+
+| Groupe d’utilisateurs       | Tableau de bord         | Métadonnées du programme  | Données de programme         |
+|------------------|-------------------|-------------------|----------------------|
+| PEV-Admin        | Lecture et saisie | Lecture et saisie | Lecture seule        |
+| PEV-Accès       | Lecture seule     | Lecture seule     | Lecture seule        |
+| PEV-Saisie de données | Pas d'accès         | Lecture seule     | Peut saisir et visualiser |
+
+- **PEV-Admin** - les utilisateurs de ce groupe auront des paramètres de partage avec un accès en vue et édition aux métadonnées et un accès en vue seulement aux valeurs de données dans les ensembles de données.
+- **PEV-Accès** - les utilisateurs de ce groupe auront des paramètres de partage avec un accès en vue seulement aux métadonnées et aux valeurs de données dans les ensembles de données.  
+- **PEV-Saisie de données** - les utilisateurs de ce groupe auront des paramètres de partage avec un accès en vue seulement aux métadonnées et un accès en édition aux valeurs de données dans les ensembles de données.
+
+Bien qu'il soit important de conserver ces groupes d'utilisateurs lors de l'installation de ce package, n'hésitez pas à les réviser en fonction de la configuration ou de la politique existante en matière de groupes d'utilisateurs dans l'instance hôte.
+
+## Considérations particulières { #special-considerations } 
+
+### Données sur la population { #population-data } 
+
+Il est essentiel de disposer d'estimations précises de la population cible pour calculer la couverture vaccinale. Pour les vaccins administrés au-delà de la première année, la cible est généralement l'estimation des enfants survivants de la cohorte de naissance [OMS, 2020] (https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data).
+
+S'il n'est pas déjà utilisé, l'ensemble de données doit être couplé à un second ensemble de données afin de collecter les données démographiques nécessaires au calcul d'indicateurs clés tels que la couverture et au suivi d'objectifs importants pour les activités et/ou les populations clés (par exemple, les enfants de moins de 5 ans ou les femmes enceintes). Alternativement, un lien avec le [tracker Vital Events] (https://docs.dhis2.org/en/implement/health/crvs-mortality/vital-events/overview.html)ou le système national CRVS pourrait fournir la cohorte de naissance mise à jour.
+
+Veuillez vous référer à la section Indicateurs pour plus d'informations sur les données démographiques.
+
+### Couverture vaccinale et groupes d'âge { #vaccination-coverage-and-age-groups } 
+
+La couverture vaccinale est souvent désagrégée par groupes d'âge, ce qui est crucial pour la surveillance et l'amélioration des programmes de vaccination. La désagrégation courante comprend des tranches d'âge telles que 0-11 mois, 12-23 mois et ≥24 mois [OPS, 2017] (https://iris.paho.org/handle/10665.2/34510).
+Il est essentiel d'enregistrer les vaccinations avec précision en fonction de l'âge de l'enfant. Par exemple, un enfant recevant la première dose du vaccin RR à 15 mois doit être enregistré comme RR1 (12-23 mois) [OMS, 2020](https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data). 
+
+Le [Manuel de l'OMS] (https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data) souligne l'importance de la vaccination au-delà de la petite enfance. Au départ, le Programme élargi de vaccination (PEV) était axé sur les enfants de moins d'un an, mais il a depuis évolué pour inclure de nouveaux vaccins, des doses de rappel et des vaccinations tout au long de la vie. Au fur et à mesure que de nouveaux vaccins sont développés et recommandés, les calendriers de vaccination doivent être mis à jour en conséquence afin de protéger les populations contre les nouvelles menaces sanitaires et de maintenir l'immunité tout au long de la vie.
+Les pays doivent adopter des calendriers de vaccination intégrés qui tiennent compte des vaccinations de la naissance à l'adolescence et à l'âge adulte. Cette approche garantit que les doses de rappel et les nouveaux vaccins sont administrés aux âges appropriés, ce qui permet de maintenir une immunité continue et de réduire le nombre d'enfants n'ayant reçu aucune dose. Une approche fondée sur la durée de vie est essentielle pour garantir une protection continue contre les maladies évitables par la vaccination.
+En outre, il est essentiel de tirer parti des systèmes d'information communautaires et d'intégrer les données sanitaires pour suivre l'état de la vaccination au fil du temps. Les systèmes de surveillance doivent s'adapter pour suivre les vaccinations administrées aux différents groupes d'âge, afin de garantir une couverture complète tout au long de la vie [OPS, 2017] (https://iris.paho.org/handle/10665.2/34510), [USAID] (https://usaidmomentum.org/resource/landscape-analysis-of-health-information-systems-and-data-tools-for-identifying-reaching-and-monitoring-zero-dose-and-under-immunized-children/).
+
+### Équité et Caractéristiques Socio-économiques { #equity-and-socio-economic-characteristics } 
+
+Les enquêtes sur la couverture mesurent souvent la couverture en fonction de dimensions socio-économiques telles que la richesse, l'appartenance ethnique, la religion et le niveau d'éducation de la personne qui s'occupe de l'enfant. Cela permet de comprendre les inégalités en matière de vaccination et d'y remédier [OMS, 2020] (https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data). 
+En Amérique latine, les registres électroniques de vaccination et d'autres sources de données sont utilisés pour désagréger les données de vaccination en fonction des dimensions d'équité, en identifiant les sous-groupes ou les localités où il y a plus d'enfants n'ayant reçu aucune dose et d'enfants sous-vaccinés [USAID] (https://usaidmomentum.org/resource/landscape-analysis-of-health-information-systems-and-data-tools-for-identifying-reaching-and-monitoring-zero-dose-and-under-immunized-children/).
+
+### Analyse des délais (enfants couverts) { #timeliness-recovered-children-analyses } 
+
+La ponctualité de la vaccination fait référence à l'administration des vaccins selon les calendriers recommandés, ce qui est crucial pour maximiser leur efficacité et minimiser les périodes pendant lesquelles les enfants sont vulnérables aux maladies évitables.les calendriers de vaccination précisent l'âge minimum pour la première dose et les intervalles requis entre les doses qui suivent. Le respect de ces calendriers est essentiel pour maintenir une protection continue contre les maladies infectieuses. Les doses non administrées à temps, bien que toujours valables, sont administrées bien plus tard que l'âge recommandé, ce qui risque de laisser les enfants sans protection pendant de plus longues périodes.
+
+La surveillance des délais est également essentielle pour une prise de décision efficace dans les programmes de vaccination. Les taux de ponctualité, calculés comme le pourcentage de rapports soumis à temps par rapport aux rapports attendus, sont essentiels pour prendre des décisions en temps voulu et réduire les erreurs. L'actualité et l'exhaustivité des données sont essentielles à la précision du suivi et de la prise de décision. Les rapports tardifs ou manquants peuvent conduire à des évaluations inexactes de la couverture et avoir un impact négatif sur l'efficacité du programme.
+
+Les enquêtes et les registres électroniques de vaccination (EIR) sont plus efficaces pour surveiller le respect des délais que les systèmes administratifs, qui ont tendance à regrouper les vaccinations en grandes catégories d'âge, ce qui occulte les informations détaillées sur le respect des délais. Les définitions de l'opportunité peuvent varier, mais les vaccins administrés dans les trois mois suivant l'âge recommandé sont généralement considérés comme étant à temps.
+
+Améliorer la ponctualité de la vaccination, c'est s'assurer que les enfants reçoivent les vaccins à l'âge optimal spécifié par les autorités sanitaires, afin de maximiser les effets protecteurs des vaccins et de réduire le risque de flambées épidémiques. Des rapports précis et opportuns sont essentiels pour évaluer avec exactitude la couverture vaccinale et prendre des décisions éclairées afin d'améliorer l'efficacité des programmes. [OMS, 2020](https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data), [PAHO, 2017](https://iris.paho.org/handle/10665.2/34510), [GAVI](https://www.gavi.org/our-alliance/strategy/phase-5-2021-2025/equity-goal/zero-dose-children-missed-communities)
+
+**Exemples de pays** [OPS, 2017] (https://iris.paho.org/handle/10665.2/34510) :
+- Au Guatemala, une analyse a révélé des variations significatives dans le respect des délais d'administration des doses de DTP1 et de DTP3 dans les différentes régions, ce qui souligne la nécessité de mettre en place des interventions ciblées pour améliorer la couverture vaccinale en temps voulu
+- Au Costa Rica, une auto-évaluation de la qualité des données a révélé que l'amélioration de la ponctualité était essentielle pour obtenir des données précises sur la couverture vaccinale et des programmes de vaccination efficaces
+
+### Utilisation des données pour l'élaboration de stratégies { #use-of-data-for-strategy-design } 
+
+L'utilisation efficace des données implique l'intégration de sources de données multiples, y compris les dossiers administratifs, les enquêtes et les données démographiques, afin de trianguler les informations et de prendre des décisions éclairées [OMS, 2020] (https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data). Les programmes de vaccination peuvent s'améliorer en analysant les données administratives, les données de surveillance et les données GIS afin de comprendre les inégalités en matière de vaccination et de concevoir des stratégies pour atteindre les enfants n'ayant reçu aucune dose et les enfants sous-vaccinés. Par exemple, la technologie géospatiale aide à créer des cibles de programme précises et à identifier les communautés oubliées [PAHO, 2017](https://iris.paho.org/handle/10665.2/34510), [USAID](https://usaidmomentum.org/resource/landscape-analysis-of-health-information-systems-and-data-tools-for-identifying-reaching-and-monitoring-zero-dose-and-under-immunized-children/).
+
+**Exemples de pays** :
+- La technologie géospatiale a été largement utilisée au Nigeria dans le cadre des efforts d'éradication de la polio, ce qui a permis d'obtenir des estimations plus précises de la population et d'identifier les populations oubliées. Cette technologie s'est révélée prometteuse pour améliorer la vaccination de routine grâce à une meilleure microplanification et à l'identification des établissements non documentés [OMS, 2020] (https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data).
+- Les outils GIS ont été utilisés dans le cadre des efforts d'éradication de la polio au Kenya, notamment pour créer des microplans numériques pour les campagnes de vaccination. Une stratégie mobile ciblée de porte-à-porte basée sur des données GIS a permis d'augmenter le nombre d'enfants complètement vaccinés de 33,5 % en un an dans les établissements peu performants et les populations rurales et urbaines non atteintes [OMS, 2020] (https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data).
+- La microplanification basée sur le GIS, combinée à la mobilisation communautaire, à l'utilisation renforcée des données et à la planification logistique, a permis de doubler la couverture vaccinale de routine dans les zones urbaines de l'Inde. Cette approche permet d'envisager des stratégies similaires dans d'autres régions [OMS, 2020] (https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data).
+- Les planificateurs de la distribution des vaccins ont utilisé des données GIS pour répondre à l'épidémie de virus Ebola et étudient leur utilisation pour la planification de la vaccination de routine afin de mettre à jour les cartes des zones de santé et les estimations de la population en RDC. Des approches de mapping participatif impliquant des agents de santé locaux ont été mises en œuvre pour éclairer la microplanification [OMS, 2020] (https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data).
+
+L'évaluation de la qualité des données est essentielle pour garantir la fiabilité des données utilisées dans l'élaboration de la stratégie. Des contrôles réguliers de la qualité des données permettent de conserver des enregistrements exacts et d'améliorer l'efficacité globale des programmes de vaccination. De plus amples informations sont disponibles dans le guide de l'utilisateur DHIS2 [Qualité des données](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-241/collecting-data/data-quality.html).
+
+## Références { #references } 
+
+- Organisation mondiale de la santé, (2018), Analyse et utilisation des données des établissements de santé : guide à l'intention des responsables des programmes de vaccination. URL : <https://www.who.int/publications/m/item/analysis-and-use-of-health-facility-data-guidance-for-immunization-programme-managers>. [consulté le 01/09/2022]
+- Organisation mondiale de la santé, (2020), Manuel de l'OMS sur l'utilisation, la collecte et l'amélioration des données relatives à la vaccination. URL : https://www.technet-21.org/en/resources/guidance/who-handbook-on-the-use-collection-and-improvement-of-immunization-data [consulté le 23/07/2024]
+- Organisation panaméricaine de la santé (2017), Outils de surveillance de la couverture des interventions de santé publique intégrées. Vaccination et déparasitage de l'helminthiase transmise par le sol. URL : https://iris.paho.org/handle/10665.2/34510 [Consulté le 23/07/2024]
+- USAID, Analyse du paysage des systèmes d'information sanitaire et des outils de données permettant d'identifier, d'atteindre et de surveiller les enfants à dose nulle et sous-vaccinés URL : https://usaidmomentum.org/resource/landscape-analysis-of-health-information-systems-and-data-tools-for-identifying-reaching-and-monitoring-zero-dose-and-under-immunized-children/ [consulté le 23/07/2024].
+
