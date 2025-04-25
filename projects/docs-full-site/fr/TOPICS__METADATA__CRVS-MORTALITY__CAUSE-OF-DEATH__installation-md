@@ -1,0 +1,135 @@
+---
+edit_url: "https://github.com/dhis2-metadata/CRVS_COD/blob/master/docs/crvs_cod-installation.md"
+revision_date: '2022-09-19'
+tags:
+- Métadonnées
+---
+
+# OMS Cause de décès - Guide d'installation du Tracker { #crvs-cod-installation }
+
+## Introduction { #introduction } 
+
+Ce document a pour but de guider les administrateurs dans le processus d'installation du module "Cause de décès" dans une base de données DHIS2. Une bonne connaissance de DHIS2, y compris de la fonctionnalité du Tracker (basé sur les cas), est nécessaire.
+
+Le module "Cause de décès" consiste en un fichier contenant des métadonnées DHIS2. Plus précisément, il comprend
+
+Pour le programme Tracker :
+
+- Un programme tracker avec des éléments de données, des ensembles d'options, un formulaire de saisie de données personnalisé, des règles de programme, des indicateurs de programme, etc.
+- Un rapport standard pour la validation des données.
+- Un tableau de bord avec des graphiques et des tableaux pour les données clés.
+- Ce document décrit comment installer et ce module et en assurer la maintenance de routine. Cela inclut l'importante tâche d'adaptation et d'amélioration du dictionnaire des diagnostics/termes médicaux, qui est essentiel au fonctionnement du module.
+
+Il y'a également un [node.js](https://nodejs.org/en/) script for linking the Cause of Death module in DHIS 2 with the [IRIS software](https://www.dimdi.de/dynamic/en/classifications/iris-institute/index.html) qui permet réaliser le codage semi-automatique des causes de décès selon la CIM-10 complète et l'envoi du résultat à la base de données DHIS 2. Des sorties sont fournies pour exporter ces nouvelles données vers l'outil d'analyse de données ANACOD. Cette fonctionnalité est décrite dans un autre document.
+
+## Description du module { #description-of-the-module } 
+
+Cette section donne un aperçu de la conception et de la structure du module.
+
+### Le formulaire de collecte de données { #the-data-collection-form } 
+
+Le formulaire de collecte de données a été créé sur la base du certificat médical international des causes de décès. Il utilise donc un formulaire personnalisé qui imite le format de ce certificat. Cependant, la logique intégrée dans le formulaire pour le codage et la validation fonctionne également sans le formulaire personnalisé, ce qui permet d'utiliser le module sur des appareils mobiles avec les applications Android de DHIS2, par exemple.
+
+### Gestion de l'"Âge" { #dealing-with-age } 
+
+Pour la collecte de données sur l'âge de la personne décédée, le formulaire permet d'utiliser à la fois la date de naissance et une estimation de l'âge. Pour faciliter l'analyse des données, un élément de données supplémentaire pour l'"Âge en années" a été ajouté au formulaire, mais en tant que champ désactivé ou disponible en lecture uniquement. En fonction de la date de naissance ou de l'estimation de l'âge, les règles du programme calculent l'âge en années et attribuent cette valeur à l'élément de données "Âge en années".
+
+### Dictionnaire { #dictionary } 
+
+Le dictionnaire (CIM-SMoL - dictionnaire local) est un élément essentiel du module. Le dictionnaire sert de lien entre les termes médicaux utilisés lors de la saisie des données et le code CIM-SMoL utilisé pour la déclaration et l'analyse des causes de décès. Dans DHIS2, le dictionnaire est utilisé sous la forme d'un ensemble d'options. Le terme médical est le nom de l'option et le code de l'option est composé de trois éléments : le code CIM-SMoL, le code CIM-10 et un identifiant. L'identifiant est nécessaire car plusieurs termes peuvent faire référence aux mêmes codes CIM-SMoL et CIM-10, et les codes doivent être uniques. L'identifiant lui-même se compose de deux parties : un code pays (ou INT pour les codes fournis avec le module) et un compteur. Conserver les termes internationaux et spécifiques aux pays facilitera à l'avenir l'identification des termes utilisés dans différents pays, lesquels pourraient être proposés pour le dictionnaire international.
+
+Le module "Cause de décès" entièrement localisé en français utilise un dictionnaire spécifique qui diffère du dictionnaire anglais de la CIM-SMoL. Ce dictionnaire est géré dans un ensemble d'options différent qui n'est inclus que dans le fichier du package français.
+
+Les termes du dictionnaire sont classés par ordre de longueur, les plus courts apparaissant en premier. Ainsi, lorsque les utilisateurs effectuent une recherche dans le dictionnaire, les termes médicaux qui correspondent le plus au terme recherché s'affichent en premier.
+
+### Sélection de la cause sous-jacente du décès { #selecting-underlying-cause-of-death } 
+
+La sélection de la cause sous-jacente du décès est un élément clé du module. Cette sélection s'effectue au moyen de quatre cases à cocher, qui indiquent laquelle des quatre causes (au maximum) est la cause sous-jacente. Des règles de programme sont utilisées pour garantir qu'une seule des cases peut être sélectionnée et que chaque case ne peut être utilisée que si un diagnostic a été sélectionné pour cette ligne/cause.
+
+Lorsqu'une cause est sélectionnée comme sous-jacente, deux champs disponibles en lecture uniquement sont attribués avec le nom et le code de la CIM-SMoL pour la cause sélectionnée.
+
+## Installation { #installation }
+
+### Exigences et préparation { #requirements-and-preparation } 
+
+Pour installer le module, il faut nécessairement un compte d'utilisateur administrateur sur DHIS2. La procédure décrite dans le présent document doit être testée dans un environnement de test et de simulation avant d'être exécutée sur une instance de production du DHIS2.
+
+Il est important de s’assurer que le serveur et l’application DHIS sont bien sécurisés, afin de limiter l'accès aux données collectées. Même si l'on utilise ce module sans aucun identifiant direct du patient, tel que l'identité ou le nom, l'âge, le sexe et l'établissement de santé peuvent suffire à identifier une personne. Les détails relatifs à la sécurisation d'un système DHIS2 sortent du cadre du présent document et renvoient à la documentation de DHIS2.
+
+### Choix d'une version pour le module { #choosing-a-version-of-the-module } 
+
+### Importation de métadonnées { #importing-metadata } 
+
+Le module est importé via un fichier `.json` avec des métadonnées DHIS2, grâce à la fonction d'importation des métadonnées de l'application Import/Export. Lors de l'importation des métadonnées dans une base de données DHIS2 qui en contient déjà, vous pouvez constater des erreurs si vous regardez le résumé détaillé de l'importation. Ces erreurs peuvent nécessiter une action, par exemple si un élément de données portant le même nom ou le même code existe déjà dans la base de données dans laquelle vous importez le module. Dans ce cas, vous devrez soit changer l'identifiant (nom, code) dans la base de données, soit modifier le nom/code dans le fichier d'importation. Ces modifications doivent d'abord être effectuées dans un environnement de test ou de simulation, afin de s'assurer qu'elles n'affectent pas d'autres parties du système.
+
+### Configuration supplémentaire { #additional-configuration } 
+
+Une fois que toutes les métadonnées sont importées avec succès, des étapes doivent être observées avant que le module ne soit fonctionnel.
+
+1. Le programme doit être attribué à un rôle d'utilisateur nouveau ou existant avant que les utilisateurs puissent commencer à saisir des données. De plus, les utilisateurs doivent disposer des autorisations nécessaires pour saisir et/ou consulter les données tracker. Pour plus d'informations sur la configuration des rôles d'utilisateur, veuillez consulter la documentation de DHIS2.
+
+2. Le programme doit être affecté aux unités d'organisation pour lesquelles des données seront saisies.
+
+3. En option, vous pouvez également utiliser la fonctionnalité de partage de DHIS2 pour configurer les utilisateurs (groupes d'utilisateurs) qui doivent voir les métadonnées et les données associées au programme. Le partage peut être configuré pour le programme lui-même, les éléments de données, les indicateurs de programme, les indicateurs agrégés, les ensembles d'options et les résultats analytiques.
+
+### Adapter le programme tracker { #adapting-the-tracker-program } 
+
+Une fois le programme importé, il se peut que vous souhaitiez y apporter certaines modifications. Voici quelques exemples d'adaptations locales que vous pourrez effectuer :
+
+- Ajout de variables supplémentaires au formulaire.
+- Pour le programme tracker, lier le programme à un type d'entité suivie existant et/ou modifier les attributs de l'entité suivie. Une entité suivie fictive est incluse dans le module.
+- Adaptation des noms des éléments de données/options en fonction des usages au niveau national.
+- Ajout des traductions aux variables et/ou au formulaire de saisie des données.
+- Toutefois, il est fortement recommandé de ne pas modifier ou supprimer les formulaires/métadonnées inclus. Cela s'explique à la fois par le fait que les variables incluses sont les variables standard recommandées du formulaire international de notification des décès, et par le fait que les modifications risquent d'interrompre le fonctionnement, par exemple des règles et des indicateurs de programme. Prenons l'exemple  des variables du formulaire qui sont presque toutes sont liées à une ou plusieurs règles de programme, lesquelles cesseraient de fonctionner si la variable était supprimée ou remplacée. La modification des variables par défaut pourrait également compliquer les mises à jour futures du module.
+
+### Maintenance { #maintenance } 
+
+La maintenance du module comporte deux aspects principaux : la maintenance du dictionnaire des termes médicaux et la maintenance liée aux nouvelles versions de DHIS2. Chacun de ces aspects sera décrit ici.
+
+#### Maintenance du dictionnaire { #dictionary-maintenance } 
+
+Le dictionnaire des termes médicaux est un élément clé du module et est essentiel pour produire des données pertinentes $. Cette section décrit comment vérifier l'intégrité du dictionnaire (par exemple, que les codes utilisés sont valides), comment dresser la liste des termes collectés qui ne figurent pas dans le dictionnaire et dont l'inclusion devrait être envisagée, et comment ajouter de nouveaux termes au dictionnaire. Plusieurs vues SQL sont incluses dans le module pour faciliter ces tâches.
+
+#### Vérification de l'intégrité du dictionnaire { #checking-integrity-of-dictionary } 
+
+Comme évoqué plus haut, le dictionnaire est utilisé comme un ensemble d'options dans DHIS2, avec le terme médical comme nom d'option et un format spécial pour le code de l'option qui consiste en un code CIM-SMoL, un code CIM-10 et un identifiant séparés par le symbole | (pipe). Des vues SQL sont incluses pour vérifier que toutes les entrées du dictionnaire respectent ce format :
+
+- Entrées de dictionnaire dont le format de code est invalide - liste des entrées dont le code ne suit pas le format `[contenu]|[contenu]|[contenu]`.
+- Entrées de dictionnaire avec référence CIM-SMoL invalide - entrées de liste où la partie CIM-SMoL du code ne figure pas dans la liste CIM-SMoL, fournie en tant qu'ensemble d'options distinct.
+- Entrées de dictionnaire combinant catégories principales et sous-catégories - entrées de liste où, pour le même code CIM-SMoL, certaines entrées renvoient au code CIM-SMoL principal et d'autres au code spécifique (par exemple, certaines renvoient à 5-4 et 5-4.1). Cela peut créer des résultats trompeurs lors de l'analyse des données dans DHIS2, car les décès pourraient être comptés deux fois.
+
+#### Ajout de termes au dictionnaire { #adding-terms-to-the-dictionary } 
+
+Une vue SQL "Termes non trouvés dans le dictionnaire" est incluse. Elle répertorie tous les termes médicaux qui ont été saisis en texte libre, c'est-à-dire qui n'ont pas été trouvés dans le dictionnaire lors de la saisie des données, ainsi que le nombre de fois où ils ont été saisis. Il s'agit de termes dont l'intégration au dictionnaire devrait être envisagée s'ils sont fréquemment utilisés et pertinents.
+
+Avant d'ajouter un terme au dictionnaire, il faut identifier le bon code CIM-SMoL et CIM-10. Avec l'identifiant, ils constituent le code à utiliser dans le dictionnaire. Pour trouver l'identifiant, une vue SQL "Prochain numéro d'index du dictionnaire" est incluse et indique le prochain identifiant à utiliser. Elle comporte deux colonnes, "termtype" et "nextvalue". Comme indiqué plus haut, il est recommandé que chaque pays utilise un code de région pour les ajouts au dictionnaire effectués localement. Ce code sera ainsi répertorié dans la colonne "termtype" et le prochain numéro à utiliser dans la colonne "nextvalue". Si aucun terme local n'a encore été ajouté, utilisez [code pays]00001 comme premier identifiant, par exemple GH00001 si le code pays est GH. Une fois que le premier terme local a été ajouté, la vue SQL indique à tout moment l'identifiant suivant à utiliser.
+
+Pour s'assurer que les bons termes sont affichés en premier dans le dictionnaire, ils doivent être classés par ordre de longueur. Après l'ajout de nouveaux termes au dictionnaire, celui-ci doit être trié à nouveau afin que les nouveaux termes ne soient pas toujours les derniers de la liste. Cette opération peut être réalisée à l'aide de la requête SQL suivante (pour les bases de données PostgreSQL) :
+
+```sql
+    with ordered as (
+    select
+        uid,
+        name,
+        code,
+        row_number() OVER (ORDER BY length(name),name) AS sort_order
+    from optionvalue
+    where
+        optionsetid =
+            (select optionsetid from optionset where code = 'ICD_SMOL_DICTIONARY')
+    )
+    update optionvalue ov
+        set sort_order = ord.sort_order
+    from ordered ord
+    where
+        ov.uid = ord.uid and
+        ov.optionsetid =
+            (select optionsetid from optionset where code = 'ICD_SMOL_DICTIONARY');
+```
+
+**Notez** qu'il s'agit d'une requête UPDATE qui doit être exécutée directement dans la base de données, et non par l'intermédiaire de l'interface utilisateur de DHIS2.
+
+Mise à jour du DHIS
+
+Lorsque de nouvelles versions de DHIS2 sont publiées, il est important de tester toutes les fonctionnalités du module sur un serveur de test et de simulation avant de mettre à jour les instances de production du système.
+
