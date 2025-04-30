@@ -1,0 +1,89 @@
+---
+edit_url: "https://github.com/dhis2-metadata/GEN_LIB/blob/master/docs/gen_lib-design.md"
+revision_date: '2024-12-11'
+tags:
+- Implémentation
+---
+
+# Bibliothèque commune de métadonnées { #gen-lib-design }
+
+## Introduction { #introduction } 
+
+Ce document décrit un ensemble de métadonnées qui fournit une base de métadonnées DHIS2 essentielles à utiliser dans le cadre de plusieurs programmes ou ensembles de données. Les métadonnées incluses ne sont pas spécifiques à un programme ou à un cas d'utilisation, mais sont généralement destinées à être partagées entre les programmes tracker en tant qu'élément d'un HMIS harmonisé.
+
+L'un des principaux avantages de DHIS2 est qu'il peut être utilisé pour plusieurs programmes de santé, au sein d'une instance unique et harmonisée. Il existe plusieurs raisons pratiques de partager les métadonnées entre les programmes tracker :
+
+-   Réduire la duplication de la saisie des données et améliorer les flux de données, par exemple lorsque les données d'une personne enregistrées dans un programme peuvent être transférées dans un autre programme ;
+-   Améliorer les capacités d'analyse entre les programmes en réutilisant des métadonnées communes et les codes associés pour des attributs essentiels tels que le sexe ;
+-   Faciliter la maintenance des métadonnées dans le système
+
+Les packages de métadonnées de DHIS2 sont conçus et harmonisés de manière à permettre l'importation de plusieurs packages dans la même instance de DHIS2. Cela peut être fait pour relier les inscriptions d'un individu à différents programmes, ou pour créer des synergies entre les flux de rapports pour différents domaines de la santé. Par exemple, un patient peut être inscrit à la fois à un programme de surveillance des cas de VIH et de tuberculose, mais son sexe n'est enregistré qu'une seule fois au moment de sa première inscription. Pour ce faire, les programmes doivent partager les mêmes métadonnées pour l'attribut d'entité suivi (Sexe) ainsi que pour l'ensemble d'options qui lui est associé ( Homme, Femme et Inconnu).
+
+L'importation de ces métadonnées communes sous la forme d'un package de base garantit l'unicité des identifiants, des noms et des codes pour les objets (par exemple, les attributs des entités suivies, les ensembles d'options, les options et les éléments de données). En outre, si un programme personnalisé est développé dans la même instance, il peut réutiliser les métadonnées du package de base, ce qui permet d'amorcer la configuration du nouveau programme, d'éviter les conflits d'espace de noms et d'autres complications lors de l'importation/exportation de métadonnées, et de faciliter l'échange de données entre plates-formes. Cela devient particulièrement important lorsqu'il s'agit d'aligner les implémentations de trackers qui peuvent exister dans plusieurs instances dans un environnement partagé et harmonisé.
+
+## Aperçu de la conception du système { #system-design-overview } 
+
+Les métadonnées communes du tracker sont disponibles sous forme de fichiers de métadonnées installables qui peuvent être importés dans une instance DHIS2 nouvelle ou existante. Ces fichiers installables contiennent des métadonnées qui correspondent à quelques cas d'utilisation courants du système de suivi DHIS2 :
+
+### **Profil de Base d'un Cas** { #core-case-profile } 
+
+Le profil de base des cas est une petite collection d'objets de métadonnées dans le domaine du suivi qui représentent des identifiants et des variables de données communes généralement utilisés dans les registres basés sur les cas. Ces métadonnées sont réutilisées dans tous les modules de suivi de la surveillance basée sur les cas de l'OMS (par exemple, la surveillance basée sur les cas de VIH, de paludisme, de tuberculose, de variole et de COVID-19). Le Profil de base des Cas a été développé à travers un processus d'harmonisation interne à l'OMS pour identifier et harmoniser les conventions d'appellation pour les variables de données partagées dans les programmes de suivi centré sur la personne et de surveillance basée sur les cas. L'harmonisation de ces métadonnées dans une instance DHIS2 présente de nombreux avantages pratiques, tels que l'enregistrement d'une « personne » d'une TEI dans un programme et la mise à disposition de ses données personnelles pour une recherche d'inscription dans un autre programme (par exemple, l'inscription d'un cas de VIH dans le programme de lutte contre la tuberculose).
+
+Le profil de base d'un cas comprend les objets suivants :
+
+\- Type d'entité suivie (Personne)
+
+\- Attributs de l'entité suivie (par exemple, prénom, nom de famille, date de naissance)
+
+\- Options (par exemple, homme, femme)
+
+\- Ensemble d'options (par exemple, le sexe)
+
+### **Métadonnées communes du tracker** { #common-tracker-metadata } 
+
+Cette bibliothèque contient tous les objets du profil de base ci-dessus, ainsi que d'autres métadonnées communes dans le domaine du suivi, telles que les éléments de données, les ensembles d'options et les options. Cette bibliothèque n'est pas exhaustive, mais contient des concepts de métadonnées qui sont inclus dans les packages officiels de suivi de DHIS2 et qui sont suffisamment génériques pour pouvoir être partagés entre les programmes (par exemple, des ensembles d'options pour une liste de pays ou un élément de données pour la « date de décès »). La bibliothèque est destinée à fournir une sélection de métadonnées communes que les responsables de la mise en œuvre peuvent utiliser à leur guise dans le cadre de l'élaboration de programmes de tracker. Cette bibliothèque sera plus fréquemment mise à jour et élargie sur une base semestrielle au fur et à mesure que des ensembles de métadonnées seront développés et déployés.
+
+Toutes les métadonnées de la bibliothèque de métadonnées du tracker commun comprennent des groupes de métadonnées contenant le préfixe GEN (pour General). Ce préfixe indique à l'exécutant ou à l'administrateur du système que l'objet de métadonnées est partagé entre plusieurs programmes et qu'il convient de tenir compte de l'impact sur l'ensemble des programmes avant d'apporter des modifications/ajustements aux métadonnées partagées.
+
+-   Type d'entité suivie (Personne)
+-   Attributs d’entité suivie
+-   Ensembles d'options, y compris les [codes pays ISO 3166-1 alpha-2] (https://www.iso.org/obp/ui/#search) et les noms de pays
+-   Options
+-   Des éléments de données
+-   Attributs personnalisés associés aux éléments ci-dessus (par exemple LOINC, Snomed, ICD-11)
+-   Attribut pour l'échange de données agrégées
+
+![Diagramme de métadonnées partagées](resources/images/metadata-diagram-en.png)
+
+Le diagramme ci-dessus illustre quelques points de la structure modulaire du package. La bibliothèque de métadonnées du Tracker Commun comprend l'intégralité du Profil de Base du Cas, en plus d'autres objets de métadonnées. Un ensemble de métadonnées DHIS2 peut utiliser des métadonnées trouvées dans le profil de base du cas, dans la bibliothèque commune de suivi plus large, ou des métadonnées spécifiques à son propre programme (voir l'ensemble de métadonnées VIH SC). Par ailleurs, un programme tracker personnalisé et conçu localement peut également utiliser les métadonnées contenues dans le Profil de Base du Cas, dans la Bibliothèque d'un Tracker Commun plus large, ou développer ses propres métadonnées spécifiques au programme.
+
+Imaginons un scénario dans lequel le programme de surveillance des MTN ci-dessus est développé indépendamment. Les responsables de la mise en œuvre décident ensuite d'importer le package VIH SC dans la même instance DHIS2. Il y aurait un certain nombre de conflits lors de l'importation des métadonnées, car les objets de chaque programme ont le même nom et des UID différents (numéro de téléphone, ID national et pays de naissance). Si le Profil de Base du Cas avait été importé avant la configuration d'un programme MTN personnalisé, il y aurait moins de travail pour configurer les nouvelles métadonnées, et moins de conflits lors de l'importation du package VIH SC.
+
+Notez que le préfixe GEN est utilisé en interne dans l'environnement du package pour signifier que les métadonnées sont partagées entre les programmes ; cependant, le préfixe GEN ne sera pas visible pour les utilisateurs finaux de vos programmes. Ces métadonnées sont traduites en différentes langues et peuvent être traduites dans d'autres langues locales sans interférer avec les UID, les noms et les codes de base.
+
+### **Métadonnées agrégées communes** { #common-aggregate-metadata } 
+
+Ces métadonnées ont pour but de stocker les dénominateurs de population les plus couramment utilisés.
+
+Ce fichier comprend 6 types d'indicateurs différents
+
+-   Numérateur seulement (nombre)
+
+-   Pour 10 000
+
+-   Pour 100 000
+
+-   Pour 1000
+
+-   Pourcentage
+
+-   Taux (facteur = 1)
+
+La population totale et les populations de moins d'un an, de moins de deux ans et de moins de cinq ans sont incluses, de même que le nombre de naissances vivantes et le nombre total de femmes enceintes attendues. Les indicateurs utilisés pour traiter et afficher les données démographiques sont « uniquement des numérateurs ».
+
+Une variété d'options de catégories pour les désagrégations courantes de la population par âge et par sexe est incluse. Avant d'être utilisées comme dimensions des données démographiques, ces catégories devraient être ajoutées manuellement aux catégories, puis ces catégories ajoutées aux combinaisons de catégories et enfin aux éléments de données.
+
+### Bibliothèque complète de métadonnées communes { #complete-common-metadata-library } 
+
+Ce fichier comprend **TOUTES** les métadonnées des fichiers de « Métadonnées communes de suivi “ et de ” Métadonnées communes agrégées ».
+

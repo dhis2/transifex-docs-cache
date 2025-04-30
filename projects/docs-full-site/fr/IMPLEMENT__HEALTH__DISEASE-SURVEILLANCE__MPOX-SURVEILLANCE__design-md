@@ -1,0 +1,156 @@
+---
+edit_url: "https://github.com/dhis2-metadata/MPOX_AGG/blob/master/docs/mpox-design.md"
+revision_date: '2024-10-01'
+tags:
+- Implémentation
+---
+
+# Boîte à outils de surveillance des cas de Mpox { #mpox-design }
+
+**Version 0.0.1**
+
+## Introduction { #introduction } 
+
+L'épidémie mondiale de mpox, qui a débuté en mai 2022, a nécessité une réponse coordonnée et solide axée sur la surveillance, les enquêtes sur les cas et la recherche des contacts. Pour soutenir ces efforts, l'Organisation mondiale de la santé (OMS) a publié des [orientations provisoires] (https://iris.who.int/bitstream/handle/10665/376306/WHO-MPX-Surveillance-2024.1-eng.pdf?sequence=1) visant à contrôler et, à terme, à éliminer la transmission interhumaine du mpox. Ces orientations sont d'autant plus importantes que les schémas épidémiologiques observés à l'échelle mondiale sont divers, notamment l'émergence du mpox dans des régions autres que l'Afrique, où la maladie était historiquement endémique.
+
+## Présentation { #overview } 
+
+Ce document décrit le cadre de conception pour l'intégration de la surveillance des cas de mpox dans les systèmes d'information sanitaire de routine (HMIS), y compris la communication des données et la traçabilité des contacts. Selon le contexte local, les données peuvent être collectées sur papier ou via des systèmes électroniques individuels, tels que DHIS2 Tracker ou d'autres outils compatibles. Le cadre de surveillance des cas de mpox vise à prendre en compte à la fois les déclarations de cas et les déclarations globales, en veillant à la cohérence avec le [guide de l'OMS 2024] (https://www.who.int/publications/i/item/WHO-MPX-Surveillance-2024.1) sur la production et l'utilisation des données dans le cadre de la surveillance de la santé publique. Les mises à jour des formulaires de saisie des données, des définitions et des indicateurs reflètent les pratiques actuelles en matière de recherche des contacts, de tests de laboratoire et de gestion des cas cliniques. Cette approche garantit que les données relatives au mpox s'intègrent parfaitement dans les efforts plus larges de santé publique, facilitant ainsi le suivi en temps réel et les interventions opportunes.
+
+## Structure et Conception { #structure-and-design } 
+
+La boîte à outils pour la surveillance des cas de Mpox comprend :
+
+- **Un ensemble de données hebdomadaires agrégées pour la surveillance intégrée des maladies (IDS)**
+- **Un tracker pour le formulaire de rapport de cas (FRC)**
+- **Un tracker pour le formulaire d'investigation des cas (FIC)**
+
+> **Remarque:**
+> **Les packages de métadonnées sont construits en tant que modules autonomes**. L'idée de maintenir ce module autonome est destinée à rationaliser son adoption, en reconnaissant que l'intégration complète des outils standard n'a peut-être pas été entièrement réalisée dans de nombreuses implémentations. En proposant un module plus ciblé et simplifié, il devient plus facile pour les parties prenantes de l'adopter sans qu'il soit nécessaire de revoir ou d'intégrer des systèmes complexes. Cette approche modulaire permet une adoption progressive tout en garantissant que les éléments essentiels de la boîte à outils sont mis en œuvre de manière efficace, même dans des environnements où les systèmes IDS et SBC plus larges ne sont pas encore complètement mis en place.
+
+### Conception de l'agrégat IDS Mpox { #aggregate-ids-mpox-design } 
+
+La boîte à outils fournit les informations essentielles nécessaires à l'établissement de rapports dans le cadre d'un système IDS. L'ensemble de données suit une structure plate, divisée en deux sections principales : l'une pour la surveillance et l'autre pour les résultats de laboratoire. La désagrégation par âge est fixée de 0-4 ans à 5 ans et plus pour s'aligner sur la norme mondiale de l'IDS, mais les responsables de la mise en œuvre ont la possibilité de modifier ces catégories pour mieux s'adapter aux conceptions et aux exigences locales.
+
+![Ensemble de données de l'IDS du Mpox ](resources/images/mpox_001.png)
+
+Dans la démo sur le mpox, l'ensemble de données est intégré dans la boîte à outils globale  de l'IDS existante. Les métadonnées liées à mpox se trouvent dans l'ensemble de données personnalisé intitulé "IDS - Rapport : Suspecté, Confirmé, Décès", "IDS - Rapport : Suspecté, Décès" et dans "IDS - Rapport hebdomadaire agrégé du laboratoire".
+
+>**Remarque:**
+> Les différents groupes de travail n'ont pas encore donné leur avis sur l'inclusion des cas rejetés, des réinfections et de la distinction entre les cas confirmés par le laboratoire et les cas confirmés cliniquement dans l'ensemble des métadonnées. Des précisions sont également attendues sur la question de savoir s'il convient d'ajouter des variables spécifiques pour recueillir des données sur les agents de santé exposés et sur les cas importés ou liés à un voyage.
+
+### Surveillance basée sur les cas de Mpox { #mpox-case-based-surveillance } 
+
+#### Formulaire de rapport sur les cas (FRC) { #case-reporting-form-crf } 
+
+Le FRC est un outil essentiel pour normaliser la collecte et la communication des données à des fins de surveillance. Le FRC est généralement un formulaire standardisé utilisé pour recueillir les informations essentielles nécessaires à la notification d'un cas aux autorités de santé publique. Il permet de s'assurer que chaque cas est notifié de manière cohérente, souvent dans le cadre des exigences nationales ou internationales en matière de notification.
+
+Le modèle autonome du FRC du Mpox comprend l'inscription et six étapes (trois non répétables - NR-, et deux répétables -R-).
+
+![Structure du programme du FRC Mpox](resources/images/mpox_005.png)
+
+| **Étape**                  | **Informations collectées**    |
+|------------------------|--------------------------|
+| **Inscription**             | Il s'agit de recueillir des informations démographiques de base du cas, y compris la classification, le comportement sexuel, la profession et le statut de PDI/réfugié. <br>Les informations relatives à la malnutrition ne peuvent être renseignées que si le patient est âgé de moins de 5 ans. <br>Le type d'entité suivie pour le programme FRC du Mpox est ''Personne''.    |
+| **Antécédents médicaux**        | Il s'agit de collecter des informations sur l'immunosuppression et le statut VIH, la réinfection et la vaccination Mpox. <br>Cette étape est non répétable.                                                                                                                                                                            |
+| **Présentation clinique**  | Il s'agit de collecter des informations sur les symptômes, l'hospitalisation, les complications et l'issue de la maladie. <br>L'étape est non répétable.                                                                                                                                                                                          |
+| **Exposition**               | Il s'agit de recueillir des informations sur le cas suspect, probable ou confirmé de mpox auquel le patient a été exposé, en précisant le contexte, les antécédents de voyage, tout contact avec des animaux, en précisant le type et le groupe d'animaux, ainsi que le mode de transmission le plus probable. <br>Cette étape est non répétable. |
+| **Historique de voyage**         | Il s'agit de recueillir des informations sur le pays/la région visité(e) de chacun des pays dans lesquels le patient s'est rendu au cours des 21 derniers jours. <br>Cette étape ne peut être remplie que s'il a été indiqué que le patient a voyagé à l'étape « Exposition ». <br>Cette étape est répétable              |
+| **Informations relatives au laboratoire** | Il s'agit de recueillir des informations sur la date du test et du prélèvement de l'échantillon, le type d'échantillon, la méthode utilisée par le laboratoire et la caractérisation génomique de chacun des échantillons prélevés.<br> L'étape est répétable |
+
+La conception du FRC suit celle publiée par l'OMS le 09/09/2024 [ « Formulaire d'investigation de cas ( FIC ) de Mpox “ et ” Formulaire de déclaration de cas ( FDC ) de l'ensemble de données minimum »] (https://www.who.int/publications/m/item/monkeypox-minimum-dataset-case-reporting-form-(crf)).
+
+**Les informations collectées sur le FRC n'ont pas besoin de suivre la TEI ( Instance d'Entité Suivie) pendant le temps/service, donc la structure du programme peut passer du suivi à l'événement en fonction de la mise en œuvre**.
+Le fait que la structure du module autonome du FRC soit basée sur le suivi peut faciliter son intégration dans les systèmes de surveillance intégrés existants et éviter la manipulation des données au cas où de nouveaux composants devraient être ajoutés à l'avenir.
+
+Un ensemble d'indicateurs de programme a été développé pour alimenter l'ensemble de données agrégées « Surveillance du Mpox » présent dans le module de l'IDS Mpox via l'application Data Exchange ( payload inclus dans le json).
+
+>**Remarque:**
+> Les indicateurs de programme utilisent **les limites de la période personnalisée pour rapporter les cas sur la base de leur date de diagnostic** au lieu de la date de notification (dans ce cas, utilisée comme date d'inscription).
+
+#### Formulaire d'investigation des cas (FIC) { #case-investigation-form-cif } 
+
+Alors que le FRC contient des informations de haut niveau, qui garantissent que les cas sont rapportés rapidement aux autorités sanitaires, le FIC est utilisé pour une enquête plus détaillée sur un cas suspect, confirmé ou probable de mpox, afin d'éclairer les efforts de réponse. Il permet de retrouver les contacts, d'évaluer les voies de transmission et d'identifier les sources potentielles d'infection. 
+
+Le modèle autonome du FIC du Mpox comprend l'inscription et **14 étapes** ( 6 non répétables - NR-, et 8 répétables -R-).
+
+![Structure du programme du FIC Mpox](resources/images/mpox_006.png)
+
+| **Étape**                                        | **Description**                                                                                                                                                                                                                                                                                                                                                                                                |
+|----------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Inscription**                                   | Il s'agit de recueillir les informations démographiques de base du cas, l'identification du cas, les détails du collecteur de données, la classification et le statut, ainsi que les détails du médecin traitant/soignant. <br>Les informations relatives à la malnutrition ne peuvent être renseignées que si le patient est âgé de moins de 5 ans. <br>Le type d'entité suivie pour le programme Mpox FIC est « Personne ».                                                                 |
+| **Informations cliniques et celles relatives aux vaccinations**         | Il s'agit de recueillir des informations sur les IST, l'immunosuppression et le statut VIH, la vaccination pré ou post-exposition, les signes et symptômes et les complications. <br>Cette étape n'est pas répétable.                                                                                                                                                                                                                                 |
+| **Exposition à un cas probable ou confirmé**       | Il s'agit de recueillir des informations sur les contacts avec d'autres cas suspects, probables ou confirmés de mpox, les voyages à l'étranger et les contacts avec les animaux. <br>Cette étape n'est pas répétable.                                                                                                                                                                                                                          |
+| **Evénements relatifs à l'exposition**                              | Il s'agit de recueillir des informations sur le cas suspect, probable ou confirmé de mpox auquel le patient a été exposé, avec des détails sur la relation, le type de contact, les détails de l'exposition, le lieu d'exposition, la présence de tout symptôme et les détails relatifs au ménage et à l'établissement de soins de santé dans le cas où ils ont été sélectionnés en tant que type de contact et/ou détails de l'exposition. <br>Cette étape est répétable |
+| **Exposition dans le cadre des ménages **                | Il s'agit de recueillir des informations sur la localisation du ménage et sa taille. <br>Cette étape ne peut être remplie que si le ménage a été sélectionné comme type d'exposition et/ou détails de l'exposition à l'étape « Événements relatifs à l'exposition ». <br>Cette étape n'est pas répétable.                                                                                                                                                      |
+| **Exposition professionnelle dans les établissements de soins de santé** | Il s'agit de collecter des informations sur le type d'établissement de santé, le lieu de travail et les détails de l'exposition. <br>Cette étape ne peut être remplie que si l'établissement de santé a été sélectionné comme type d'exposition et/ou détails de l'exposition à l'étape « Événements relatifs à l'exposition ». <br>Cette étape n'est pas répétable.                                                                                                        |
+| **Activité sexuelle**                              | Il s'agit de collecter des informations sur le nombre de partenaires sexuels au cours des 3 derniers mois et des dernières semaines, ainsi que sur leur genre. <br>Cette étape ne peut être remplie que si le ménage ou le centre de soins n'a pas été sélectionné comme type d'exposition et/ou comme détails de l'exposition à l'étape « Événements relatifs à l'exposition ». <br>Cette étape n'est pas répétable                                                                                     |
+| **Partenaires sexuels**                              | Cette étape permet de recueillir des informations sur le type de rapports sexuels pratiqués, les rapports protégés, le type de partenaire sexuel et la méthode de rencontre pour chacun des partenaires sexuels. <br>Cette étape ne peut être remplie que si le cas a déclaré un ou plusieurs partenaires sexuels au cours des 3 dernières semaines à l'étape « Activité sexuelle ». <br>Cette étape est répétable                                                                               |
+| **Historique de voyage**                               | Cette étape permet de recueillir des informations sur le pays/la région visité(e) et la date d'entrée/de départ de chacun des pays dans lesquels le cas s'est rendu au cours des 21 derniers jours. <br>Cette étape ne peut être remplie que s'il a été indiqué que le patient a voyagé à l'étape « Exposition à un cas probable ou confirmé ». <br>Cette étape est répétable                                                         |
+| **Exposition aux animaux**                              | Cette étape permet de recueillir des informations sur le type, le lieu, l'heure et le type de contact et le statut de chacun des animaux qui sont entrés en contact avec le cas au cours des 3 dernières semaines. <br>Cette étape ne peut être remplie que s'il a été indiqué que le patient a été en contact avec des animaux à l'étape « Exposition à un cas probable ou confirmé ». <br>Cette étape est répétable                                           |
+| **Mode de transmission le plus probable**             | Cette étape permet de recueillir des informations sur le mode de transmission le plus probable. <br>Cette étape n'est pas répétable                                                                                                                                                                                                                                                                                                               |
+| **Gravité de la maladie et résultat**                 | Cette étape permet de collecter des informations sur l'hospitalisation, l'accès aux soins intensifs et le résultat final au moment de la finalisation du FIC. <br>Cette étape n'est pas répétable.                                                                                                                                                                                                                                                       |
+| **Diagnostic / tests pathologiques**                 | Cette étape permet de collecter des informations sur l'identification du laboratoire, le type d'échantillon, le test effectué, le résultat et la caractérisation génomique de chacun des échantillons prélevés. <br>L'étape est répétable                                                                                                                                                                                                                            |
+| **Recherche en amont**                              | Cette étape permet de collecter des informations sur l'historique et la localisation du contact. <br>L'étape n'est pas répétable                                                                                                                                                                                                                                                                                                                  |
+| **Coordonnées du contact**                              | Cette étape permet de recueillir des informations démographiques de base sur le contact. <br>Cette étape ne peut être remplie que s'il a été indiqué que le patient a eu des contacts avec une ou plusieurs personnes, ou a séjourné dans le même ménage qu'elles, au cours de la période comprise entre l'apparition des symptômes ou le diagnostic et la guérison au cours de l'étape « Recherche en amont ».<br> Cette étape est répétable                                                               |
+
+Le modèle de FIC suit celui publié par l'OMS le 09/09/2024 [ Formulaire d'investigation de cas (FIC) de Mpox et formulaire de déclaration de cas (FRC) de l'ensemble des données minimales] (https://cdn.who.int/media/docs/default-source/documents/health-topics/monkeypox/mpox_cif-narrative_epi_20240904.pdf?sfvrsn=500a0660_1).
+
+Un ensemble d'indicateurs de programme a été développé pour alimenter l'ensemble de données agrégées « Surveillance du Mpox » présent dans le module de l'IDS Mpox via l'application Data Exchange ( payload inclus dans le json).
+
+>**Remarque:**
+> Les indicateurs de programme utilisent les limites de la période personnalisée pour rapporter les cas sur la base de leur date de diagnostic au lieu de la date de notification (dans ce cas, utilisée comme date d'inscription).
+
+### Utilisation de FRC vs FIC { #use-of-crf-vs-cif }
+
+Afin d'améliorer la possibilité d'étendre les outils de collecte de données et d'intégrer facilement les métadonnées FIC dans le module FRC en fonction des exigences de mise en œuvre, la plupart des métadonnées (attributs des entités suivies et éléments de données) dans le module autonome CRF sont partagées avec le programme FIC :
+- 76/110 (69%) Les métadonnées du FRC correspondent parfaitement à celles du FIC (même UID)
+- 32/110 (29%) métadonnées du FRC ont une correspondance partielle dans le FIC (UID différent). Cette correspondance partielle peut être résumée en deux catégories :
+- Même élément mais type de valeur différent / ensemble d'options attribué (par exemple, symptômes)
+- Multioption requise dans un module et pas dans un autre (par exemple, hospitalisation, type d'animal/groupe de contact)
+- 2/110 (2%) Les métadonnées du FRC n'ont pas de correspondance dans le FIC
+
+[Ici] (resources/crf_cif_mapping.xlsx) vous pouvez trouver la correspondance des métadonnées entre les deux programmes.
+
+**La composition modulaire du FRC et du FIC permet d'intégrer ou de supprimer des étapes/sections spécifiques en fonction des besoins de mise en œuvre.**
+
+## Analyse et visualisation des données { #analytics-and-data-visualization } 
+
+### Indicateurs { #indicators } 
+
+**Les indicateurs agrégés actuels configurés pour le Mpox, à savoir l'IDS - Taux de létalité du Mpox (%) et l'IDS - Cas confirmés de Mpox (%) utilisent des éléments de données au numérateur et au dénominateur qui sont désagrégés par âge et par sexe. L'ajout d'une dimension de désagrégation à ces indicateurs ne produira pas les résultats escomptés. Le numérateur et le dénominateur seront tous deux désagrégés par groupe d'âge, ce qui conduira à des pourcentages relatifs aux groupes désagrégés et non à une proportion du total**.
+
+S'il est nécessaire de désagréger le pourcentage par groupe d'âge/sexe spécifique, un indicateur distinct doit être créé avec ce groupe particulier au numérateur. Le dénominateur doit représenter le total. Cette valeur peut être agrégée à l'aide d'un prédicteur ou extraite du tracker correspondant (s'il est utilisé).
+
+Si les désagrégations par âge/sexe ne sont pas requises pour l'indicateur, cette note peut être ignorée.
+
+### Tableaux de bord { #dashboard } 
+
+Les métadonnées du Mpox sont affichées dans un tableau de bord unique intitulé « IDS-Mpox ». Ce tableau de bord est dédié aux métadonnées liées au Mpox ; cependant, en fonction des besoins locaux de mise en œuvre, les utilisateurs ont la **flexibilité** d'intégrer ces visualisations dans les tableaux de bord de surveillance existants ou de les maintenir en tant que tableau de bord autonome spécifique au Mpox.
+
+![Tableau de bord du Mpox](resources/images/mpox_002.png)
+
+Le tableau de bord de l'IDS-Mpox est conçu pour être simple et présenter les indicateurs de base tels qu'ils sont décrits dans les orientations provisoires pour 2024. Il comprend : 
+
+- **Un aperçu épidémiologique général** : Comprend un résumé en cascade et en bref de la période couverte par le rapport (fixé par défaut au mois précédent, mais ajustable pour répondre aux besoins locaux).
+- **Courbe épidémique et carte chronologique choroplèthe** : Ces visualisations offrent une vue évolutive de l'épidémie, permettant de suivre sa progression dans le temps.
+- **Données détaillées sur les cas** : Informations sur les cas suspects, les taux de dépistage et les résultats de laboratoire.
+- **Suivi des décès** : La courbe des décès et la carte à double vue fournissent des informations sur les décès et le taux de létalité, ce qui permet d'avoir un aperçu temporel de ces paramètres essentiels.
+
+Cette conception modulaire garantit que le tableau de bord s'adapte aux différents besoins épidémiologiques et permet un suivi complet de l'évolution de l'épidémie, aidant ainsi les autorités sanitaires locales à prendre des décisions et à réagir.
+
+## Considérations spéciales { #special-considerations } 
+
+### Triangulation avec la surveillance des animaux { #triangulation-with-animal-surveillance } 
+
+La triangulation de la surveillance du mpox avec la **surveillance des animaux** est une stratégie essentielle pour comprendre et contrôler la propagation du virus. Étant donné la **source zoonotique de la maladie**, avec un potentiel de transmission de l'animal à l'homme, en particulier dans les régions où le virus est endémique dans la faune sauvage, il est essentiel d'intégrer les efforts de surveillance de l'homme et de l'animal. Cette approche permet d'identifier les réservoirs animaux potentiels, de détecter les voies de transmission et de prévenir de nouveaux débordements. En combinant les données issues des enquêtes sur les cas humains, de la recherche des contacts et de la surveillance des animaux, les autorités de santé publique peuvent obtenir une vue d'ensemble de la dynamique de transmission.
+
+La [boîte à outils de DHIS2 pour la santé animale] (https://docs.dhis2.org/en/implement/health/animal-health/event-based-surveillance/overview.html)joue un rôle essentiel dans cette intégration, en offrant une plateforme pour la surveillance systématique des populations animales, en particulier pour les maladies zoonotiques. Cette boîte à outils, développée en collaboration avec des organisations telles que le CDC et la FAO, peut fonctionner comme un système autonome ou être intégrée aux données de surveillance de la santé humaine afin de soutenir une approche « One Heath ». Cette collaboration intersectorielle permet de signaler en temps réel les événements inhabituels liés à la santé animale, qui peuvent alors déclencher des enquêtes en temps utile. En utilisant DHIS2 pour la surveillance humaine et animale, les autorités peuvent gérer efficacement les risques zoonotiques, en veillant à ce que la santé des personnes, des animaux et des écosystèmes soit traitée de manière unifiée.
+
+### Triangulation avec les activités de vaccination contre le Mpox { #triangulation-with-mpox-immunisation-activities } 
+
+L'intégration de la surveillance du mpox avec les données **de vaccination** est cruciale pour contrôler les épidémies et prévenir les futurs cas grâce à des efforts de vaccination ciblés. En combinant les données de surveillance avec les registres de vaccination, les autorités de santé publique peuvent obtenir des informations précieuses sur l'immunité de la population et identifier les lacunes dans la couverture vaccinale. Cette intégration permet un contrôle plus efficace, qui permet aux autorités de suivre non seulement la propagation du virus, mais aussi le succès des campagnes de vaccination, en veillant à ce que les groupes à haut risque soient correctement protégés et que la transmission soit réduite au minimum. Cette triangulation des données renforce à la fois la surveillance et les stratégies de vaccination, ce qui garantit que les ressources sont utilisées efficacement et que les populations vulnérables reçoivent les soins préventifs nécessaires.
+Les boîtes à outils [Programme élargi de vaccination (PEV)] (https://docs.dhis2.org/en/implement/health/immunization/expanded-programme-on-immunization-epi-aggregate/overview.html)et [Registre électronique des vaccinations (REI)] (https://docs.dhis2.org/en/implement/health/immunization/eir-immunization-eregistry/overview.html)de DHIS2 sont bien adaptées pour soutenir cette triangulation. La boîte à outils du PEV gère les programmes de vaccination de routine, tandis que la boîte à outils du REI fournit des outils complets pour le suivi des dossiers de vaccination individuels. Outre les données relatives à la vaccination systématique, les boîtes à outils prennent également en charge les [activités de vaccination supplémentaires (AVS)](https://docs.dhis2.org/en/implement/health/immunization/immunization-campaigns/overview.html), ce qui permet aux pays d'organiser des campagnes de vaccination ciblées et de surveiller leur impact parallèlement aux efforts de vaccination systématique.
+
+**L'environnement démo** de DHIS2 comprend des exemples de [triangulation des données de routine avec les AVS](https://docs.dhis2.org/en/implement/health/immunization/immunization-campaigns/supplementary-immunization-activities/overview.html), qui offrent des informations précieuses pour les stratégies de vaccination contre le mpox. En outre, les [tableaux de bord de triangulation] (https://docs.dhis2.org/en/implement/health/immunization/immunization-triangulation-dashboard/overview.html)de DHIS2 présentent des indicateurs clés et des visualisations qui combinent les données de vaccination et de surveillance. Ces tableaux de bord peuvent être personnalisés et adoptés pour surveiller et optimiser les efforts de vaccination contre le mpox, en fournissant des informations en temps réel sur la couverture et les écarts de performance, tout en améliorant la réponse générale à l'épidémie.
+
