@@ -1,0 +1,328 @@
+---
+edit_url: "https://github.com/dhis2-metadata/TB_CS/blob/master/docs/tb_cs-installation.md"
+revision_date: '2023-12-19'
+tags:
+- Implémentation
+---
+
+# Guide d'installation du Tracker de surveillance des cas de tuberculose { #tb-cs-installation }
+
+Package version 2.0.0
+
+Langue par défaut du système : anglais
+
+Traductions disponibles : français, espagnol, portugais
+
+## Installation { #installation }
+
+L'installation du module se fait en plusieurs étapes :
+
+1. [Préparation](#preparing-the-metadata-file) du fichier de métadonnées.
+2. [Importer](#importing-metadata) le fichier de métadonnées DHIS2.
+4. [Configuration](#configuration) des métadonnées importées.
+5. [Adaptation](#adapting-the-tracker-program) du programme après son importation
+
+Nous vous recommandons de lire tout d’abord chaque section du guide d’installation avant de commencer le processus d’installation et de configuration dans le système DHIS2. Identifiez les sections applicables en fonction du type d’importation :
+
+1. Importer dans une instance DHIS2 vierge
+2. Importer dans une instance DHIS2 contenant des métadonnées (aucune autre version du Tracker de surveillance des cas d'infection par la Tuberculose n'a été importée auparavant).
+3. Mettre à jour la version actuelle ou ancienne du Tracker de surveillance des cas d'infection par la Tuberculose.
+
+Les étapes décrites dans ce document doivent être testées dans une instance DHIS2 de test/transit avant d’être appliquées à un environnement de production.
+
+## Conditions requises { #requirements } 
+
+Pour installer le module, un compte d'utilisateur administrateur DHIS2 est requis.
+
+Il faut veiller à ce que le serveur lui-même et l'application DHIS2 soient bien sécurisés, et que les droits d'accès aux données collectées soient définis. Les détails sur la sécurisation d'un système DHIS2 dépassent le cadre de ce document et nous renvoyons à l'adresse [Documentation sur DHIS2] (https://docs.dhis2.org/).
+
+## Fichiers de métadonnées { #metadata-files } 
+
+Les fichiers metadata reference et metadata json fournissent des détails techniques sur la version et le contenu du package.
+
+Bien que cela ne soit pas toujours nécessaire, il est souvent recommander d'apporter certaines modifications au fichier de métadonnées avant son importation dans DHIS2.
+
+## Préparation du fichier de métadonnées { #preparing-the-metadata-file } 
+
+Il est recommandé d'importer la bibliothèque de Métadonnées Commune du Système d'Information sur la Santé DHIS2 dans l'instance cible avant d'utiliser et d'adapter les packages de métadonnées DHIS2.
+Le package de métadonnées Commun du Système d'Information sur la Santé est disponible par téléchargement dans les versions supportées de DHIS2 à [ Téléchargements de packages de métadonnées ] (https://dhis2.org/metadata-package-downloads).
+
+### Dimension de données par défaut { #default-data-dimension } 
+
+Dans les premières versions du système DHIS2, les UID des dimensions de données par défaut étaient générés automatiquement. Ainsi, bien que toutes les instances du système DHIS2 possèdent une option de catégorie par défaut, une catégorie d’élément de données, une combinaison de catégories et une combinaison d’options de catégorie, les UID de ces valeurs par défaut peuvent être différents. Les versions ultérieures du système DHIS2 utilisent des UID codés en dur pour la taille par défaut, lesquels sont utilisés dans les packages de configuration.
+
+Pour éviter tout conflit lors de l’importation des métadonnées, nous vous recommandons de rechercher et de remplacer toutes les occurrences de ces objets par défaut dans l’ensemble du fichier .json, en remplaçant les UID du fichier .json par ceux de l’instance dans laquelle le fichier sera importé. Le tableau 1 présente les UID à remplacer, ainsi que les points de terminaison d’API permettant d’identifier les UID existants.
+
+| Objet                      | UID           | Chemin vers l'API                                              |
+|-----------------------------|---------------|-----------------------------------------------------------|
+| Catégorie                    | `GLevLNI9wkl` | `../api/categories.json?filter=name:eq:default`           |
+| Option de catégorie             | `xYerKDKCefk` | `../api/categoryOptions.json?filter=name:eq:default`      |
+| La combinaison de catégories        | `bjDvmb4bfuf` | `../api/categoryCombos.json?filter=name:eq:default`       |
+| Combinaison d’options catégorie | `HllvX50cXC0` | `../api/categoryOptionCombos.json?filter=name:eq:default` |
+
+Identifiez les UID des tailles par défaut de votre instance à l’aide des requêtes API affichées et remplacez les UID dans le fichier .json par ceux de l’instance.
+
+> **N.B.**
+>
+> Notez que cette opération de recherche et de remplacement doit être effectuée via un éditeur de texte brut, et non un traitement de texte comme Microsoft Word.
+
+### Types d'indicateurs { #indicator-types } 
+
+Le type d’indicateur est également un type d’objet susceptible de créer un conflit lors de l’importation, car certains noms sont utilisés dans différentes bases de données DHIS2 (par ex. « Pourcentage »). Comme les types d’indicateurs sont définis par leur facteur (y compris 1 pour les indicateurs « numérateur seulement »), ils ne laissent aucune ambiguïté et peuvent être remplacés en recherchant et remplaçant des UID. Cette méthode permet d’éviter les éventuels conflits d’importation et empêche le responsable de la mise en œuvre de créer des doublons de types d’indicateurs. Le tableau ci-dessous contient les UID pouvant être remplacés, ainsi que les points de terminaison d’API permettant d’identifier les UID existants :
+
+|Objet                  | UID           | Chemin vers l'API                                                          |
+|------------------------|---------------|-----------------------------------------------------------------------|
+| Numérateur seulement (nombre)| `CqNPn5KzksS` | `../api/indicatorTypes.json?filter=number:eq:true&filter=factor:eq:1` |
+
+### TrackedEntityType (Type d'entité suivie) { #tracked-entity-type } 
+
+Comme pour les types d’indicateurs, il se peut que des types d’entités suivies existent déjà dans votre base de données DHIS2. Pour éviter de créer des doublons, les références au type d’entité suivie doivent être modifiées pour refléter les éléments de votre système. Le tableau ci-dessous contient les UID pouvant être remplacés, ainsi que les points de terminaison d’API permettant d’identifier les UID existants :
+
+|Objet  | UID           | Chemin vers l'API                                           |
+|------------------------|---------------|----------------------------------------|
+| Personne | `MCPQUTHX1Ze` | `../api/trackedEntityTypes.json?filter=name:eq:Person` |
+
+### Codes d'option { #option-codes } 
+
+Selon les conventions d'affectation de noms du système  DHIS2, les codes de métadonnées utilisent des lettres majuscules, des caractères de soulignement et aucun espace. Certaines exceptions susceptibles de survenir sont spécifiées dans la documentation du package correspondant. Tous les codes inclus dans les objets de métadonnées du package actuel correspondent aux conventions d'affectation de noms. Il peut arriver que les codes des objets de métadonnées existants utilisés dans la base de données cible utilisent des caractères minuscules. Dans ce cas, il est important de mettre à jour ces valeurs directement dans la base de données.
+
+> **Important**
+>
+> Pendant l’importation, les codes d’option existants seront remplacés par les nouveaux codes en majuscules. 
+> Afin de mettre à jour les valeurs des données existantes dans la base de données, vous devez mettre à jour les valeurs stockées dans la base de données en utilisant les commandes de la base de données. 
+> Assurez-vous de mapper les anciens codes d’option et les nouveaux avant de remplacer les valeurs. Utilisez d’abord l’instance de transit, avant d’effectuer des modifications sur le serveur de production.
+
+Pour les valeurs des éléments de données, utilisez :
+
+    ```SQL
+    UPDATE programstageinstance
+    SET eventdatavalues = jsonb_set(eventdatavalues, ’{"<affected data element uid>","value"}’, ’"<new value>"’)
+    WHERE eventdatavalues @> ’{"<affected data element uid>":{"value": "<old value>"}}’::jsonb
+    AND programstageid=<database_programsatgeid>;
+    ```
+
+> **REMARQUE.**
+>
+> Lorsque vous mettez à jour l'UID d'un élément de métadonnées dans l'instance DHIS2 existante, vous devez exécuter une commande SQL dans la base de données et remplacer en outre toutes les occurrences et références de son UID dans d'autres objets de métadonnées : prédicteurs, indicateurs, expressions de règles de validation, etc.
+
+### Ordre de tri pour les options  { #sort-order-of-options } 
+
+Vérifiez si l’ordre de tri `sortOrder` des options de votre système correspond à celui inclus dans le package de métadonnées. Cela ne s’applique que si le fichier .json et l’instance cible contiennent des options et des ensembles d’options avec le même UID.
+
+Après l’importation, assurez-vous que l’ordre de tri des options d’un ensemble d’options commence par 1. Les valeurs de l’ordre de tri ne doivent avoir aucun écart (par exemple 1, 2, 3, 5, 6).
+
+L’ordre de tri peut être modifié dans l’application Maintenance.
+
+1. Accédez à l’ensemble d’options applicable
+2. Ouvrez la section « Options »
+3. Utilisez « TRIER PAR NOM », « TRIER PAR CODE/VALEUR » ou « TRIER MANUELLEMENT » comme alternative.
+
+Assurez-vous qu'aucune option d'un ensemble d'options n'a le même ordre de tri. Ceci peut être vérifié en utilisant le endpoint api suivant :
+
+`../api/options.json?paging=false&fields=id,name,sortOrder&filter=optionSet.id:in:[<optionSet UID>]`
+
+Pour fixer l'ordre de tri dans les ensembles d'options qui contiennent un grand nombre d'options, veuillez vous référer à ce [script SQL] (https://github.com/dhis2/dhis2-utils/blob/master/resources/sql/clean_up_option_sort_order.sql).
+
+### Visualisations à l'aide de l’UID de l’unité d’organisation de base { #visualizations-using-root-organisation-unit-uid }
+
+Les visualisations, les rapports d’événements, les tableaux de rapports et les cartes affectés à un niveau d’unité d’organisation spécifique ou à un groupe d’unités d’organisation comportent un renvoi à l’unité d’organisation de base (niveau 1). Ces objets, s’ils sont présents dans le fichier de métadonnées, contiennent une balise `<OU_ROOT_UID>`. Utilisez la fonction de recherche de l’éditeur de fichiers .json pour trouver cette balise et la remplacer par l’UID de l’unité d’organisation de niveau 1 dans l’instance cible.
+
+Certaines visualisations et cartes peuvent contenir des références à des niveaux d'unité d'organisation. Les cartes composées de plusieurs visualisations cartographiques peuvent contenir diverses références à des niveaux d'unité d'organisation en fonction de la configuration de la couche cartographique. Ajustez les références de niveau d'unité d'organisation dans le fichier json des métadonnées pour qu'elles correspondent à la structure de l'unité d'organisation dans l'instance cible avant d'importer le fichier de métadonnées.
+
+### Mise à jour du package de métadonnées { #upgrading-metadata-package } 
+
+Le processus de mise à niveau d'un paquet existant vers une version plus récente dans une instance DHIS2 opérationnelle est une opération complexe qui doit être effectuée avec précaution. Ce processus doit d'abord être exécuté dans une instance d'essai, avant la mise à jour de la configuration sur le serveur de production. Étant donné que des objets de métadonnées peuvent avoir été supprimés, ajoutés ou modifiés, il faut s'assurer que :
+
+   - le format des données existantes peut être mappé et adapté à la nouvelle configuration ;
+   - les objets de métadonnées abandonnés sont supprimés de l'instance ; 
+   - Les objets existants sont mis à jour ;
+   - les nouveaux objets sont créés ;
+   - l'affectation des utilisateurs aux groupes d'utilisateurs concernés a été révisée.
+
+Le [fichier diff] (resources/tb_cs-1.0.1-vs-2.0.0.xlsx) aidera le chargé de la mise en œuvre à identifier les changements nécessaires.
+
+## Importation de métadonnées { #importing-metadata } 
+
+Utilisez l’application DHIS2 [Import/Export](#import_export) pour importer des packages de métadonnées. Nous vous recommandons d’utiliser la fonction « test » pour identifier les problèmes avant de tenter d’effectuer une importation réelle des métadonnées. Si le « test » signale des problèmes ou des conflits, consultez la section [conflits lors de l’importation](#handling-import-conflicts) ci-dessous. Si aucune erreur n’est signalée lors de l’importation « test »/« validée », essayez d’importer les métadonnées. Si l’importation s’est déroulée sans erreur, vous pouvez passer à la [configuration](#configuration) du module. Dans certains cas, les conflits ou les problèmes d’importation n’apparaissent pas pendant le test, mais durant l’importation réelle. Dans ce cas, le résumé de l’importation indiquera les erreurs à résoudre.
+
+### Gestion des conflits d'importation { #handling-import-conflicts } 
+
+> **REMARQUE**
+>
+> Si vous importez le package dans une nouvelle instance du système DHIS2, il n’y aura aucun conflit lors de l’importation, car ia base de données cible ne contient aucune métadonnée. Après avoir importé les métadonnées, passez à la section « [Configuration](#configuration) ».
+
+Différents types de conflit peuvent survenir, mais le plus courant est le fait que le nom, le nom abrégé et/ou le code des objets de métadonnées du package de configuration existent déjà dans la base de données cible. Il existe plusieurs solutions alternatives à ces problèmes, chacun avec ses avantages et ses inconvénients. La solution la plus appropriée dépend, par exemple, du type d’objet à l’origine du conflit.
+
+#### Option 1 { #alternative-1 } 
+
+Renommez l'objet existant dans votre base de données DHIS2 pour lequel il existe un conflit. L'avantage de cette approche est qu'il n'est pas nécessaire de modifier le fichier .json, les changements étant effectués par l'interface utilisateur de DHIS2. Il est probable que cela soit moins sujet à des erreurs. Cela signifie également que le paquet de configuration est laissé tel quel, ce qui peut être un avantage, par exemple lorsque des mises à jour du package sont publiées. Les objets du package d'origine sont également souvent référencés dans le matériel de formation et la documentation.
+
+#### Option 2 { #alternative-2 } 
+
+Renommez l'objet pour lequel il y a un conflit dans le fichier .json. L'avantage de cette approche est que les métadonnées DHIS2 existantes sont laissées telles quelles. Cela peut être un facteur lorsqu'il y a du matériel de formation ou de la documentation, comme les procédure normale d'exploitation des dictionnaires de données liés à l'objet en question, et cela n'implique aucun risque de confusion pour les utilisateurs lors de la modification des métadonnées qui leur sont familières.
+
+Notez que pour les deux options 1 et 2, la modification peut être aussi simple que l'ajout d'un petit pré/post-fixe au nom, pour minimiser le risque de confusion.
+
+#### Option 3 { #alternative-3 } 
+
+Une troisième approche, plus complexe, consiste à modifier le fichier .json pour réutiliser les métadonnées existantes. Par exemple, dans les cas où un ensemble d'options existe déjà pour un certain concept (par exemple "sexe"), cet ensemble d'options pourrait être supprimé du fichier .json et toutes les références à son UID remplacées par l'ensemble d'options correspondant existant déjà dans la base de données. Le grand avantage de cette méthode (qui n'est pas limitée aux seuls cas où il y a un conflit d'importation directe) est d'éviter de créer des métadonnées dupliquées dans la base de données. Il y a des aspects essentiels à prendre en compte lors de ce type de modification :
+
+* il nécessite une connaissance approfondie de la structure détaillée des métadonnées du DHIS2
+* Cette approche ne fonctionne pas pour tous les types d'objets. En particulier, certains types d'objets ont des dépendances compliquées à résoudre de cette manière, par exemple en ce qui concerne les désagrégations.
+* il sera compliqué de procéder aux futures mises à jour du package de configuration.
+
+### Mise à jour des versions antérieures du programme Tracker TB SC { #upgrading-earlier-versions-of-tb-cs-tracker-program } 
+
+Cette section fournit des conseils sur la mise à jour des versions antérieures du tracker TB SC (par exemple, les versions 1.0.0 ou 1.0.1).
+
+Pour les implémentations existantes, la mise à niveau directe des packages de métadonnées dans l'instance n'est pas recommandée.
+
+Suivez les étapes suivantes avant de choisir la meilleure stratégie de mise à niveau :
+
+1. Importer le **tracker TB SC 2.0.0** dans une nouvelle instance de test
+2. Comparer et mapper les données existantes avec la configuration du tracker TB SC 2.0.0
+3. Adapter le tracker TB SC 2.0.0 aux exigences locales
+4. Utiliser les outils de transfert de données existants ou personnalisés pour transférer les données de la configuration existante vers le tracker TB SC 2.0.0
+5. Prendre des décisions basées sur l'évaluation concernant la stratégie de mise à niveau (adaptation de la configuration existante ou transfert des données vers le nouveau tracker).
+
+Il est recommandé de procéder à la mise à niveau suivante à des fins de démonstration et de formation :
+
+1. Créer une sauvegarde de l'instance avec le tracker TB SC
+2. Les objets de métadonnées TB SC énumérés ci-dessous devront être supprimés de l'instance cible avant d'importer le tracker TB SC.2.0.0. Si vous avez personnalisé ou ajouté des objets de métadonnées à partir des versions précédentes du package, ceux-ci doivent être sauvegardés, reconfigurés et importés après la mise à niveau. Supprimez les objets de métadonnées suivants de l'instance cible :
+    * des tableaux de bord
+    * visualisations
+    * cartes
+    * rapports d'événement
+    * groupes d'indicateurs de programme
+    * indicateurs de programme
+    * Groupes d'indicateurs 
+    * des indicateurs
+    * Filtres des instances d'entités suivies
+    * groupes d'éléments de données
+    * Règles de programme
+    * Actions de règle de programme
+    * Variables de règle de programme
+3. Si vous avez des données existantes dans l'instance de démonstration/formation, vous devrez exporter toutes les données d'inscription du tracker TB SC, les supprimer dans l'instance et les réimporter une fois que les données ont été mappées et que le tracker TB SC a été mis à jour et mis à niveau. Dans le tracker TB SC 1.0.0, seuls les cas de tuberculose diagnostiqués sont inscrits au programme. Le tracker TB SC 2.0.0 permet d'inscrire à la fois les cas présumés et les cas diagnostiqués. La date d'inscription dans la version 1.0.0 (date du diagnostic) devient la date d'enregistrement dans la version 2.0.0. Pour les inscriptions existantes, la date d'inscription doit être mappée avec la date du diagnostic, qui est un élément de données dans l'étape d'inscription. Des mappings supplémentaires pour la date de notification et d'autres éléments de données seront requis.
+4. Importer le tracker TB SC 2.0.0 dans L'instance.
+5. Importer des données mappées et manquantes.
+6. Tester la saisie des données, les tableaux de bord et la fonctionnalité générale.
+
+## Configuration { #configuration }
+
+Une fois que toutes les métadonnées sont importées avec succès, des étapes doivent être mises en oeuvre avant que le module ne soit fonctionnel.
+
+### Partage { #sharing } 
+
+Tout d'abord, vous devrez utiliser la fonctionnalité *Partage* de DHIS2 pour configurer quels utilisateurs (groupes d'utilisateurs) doivent voir les métadonnées et les données associées au programme ainsi que qui peut enregistrer/saisir des données dans le programme. Par défaut, le partage a été configuré pour ce qui suit :
+
+* Tableaux de bord
+* Visualisations, cartes, rapports d’événement et tableaux de rapports
+* Des ensembles de données
+* Les options de catégorie
+* Programmes et étapes de programme
+
+Ces groupes d'utilisateurs de base sont inclus dans le package :
+
+* Administrateur de la Tuberculose
+* Accès à la tuberculose
+* Accès au laboratoire de la tuberculose
+* Saisie des données de la tuberculose
+* Saisie des données du laboratoire pour la tuberculose
+
+Les éléments suivants sont attribués par défaut à ces groupes d'utilisateurs
+
+|Objet|Groupes d'utilisateurs| | | | |
+|:-|:-|:-|:-|:-|:-|
+| | Accès à la tuberculose | Accès au laboratoire de la tuberculose | Administrateur de la Tuberculose | Saisie des données de la tuberculose | Saisie des données du laboratoire pour la tuberculose |
+| Type d'entité suivie | **Métadonnées:** peuvent être visualisées <br>**Données:** peuvent être visualisées | **Métadonnées:** peuvent être visualisées <br>**Données:** peuvent être visualisées | **Métadonnées:** peuvent être modifiées et visualisées <br>**Données:** pas d'accès  | **Métadonnées:** peuvent être visualisées <br>**Données:** peuvent être saisies et visualisées | **Métadonnées:** peuvent être visualisées <br>**Données:** peuvent être saisies et visualisées |
+| Programme | **Métadonnées:** peuvent être visualisées <br>**Données:** peuvent être visualisées | **Métadonnées:** peuvent être visualisées <br>**Données:** peuvent être visualisées | **Métadonnées:** peuvent être modifiées et visualisées <br>**Données:** pas d'accès  | **Métadonnées:** peuvent être visualisées <br>**Données:** peuvent être saisies et visualisées | **Métadonnées:** peuvent être visualisées <br>**Données:** peuvent être saisies et visualisées |
+| Étapes du programme | **Métadonnées:** peuvent être visualisées <br>**Données:** peuvent être visualisées | **L'accès au groupe est limité aux étapes : Enregistrement de la tuberculose, Diagnostic et Résultats de laboratoire** <br>**Métadonnées:** peuvent être visualisées <br>**Données:** peuvent être visualisées | **Métadonnées:** peuvent être modifiées et visualisées <br>**Données:** pas d'accès  | **Métadonnées:** peuvent être visualisées <br>**Données:** peuvent être saisies et visualisées | **L'accès au groupe est limité aux étapes : Enregistrement de la tuberculose et résultats de laboratoire** <br>**Métadonnées:** peuvent être visualisées <br>**Données:** peuvent être saisies et visualisées |
+| Tableaux de bord | **Métadonnées:** peuvent être visualisées <br>**Données:** peuvent être visualisées | **Métadonnées:** peuvent être visualisées <br>**Données:** peuvent être visualisées | **Métadonnées:** peuvent être modifiées et visualisées <br>**Données:** pas d'accès  | Pas d'accès | Pas d'accès |
+
+Les utilisateurs doivent être affectés au groupe d'utilisateurs approprié en fonction de leur rôle dans le système. Le partage des autres objets du package doit être configuré en fonction des besoins. Veuillez consulter la [Documentation de DHIS2] (https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/sharing.html)pour plus d'informations sur la configuration du partage.
+
+### Rôles des utilisateurs { #user-roles } 
+
+Les utilisateurs auront besoin de rôles utilisateur pour pouvoir utiliser les différentes applications du DHIS2. Les rôles minimums suivants sont recommandés :
+
+1. Analyse des données Tracker : Il peut visualiser des analyses d'événements et accéder à des tableaux de bord, des rapports d'événements, un visualiseur d'événements, un visualiseur de données, des tableaux croisés dynamiques, des rapports et des cartes.
+2. Saisie de données Tracker : possibilité d'ajouter des valeurs de données, de mettre à jour les entités suivies, de rechercher des entités suivies dans les unités d'organisation et d'accéder à l'application Saisie Tracker
+
+Reportez-vous à la [Documentation DHIS2] (http://dhis2.org/documentation) pour plus d'informations sur la configuration des rôles des utilisateurs.
+
+### Unités d’Organisation { #organisation-units } 
+
+Le programme doit être attribué aux unités d'organisation applicables dans la hiérarchie des unités d'organisation.
+
+### Métadonnées dupliquées { #duplicated-metadata } 
+
+> **REMARQUE**
+>
+> Cette section ne s’applique que si vous importez dans une base de données DHIS2 qui comporte déjà des métadonnées. Si vous travaillez avec une nouvelle instance du système DHIS2, veuillez ignorer cette section et accédez à [Adaptation du programme Tracker](#adapting-the-tracker-program). 
+> Si vous utilisez des applications tierces qui reposent sur les métadonnées actuelles, sachez que cette mise à jour pourrait les interrompre."
+
+Même lorsque les métadonnées sont importées avec succès sans aucun conflit d'importation, il peut y avoir des doublons dans les métadonnées - éléments de données, attributs d'entités suivies ou ensembles d'options qui existent déjà. Comme indiqué dans la section ci-dessus sur la résolution des conflits, il est important de garder à l'esprit que les décisions relatives à la modification des métadonnées dans le DHIS2 doivent également tenir compte d'autres documents et ressources associés de différentes manières aux métadonnées existantes et aux métadonnées importées par le biais du package de configuration. La résolution des doublons ne consiste donc pas seulement à "nettoyer la base de données", mais aussi à s'assurer que cela est fait sans, par exemple, briser le potentiel d'intégration avec d'autres systèmes, la possibilité d'utiliser du matériel de formation, la rupture des SOP, etc. Cela dépend beaucoup du contexte.
+
+### Les constantes { #constants } 
+
+Le Tracker de surveillance des cas de tuberculose comprend un ensemble de tests et une liste de médicaments qui peuvent être modifiés par le pays de mise en œuvre en fonction du contexte national (par exemple, les médicaments et les tests utilisés/disponibles dans le pays). L'utilisation de constantes et de règles de programme correspondantes permet à l'administrateur du système dans un pays qui met en œuvre le programme de facilement « activer » ou « désactiver » des types de médicaments et de tests en fonction des besoins. Les instructions relatives à la configuration des constantes sont fournies dans la description des objets constants.
+
+### Configuration de l'interface de saisie du tracker, des widgets et de la barre supérieure { #configuring-tracker-capture-interface-widgets-and-top-bar } 
+
+Vous devez configurer le tableau de bord de saisie du tracker après l'installation du package. Cette configuration comprend les formulaires de saisie de données, les widgets et la barre supérieure.
+
+#### Modèles de saisie de données { #data-entry-forms } 
+
+* Après avoir enregistré le premier cas (test), accédez au menu **Paramètres** dans le formulaire de saisie du tracker et sélectionnez **Afficher/Masquer les widgets**.
+* Utiliser la **Saisie de données chronologique**
+* Assurez-vous que les widgets **Inscription**, **Commentaire** et **Profil** sont sélectionnés. Cliquez sur **Fermer**.
+
+#### Barre supérieure { #top-bar } 
+
+* Accédez au menu **Paramètres** et sélectionnez **Paramètres de la barre supérieure**.
+* Sélectionnez **Activer la barre supérieure**
+* Sélectionnez les champs d'information requis et attribuez un **ordre de tri**.
+
+| Champs recommandés                     | Ordre de tri |
+|:---------------------------------------|:-----------|
+| **Attributs**                         |            |
+| Numéro d'enregistrement de la tuberculose                 | 2          |
+| Des **Indicateurs**                         |            |
+| Classification des cas                    | 8          |
+| Âge du patient (années)                  | 5          |
+| Statut VIH au moment du diagnostic                | 6          |
+| Résistance au moment du diagnostic                | 10         |
+| Régime de traitement                      | 9          |
+| Date du diagnostic                      | 1          |
+| Nombre de mois depuis le diagnostic                 | 3          |
+| Classification de la résistance au moment du diagnostic | 7          |
+| Âge du patient (mois)                 | 4          |
+
+* Cliquez sur **Enregistrer**
+* Retournez au menu **Paramètres**. Cliquez sur **Enregistrer la mise en page du tableau de bord par défaut**. Verrouiller la mise en page pour tous les utilisateurs.
+
+### Notifications du programme { #program-notifications } 
+
+Le tracker TB SC 2.0.0 comprend 4 modèles de notification qui peuvent être modifiés en fonction des exigences locales. Une configuration supplémentaire est nécessaire pour mettre en place des notifications par SMS ou par e-mail.
+
+### Déclaration des données basées sur les cas dans des ensembles de données agrégées { #reporting-case-based-data-into-aggregate-data-sets } 
+
+Le tracker de surveillance de la tuberculose saisit des données qui peuvent être intégrées dans des rapports standards et agrégés (c'est-à-dire mensuels, trimestriels, annuels ou déterminés par le pays). La conception du système DHIS2 TB HMIS peut être consultée à l'adresse suivante : [https://dhis2.org/metadata-package-downloads/#tb](https://dhis2.org/metadata-package-downloads/#tb).
+
+Ce [ Outil Tracker-agrégé ] (https://github.com/dhis2/integration-t2a) peut être facilement configuré pour le transfert de données.
+
+De plus amples informations sont disponibles dans le [Guide d'intégration des données agrégées] (https://docs.dhis2.org/en/implement/maintenance-and-use/tracker-and-aggregate-data-integration.html#how-to-saving-aggregated-tracker-data-as-aggregate-data-values).
+
+Les **indicateurs de programme** du package de Surveillance des cas de tuberculose et de Laboratoire sont mappés avec les **éléments de données** et les **catégories de combinaisons d'options** du package agrégé de tuberculose de DHIS2 (Laboratoire, Notifications et résultats).
+
+## Adapter le programme tracker { #adapting-the-tracker-program } 
+
+Une fois le programme importé, il est possible que vous souhaitiez y apporter certaines modifications. Voici quelques exemples d'adaptations locales que vous _pourrez_ effectuer :
+
+* Ajout de variables supplémentaires au formulaire.
+* Adaptation des noms des éléments de données/options en fonction des usages au niveau national.
+* Ajout des traductions aux variables et/ou au formulaire de saisie des données.
+* Modification des indicateurs du programme en fonction des définitions de cas locales.
+
+Toutefois, il est fortement recommandé de faire preuve d'une grande prudence si vous décidez de modifier ou de supprimer l'un des formulaires/métadonnées inclus. Il y a donc un risque que des modifications brisent des fonctionnalités, par exemple les règles du programme et les indicateurs du programme.
+
