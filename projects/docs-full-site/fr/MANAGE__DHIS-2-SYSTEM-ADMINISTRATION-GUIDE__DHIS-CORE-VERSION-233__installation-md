@@ -1,0 +1,1400 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.33/src/commonmark/en/content/sysadmin/installation.md"
+---
+
+# Installation
+
+<!--DHIS2-SECTION-ID:installation-->
+
+Le chapitre sur l'installation fournit des informations sur comment installer DHIS2 dans différents contextes, notamment sur le serveur central en ligne, le réseau local hors ligne, l'application autonome et le package autonome appelé DHIS2 Live.
+
+## Introduction
+
+<!--DHIS2-SECTION-ID:install_introduction-->
+
+DHIS2 fonctionne sur toutes les plateformes pour lesquelles il existe un environnement d'exécution Java, version 8 ou supérieure, ce qui inclut les systèmes d'exploitation les plus utilisés tels que Windows, Linux et Mac. Il fonctionne également sur le système de base de données PostgreSQL. DHIS2 est présenté sous la forme d'une archive Web Java standard (fichier WAR) et fonctionne donc sur tous les conteneurs de servlets tels que Tomcat et Jetty.
+
+L'équipe de DHIS2 recommande le système d'exploitation Ubuntu 16.04 LTS, le système de base de données PostgreSQL et le conteneur de servlets Tomcay comme cadre approprié pour les installations de serveurs.
+
+Ce chapitre fournit un guide pour la configuration de la teck stack (pile technologique) ci-dessus. Il doit cependant être lu comme un guide opérationnel et non comme une document complet sur l'environnement mentionné. Nous nous référons à la documentation officielle d'Ubuntu, PostgreSQL et Tomcat pour des informations détaillées.
+
+Le package Ubuntu dhis2-tools automatise la plupart des tâches décrites dans le guide ci-dessous et est recommandé pour la plupart des utilisateurs, en particulier ceux qui ne maîtrisent pas la ligne de commande ou l'administration des serveurs. Il est décrit plus en détail dans un des chapitres de ce guide.
+
+## Spécifications du serveur
+
+<!--DHIS2-SECTION-ID:install_server_specifications-->
+
+DHIS2 est une application très exigeante en matière de base de données et nécessite que votre serveur ait suffisamment de mémoire vive, de cœurs d'unité centrale et de disques rapides. Ces recommandations doivent être considérées comme des règles de base et non comme des mesures exactes. DHIS2 évolue de façon linéaire en fonction de la quantité de RAM et du nombre de cœurs de CPU. Plus vous en avez, mieux l'application performe.
+
+  - *RAM :* Au moins 1 Go de mémoire pour 1 million d'enregistrements de données par 
+    mois ou pour 1000 utilisateurs simultanés. Au moins 4 Go pour une petite 
+    instance et 12 Go pour une instance moyenne.
+
+  - *Cœurs CPU:* 4 cœurs CPU pour une petite instance, 8 cœurs CPU pour une 
+    instance moyenne ou grande.
+
+  - *Disque:* Idéalement, utilisez un disque SSD, ou un disque de 7200 tr/min. La vitesse de lecture minimale
+    est de 150 Mb/s ; 200 Mb/s est acceptable ; 350 Mb/s ou plus est 
+    idéale. En ce qui concerne l'espace disque, un minimum de 60 Go est recommandé, mais 
+    cela dépendra entièrement de la quantité de données contenues dans le
+    tableaux des valeurs de données. Les tableaux d'analyse nécessitent une quantité importante
+    d'espace disque. Faites une planification à l’avance et assurez-vous que votre serveur puise être amélioré 
+    avec plus d'espace disque si nécessaire.
+
+## Exigences du logiciel
+
+<!--DHIS2-SECTION-ID:install_software_requirements-->
+
+Les versions ultérieures de DHIS2 nécessitent les versions logicielles suivantes pour fonctionner.
+
+  - Java JDK ou JRE version 8 ou ultérieure.
+
+  - Tout système d'exploitation pour lequel il existe une version 8 de Java JDK ou JRE.
+
+  - Base de données PostgreSQL version 9.6 ou ultérieure.
+
+  - Extension de base de données PostGIS version 2.2 ou plus.
+
+  - Conteneur de servlets Tomcat version 8.5.50 ou plus, ou autres conteneurs de servlets 
+    compatibles avec l'API Servlet 3.1.
+
+## Configuration du serveur
+
+<!--DHIS2-SECTION-ID:install_server_setup-->
+
+Cette section décrit la configuration d'une instance de serveur DHIS2 sur Ubuntu 16.04 64 bit avec PostgreSQL comme système de base de données et Tomcat comme conteneur de servlets. Ce guide n'est pas un guide étape par étape, mais plutôt une référence sur la façon dont DHIS2 peut être déployé sur un serveur. Il existe plusieurs stratégies de déploiement, qui diffèrent en fonction du système d'exploitation et de la base de données que vous utilisez, ainsi que d'autres facteurs. Le terme *appeler* fait référence à l'exécution d'une commande donnée dans un terminal.
+
+Pour un serveur national, la configuration recommandée est un processeur quadricœur de 2 Ghz ou plus et 12 Go de RAM ou plus. Notez qu'un système d'exploitation de 64 bit est nécessaire pour utiliser plus de 4 Go de RAM.
+
+Dans ce guide, nous partons du principe que 8 Go de RAM sont alloués à PostgreSQL et 8 Go de RAM à Tomcat/JVM, et qu'un système d'exploitation de 64 bits est utilisé. *Si vous utilisez une configuration différente, veuillez ajuster les valeurs suggérées en conséquence !* Nous recommandons de répartir la mémoire disponible de manière à peu près égale entre la base de données et la JVM. N'oubliez pas de réserver une partie de la mémoire physique au système d'exploitation afin qu'il puisse effectuer ses tâches, environ 2 Go par exemple. Les étapes marquées comme *facultatives*, telles que celles relatives à l'optimisation des performances, peuvent être réalisées ultérieurement.
+
+### Création d'un utilisateur pour exécuter DHIS2
+
+<!--DHIS2-SECTION-ID:install_creating_user-->
+
+Vous devriez créer un utilisateur dédié pour lancer DHIS2
+
+> **Important**
+>
+> Vous ne devez pas exécuter le serveur DHIS2 en tant qu'utilisateur privilégié tel que super-utilisateur.
+
+Créez un nouvel utilisateur appelé "dhis" en appelant :
+
+```sh
+sudo useradd -d /home/dhis -m dhis -s /bin/false
+```
+
+Ensuite, pour définir le mot de passe de votre compte, appelez :
+
+```sh
+sudo passwd dhis
+```
+
+Créez un mot de passe sécurisé comportant au moins 15 caractères aléatoires.
+
+### Création du répertoire de configuration
+
+<!--DHIS2-SECTION-ID:install_creating_config_directory-->
+
+Commencez par créer un répertoire adapté aux fichiers de configuration de DHIS2. Ce répertoire sera également utilisé pour les applications, les fichiers et les fichiers journaux. Voici un exemple de répertoire :
+
+```sh
+mkdir /home/dhis/config
+chown dhis:dhis /home/dhis/config
+```
+
+DHIS2 recherchera une variable d'environnement appelée *DHIS2\_HOME* pour localiser son répertoire de configuration. Ce répertoire sera appelé *DHIS2\_HOME* dans ce guide d'installation. Nous définirons la variable d'environnement lors d'une étape ultérieure du processus d'installation.
+
+### Définition du fuseau horaire et de l'emplacement du serveur
+
+<!--DHIS2-SECTION-ID:install_setting_server_tz-->
+
+Il peut être nécessaire de reconfigurer le fuseau horaire du serveur pour qu'il corresponde au fuseau horaire de l'endroit que le serveur DHIS2 couvrira. Si vous utilisez un serveur privé virtuel, le fuseau horaire par défaut peut ne pas correspondre au fuseau horaire de l'emplacement de votre DHIS2. Vous pouvez facilement reconfigurer le fuseau horaire en appelant la commande ci-dessous et en suivant les instructions.
+
+```sh
+sudo dpkg-reconfigure tzdata
+```
+
+PostgreSQL est sensible aux paramètres régionaux. Vous devrez donc installer votre emplacement en premier. Pour vérifier les paramètres régionaux existants et en installer de nouveaux (par exemple, Norvégien):
+
+```sh
+locale -a
+sudo locale-gen nb_NO.UTF-8
+```
+
+### Installation de PostgreSQL
+
+<!--DHIS2-SECTION-ID:install_postgresql_installation-->
+
+Installez PostgreSQL en appelant :
+
+```sh
+sudo apt-get install postgresql-10 postgresql-contrib-10 postgresql-10-postgis-2.4
+```
+
+Créez un utilisateur non privilégié appelé *dhis* en appelant :
+
+```sh
+sudo -u postgres createuser -SDRP dhis
+```
+
+Entrez un mot de passe sécurisé à l'invite. Créez une base de données en appelant :
+
+```sh
+sudo -u postgres createdb -O dhis dhis2
+```
+
+Revenez à votre session en appelant `exit` (sortir). Vous avez maintenant un utilisateur PostgreSQL appelé *dhis* et une base de données appelée *dhis2*.
+
+L'extension *PostGIS* est nécessaire au fonctionnement de plusieurs fonctions SIG/cartographie. DHIS 2 tentera d'installer l'extension PostGIS lors du démarrage. Si l'utilisateur de la base de données DHIS 2 n'a pas l'autorisation de créer des extensions, vous pouvez la créer à partir de la console en utilisant l'utilisateur *postgres* avec les commandes suivantes :
+
+```sh
+sudo -u postgres psql -c "create extension postgis;" dhis2
+```
+
+Quittez la console et revenez à votre utilisateur précédent en entrant *\\q* suivi de *exit* (quitter).
+
+### Optimisation des performances de PostgreSQL
+
+<!--DHIS2-SECTION-ID:install_postgresql_performance_tuning-->
+
+L'optimisation de PostgreSQL est nécessaire pour obtenir un système performant, mais il est facultatif quand il s'agit de faire fonctionner DHIS2. PostgreSQL est configuré et optimisé à l'aide du fichier *postgresql.conf* qui peut être édité comme suit :
+
+```sh
+sudo nano /etc/postgresql/10/main/postgresql.conf
+```
+
+Définissez ensuite les propriétés suivantes :
+
+```properties
+max_connections = 200
+```
+
+Détermine le nombre maximum de connexions autorisées par PostgreSQL.
+
+```properties
+shared_buffers = 3200MB
+```
+
+Détermine la quantité de mémoire à allouer exclusivement à la mise en cache de PostgreSQL. Ce paramètre contrôle la taille de la mémoire partagée du noyau qui doit être réservée à PostgreSQL. Il doit être fixé à environ 40% de la mémoire totale dédiée à PostgreSQL.
+
+```properties
+work_mem = 20MB
+```
+
+Détermine la quantité de mémoire utilisée pour les opérations internes de tri et de hachage. Ce paramètre s'applique à chaque connexion et à chaque requête, de sorte qu'une grande quantité de mémoire peut être consommée si cette valeur est trop élevée. Il est essentiel de définir correctement cette valeur pour optimiser les performances d'agrégation de DHIS2.
+
+```properties
+maintenance_work_mem = 512MB
+```
+
+Détermine la quantité de mémoire que PostgreSQL peut utiliser pour les opérations de maintenance telles que la création d'index, l'exécution du vacuum et l'ajout de clés étrangères. Augmenter cette valeur peut améliorer les performances de création d'index pendant les processus de génération d'analyses.
+
+```properties
+effective_cache_size = 8000MB
+```
+
+Estimation de la quantité de mémoire disponible pour la mise en cache du disque par le système d'exploitation (il ne s'agit pas d'une allocation) ; elle est utilisée par PostgreSQL pour déterminer si un plan de requête tiendra ou non dans la mémoire. Définir une valeur plus élevée que la mémoire disponible entraînera de mauvaises performances. Cette valeur doit être incluse dans le paramètre shared_buffers. PostgreSQL a deux couches de cache : la première couche utilise la mémoire partagée du noyau et est contrôlée par le paramètre shared_buffers. PostgreSQL délègue la seconde couche au cache disque du système d'exploitation et la taille de la mémoire disponible peut être fournie avec le paramètre effective_cache_size.
+
+```properties
+checkpoint_completion_target = 0.8
+```
+
+Définit la mémoire utilisée pour la mise en mémoire tampon pendant le processus d'écriture WAL. Augmenter cette valeur peut améliorer le débit dans les systèmes à forte densité d'écriture.
+
+```properties
+synchronous_commit = off
+```
+
+Spécifie si les transactions doivent attendre que les enregistrements WAL soient écrits sur le disque avant d'être renvoyées au client ou non. Si cette option est désactivée, les performances seront considérablement améliorées. Cela implique également qu'il y aura un léger décalage entre le moment où la transaction au client est déclarée réussie et le moment où elle est réellement sûre, mais l'état de la base de données ne peut pas être corrompu et c'est une bonne alternative pour les systèmes exigeants en termes de performances et d'écriture comme DHIS2.
+
+```properties
+wal_writer_delay = 10000ms
+```
+
+Spécifie le décalage entre les opérations d'écriture WAL. Y définir une valeur élevée permettra d'améliorer les performances des systèmes à forte densité d'écriture, car de nombreuses opérations d'écriture peuvent être exécutées en un seul vidage sur le disque.
+
+```properties
+random_page_cost = 1.1
+```
+
+*SSD uniquement*: Définit l'estimation par le planificateur de requêtes du coût d'une page de disque non extraite de manière séquentielle. Une valeur faible incitera le système à préférer les scans d'index aux scans séquentiels. Une valeur faible convient aux bases de données qui fonctionnent sur des disques SSD ou qui sont massivement mises en cache dans la mémoire. La valeur par défaut est 4.0, ce qui est raisonnable pour les disques traditionnels.
+
+```properties
+max_locks_per_transaction = 96
+```
+
+Spécifie le nombre moyen de verrous d'objets alloués pour chaque transaction. Cette valeur est principalement définie pour permettre la réalisation des mises à niveau de routine qui touchent un grand nombre de tableaux.
+
+Redémarrez PostgreSQL en appelant la commande suivante :
+
+```sh
+sudo /etc/init.d/postgresql restart
+```
+
+### Configuration du système
+
+<!--DHIS2-SECTION-ID:install_database_configuration-->
+
+Les informations de connexion à la base de données sont fournies à DHIS2 via un fichier de configuration appelé *dhis.conf*. Créez ce fichier et sauvegardez-le dans le répertoire *DHIS2\_HOME*. À titre d'exemple, cet emplacement pourrait être :
+
+```sh
+sudo -u dhis nano /home/dhis/config/dhis.conf
+```
+
+Un fichier de configuration pour PostgreSQL correspondant à la configuration ci-dessus a les propriétés suivantes :
+
+```properties
+# ----------------------------------------------------------------------
+# Database connection
+# ----------------------------------------------------------------------
+
+# Hibernate SQL dialect
+connection.dialect = org.hibernate.dialect.PostgreSQLDialect
+
+# JDBC driver class
+connection.driver_class = org.postgresql.Driver
+
+# Database connection URL
+connection.url = jdbc:postgresql:dhis2
+
+# Database username
+connection.username = dhis
+
+# Database password
+connection.password = xxxx
+
+# ----------------------------------------------------------------------
+# Server
+# ----------------------------------------------------------------------
+
+# Enable secure settings if deployed on HTTPS, default 'off', can be 'on'
+# server.https = on
+
+# Server base URL
+# server.base.url = https://server.com/
+```
+
+Il est fortement recommandé d'activer le paramètre *server.https* et de déployer DHIS 2 avec le protocole HTTPS crypté. Ce paramètre activera par exemple des cookies sécurisés. Le déploiement HTTPS est requis lorsque ce paramètre est activé.
+
+Le paramètre *server.base.url* fait référence à l'URL à laquelle les utilisateurs finaux accèdent au système sur le réseau.
+
+Notez que le fichier de configuration prend en charge les variables d'environnement. Cela signifie que vous pouvez définir certaines propriétés comme variables d'environnement et les résoudre avec DHIS2. C'est le cas de l'exemple suivant où *DB_PASSWD* est le nom de la variable d'environnement :
+
+```properties
+connection.password = ${DB_PASSWD}
+```
+
+
+Notez que ce fichier contient le mot de passe de votre base de données DHIS2 en texte clair et qu'il doit donc être protégé contre tout accès non autorisé. Pour ce faire, appelez la commande suivante qui garantit que seul l'utilisateur dhis qui détient le fichier est autorisé à le lire :
+
+```sh
+chmod 0600 dhis.conf
+```
+
+### Installation Java
+
+<!--DHIS2-SECTION-ID:install_java_installation-->
+
+Le JDK Java recommandé pour DHIS 2 est OpenJDK 8. Vous pouvez exécuter la commande suivante pour installer OpenJDK 8 :
+
+```
+sudo apt-get install openjdk-8-jdk
+```
+
+Vérifiez que votre installation est correcte en appelant :
+
+```
+java -version
+```
+
+### Installation de Tomcat et de DHIS2
+
+<!--DHIS2-SECTION-ID:install_tomcat_dhis2_installation-->
+
+Pour installer le conteneur de servlets Tomcat, nous utiliserons le package utilisateur de Tomcat en appelant :
+
+```sh
+sudo apt-get install tomcat8-user
+```
+
+Ce package nous permet de créer facilement une nouvelle instance Tomcat. L'instance sera créée dans le répertoire actuel. Le répertoire personnel de l'utilisateur dhis est un emplacement approprié :
+
+```sh
+cd /home/dhis/
+sudo tomcat8-instance-create tomcat-dhis
+sudo chown -R dhis:dhis tomcat-dhis/
+```
+
+Ceci créera une instance dans un répertoire appelé *tomcat-dhis*. Notez que le package tomcat7-user permet de créer le nombre d'instances DHIS2 souhaité.
+
+Modifiez ensuite le fichier *tomcat-dhis/bin/setenv.sh* et ajoutez les lignes ci-dessous. La première ligne définit l'emplacement de votre environnement d'exécution Java, la deuxième alloue de la mémoire à Tomcat et la troisième définit l'emplacement où DHIS2 recherchera le fichier de configuration *dhis.conf*. Vérifiez que le chemin d'accès aux binaires Java est correct, car il peut varier d'un système à l'autre. Par exemple, sur les systèmes AMD, vous pouvez voir */java-8-openjdk amd64*. N'oubliez pas d'adapter cela à votre environnement :
+
+```sh
+export JAVA_HOME='/usr/lib/jvm/java-1.8.0-openjdk-amd64/'
+export JAVA_OPTS='-Xmx7500m -Xms4000m'
+export DHIS2_HOME='/home/dhis/config'
+```
+
+Le fichier de configuration de Tomcat se trouve dans *tomcat-dhis/conf/server.xml*. L'élément qui définit la connexion au DHIS est l'élément *Connector* avec le port 8080. Vous pouvez changer le numéro de port dans l'élément Connector par un autre port si nécessaire. L'attribut *relaxedQueryChars* permet d'autoriser certains caractères dans les URL utilisées par le front-end DHIS2.
+
+```xml
+<Connector port="8080" protocol="HTTP/1.1"
+  connectionTimeout="20000"
+  redirectPort="8443"
+  relaxedQueryChars="[]" />
+```
+
+L'étape suivante consiste à télécharger le fichier WAR de DHIS2 et à le placer dans le répertoire webapps de Tomcat. Vous pouvez télécharger la version 2.31 du fichier WAR de DHIS2 comme suit (remplacez la version 2.31 par votre version préférée si nécessaire) :
+
+```sh
+wget https://releases.dhis2.org/2.33/dhis.war
+```
+
+Pour les versions de correctifs, la structure des dossiers est basée sur l'ID du correctif dans un sous-dossier de la version principale. Par exemple, vous pouvez télécharger la version 2.31.1 du fichier WAR de DHIS2 comme suit (remplacez la 2.31 par la version de votre choix et 2.31.1 par le correctif de votre choix, si nécessaire) :
+
+```
+wget https://releases.dhis2.org/2.33/2.33.1/dhis.war
+```
+
+Placez le fichier WAR dans le répertoire webapps de Tomcat. Nous voulons nommer le fichier WAR ROOT.war afin de le rendre disponible directement sur localhost sans context path :
+
+```sh
+mv dhis.war tomcat-dhis/webapps/ROOT.war
+```
+
+DHIS2 ne doit jamais fonctionner en mode utilisateur privilégié. Après avoir modifié le fichier setenv.sh, modifiez le script de démarrage pour vous assurer que le script n'a pas été appelé en mode super-utilisateur.
+
+```sh
+#!/bin/sh
+set -e
+
+if [ "$(id -u)" -eq "0" ]; then
+  echo "This script must NOT be run as root" 1>&2
+  exit 1
+fi
+
+export CATALINA_BASE="/home/dhis/tomcat-dhis"
+/usr/share/tomcat8/bin/startup.sh
+echo "Tomcat started"
+```
+
+### Exécution de DHIS2
+
+<!--DHIS2-SECTION-ID:install_running_dhis2-->
+
+DHIS2 peut désormais être lancé en appelant :
+
+    sudo -u dhis tomcat-dhis/bin/startup.sh
+
+> **Important**
+>
+> Le serveur DHIS2 ne doit jamais être exécuté en mode super-utilisateur ou autre utilisateur privilégié.
+
+DHIS2 peut être arrêté en appelant :
+
+    sudo -u dhis tomcat-dhis/bin/shutdown.sh
+
+Pour surveiller le comportement de Tomcat, le journal est la principale source d'information. Le journal peut être consulté avec la commande suivante :
+
+    tail -f tomcat-dhis/logs/catalina.out
+
+En supposant que le fichier WAR s'appelle ROOT.war, vous pouvez maintenant accéder à votre instance DHIS2 à l'URL suivante :
+
+    http://localhost:8080
+
+## Configuration de l'URL de base
+
+Pour définir l'URL de base de l'instance DHIS2, vous pouvez spécifier la propriété suivante dans le fichier de configuration `dhis.conf`. Cette URL doit pointer vers l'emplacement où les utilisateurs finaux peuvent atteindre DHIS2 sur le réseau.
+
+```properties
+server.base.url = https://play.dhis2.org/dev
+```
+
+## Configuration du système de stockage de fichiers
+
+<!--DHIS2-SECTION-ID:install_file_store_configuration-->
+
+DHIS2 peut recueillir et stocker des fichiers. Par défaut, les fichiers seront stockés sur le système de fichiers local du serveur qui fait fonctionner DHIS2 dans un répertoire de *fichiers* sous l'emplacement du répertoire externe *DHIS2_HOME*.
+
+Vous pouvez également configurer DHIS2 pour qu'il stocke les fichiers sur des fournisseurs de stockage basés sur le cloud. AWS S3 est le seul fournisseur pris en charge actuellement. Pour activer le stockage sur le cloud, vous devez définir les propriétés supplémentaires suivantes dans votre fichier *dhis.conf* :
+
+```propriétés
+# Fournisseur d'entrepôts de fichiers. Actuellement, 'filesystem' et 'aws-s3' sont pris en charge.
+filestore.provider = 'aws-s3'
+
+# Répertoire dans le répertoire externe sur le système de fichiers local et le compartiment sur AWS S3
+filestore.container = fichiers
+
+# La configuration suivante s'applique uniquement au stockage sur cloud (AWS S3)
+
+# Emplacement du centre de données. Facultatif mais recommandé pour des raisons de performances.
+filestore.emplacement = eu-west-1
+
+# Nom d'utilisateur / Clé d'accès sur AWS S3
+filestore.identité = xxxx
+
+# Mot de passe / Clé secrète sur AWS S3 (sensible)
+filestore.secret = xxxx
+```
+
+Cette configuration est un exemple qui reflète les paramètres par défaut et doit être modifiée en fonction de vos besoins. En d'autres termes, vous pouvez l'omettre complètement si vous prévoyez d'utiliser les valeurs par défaut. Si vous voulez utiliser un fournisseur externe, le dernier bloc de propriétés doit être défini, et la propriété *fournisseur* doit être définie sur un fournisseur pris en charge (actuellement, c'est uniquement AWS S3).
+
+> **Remarque**
+>
+> Si vous avez configuré le stockage SUR cloud dans dhis.conf, tous les fichiers que vous téléchargez
+> ou les fichiers générés par le système utiliseront le stockage sur cloud.
+
+Pour un système de production, la configuration initiale de l'entrepôt de fichiers doit être soigneusement étudiée, car le déplacement des fichiers entre les fournisseurs de stockage tout en conservant l'intégrité des références de la base de données peut s'avérer complexe. Gardez à l'esprit que le contenu de l'entrepôt de fichiers peut contenir des informations sensibles et intégrales et qu'il est recommandé de protéger l'accès au dossier et de s'assurer qu'un plan de sauvegarde est prévu dans le cadre d'une implémentation de production.
+
+> **Remarque**
+>
+> AWS S3 est le seul fournisseur pris en charge, mais d'autres fournisseurs devraient
+> être ajoutés à l'avenir, comme Google Cloud Store et Azure Blob Storage.
+> Faites-nous savoir si vous avez un cas d'utilisation pour des fournisseurs supplémentaires.
+
+## Configuration du compte de service Google
+
+<!--DHIS2-SECTION-ID:install_google_service_account_configuration-->
+
+DHIS2 peut se connecter à plusieurs API de services Google. Par exemple, le SIG de DHIS2 peut utiliser l'API de Google Earth Engine pour charger des couches de cartes. Pour fournir des jetons d'accès à l'API, vous devez configurer un compte de service Google et créer une clé privée :
+
+  - Créez un compte de service Google. Veuillez consulter la [plateforme d'identification
+    plateforme](https://developers.google.com/identity/protocols/OAuth2ServiceAccount#overview)
+     
+
+  - Visitez la [Console Google Cloud](https://console.cloud.google.com)
+    et allez dans API Manager \> Identifiants \> Créer des identifiants \>
+    Clé du compte de service. Sélectionnez votre compte de service et JSON comme type de
+    clé et cliquez sur Créer.
+
+  - Renommez la clé JSON en *dhis-google-auth.json*.
+
+Après avoir téléchargé le fichier de clé, placez le fichier *dhis-google-auth.json* dans le répertoire DHIS2_HOME (le même emplacement que le fichier *dhis.conf*). Cet emplacement pourrait ressembler à ceci :
+
+    /home/dhis/config/dhis-google-auth.json
+
+## Configuration de LDAP
+
+<!--DHIS2-SECTION-ID:install_ldap_configuration-->
+
+DHIS2 peut utiliser un serveur LDAP pour l'authentification des utilisateurs.
+L'authentification LDAP nécessite que chaque entrée corresponde à un utilisateur dans la base de données DHIS2. L'utilisateur DHIS2 sera utilisé pour représenter des autorités / rôles d’utilisateur.
+
+Pour configurer l'authentification LDAP, vous devez définir l'URL du serveur LDAP, un utilisateur gestionnaire, une base de recherche et un filtre de recherche LDAP. Cette configuration doit être effectuée dans le fichier de configuration principal de DHIS 2 (dhis.conf).
+Les utilisateurs ou entrées LDAP sont identifiés avec des noms uniques (DN à partir de maintenant). Voici un exemple de configuration :
+
+```propriétés
+# URL du serveur LDAP
+ldap.url = ldaps://domain.org:636
+
+# Nom distinctif de l'entrée du gestionnaire LDAP
+ldap.manager.dn = cn=johndoe,dc=domain,dc=org
+
+# Mot de passe d'entrée du gestionnaire LDAP
+ldap.manager.password = xxxx
+
+# Recherche de base LDAP
+ldap.search.base = dc=domaine,dc=org
+
+# Filtre de recherche LDAP
+ldap.search.filter = (cn={0})
+```
+
+Les propriétés de configuration LDAP sont expliquées ci-dessous :
+
+  - *ldap.url :* L'URL du serveur LDAP avec lequel s'authentifier
+    L'utilisation du SSL ou du cryptage est fortement recommandée afin de
+    sécuriser l’authentification. Prenons l'exemple de l'URL suivant
+    *ldaps://domain.org:636*, où ldaps fait référence au protocole,
+    *domain.org* fait référence au nom de domaine ou à l'adresse IP, et *636*
+    fait référence au port (636 est la valeur par défaut pour LDAPS).
+
+  - *ldap.manager.dn:* Un utilisateur du gestionnaire LDAP doit être relié au 
+    serveur LDAP pour permettre le processus d'authentification des utilisateurs. 
+    fait référence au DN de cette entrée, c'est à dire que ce n'est pas l'utilisateur qui va
+    authentifié lors de la connexion à DHIS2, mais plutôt l'utilisateur qui
+    est relié au serveur LDAP afin d'effectuer l'authentification.
+
+  - *ldap.manager.password :* Le mot de passe de l'utilisateur du gestionnaire LDAP.
+
+  - *ldap.search.base :* La base de recherche ou le nom unique de
+    l'objet de la base de recherche, qui définit l'emplacement dans le répertoire
+    à partir duquel commence la recherche LDAP.
+
+  - *ldap.search.filter :* Le filtre permettant de faire correspondre les DN des entrées dans le
+    répertoire LDAP. La variable {0} sera remplacée par le nom d'utilisateur DHIS2,
+    ou autrement, l'identifiant LDAP défini pour l'utilisateur
+    avec le nom d'utilisateur fourni.
+
+DHIS2 utilisera le nom d'utilisateur et le mot de passe fournis pour essayer de s'authentifier avec une entrée du serveur LDAP, puis recherchera des rôles/autorités d'utilisateur auprès d'un utilisateur DHIS2 correspondant. Cela implique qu'un utilisateur doit avoir une entrée correspondante dans le répertoire LDAP ainsi qu'un utilisateur DHIS2 pour pouvoir se connecter.
+
+Lors de l'authentification, DHIS2 essaiera de se connecter au serveur LDAP en utilisant l'URL du serveur LDAP configuré ainsi que le DN et le mot de passe du gestionnaire. Une fois la connexion établie, il recherche une entrée dans le répertoire à l'aide de la base de recherche LDAP et du filtre de recherche configurés.
+
+La variable {0} du filtre configuré sera remplacée avant l'application du filtre. Par défaut, elle sera remplacée par le nom d'utilisateur fourni. Vous pouvez également définir un identifiant LDAP personnalisé pour le compte utilisateur DHIS2 concerné. Vous pouvez le faire via l'interface utilisateur du module utilisateur DHIS2 sur l'écran d'ajout ou d'édition en définissant la propriété "Identifiant LDAP". Une fois définie, l'identifiant LDAP remplacera la variable {0} dans le filtre. Cette fonction est utile lorsque le nom commun LDAP ne convient pas ou ne peut pas, pour une raison quelconque, être utilisé comme nom d'utilisateur DHIS2.
+
+## Configuration du cryptage
+
+<!--DHIS2-SECTION-ID:install_encryption_configuration-->
+
+DHIS2 permet le cryptage des données. Cela nécessite toutefois quelques configurations supplémentaires.
+
+### Extension de Java Cryptography
+
+<!--DHIS2-SECTION-ID:install_java_cryptography_extension-->
+
+DHIS2 utilise un algorithme de cryptage classé comme puissant et nécessite donc l'installation des fichiers *Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files* (Fichiers de politique de juridiction de force illimitée de l'extension de cryptographie Java). Ces fichiers peuvent être installés en suivant ces étapes :
+
+1.  Téléchargez les fichiers de politique de juridiction de force illimitée de la JCE pour
+    votre version de Java sur le site web d'Oracle. Faites défiler l'écran jusqu'à 
+    la section "Java Cryptography Extension (JCE) Unlimited Strength 
+    Jurisdiction Policy Files". Il est important que la version 
+    des fichiers correspondent à la version de Java sur votre 
+    serveur.
+
+    [http://www.oracle.com/technetwork/java/javase/downloads/index.html](http://www.oracle.com/technetwork/java/javase/downloads/index.htm)
+
+2.  Extraire l'archive ZIP téléchargée. Elle contient deux fichiers JAR :
+    *local\_policy.jar* and *US\_export\_policy.jar*.
+
+3.  Localisez le répertoire JDK de votre installation Java. A partir de là, 
+    naviguez dans le répertoire *jre/security*. Sur Ubuntu, il est souvent 
+    trouvé à */usr/lib/jvm/java-8-oracle/jre/lib/security*.
+
+4.  (Facultatif) Sauvegarder votre *local_policy.jar* existant et 
+    *US\_export\_policy.jar* au cas où vous voudriez revenir dessus plus tard.
+
+5.  Copiez les fichiers *local\_policy.jar* et *US\_export\_policy.jar* dans le dossier 
+    de sécurité. Vous devriez maintenant avoir les fichiers suivants qui 
+    termine l'installation. N'oubliez pas de redémarrer votre conteneur de servlets  
+    pour cela fonctionne.
+
+        /usr/lib/jvm/java-8-oracle/jre/lib/security/local_policy.jar
+        /usr/lib/jvm/java-8-oracle/jre/lib/security/US_export_policy.jar
+
+### Configuration du mot de passe
+
+<!--DHIS2-SECTION-ID:install_password_configuration-->
+
+Pour assurer la sécurité de l'algorithme de cryptage, vous devrez définir un mot de passe dans le fichier de configuration *dhis.conf* via la propriété *encryption.password* :
+
+```properties
+    encryption.password = xxxx
+```
+
+La propriété *encryption.password* est le mot de passe utilisé pour crypter et décrypter les données dans la base de données. Notez que le mot de passe ne doit pas être modifié une fois qu'il a été défini et que les données ont été cryptées, car celles-ci ne pourraient alors plus être décryptées.
+
+Le mot de passe doit comporter au moins **24 caractères**. Une combinaison de chiffres et de lettres minuscules et majuscules est recommandé. Le mot de passe de cryptage doit être gardé secret.
+
+### Éléments à prendre en compte pour le cryptage
+
+<!--DHIS2-SECTION-ID:install_considerations_for_encryption-->
+
+*Avertissement :* il n'est pas possible de récupérer les données cryptées si le mot de passe de cryptage est perdu ou modifié. À l'inverse, le cryptage n'offre aucune sécurité si le mot de passe est compromis. Il est donc très important de garder le mot de passe en lieu sûr.
+
+## Configuration de la base de données des réplicas en lecture
+
+<!--DHIS2-SECTION-ID:install_read_replica_configuration-->
+
+DHIS 2 permet d'utiliser des réplicas en lecture seule de la base de données principale (la base de données principale de DHIS 2). L'objectif des réplicas en lecture est d'améliorer les performances des requêtes en lecture de la base de données et d'augmenter les capacités au-delà des contraintes d'une seule base de données. Les opérations à forte intensité de lecture en bénéficieront, notamment les requêtes d'analyse et les requêtes d'événements.
+
+La configuration exige que vous ayez créé une ou plusieurs instances répliquées de la base de données principale de DHIS 2. PostgreSQL permet de le faire grâce à un concept appelé *réplication en flux*. La configuration des réplicas en lecture pour PostgreSQL n'est pas abordée dans ce guide.
+
+Les réplicas en lecture peuvent être définis dans le fichier de configuration *dhis.conf*. Vous pouvez en spécifier jusqu'à 5 par instance DHIS 2. Chaque réplica est désignée par un nombre compris entre 1 et 5. L'URL de connexion JDBC doit être définie pour chaque réplica. Le nom d'utilisateur et le mot de passe peuvent être spécifiés. Dans le cas contraire, le nom d'utilisateur et le mot de passe de la base de données principale seront utilisés en lieu et place.
+
+La configuration des réplicas en lecture dans *dhis.conf* ressemble à celle ci-dessous.
+Chaque réplica est spécifié avec le préfixe de la clé de configuration *readN*, où N fait référence au numéro du réplica.
+
+```propriétés
+# Configuration du réplica en lecture 1
+
+# URL de connexion à la base de données, nom d'utilisateur et mot de passe
+read1.connection.url = jdbc:postgresql://127.0.0.11/dbread1
+read1.connection.username = dhis
+read1.connection.password = xxxx
+
+# Configuration du réplica en lecture 2
+
+# URL de connexion à la base de données, nom d'utilisateur et mot de passe
+read2.connection.url = jdbc:postgresql://127.0.0.12/dbread2
+read2.connection.username = dhis
+read2.connection.password = xxxx
+
+# Configuration du réplica en lecture 3
+
+# URL de connexion à la base de données, retour à la base de données principale pour le nom d'utilisateur et le mot de passe
+read3.connection.url = jdbc:postgresql://127.0.0.13/dbread3
+```
+
+Vous devez redémarrer votre conteneur de servlets pour que les modifications s'appliquent. DHIS 2 répartira automatiquement la charge entre les réplicas en lecture. L'ordre des réplicas n'a pas d'importance.
+
+## Configuration d'un cluster de serveurs web
+
+<!--DHIS2-SECTION-ID:install_web_server_cluster_configuration-->
+
+Cette section décrit comment configurer l'application  DHIS 2 pour qu'elle s'exécute dans un cluster.
+
+### Aperçu du clustering
+
+<!--DHIS2-SECTION-ID:install_cluster_configuration_introduction-->
+
+Le clustering est une technique courante permettant d'améliorer l'évolutivité et la disponibilité du système. Elle consiste à installer plusieurs serveurs web, par exemple des instances Tomcat, pour qu'ils servent une seule application. Le clustering permet d'*étendre* une application de manière à ce que de nouveaux serveurs puissent être ajoutés afin d'améliorer ses performances. Elle garantit également une *grande disponibilité*, car le système peut tolérer que des instances tombent en panne sans pour autant rendre le système inaccessible aux utilisateurs.
+
+Quelques paramètres doivent être configurés pour que DHIS 2 s'exécute dans un cluster.
+
+* Chaque instance DHIS 2 doit spécifier les autres instances DHIS 2 membres du 
+cluster dans le fichier *dhis.conf*.
+
+* Un entrepôt de données Redis doit être installé et les informations de connexion doivent
+être fournies pour chaque instance de l'application DHIS 2 dans *dhis.conf*.
+
+* Les instances et les serveurs DHIS 2 doivent partager le même dossier *files* utilisé pour 
+les applications et les téléchargements de fichiers, soit par l'intermédiaire de l'option de *stockage de fichiers cloud AWS S3*, 
+soit par un lecteur réseau partagé.
+
+* Un équilibreur de charge tel que nginx doit être configuré pour distribuer les requêtes Web 
+dans les instances du cluster.
+
+### Configuration du cluster de l'instance DHIS 2
+
+<!--DHIS2-SECTION-ID:install_cluster_configuration-->
+
+Lors de la configuration de plusieurs instances Tomcat, il est nécessaire que ces instances soient informées de l'existence de chacune. Ceci permettra à DHIS 2 de synchroniser les caches de données locales (Hibernate) et de les maintenir dans un état cohérent. Lorsqu'une mise à jour est effectuée sur une instance, les caches des autres instances doivent en être informées afin qu'ils puissent être invalidés et éviter de devenir obsolètes.
+
+La configuration d'un cluster DHIS 2 repose sur la configuration manuelle de chaque instance. Pour chaque instance DHIS 2, il faut spécifier le *nom d'hôte* public ainsi que les noms d'hôte des autres instances qui font partie du cluster.
+
+Le nom d'hôte du serveur est spécifié à l'aide de la propriété de configuration *cluster.hostname*. Des serveurs supplémentaires qui font partie du cluster sont spécifiés à l'aide de la propriété de configuration *cluster.members*. La propriété attend une liste de valeurs séparées par des virgules, chaque valeur étant au format *host:port*.
+
+Le nom d'hôte doit être visible par les serveurs qui participent au réseau afin que le clustering fonctionne. Il vous faudra peut-être autoriser les connexions entrantes et sortantes sur les numéros de port configurés dans le pare-feu.
+
+Le numéro de port du serveur est spécifié à l'aide de la propriété de configuration *cluster.cache.port*. Le port d'objet distant utilisé pour les appels de réception du registre est spécifié à l'aide de *cluster.cache.remote.object.port*. La spécification des numéros de port n'est généralement utile que lorsque vous avez plusieurs instances de cluster sur le même serveur/la même machine virtuelle ou si vous devez spécifier explicitement les ports à utiliser afin de les configurer dans le pare-feu. Lorsque vous exécutez des instances de cluster sur des serveurs/machines virtuelles distincts, il est souvent approprié d'utiliser le numéro de port par défaut et d'omettre les propriétés de configuration des ports. Si elles sont omises, 4001 sera attribué comme port d'écoute et un port libre aléatoire sera attribué comme port d'objet distant.
+
+Ci-dessous est décrit un exemple de configuration pour un cluster de deux serveurs web.
+Pour le *serveur A* disponible sous le nom d'hôte *193.157.199.131*, l'on peut spécifier ce qui suit dans le fichier *dhis.conf* :
+
+```properties
+# Cluster configuration for server A
+
+# Hostname for this web server
+cluster.hostname = 193.157.199.131
+
+# Ports for cache listener, can be omitted
+cluster.cache.port = 4001
+cluster.cache.remote.object.port = 5001
+
+# List of Host:port participating in the cluster
+cluster.members = 193.157.199.132:4001
+```
+
+Pour le *serveur B* disponible sous le nom d'hôte *193.157.199.132*, les éléments suivants peuvent être spécifiés dans le fichier *dhis.conf* (vous remarquerez que la configuration du port a été omise) : 
+
+```properties
+# Cluster configuration for server B
+
+# Hostname for this web server
+cluster.hostname = 193.157.199.132
+
+# List of servers participating in cluster
+cluster.members = 193.157.199.131:4001
+```
+
+Vous devez redémarrer chaque instance Tomcat pour que les modifications soient prises en compte.
+Les deux instances sont maintenant informées l'une de l'autre et DHIS 2 s'assurera que leurs caches soient synchronisés.
+
+### Configuration du cluster de stockage de données partagées de Redis
+
+<!--DHIS2-SECTION-ID:install_cluster_configuration_redis-->
+
+Pour configurer un cluster, vous avez besoin d'une instance *Redis* qui va gérer les sessions utilisateur partagées, le cache de l'application et les nœuds du cluster.
+
+Pour optimiser les performances, les *événements Redis Keyspace* pour les _commandes génériques_ et les _événements expirés_ doivent être activés sur le serveur Redis. Si vous utilisez un serveur Redis géré par une plateforme cloud (comme AWS ElastiCache pour Redis ou Azure Cache pour Redis), il vous faudra activer les notifications d'événements keyspace à l'aide des interfaces cloud respectives. Si vous configurez un serveur Redis autonome, l'activation des notifications d'événements keyspace peut être effectuée dans le fichier *redis.conf* en ajoutant ou en décommentant la ligne suivante :
+
+```
+notify-keyspace-events Egx
+```
+
+DHIS2 se connectera à Redis si la propriété de configuration *redis.enabled* dans *dhis.conf* est définie sur *true* avec les propriétés suivantes :
+
+- *redis.host* : Spécifie où le serveur Redis est exécuté. La valeur par défaut est *localhost*. Obligatoire.
+
+- *redis.port* : Spécifie le port sur lequel le serveur Redis écoute. La valeur par défaut est *6379*. Facultatif.
+
+- *redis.password* : Spécifie le mot de passe d'authentification. Si un mot de passe n'est pas nécessaire, il peut rester vide.
+
+- *redis.use.ssl* : Spécifie si SSL est activé sur le serveur Redis. La valeur par défaut est *faux*. Facultatif.
+
+Lorsque Redis est activé, DHIS2 attribue automatiquement à l'une des instances en cours d'exécution le rôle de leader du cluster. L'instance leader sera utilisée pour exécuter des travaux ou des tâches planifiées qui doivent être exécutés exclusivement par une instance. En option, vous pouvez configurer la propriété *leader.time.to.live.minutes* dans *dhis.conf* pour définir la fréquence à laquelle le choix du leader doit avoir lieu. Cela donne aussi une indication sur le temps nécessaire pour qu'une autre instance prenne le relais après l'arrêt/le plantage du leader précédent. La valeur par défaut est 2 minutes. Notez que l'attribution d'un leader dans le cluster n'est effectuée que si Redis est activé. Ci-dessous, un exemple de fichier de configuration *dhis.conf* avec Redis activé et la fréquence du choix du leader configurée.
+
+```properties
+# Redis Configuration
+
+redis.enabled = true
+
+redis.host = 193.158.100.111
+
+redis.port = 6379
+
+redis.password = <your password>
+
+redis.use.ssl = false
+
+# Optional, defaults to 2 minutes
+leader.time.to.live.minutes=4 
+```
+
+### Configuration du dossier des fichiers
+
+DHIS 2 va stocker plusieurs types de fichiers hors de l'application elle-même, tels que des applications, des fichiers sauvegardés lors de saisies de données et des avatars d'utilisateurs. Lorsqu'il est déployé dans un cluster, l'emplacement de ces fichiers doit être partagé entre toutes les instances. Sur le système de fichiers local, l'emplacement est le suivant :
+
+```
+{DHIS2_HOME}/files
+```
+
+Ici, `DHIS2_HOME` fait référence à l'emplacement du fichier de configuration DHIS 2 tel que spécifié par la variable d'environnement DHIS 2, et `files` est le dossier de fichiers immédiatement en dessous.
+
+Il existe deux manières d'obtenir un emplacement partagé :
+
+* Utiliser l'option *Stockage de fichiers cloud AWS S3*. Les fichiers seront stockés dans un
+compartiment S3 qui est automatiquement partagé entre toutes les instances DHIS 2 présentes dans le cluster.
+Consulter la section *Configuration de l'entrepôt de fichiers* pour obtenir des conseils.
+* Configurer un dossier partagé entre toutes les instances et tous les serveurs DHIS 2 
+présents dans le cluster. Sur Linux, cela peut être réalisé avec *NFS* (Network File System)
+qui est un protocole de système de fichiers en réseau. Notez que seuls les sous-dossiers `fichiers`
+sous `DHIS2_HOME` doit être partagé, pas le dossier parent.
+
+### Configuration de l'équilibreur de charge
+
+<!--DHIS2-SECTION-ID:install_load_balancing-->
+
+Lorsqu'un cluster d'instances Tomcat est installé, un *équilibreur de charge* peut être utilisé pour acheminer les requêtes web entrantes vers les instances backend du cluster. Un équilibreur de charge veille à ce que la charge soit répartie uniformément entre les instances du cluster. Il détectera également l'indisponibilité d'une instance et, le cas échéant, arrêtera les requêtes de routine vers cette instance et utilisera les autres instances disponibles.
+
+L'équilibrage de la charge peut être réalisé de plusieurs manières. *nginx* est une approche simple. En l'utilisant, vous devrez définir un élément *upstream* qui énumère l'emplacement des instances backend, puis utiliser cet élément dans le bloc d'emplacement *proxy*.
+
+```text
+http {
+
+  # Upstream element with sticky sessions
+
+  upstream dhis_cluster {
+    ip_hash;
+    server 193.157.199.131:8080;
+    server 193.157.199.132:8080;
+  }
+
+  # Proxy pass to backend servers in cluster
+
+  server {
+    listen 80;
+
+    location / {
+      proxy_pass   http://dhis_cluster/;
+    }
+  }
+}  
+```
+
+DHIS 2 conserve l'état des sessions utilisateur côté serveur dans une certaine mesure. L'utilisation de "sessions persistantes" est une approche simple qui permet d'éviter de reproduire l'état de la session du serveur en acheminant les demandes d'un même client vers le même serveur. La directive *ip\_hash* de l'élément upstream garantit cette fonction.
+
+Plusieurs instructions ont été omises par souci de concision dans l'exemple ci-dessus. Consultez la section proxy inverse pour obtenir un guide détaillé.
+
+## Configuration du cache d'analyse
+
+<!--DHIS2-SECTION-ID:install_analytics_cache_configuration-->
+
+DHIS 2 prend en charge un cache côté serveur pour les réponses de l'API d'analyse, utilisé par toutes les applications web d'analyse. Ce cache se trouve dans l'application DHIS 2 et est donc protégé par la couche d'authentification et de sécurité de DHIS 2. Vous pouvez configurer l'expiration des entrées mises en cache en secondes. Pour activer le cache, vous pouvez définir la propriété `analytics.cache.expiration` dans `dhis.conf`. L'exemple ci-dessous active le cache et fixe l'expiration à une heure.
+
+```properties
+analytics.cache.expiration = 3600
+```
+
+## Lancement de Tomcat au démarrage
+
+<!--DHIS2-SECTION-ID:install_starting_tomcat_boot_time-->
+
+Dans certaines situations, un serveur peut redémarrer à l'improviste. Il est donc préférable que Tomcat se lance automatiquement au démarrage du serveur. Pour ce faire, la première étape consiste à créer des scripts d'initialisation. Créez un nouveau fichier appelé ` tomcat`  et collez-y le contenu ci-dessous (adaptez la variable HOME à votre environnement) :
+
+```sh
+#!/bin/sh
+#Tomcat init script
+
+HOME=/home/dhis/tomcat/bin
+
+case $1 in
+start)
+        sh ${HOME}/startup.sh
+        ;;
+stop)
+        sh ${HOME}/shutdown.sh
+        ;;
+restart)
+        sh ${HOME}/shutdown.sh
+        sleep 5
+        sh ${HOME}/startup.sh
+        ;;
+esac
+exit 0
+```
+
+Déplacez le script dans le répertoire des scripts d'initialisation et rendez-les exécutables en appelant :
+
+    sudo mv tomcat /etc/init.d
+    sudo chmod +x /etc/init.d/tomcat
+
+Ensuite, assurez-vous que le script d'initialisation de tomcat soit appelé lors du démarrage et de l'arrêt du système  :
+
+    sudo /usr/sbin/update-rc.d -f tomcat defaults 81
+
+Tomcat va désormais être lancé au démarrage du système et arrêté à l'arrêt du système. Si vous avez besoin de revenir en arrière, vous pouvez remplacer `defaults` par `remove` et appeler à nouveau les commandes ci-dessus.
+
+## Configuration du proxy inverse
+
+<!--DHIS2-SECTION-ID:install_reverse_proxy_configuration-->
+
+Un proxy inverse est un serveur proxy qui agit pour le compte d'un autre serveur. L'utilisation d'un proxy inverse en combinaison avec un conteneur de servlets n'est pas obligatoire mais présente de nombreux avantages :
+
+  - Les requêtes peuvent être mises en correspondance et transmises à plusieurs conteneurs de servlets.
+    Cela rend le système plus flexible et facilite l'exécution de plusieurs
+    instances DHIS2 sur un même serveur. Cela permet également de
+    modifier la configuration du serveur interne sans affecter les clients.
+
+  - L'application DHIS2 peut être exécutée dans un mode autre que super-utilisateur sur un port
+    différent de 80, ce qui réduit la vulnérabilité face au piratage de
+    détournement.
+
+  - Le proxy inverse peut agir comme un serveur SSL unique et être configuré
+    pour inspecter les demandes de contenu malveillant, enregistrer les demandes et
+    les réponses et fournir des messages d'erreur non sensibles qui
+    améliorer la sécurité.
+
+### Configuration de base de nginx
+
+<!--DHIS2-SECTION-ID:install_basic_nginx_setup-->
+
+Nous vous recommandons d'utiliser [nginx](http://www.nginx.org) comme proxy inverse en raison de sa faible empreinte mémoire et sa facilité d'utilisation. Pour l'installer, appelez la commande suivante :
+
+    sudo apt-get install nginx
+
+nginx peut maintenant être lancé, rechargé et arrêté avec les commandes suivantes :
+
+    sudo /etc/init.d/nginx start
+    sudo /etc/init.d/nginx reload
+    sudo /etc/init.d/nginx stop
+
+Maintenant que nous avons installé nginx, nous allons continuer la configuration normale du proxy des requêtes vers notre instance Tomcat, qui, nous le supposons, s'exécute avec l'adresse *http://localhost:8080*. Pour configurer nginx, vous pouvez ouvrir le fichier de configuration en appelant :
+
+    sudo nano /etc/nginx/nginx.conf
+
+La configuration de nginx se fait autour d'une hiérarchie de blocs représentant le http, le serveur et l'emplacement, où chaque bloc hérite des paramètres des blocs parents. L'extrait suivant va configurer nginx pour qu'il passe (redirige) les requêtes du port 80 (qui est le port sur lequel nginx écoute par défaut) vers notre instance Tomcat. Ajoutez la configuration suivante dans le fichier nginx.conf :
+
+```text
+http {
+  gzip on; # Enables compression, incl Web API content-types
+  gzip_types
+    "application/json;charset=utf-8" application/json
+    "application/javascript;charset=utf-8" application/javascript text/javascript
+    "application/xml;charset=utf-8" application/xml text/xml
+    "text/css;charset=utf-8" text/css
+    "text/plain;charset=utf-8" text/plain;
+
+  server {
+    listen               80;
+    client_max_body_size 10M;
+
+    # Proxy pass to servlet container
+
+    location / {
+      proxy_pass                http://localhost:8080/;
+      proxy_redirect            off;
+      proxy_set_header          Host               $host;
+      proxy_set_header          X-Real-IP          $remote_addr;
+      proxy_set_header          X-Forwarded-For    $proxy_add_x_forwarded_for;
+      proxy_set_header          X-Forwarded-Proto  http;
+      proxy_buffer_size         128k;
+      proxy_buffers             8 128k;
+      proxy_busy_buffers_size   256k;
+      proxy_cookie_path         ~*^/(.*) "/$1; SameSite=Lax";
+    }
+  }
+}
+```
+
+Vous pouvez désormais accéder à votre instance DHIS2 à l'adresse *http://localhost*. Etant donné que le proxy inverse a été installé, nous pouvons améliorer la sécurité en configurant Tomcat pour qu'il n'écoute que les connexions locales. Dans */conf/server.xml*, vous pouvez ajouter un attribut *address* avec la valeur *localhost* à l'élément Connector pour HTTP 1.1 comme suit :
+
+```xml
+<Connector address="localhost" protocol="HTTP/1.1" />
+```
+
+### Activation de SSL avec nginx
+
+<!--DHIS2-SECTION-ID:install_enabling_ssl_on_nginx-->
+
+Afin d'améliorer la sécurité, il est recommandé de configurer le serveur qui exécute DHIS2 de manière à ce qu'il communique avec les clients via une connexion cryptée et de s'identifier auprès des clients à l'aide d'un certificat de confiance. Ceci peut être réalisé via SSL qui est un protocole de communication cryptographique fonctionnant au-dessus de TCP/IP. Tout d’abord, installez la bibliothèque *openssl* requise :
+
+    sudo apt-get install openssl
+
+Pour configurer nginx de manière à ce qu'il utilise SSL, vous aurez besoin d'un certificat SSL approprié provenant d'un fournisseur SSL. Le coût d'un certificat varie en fonction de la puissance du cryptage. Un certificat abordable de [Rapid SSL Online (http://www.rapidsslonline.com) devrait répondre à la plupart des besoins. Pour générer le CSR (demande de signature de certificat), vous pouvez appeler la commande ci-dessous. À l'invite du *Nom commun*, entrez le nom du domaine qualifié pour le site que vous sécurisez.
+
+    openssl req -new -newkey rsa:2048 -nodes -keyout server.key -out server.csr
+
+Après avoir reçu vos fichiers de certificat (.pem ou .crt), vous devez les placer avec le fichier server.key généré, dans un emplacement accessible par nginx. Le répertoire où se trouve votre fichier nginx.conf peut servir d'emplacement à cet effet.
+
+Vous trouverez ci-dessous un bloc serveur nginx où les fichiers de certificats sont nommés server.crt et server.key. Étant donné que les connexions SSL se font généralement sur le port 443 (HTTPS), nous transmettons les requêtes sur ce port (443) à l'instance DHIS2 qui s'exécute à l'adresse *http://localhost:8080*. Le premier bloc serveur réécrira toutes les requêtes connectées au port 80 et forcera l'utilisation de HTTPS/SSL. Ceci est également nécessaire car DHIS2 utilise beaucoup de redirections en interne, lesquelles doivent être transmises pour pouvoir utiliser HTTPS. N'oubliez pas de remplacer *\<server-ip\>* par l'IP de votre serveur. Ces blocs doivent remplacer celui de la section précédente.
+
+```text
+http {
+  gzip on; # Enables compression, incl Web API content-types
+  gzip_types
+    "application/json;charset=utf-8" application/json
+    "application/javascript;charset=utf-8" application/javascript text/javascript
+    "application/xml;charset=utf-8" application/xml text/xml
+    "text/css;charset=utf-8" text/css
+    "text/plain;charset=utf-8" text/plain;
+
+  # HTTP server - rewrite to force use of SSL
+
+  server {
+    listen     80;
+    rewrite    ^ https://<server-url>$request_uri? permanent;
+  }
+
+  # HTTPS server
+
+  server {
+    listen               443 ssl;
+    client_max_body_size 10M;
+
+    ssl                  on;
+    ssl_certificate      server.crt;
+    ssl_certificate_key  server.key;
+
+    ssl_session_cache    shared:SSL:20m;
+    ssl_session_timeout  10m;
+
+    ssl_protocols              TLSv1 TLSv1.1 TLSv1.2;
+    ssl_ciphers                RC4:HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers  on;
+
+    # Proxy pass to servlet container
+
+    location / {
+      proxy_pass                http://localhost:8080/;
+      proxy_redirect            off;
+      proxy_set_header          Host               $host;
+      proxy_set_header          X-Real-IP          $remote_addr;
+      proxy_set_header          X-Forwarded-For    $proxy_add_x_forwarded_for;
+      proxy_set_header          X-Forwarded-Proto  https;
+      proxy_buffer_size         128k;
+      proxy_buffers             8 128k;
+      proxy_busy_buffers_size   256k;
+      proxy_cookie_path         ~*^/(.*) "/$1; SameSite=Lax";
+    }
+  }
+}
+```
+
+Notez la dernière valeur de l'en-tête `https` qui est nécessaire pour informer le conteneur de servlets que la requête arrive par HTTPS. Pour que Tomcat produise correctement les en-têtes d'URL d'`Emplacement` en utilisant HTTPS, vous devez également ajouter deux autres paramètres au Connector dans le fichier `server.xml` de Tomcat :
+
+```xml
+<Connector scheme="https" proxyPort="443" />
+```
+
+### Activation de la mise en cache avec nginx
+
+<!--DHIS2-SECTION-ID:install_enabling_caching_ssl_nginx-->
+
+Les demandes de rapports, de graphiques, de cartes et d'autres ressources liées à l'analyse mettent souvent un certain temps avant de recevoir des réponses et peuvent utiliser une grande partie des ressources du serveur. Afin d'améliorer les temps de réponse, de réduire la charge sur le serveur et d'éviter d'éventuels temps d'arrêt, nous pouvons introduire un proxy de cache dans notre configuration de serveur. Le contenu mis en cache sera stocké dans le répertoire /var/cache/nginx, et jusqu'à 250 Mo de stockage y seront alloués. Nginx créera ce répertoire automatiquement.
+
+```text
+http {
+  ..
+  proxy_cache_path  /var/cache/nginx  levels=1:2  keys_zone=dhis:250m  inactive=1d;
+
+
+  server {
+    ..
+
+    # Proxy pass to servlet container and potentially cache response
+
+    location / {
+      proxy_pass                http://localhost:8080/;
+      proxy_redirect            off;
+      proxy_set_header          Host               $host;
+      proxy_set_header          X-Real-IP          $remote_addr;
+      proxy_set_header          X-Forwarded-For    $proxy_add_x_forwarded_for;
+      proxy_set_header          X-Forwarded-Proto  https;
+      proxy_buffer_size         128k;
+      proxy_buffers             8 128k;
+      proxy_busy_buffers_size   256k;
+      proxy_cookie_path         ~*^/(.*) "/$1; SameSite=Lax";
+      proxy_cache               dhis;
+    }
+  }
+}
+```
+
+**Important**
+> >>>>>>>>
+Sachez qu'un cache côté serveur court-circuite les fonctions de sécurité de DHIS2 dans le sens où les requêtes qui atteignent le cache côté serveur seront servies directement à partir du cache hors de contrôle de DHIS2 et du conteneur de servlets. Cela signifie que les URL des requêtes peuvent être devinées de même que les rapports récupérés dans le cache par des utilisateurs non autorisés. Par conséquent, si vous collectez des informations sensibles, la mise en place d'un cache côté serveur n'est pas recommandée.
+
+### Limitation du débit avec nginx
+
+<!--DHIS2-SECTION-ID:install_rate_limiting-->
+
+Certains appels d'API web dans DHIS 2, tels que les API d'`analyses`, nécessitent beaucoup de calculs. Par conséquent, il est préférable de limiter le débit de ces API afin d'équilibrer l'utilisation des ressources du serveur par les utilisateurs du système. La limitation de débit peut être effectuée avec `nginx`. Il existe plusieurs approches pour effectuer la limitation de débit et ceci est destiné à documenter l'approche basée sur nginx.
+
+La configuration nginx ci-dessous limitera le débit de l'API Web des `analyses` et comporte les éléments suivants au niveau des blocs *http* et *emplacement* (la configuration est abrégée par souci de concision) :
+
+```text
+http {
+  ..
+  limit_req_zone $binary_remote_addr zone=limit_analytics:10m rate=5r/s;
+
+  server {
+    ..
+
+    location ~ ^/api/(\d+/)?analytics(.*)$ {
+      limit_req    zone=limit_analytics burst=20;
+      proxy_pass   http://localhost:8080/api/$1analytics$2$is_args$args;
+      ..
+    }
+  }
+}
+```
+
+Les différents éléments de la configuration peuvent être décrits comme suit :
+
+- *limit_req_zone $binary_remote_addr* : la limitation du débit est effectuée par adresse IP de requête.
+- *zone=limit_analytics:20m* : une zone de limite de débit pour l'API des analyses qui peut contenir jusqu'à 10 Mo d'adresses IP de requête.
+- *taux=20r/s* : Chaque IP reçoit 5 requêtes par seconde.
+- *emplacement ~ ^/api/(\d+/)?analytics(.\*)$* : les requêtes pour le point d'extrémité de l'API des analyses sont limitées en débit.
+- *burst=20* : des rafales contenant jusqu'à 20 requêtes seront mises en file d'attente et traitées ultérieurement ; des demandes supplémentaires conduiront à un `503`.
+
+Pour obtenir une explication complète, veuillez consulter la [documentation nginx](https://www.nginx.com/blog/rate-limiting-nginx/).
+
+### Ressources supplémentaires sur SSL
+
+<!--DHIS2-SECTION-ID:install_additional_resources_ssl-->
+
+La configuration présentée ci-dessus doit être considérée comme le strict minimum pour mettre en place un serveur sécurisé. Cependant, les méthodes de cryptage sont constamment mises à jour. Les administrateurs qui gèrent leur propre serveur doivent donc s'assurer que celui-ci est régulièrement mis à jour avec les derniers correctifs de sécurité (en particulier le serveur HTTP et les bibliothèques SSL).
+
+De nombreux tutoriels et informations supplémentaires sont disponibles sur le web, notamment un [guide étape par étape très utile](https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-encrypt-on-ubuntu-16-04) pour utiliser le [système de certificats SSL Lets Encrypt](https://letsencrypt.org/) gratuit. Vous pouvez également tester régulièrement votre sécurité SSL à l'aide de [ce site web](https://www.ssllabs.com/ssltest/).
+
+### Rendre les ressources disponibles avec nginx
+
+<!--DHIS2-SECTION-ID:install_making_resources_available_with_nginx-->
+
+Dans certains cas, il est souhaitable de rendre certaines ressources accessibles au public sur le web sans exiger une quelconque authentification. C'est le cas, par exemple, lorsque vous souhaitez rendre les ressources liées à l'analyse des données de l'API Web disponibles dans un portail Web. L'exemple suivant permet d'accéder aux graphiques, aux cartes, aux rapports, aux tableaux de rapports et aux ressources documentaires par le biais d'une authentification de base en insérant un en-tête HTTP d'*Autorisation* dans la demande. Il supprimera l'en-tête Cookie de la requête et l'en-tête Set-Cookie de la réponse afin d'éviter de modifier l'utilisateur connecté. Il est recommandé de créer un utilisateur à cette fin, en ne lui accordant que les autorisations minimales requises. La valeur d'autorisation peut être construite en codant le nom d'utilisateur avec base64, suivi de deux points et le mot de passe et en lui ajoutant le préfixe "Basic", plus précisément "Basic base64_encode(nom d'utilisateur:mot de passe)". Il vérifiera la méthode HTTP utilisée pour les requêtes et renverra *405 Method Not Allowed* s'il détecte autre chose que GET.
+
+En utilisant cette approche, il peut être avantageux de créer un domaine séparé pour les utilisateurs publics. En effet, nous ne voulons pas modifier les informations d'identification des utilisateurs déjà connectés lorsqu'ils accèdent aux ressources publiques. Par exemple, si votre serveur est déployé à l'adresse somedomain.com, vous pouvez créer un sous-domaine dédié à api.somedomain.com et orienter les URL de votre portail vers ce sous-domaine.
+
+```text
+http {
+  ..
+
+  server {
+    listen       80;
+    server_name  api.somedomain.com;
+
+    location ~ ^/(api/(charts|chartValues|reports|reportTables|documents|maps|organisationUnits)|dhis-web-commons/javascripts|images|dhis-web-commons-ajax-json|dhis-web-mapping|dhis-web-visualizer) {
+    if ($request_method != GET) {
+        return 405;
+      }
+
+      proxy_pass         http://localhost:8080;
+      proxy_redirect     off;
+      proxy_set_header   Host               $host;
+      proxy_set_header   X-Real-IP          $remote_addr;
+      proxy_set_header   X-Forwarded-For    $proxy_add_x_forwarded_for;
+      proxy_set_header   X-Forwarded-Proto  http;
+      proxy_set_header   Authorization      "Basic YWRtaW46ZGlzdHJpY3Q=";
+      proxy_set_header   Cookie             "";
+      proxy_hide_header  Set-Cookie;
+    }
+  }
+}
+```
+
+### Configuration de base d'un proxy inverse avec Apache
+
+<!--DHIS2-SECTION-ID:install_basic_reverse_proxy_setup_with_apache-->
+
+Le serveur HTTP Apache est un serveur HTTP très populaire. En fonction de la nature exacte de votre déploiement, il vous faudra peut-être utiliser Apache comme proxy inverse pour votre serveur DHIS2. Dans cette section, nous décrirons comment effectuer une configuration simple de proxy inverse avec Apache.
+
+> **Important**
+> 
+> Nginx est l'option de proxy inverse préférée avec DHIS2 et n'essayez pas d'installer à la fois nginx et Apache sur le même serveur. Si vous avez installé nginx, veuillez ignorer cette section. > > 
+
+Tout d'abord, nous devons installer quelques modules de programmes nécessaires pour Apache et les activer.
+
+    sudo apt-get install apache2 libapache2-mod-proxy-html libapache2-mod-jk
+    a2enmod proxy proxy_ajp proxy_connect
+
+Définissons un connecteur AJP que le serveur HTTP Apache utilisera pour se connecter à Tomcat. Le fichier Tomcat `server.xml` doit se trouver dans le répertoire /conf/ de votre installation Tomcat. Assurez-vous que cette ligne n'est pas commentée. Vous pouvez définir le port comme vous le souhaitez, à condition qu'il ne soit pas déjà utilisé.
+
+```xml
+<Connector port="8009" protocol="AJP/1.3" redirectPort="8443" />
+```
+
+Nous devons maintenant effectuer des ajustements sur le serveur HTTP Apache qui répondra aux requêtes sur le port 80 et les transmettra au serveur Tomcat via un connecteur AJP. Modifiez le fichier `/etc/apache2/mods-enabled/proxy.conf` afin qu'il ressemble à l'exemple ci-dessous. Assurez-vous que le port défini dans le fichier de configuration correspond à celui de Tomcat.
+
+```apache_conf
+<IfModule mod_proxy.c>
+
+ProxyRequests Off
+ProxyPass /dhis  ajp://localhost:8009/dhis
+ProxyPassReverse /dhis  ajp://localhost:8009/dhis
+
+<Location "/dhis">
+  Order allow,deny
+  Allow from all
+</Location>     
+</IfModule>
+```
+
+Vous pouvez maintenant redémarrer Tomcat et le serveur Apache HTTPD et votre instance DHIS2 devrait être disponible sur http://*myserver*/dhis où *myserver* est le nom d'hôte de votre serveur.
+
+### Cryptage SSL avec Apache
+
+<!--DHIS2-SECTION-ID:install_ssl_encryption_with_apache-->
+
+En utilisant Apache et la configuration de proxy inverse décrite dans la section précédente, nous pouvons facilement effectuer le transfert crypté de données entre les clients et le serveur via HTTPS. Cette section décrit comment utiliser des certificats auto-signés, bien que la même procédure puisse être utilisée si vous disposez également de certificats entièrement signés.
+
+Tout d'abord (en tant que superutilisateur ), générez les fichiers de clés privées et les CSR (Certificate Signing Request ou requête de signature de certificat) nécessaires.
+
+    mkdir /etc/apache2/ssl
+    cd /etc/apache2/ssl
+    openssl genrsa -des3 -out server.key 1024
+    openssl req -new -key server.key -out server.csr
+
+Nous devons supprimer le mot de passe de la clé, sinon Apache ne pourra pas l'utiliser.
+
+    cp server.key server.key.org
+    openssl rsa -in server.key.org -out server.key
+
+Ensuite, générez un certificat auto-signé qui sera valide pendant un an.
+
+    openssl x509 -req -days 365 -in server.csr -signkey \ server.key -out server.crt
+
+Nous allons maintenant configurer Apache en activant les modules SSL et en créant un site par défaut.
+
+    a2enmod ssl
+    a2ensite default-ssl
+
+Maintenant, nous devons éditer le fichier default-ssl (situé dans `/etc/apache2/sites-enabled/default-ssl`) afin d'activer la fonctionnalité de transfert SSL d'Apache.
+
+```apache_conf
+<VirtualHost *:443>
+    ServerAdmin wemaster@mydomain.org
+    SSLEngine On
+    SSLCertificateFile /etc/apache2/ssl/server.crt
+    SSLCertificateKeyFile /etc/apache2/ssl/server.key
+    ...
+```
+
+Assurez-vous que la section \*:80 de ce fichier soit remplacée par le port \*:443, qui est le port SSL par défaut. Veillez également à remplacer ServerAdmin par l'adresse e-mail du webmaster. Enfin, nous devons nous assurer que le nom d'hôte est correctement configuré dans /etc/hosts. Juste en dessous de la ligne "localhost", veillez à ajouter l'adresse IP et le nom de domaine du serveur.
+
+    127.0.0.1 localhost
+    XXX.XX.XXX.XXX foo.mydomain.org
+
+Maintenant, redémarrez Apache. Vous devriez pouvoir consulter https://foo.mydomain.org/dhis.
+
+    /etc/init.d/apache2 restart
+
+## Référence de configuration de DHIS2
+
+<!--DHIS2-SECTION-ID:install_dhis2_configuration_reference-->
+
+Dans ce qui suit, nous allons décrire l'ensemble complet des options de configuration pour le fichier de configuration *dhis.conf*. Le fichier de configuration doit être placé dans un répertoire vers lequel est orienté une variable d'environnement de *DHIS2_HOME*.
+
+> **Remarque**
+>
+> Vous ne devez pas utiliser ce fichier de configuration directement, mais plutôt comme référence pour les options de configuration disponibles. Plusieurs propriétés sont facultatives.
+
+```properties
+# ----------------------------------------------------------------------
+# Database connection for PostgreSQL [Mandatory]
+# ----------------------------------------------------------------------
+
+# Hibernate SQL dialect
+connection.dialect = org.hibernate.dialect.PostgreSQLDialect
+
+# JDBC driver class
+connection.driver_class = org.postgresql.Driver
+
+# Database connection URL
+connection.url = jdbc:postgresql:dhis2
+
+# Database username
+connection.username = dhis
+
+# Database password (sensitive)
+connection.password = xxxx
+
+# Database schema behavior, can be 'validate', 'update', 'create', 'create-drop'
+connection.schema = update
+
+# Max size of connection pool (default: 40)
+# connection.pool.max_size = 40
+
+# ----------------------------------------------------------------------
+# Server [Mandatory]
+# ----------------------------------------------------------------------
+
+# Base URL to the DHIS 2 instance
+server.base.url = https://play.dhis2.org/dev 
+
+# Enable secure settings if system is deployed on HTTPS, can be 'off', 'on'
+server.https = off
+
+# ----------------------------------------------------------------------
+# System [Optional]
+# ----------------------------------------------------------------------
+
+# System mode for database read operations only, can be 'off', 'on'
+system.read_only_mode = off
+
+# Session timeout in seconds, default is 3600
+system.session.timeout = 3600
+
+# SQL view protected tables, can be 'on', 'off'
+system.sql_view_table_protection = on
+
+# ----------------------------------------------------------------------
+# Encryption [Optional]
+# ----------------------------------------------------------------------
+
+# Encryption password (sensitive)
+encryption.password = xxxx
+
+# ----------------------------------------------------------------------
+# File store [Optional]
+# ----------------------------------------------------------------------
+
+# File store provider, currently 'filesystem' and 'aws-s3' are supported
+filestore.provider = filesystem
+
+# Directory / bucket name, folder below DHIS2_HOME on file system, 'bucket' on AWS S3
+filestore.container = files
+
+# Datacenter location (not required)
+filestore.location = eu-west-1
+
+# Public identity / username
+filestore.identity = dhis2-id
+
+# Secret key / password (sensitive)
+filestore.secret = xxxx
+
+# ----------------------------------------------------------------------
+# LDAP [Optional]
+# ----------------------------------------------------------------------
+
+# LDAP server URL
+ldap.url = ldaps://300.20.300.20:636
+
+# LDAP manager user distinguished name
+ldap.manager.dn = cn=JohnDoe,ou=Country,ou=Admin,dc=hisp,dc=org
+
+# LDAP manager user password (sensitive)
+ldap.manager.password = xxxx
+
+# LDAP entry distinguished name search base
+ldap.search.base = dc=hisp,dc=org
+
+# LDAP entry distinguished name filter
+ldap.search.filter = (cn={0})
+
+# ----------------------------------------------------------------------
+# Node [Optional]
+# ----------------------------------------------------------------------
+
+# Node identifier, optional, useful in clusters
+node.id = 'node-1'
+
+# ----------------------------------------------------------------------
+# Analytics [Optional]
+# ----------------------------------------------------------------------
+
+# Analytics server-side cache expiration in seconds
+analytics.cache.expiration = 3600
+
+# ----------------------------------------------------------------------
+# System monitoring [Optional]
+# ----------------------------------------------------------------------
+
+# System monitoring URL
+system.monitoring.url = 
+
+# System monitoring username
+system.monitoring.username = 
+
+# System monitoring password (sensitive)
+system.monitoring.password = xxxx
+```
+
+## Journalisation des applications
+
+<!--DHIS2-SECTION-ID:install_application_logging-->
+
+Cette section traite de la journalisation des applications dans DHIS 2.
+
+### Fichiers journaux
+
+La sortie du journal de l'application DHIS2 est dirigée vers plusieurs fichiers et emplacements. Tout d'abord, la sortie du journal est envoyée à la sortie standard. Le conteneur de servlets Tomcat envoie généralement la sortie standard vers un fichier sous "logs" (journaux) :
+
+    <tomcat-dir>/logs/catalina.out
+
+Ensuite, la sortie du journal est écrite dans un répertoire "logs" sous le répertoire d'accueil de DHIS2, tel que défini par les variables d'environnement de DHIS2_HOME. Il existe un fichier journal principal pour toutes les sorties, et des fichiers journaux distincts pour les différents processus en arrière plan. Le fichier principal comprend également les journaux des processus en arrière plan. Les fichiers journaux sont plafonnés à 50 Mo et leur contenu reçoit continuellement de nouveaux éléments.
+
+    <DHIS2_HOME>/logs/dhis.log    
+    <DHIS2_HOME>/logs/dhis-analytics-table.log
+    <DHIS2_HOME>/logs/dhis-data-exchange.log
+    <DHIS2_HOME>/logs/dhis-data-sync.log
+
+### Configuration du journal
+
+Pour écraser la configuration par défaut du journal, vous pouvez spécifier une propriété de système Java portant le nom *log4j.configuration* et une valeur pointant vers le fichier de configuration Log4j sur le classpath. Si vous voulez pointer vers un fichier sur le système de fichiers (c'est-à-dire en dehors de Tomcat), vous pouvez utiliser le préfixe *file*, par exemple comme ceci :
+
+```properties
+-Dlog4j.configuration=file:/home/dhis/config/log4j.properties
+```
+
+Les propriétés du système Java peuvent être définies, par exemple via la variable d'environnement *JAVA\_OPTS* ou dans le script de démarrage Tomcat.
+
+Pour remplacer la configuration du journal, une deuxième approche consiste à spécifier les propriétés de journalisation dans le fichier de configuration *dhis.conf*. Les propriétés prises en charge sont :
+
+```propriétés
+# Taille maximale des fichiers journaux, la valeur par défaut est '100Mo'
+journalisation.file.max_size = 250 Mo
+
+# Nombre maximum de fichiers d'archives de journaux glissants, la valeur par défaut est 0
+journalisation.file.max_archives = 2
+```
+
+DHIS2 supprimera progressivement la journalisation vers la sortie standard / catalina.out et il est donc recommandé de se fier aux journaux qui se trouvent dans DHIS2_HOME.
+
+## Travailler avec la base de données PostgreSQL
+
+<!--DHIS2-SECTION-ID:install_working_with_the_postgresql_database-->
+
+Les opérations courantes lors de la gestion d'une instance DHIS2 sont le vidage et la restauration des bases de données. Pour effectuer un vidage (copie) de votre base de données, en prenant en compte la configuration de la section d'installation, vous pouvez appeler la commande suivante :
+
+    pg_dump dhis2 -U dhis -f dhis2.sql
+
+Le premier argument (dhis2) fait référence au nom de la base de données. Le deuxième argument (dhis) fait référence à l'utilisateur de la base de données. Le dernier argument (dhis2.sql) est le nom de fichier de la copie. Si vous souhaitez compresser immédiatement la copie du fichier, vous pouvez procéder comme suit :
+
+    pg_dump dhis2 -U dhis | gzip > dhis2.sql.gz
+
+Pour restaurer cette copie sur un autre système, vous devez d'abord créer une base de données vide tel que décrit dans la section consacrée à l'installation. Vous devez également décompresser la copie à l'aide de la commande gunzip si vous aviez créé une version compressée. Vous pouvez appeler la commande suivante :
+
+    psql -d dhis2 -U dhis -f dhis2.sql
+
+## Configuration de DHIS2 Live
+
+<!--DHIS2-SECTION-ID:install_dhis2_live_setup-->
+
+Le package DHIS2 Live est très facile à installer et à utiliser. Il est destiné aux démonstrations, aux utilisateurs qui souhaitent explorer le système et aux petites installations hors ligne, généralement dans les districts ou les établissements. Il ne nécessite qu'un environnement d'exécution Java et fonctionne sur tous les navigateurs, à l'exception d'Internet Explorer 7 et des versions antérieures.
+
+Pour l'installer, commencez par télécharger DHIS2 Live à l'adresse *http://dhis2.org* et extrayez l'archive vers l'emplacement de votre choix. Sur Windows, cliquez sur l'archive exécutable. Sur Linux, exécutez le script startup.sh. Une fois le processus de démarrage terminé, votre navigateur web par défaut sera automatiquement dirigé vers *http://localhost:8082*, où l'application est accessible. Une zone de notification est accessible sur la plupart des systèmes d'exploitation, où vous pouvez démarrer et arrêter le serveur et lancer de nouvelles sessions de navigateur. Notez que si le serveur est en cours d'exécution, il n'est pas nécessaire de le redémarrer, il suffit d'ouvrir l'application à partir du menu de la zone de notification.
+
+DHIS2 Live fonctionne sur un conteneur de servlets Jetty intégré et une base de données H2 intégrée. Cependant, il peut facilement être configuré pour fonctionner sur d'autres systèmes de bases de données tels que PostgreSQL. Veuillez lire la section ci-dessus sur les installations de serveurs pour obtenir des explications sur la configuration de la base de données. Le fichier de configuration *dhis.conf* se trouve dans le dossier *conf*. N'oubliez pas de redémarrer le package Live pour que vos modifications soient appliquées. Le port du serveur est défini sur 8082 par défaut. Vous pouvez le modifier en changeant la valeur dans le fichier de configuration *jetty.port* qui se trouve dans le répertoire *conf*.
