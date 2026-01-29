@@ -1,0 +1,301 @@
+---
+edit_url: "https://github.com/dhis2-metadata/CRVS_VE/blob/master/docs/crvs_ve-design-v1.0.0.md"
+revision_date: "2022-05-27"
+---
+
+# Životní události - Průvodce návrhem trasovacího systému { #crvs-ve-design-100 }
+
+## 1. Úvod { #1-introduction }
+
+Dosažení cílů v oblasti zdraví souvisejících s cíli udržitelného rozvoje (SDG) bude vyžadovat silné a odolné zdravotnické systémy. Informační systém o zdraví je jedním ze šesti základních stavebních kamenů zdravotnických systémů. Realizace lepších výsledků v oblasti zdraví u žen, mladistvých a dětí závisí na dobře informovaných a včasných rozhodnutích a opatřeních přijatých manažery zdravotnických systémů a tvůrci politik. Investice do zlepšování civilní registrace a životně důležité statistiky (CRVS) jsou klíčem k pokroku při vykazování indikátorů udržitelného rozvoje č. 3 souvisejících se zdravím.
+
+Bez ohledu na důležitost dostupnosti životně důležitých statistik je nerovnoměrná implementace systémů civilní registrace výsledkem mnoha překážek, jako je vzdálenost a přístupnost, přímé a nepřímé hotové náklady, nedostatek znalostí a kulturní faktory, které znevýhodňují -populace, jako jsou ženy nebo migranti.
+
+Vital Events (VE) Tracker je nástroj určený ke zvýšení dostupnosti a používání spolehlivých dat za účelem posílení výkonnosti zdravotnických systémů. Modul tracker poskytuje příležitost zlepšit včasnost a přesnost údajů a rozšířit pokrytí hlášení hlavních událostí, jako je narození, narození mrtvých dětí a úmrtí, spuštěním upozornění v reálném čase přímo z místa péče. Samotná oznámení nenahradí oficiální národní CRVS ani právní rámec implementujících zemí, ale zlepší a posílí základ spolehlivého demografického statistického úložiště.
+
+Tento balíček byl vyvinut v reakci na vyjádřenou potřebu společného prohlášení UNICEF, GAVI a WHO, ve kterém všechny agentury potvrdily svůj závazek vůči SGD a zranitelnému obyvatelstvu, zejména ženám a dětem, spoluprací s vládami a partnery na posílení systémů CRVS . Návrh vychází z pokynů UNICEF pro politiky, tvůrce politik, manažery a rozvojové partnery v programu [PŘÍSPĚVKY ZDRAVOTNÍHO SEKTORU K ZLEPŠOVÁNÍ OBČANSKÉ REGISTRACE NAROZENÍ A SMRTÍ V ZEMÍCH S NÍZKÝMI PŘÍJMY](https://apps.who.int/iris/handle/10665/341911)
+
+Tento dokument je určen k použití implementátory DHIS2 na úrovni země a regionu, aby bylo možné podpořit implementaci a lokalizaci balíčku. Při konfiguraci a přizpůsobení tohoto balíčku je třeba vzít v úvahu místní pracovní toky, národní směrnice a příslušné pokyny k očkovacím přípravkům.
+
+## 2. Přehled návrhu systému { #2-system-design-overview }
+
+### 2.1 Pouzdro { #21-use-case }
+
+Celkovým cílem je prosazovat práva dětí a žen, jakož i plánování a programování založené na důkazech prostřednictvím posílení údajů o populaci v dané zemi urychlením živého porodu, mrtvého porodu, úplnosti oznámení/úmrtí.
+
+Datový model trackeru v DHIS2 umožňuje registraci jednotlivce a sledování v řadě zdravotnických služeb poskytovaných v průběhu času. Tento model lze využít ke sledování dokončení očkovacích plánů jednotlivců podle národních zásad a doporučení produktů, jakož i k zachycení robustních údajů na individuální úrovni za účelem podpory analýzy distribuce, absorpce a dokončení očkování podle demografie, základních podmínek a dalších proměnných .
+
+### 2.2 Zamýšlení uživatelé { #22-intended-users }
+
+-   Kliničtí uživatelé: program Vital Events tracker je optimalizován pro zadávání dat v Point of Care.
+-   Manažeři zařízení, okresní zdravotní úřady a pracovníci národních programů: data generovaná programem se vkládají do standardizovaného ovládacího panelu, který monitoruje klíčové indikátory pro každou zásadní událost.
+
+### 2.3 Informační tok { #23-information-flow }
+
+![Pracovní postup životně důležitých událostí](resources/images/ve_01_flowchart.png)
+
+Přestože se pracovní postup kolem registrace zásadní události bude v jednotlivých zemích lišit, tracker byl navržen podle toku informací ve vývojovém diagramu výše.
+
+Každá zásadní událost projde registračním procesem. V závislosti na samotné události bude událost narození, narození mrtvého dítěte nebo úmrtí vyžadovat informace specifické pro danou fázi. Nakonec, jakmile jsou všechna data zadána do systému, může uživatel odeslat upozornění na CRVS a nahlášené kontakty v reálném čase prostřednictvím SMS, systémového oznámení nebo výměny dat.
+
+Z údajů zakódovaných v zápisu a různých fázích budou k dispozici standardní analýzy dat ve formě předdefinovaných řídicích panelů. Analytika také poskytne možnost propojit tento balíček s jinými balíčky DHIS2 pro analýzu triangulace dat (např. Imunizační registr, sledovač HIV nebo příčina smrti, abychom jmenovali alespoň některé), pokud jsou nainstalovány ve stejné instanci.
+
+## 3. Konfigurace programu Tracker { #3-tracker-program-configuration }
+
+| Struktura | Popis |
+| --- | --- |
+| 1. Zápis | První krok programu. V sekci profilu bude uživatel muset zadat informace o typu oznámení (narození, úmrtí, narození mrtvého dítěte), aby mohl postoupit do další fáze. |
+| 2. Podrobnosti o narození NEBO podrobnosti o smrti NEBO podrobnosti o narození mrtvého dítěte | Druhý krok programu. Informace požadované k odeslání oznámení jsou specifické pro konkrétní fázi v závislosti na vybraném výsledku registrace. Oznámení o úmrtí se dále rozlišuje v závislosti na věku zesnulého (pod nebo nad 28 dnů). |
+
+Vezměte prosím na vědomí, že všechny TEA a DE byly při zadávání údajů nastaveny jako **povinné**. Toto rozhodnutí bylo učiněno za účelem zvýšení úplnosti a kvality oznamovacích údajů a zajištění řádného přezkoumání modelu balíčku po implementaci, protože místní úpravy mohou potenciálně ovlivnit další DE nebo TEA.
+
+### 3.1 Datové prvky v různých fázích programu { #31-data-elements-in-different-program-stages }
+
+| Datový prvek | Fáze programu | Používá se v indikátorech? | Souvisí s pravidly programu? |
+| --- | --- | --- | --- |
+| GEN - Místo narození | Podrobnosti o narození Podrobnosti o smrti Podrobnosti o porodu | NE | ANO |
+| GEN - způsob porodu | Podrobnosti o narození Podrobnosti o smrti Podrobnosti o porodu | NE | NE |
+| GEN - Zařízení narození | Podrobnosti o narození Podrobnosti o smrti Podrobnosti o porodu | NE | ANO |
+| GEN - Vesnice narození | Podrobnosti o narození Podrobnosti o smrti Podrobnosti o porodu | NE | ANO |
+| GEN - ošetřovatel při narození | Podrobnosti o narození Podrobnosti o smrti Podrobnosti o porodu | NE | NE |
+| GEN - typ porodu | Podrobnosti o narození Podrobnosti o smrti Podrobnosti o porodu | ANO | ANO |
+| GEN - Gestační věk | Podrobnosti o narození Podrobnosti o smrti Podrobnosti o porodu | ANO | ANO |
+| GEN - porodní hmotnost (gramy) | Podrobnosti o narození Podrobnosti o smrti Podrobnosti o porodu | NE | ANO |
+| GEN - Parita | Podrobnosti o narození Podrobnosti o smrti Podrobnosti o porodu | NE | NE |
+| VE - Odeslat oznámení | Podrobnosti o narození Podrobnosti o smrti Podrobnosti o porodu | ANO | ANO |
+| VE - Místo úmrtí | Podrobnosti o úmrtí | NE | ANO |
+| VE - Zařízení úmrtí | Podrobnosti o úmrtí | NE | ANO |
+| VE - Vesnice zesnulého | Podrobnosti o úmrtí | NE | ANO |
+| VE - Způsob úmrtí | Podrobnosti o úmrtí | NE | NE |
+| VE - klasifikace mrtvě narozených dětí | Podrobnosti o mrtvém porodu | ANO | NE |
+| VE - Pohlaví není známo | Podrobnosti o mrtvém porodu | NE | ANO |
+
+DE v balíčku lze v případě potřeby rozšířit. Před přidáním dalších datových prvků nebo TEA se prosím poraďte s Common Tracker Library, protože některé, které plánujete integrovat do programu, mohou být také kategorizovány jako GEN -.
+
+### 3.2 Podrobnosti o fázích programu { #32-program-stages-details }
+
+#### 3.2.1 Zápis { #321-enrollment }
+
+![Fáze zápisu](resources/images/ve_02_enrollment.png)
+
+Fáze zápisu se rozšiřuje na základě výběru požadovaného typu oznámení. Většina atributů trasovaných entit (TEA) požadovaných v profilech pro různé typy oznámení je však stejná.
+
+| Atribut trasované entity | typ oznámení | Komentáře a informace |
+| :-: | :-: | :-: |
+| Datum narození | Narození, smrt, mrtvé narození |  |
+| Datum narození se odhaduje | Narození, smrt, mrtvé narození |  |
+| Datum úmrtí | Úmrtí |  |
+| Občanský průkaz | Narození, smrt, mrtvé narození |  |
+| Křestní jméno | Narození, smrt, mrtvé narození | Existuje varování před mrtvě narozenými dětmi a pro úmrtí <1 rok: „Pokud dítě nemá křestní jméno. Zadejte křestní jméno matky + „Chlapec“ nebo „Dívka“ - toto lze odebrat nebo upravit, aby lépe odráželo místní kontext. Jako zástupný symbol pravidla byla přidána hranice 1 roku a věkovou hranici lze upravit nebo odebrat. |
+| Příjmení | Narození, smrt, mrtvé narození |  |
+| Pohlaví | Narození, smrt, mrtvé narození |  |
+| Pohlaví neznámé | Mrtvé narození |  |
+| Adresa bydliště | Narození, smrt, mrtvé narození |  |
+| Křestní jméno primárního kontaktu Příjmení primárního kontaktu Příjmení primárního kontaktu Číslo primárního kontaktu | Narození, smrt, mrtvé narození |  |
+| Křestní jméno sekundárního kontaktu Příjmení sekundárního kontaktu ID sekundárního kontaktu Číslo sekundárního kontaktu | Narození, smrt, mrtvé narození | Vezměte prosím na vědomí, že sekundární kontakt se zobrazí pouze tehdy, když se vyplňují informace o primárním kontaktu. |
+
+TEA v sekci profilu ve fázi zápisu lze rozšířit, aby odrážely místní předpisy a požadované informace - např. může být doplněn jedinečný identifikátor nebo informace o odpovědných pracovnících pro dané zařízení.
+
+Před přidáním dalších datových prvků nebo TEA se prosím poraďte s Common Tracker Library, protože některé, které plánujete integrovat do programu, mohou být také kategorizovány jako GEN -.
+
+#### 3.2.2 Zápis narození { #322-birth-enrollment }
+
+V tuto chvíli byla malá Olivia zapsána do systému, ale oznámení ještě nebylo odesláno.
+
+![Zápis narození](resources/images/ve_03_birth_notification.png)
+
+#### 3.2.3 Fáze podrobností narození { #323-birth-details-stage }
+
+Druhá fáze programu „Podrobnosti o porodu“ si vyžádá více informací o dítěti a porodu. Oznámení o narození Olivie bude zasláno na CRVS a čísla kontaktů pouze v případě, že:
+
+-   Zaškrtnuto je „Odeslat oznámení“
+-   Jsou vyplněny všechny požadované datové body
+-   Fáze bude označena jako „dokončená“.
+
+![Fáze podrobností narození](resources/images/ve_04_birth_details.png)
+
+Datové prvky uvedené v této fázi a možnosti dostupné v rozevíracích seznamech se mění/zmenšují/zvětšují podle místního kontextu.
+
+-> Automatická varování se spustí vždy, když porodní hmotnost překročí horní a dolní mezní hodnotu. Spodní prahová hodnota pro výstražnou spoušť byla nastavena na 2500 g, zatímco horní mez byla nastavena na 4500 g. Toto varování bylo nastaveno čistě proto, aby se předešlo chybám při zadávání údajů, jako je překlep nebo míchání hmotnostních jednotek (kg místo g). Upozorňujeme, že varovná zpráva neznamená zdravotní stav novorozence.
+
+#### 3.2.4 Zápis mrtvě narozených dětí { #324-stillbirth-enrollment }
+
+V tomto okamžiku byl chlapeček zapsán do systému, ale oznámení ještě nebylo odesláno. Jelikož chlapec ještě nebyl jmenován, byl nahlášen podle varování pod TEA „Jméno“. Varování lze upravit nebo odstranit podle místních zásad a pokynů.
+
+![Zápis mrtvě narozených](resources/images/ve_05_stillbirth_enrollment.png)
+
+--> V případě, že pohlaví dítěte není zaznamenáno, může pracovník zadávající údaje zakódovat pohlaví jako neznámé zaškrtnutím políčka nad Sex TEA.
+
+--> Varovná zpráva o jménu mrtvě narozeného dítěte se ve výchozím nastavení zobrazí vždy, když je jako typ oznámení vybráno „mrtvě narozené dítě“.
+
+#### 3.2.5 Detaily Fáze mrtvého narození\*\* { #325-stillbirth-details-stage }
+
+Druhá fáze procesu oznámení o narození mrtvého dítěte si vyžádá více informací o porodu a zemřelém dítěti.
+
+![Detaily Fáze o mrtvém porodu](resources/images/ve_06_stillbirth_details.png)
+
+Stejně jako ve fázi oznámení o porodu existuje několik automatických varování, která lépe vedou zadávání dat. Varování se spustí vždy, když poskytnuté informace vypadnou z normálních rozsahů. Neposkytují lékařské pokyny, ale pouze připomínku, abyste byli při zadávání těchto údajů obzvláště pozorní.
+
+-   **Automatická varování** se spustí vždy, když:
+
+1. Gestační věk _mrtvého porodu je nižší než 22 týdnů_. Toto **zástupné upozornění** je stanoveno na 22 týdnů jako spodní limit: podle mezinárodních standardů lze smrt zařadit jako mrtvě narozené po 22 týdnech. Pokud mají jakékoli jiné národní pokyny různé prahové hodnoty (např. 20 týdnů), lze prahovou hodnotu příslušně změnit. Pokud týden není lokálně nastaven žádný práh, lze pro hmotnost s prahovou hodnotou nastavenou na 500 gramů nakonfigurovat jiné varování.
+
+2. _Hmotnost porodu překračuje horní a dolní mezní hodnoty_. Dolní prahová hodnota pro varování byla stanovena na 2500 g, zatímco horní hranice byla stanovena na 4500 g.
+
+#### 3.2.6. Zápis úmrtí { #326-death-enrollment }
+
+Oznámení o úmrtí se liší v závislosti na věku zemřelého.
+
+##### 3.2.6.1 Zápis úmrtí, ke kterému došlo > 28 dní po porodu { #3261-enrollment-of-a-death-occurring-28-days-after-birth }
+
+John zemřel ve věku 83 let. Syn a hlavní kontakt, Taylor, si nebyl jistý datem narození svého otce. Úředník pro údaje proto zaškrtl políčko „Datum narození se odhaduje“.
+
+![Zápis úmrtí > 28 dní](resources/images/ve_07_death_enrollment_over_28_days.png)
+
+--> Vezměte prosím na vědomí, že automatická varovná zpráva (stejná zpráva jako ta, která je uvedena pro jméno mrtvě narozených) se objeví pod TEA pro křestní jméno pro všechny úmrtí dětí, ke kterým došlo během prvního roku života (nastaveno jako zástupný symbol). Varovnou zprávu nebo prahovou hodnotu lze změnit nebo odstranit podle místních pokynů.
+
+##### 3.2.6.2 Podrobnosti o úmrtí při úmrtí > 28 dní po narození { #3262-death-details-of-a-death-occurring-28-days-after-birth }
+
+Informace požadované ve fázi podrobností o smrti jsou minimální. Vezměte prosím na vědomí, že v případě, že definice nejsou jasné (např. Způsob smrti), bude mít operátor zadávání údajů přístup k definicím DE pouhým kliknutím na ně ve formuláři pro zadávání údajů.
+
+![Fáze podrobností o smrti > 28 dní](resources/images/ve_08_death_details_over_28_days.png)
+
+##### 3.2.6.3 Zápis úmrtí, ke kterému došlo ⩽ 28 dní po narození { #3263-enrollment-of-a-death-occurring-28-days-after-birth }
+
+Holčička zemřela týden po porodu. Zatím nedostala jméno, takže pro účely samotné registrace bude zaznamenána podle varování uvedeného na níže uvedeném snímku obrazovky. Varování a jeho kontext lze upravit podle místních souvislostí a předpisů.
+
+![Zápis úmrtí <28 dní](resources/images/ve_09_death_enrollment_under_28_days.png)
+
+##### 3.2.6.4 Podrobnosti o úmrtí, ke kterému došlo ⩽ 28 dní po narození { #3264-death-details-of-a-death-occurring-28-days-after-birth }
+
+Informace požadované ve fázi „Podrobnosti o úmrtí“ se více podobají údajům požadovaným pro oznámení o narození nebo narození mrtvého dítěte, než jen o úmrtí.
+
+![Fáze podrobností o úmrtí <28 dní](resources/images/ve_10_death_details_under_28_days.png)
+
+Datové prvky uvedené v této fázi a možnosti dostupné v rozevíracích seznamech lze měnit/zmenšovat/zvětšovat podle místního kontextu.
+
+--> Automatické varování se spustí vždy, když porodní hmotnost překročí horní a dolní mezní hodnotu. Spodní prahová hodnota pro výstražnou spoušť byla nastavena na 2500 g, zatímco horní mez byla nastavena na 4500 g. Toto varování bylo nastaveno čistě proto, aby se předešlo chybám při zadávání údajů, jako je překlep nebo míchání hmotnostních jednotek (kg místo g). Vezměte prosím na vědomí, že varovná zpráva neznamená zdravotní stav novorozence, protože 2500 gramový novorozenec může být zdravé dítě.
+
+## 4. Skupiny uživatelů { #4-user-groups }
+
+| Uživatelská skupina | Ovládací panel | Metadata programu | Programové data |
+| :-: | :-: | :-: | :-: |
+| VE - Admin | Může upravovat a prohlížet | Může upravovat a prohlížet | Lze pouze prohlížet |
+| VE - přístup | Může upravovat a prohlížet | Lze pouze prohlížet | Lze pouze prohlížet |
+| VE - Sběr dat | Žádný přístup | Lze pouze prohlížet | Může zachytit a zobrazit |
+
+**Ty by měly být upraveny v závislosti na místním kontextu.**
+
+## 5. Oznámení v reálném čase { #5-realtime-notifications }
+
+DHIS2 má modul SMS notifikací, ale pro použití notifikací je potřeba nakonfigurovat SMS bránu. Viz dokumentaci k sms branám zde: [https://docs.dhis2.org/master/en/developer/html/webapi_sms.html](https://docs.dhis2.org/master/en/developer/html/webapi_sms.html)
+
+Program obsahuje zprávu, která má být odeslána registrovaným kontaktům (kontaktu)  na oznámenou životní událost:
+
+„Děkujeme, že jste na tento program XXX upozornili program National Civil Registration and Vital Statistics“
+
+XXX se rovná mrtvému narození, narození nebo úmrtí v závislosti na vyplněném oznámení.
+
+Kromě odesílání SMS v důsledku vyhodnocení pravidla programu může DHIS2 odesílat také SMS nebo e -maily, které mohou být spuštěny jinými událostmi, včetně selhání úloh systému nebo pozadí a výsledků analýzy validace. Pro výsledky validace jsou k dispozici také nástroje pro zpracování zpětné vazby a priorita bude nastavena na důležitost porušení pravidel validace.
+
+To lze nastavit v části Údržba -> Program -> Oznámení programu / Oznámení o fázi programu.
+
+Při výběru příjemce jsou k dispozici následující možnosti:
+
+![Oznámení o fázi programu](resources/images/ve_11_program_stage_notifications.png)
+
+Aby bylo možné odeslat oznámení prostřednictvím SMS, vytvořili jsme atribut sledované entity s názvem „Mobilní telefon“, který lze vybrat jako „atribut programu“ a použít jako příjemce.
+
+## 6. Analytika { #6-analytics }
+
+Níže je uveden seznam dostupných základních indikátorů. **Mějte na paměti, že všechny výpočty indikátorů používají pouze oznámená narození/úmrtí/mrtvě narozená, nikoli zapsaná**. Tato volba byla učiněna za účelem snadné detekce nesrovnalostí v systému mezi zápisy bez konečných oznámení a celkovým počtem oznámených událostí; a za účelem sladění s povahou samotného programu - oznámení.
+
+| Indikátor | Čitatel | Jmenovatel |
+| :-: | :-: | :-: |
+| VE - Oznámená narození/úmrtí/mrtvě narozená | Všechna narození/úmrtí/mrtvě narozená, jejichž oznámení byla zaslána do národního CRVS | 1 |
+| VE - Zapsaní narození/úmrtí/mrtvě narozená | Všechna narození/úmrtí/mrtvě narozená, která byla zapsána do systému | 1 |
+| VE - oznámení o narození do 7 dnů od narození (%) | Všechny porody oznámeny do 7 dnů od narození | Všechna oznámení o porodech |
+| VE - Narození oznámená v zákonné lhůtě (%) | Všechny porody nahlášeny do 2 **!** měsíců od narození | Všechna oznámení o porodech |
+| VE – Úmrtí oznámená v zákonné lhůtě (%) | Všechna úmrtí oznámena do 2 **!** měsíců | Všechna oznámení o úmrtí |
+| VE – Kojenecká úmrtnost (/1000 porodů) | Všechny děti narozené během posledních 364 dnů | Všechna oznámení o živém narození |
+| VE – Neonatální úmrtí oznámená v zákonné lhůtě (%) | Všechna novorozenecká úmrtí v zákonné lhůtě | Všechna oznámení o úmrtí |
+| VE - Novorozenecká úmrtnost (/1000 porodů) | Všechna úmrtí, ke kterým došlo během prvních 28 dnů života | Všechna oznámení o živém narození |
+| VE - Narození oznámená do 7 dnů | Všechna narození oznámená během prvních 7 dnů života | 1 |
+| VE - Čerstvé mrtvě narozené děti | Všechna oznámená čerstvá mrtvá narození | 1 |
+| VE - Živě narozené děti | Všechna oznámená živě narozená | 1 |
+| VE - Macerovaná mrtvě narozená | Všechna avizovaná macerovaná mrtvě narozená | 1 |
+| VE - Oznámené porody | Všechna oznámená mrtvě narozená | 1 |
+| VE - Oznámená úmrtí | Všechna oznámená úmrtí | 1 |
+| VE – perinatální úmrtí oznámená v zákonné lhůtě (%) | Všechna úmrtí, ke kterým došlo do 7 dnů od narození | Všechna oznámení o úmrtí |
+| VE - Perinatální úmrtnost (/1000 porodů) | Všechna úmrtí, ke kterým došlo do 7 dnů od narození | Všechna oznámení o živém a mrtvém narození |
+| VE – Narození s neznámým gestačním věkem (%) | Narození s neznámým gestačním věkem | Všechna oznámení o porodech |
+| VE - Intrapartální (čerstvé) mrtvě narozené děti (%) | Všechna oznámená čerstvá mrtvá narození | Všechna oznámení o mrtvém narození |
+| VE – Mrtvě narozená s neznámým pohlavím (%) | Všechna mrtvá narození s neznámým pohlavím | Všechna oznámení o mrtvém narození |
+| VE – úmrtnost do-5 let (/1000 porodů) | Všechna úmrtí, ke kterým došlo během prvních 59 měsíců života | Všechna oznámení o porodech |
+| VE – Nesrovnalosti mezi zápisem a oznámením o narození/úmrtí/mrtvém narození | Všechny zapsané narození/úmrtí/mrtvě narozené děti – Všechny oznámené porody/úmrtí/mrtvě narozené děti | 1 |
+
+**!** Hranice 2 měsíců byla nastavena jako zástupný symbol pro zákonnou dobu oznámení. Časové období bude muset být místně upraveno podle národních směrnic
+
+## 7. Ovládací panely { #7-dashboards }
+
+Balíček má tři předdefinované ovládací panely: jeden pro narození, jeden pro úmrtí a jeden pro mrtvě narozené. Všechny poskytují obecný přehled o souhrnném počtu informací souvisejících s konkrétní příčinou oznámení.
+
+**Panel narození** – geografické rozložení oznámených případů, agregovaný součet klíčových ukazatelů, tabulka nesrovnalostí, porodnost, informace specifické pro fázi (např. doprovod při narození, místo narození)
+
+![Ovládací panel narození](resources/images/ve_12_dashboard_births.png)
+
+**Ovládací panel úmrtí** - geografické rozložení oznámených případů, všechny klíčové míry úmrtnosti, součty klíčových ukazatelů pro sledování, informace specifické pro fázi (např. pohlaví zesnulého, místo úmrtí), chybějící informace.
+
+![Ovládací panel úmrtí](resources/images/ve_13_dashboard_deaths.png)
+
+**Ovládací panel mrtvě narozených dětí** – geografické rozložení oznámených mrtvě narozených dětí, souhrnné datum klíčových ukazatelů, míra porodnosti, informace specifické pro fázi (např. typ mrtvě narozených dětí, přehled gestačních týdnů, chybějící informace).
+
+![Ovládací panel mrtvého narození](resources/images/ve_14_dashboard_stillbirths.png)
+
+## 8. Triangulace dat přicházejících z jiných balíků { #8-triangulation-of-data-coming-from-other-packages }
+
+Účelem této části je upozornit na konkrétní fáze a části balíčků, ve kterých se zaznamenává životní událost, a navrhnout další datové prvky, aby bylo možné triangulovat data s upozorněními odeslanými z programu VE.
+
+Navrhované další datové prvky:
+
+1. _Bylo toto narození / úmrtí / mrtvé narození oznámeno a zaregistrováno v národním systému CRVS? A / N / Neznámý_
+
+    POKUD NE
+
+2. _Je toto narození / úmrtí / mrtvé narození v současné době oznamováno? A / N_
+
+Níže je uveden seznam programů a možných propojení, která se doporučují pro triangulaci dat a pro získání dalších informací o zmeškaných příležitostech upozornění. Ve výsledku by triangulace informací mohla pomoci zdravotnímu systému se zlepšením jeho demografických statistik. Obecným principem je, že data VE lze triangulovat proti jakémukoli sledovacímu balíčku, který obsahuje a hlásí informace o kterékoli z životně důležitých událostí – narození, úmrtí a mrtvě narozená.
+
+### 8.1 Nežádoucí události po imunizaci (AEFI) tracker { #81-adverse-events-following-immunisation-aefi-tracker }
+
+Data shromážděná v tomto trackeru, která by mohla být potenciálně triangulována s VE trackerem, jsou úmrtí po AEFI.
+
+Jakmile bude dokončena fáze programu na národní úrovni a objeví se fáze AEFI, může být do sledovače AEFI přidána otázka týkající se oznámení o úmrtí.
+
+![AEFI fáze](resources/images/ve_15_aefi_stage.png)
+
+Pokud je vybraným výsledkem „Smrt“, informace o tom, zda byla nahlášena smrt pacienta, a v případě záporné odpovědi, zda je úmrtí oznamováno nyní, může následovat po pitevní otázce.
+
+![AEFI úmrtí](resources/images/ve_16_aefi_stage.png)
+
+Pokud jsou otázky přidány do AEFI trackeru, mohly by být nakonfigurovány některé další indikátory, abyste měli lepší přehled o míře potenciálních zmeškaných příležitostí k oznámení:
+
+-   Počet úmrtí souvisejících s AEFI hlášených jako neregistrovaných
+-   Počet oznámení o úmrtí odeslaných v době dokončení hodnocení na národní úrovni
+
+### 8,2 TB Case Surveillance { #82-tb-case-surveillance }
+
+Sledování případu TBC sleduje pacienta od zjištění infekce TBC až po výsledek léčby.
+
+Pokud je ve fázi „Výsledek“ pacient hlášen jako mrtvý, doplňující informace o možném oznámení o úmrtí lze nahlásit po DE „Výsledek léčby TBC“.
+
+![TB Case Surveillance](resources/images/ve_17_tb_surveillance.png)
+
+Pokud jsou otázky přidány do sledování případů TBC, mohly by být nakonfigurovány některé další indikátory, abyste měli lepší přehled o míře potenciálních zmeškaných příležitostí k oznámení:
+
+-   Počet neoznámených úmrtí souvisejících s TBC
+-   Počet oznámení o úmrtí odeslaných v době dokončení výsledku TBC
+
+## 9. Zdroje { #9-resources }
+
+[Příspěvky zdravotnického sektoru ke zlepšení občanské registrace narození a úmrtí v zemích s nízkými příjmy: pokyny pro manažery zdravotnického sektoru, civilní registrátory a rozvojové partnery](https://apps.who.int/iris/handle/10665/341911)
