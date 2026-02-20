@@ -1,0 +1,173 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-emis-docs/blob/main/ETK/ETKinstallationguide.md"
+revision_date: '2025-09-05'
+tags:
+- Implémentation
+---
+
+# Guide d'installation de la boîte à outils sur l'éducation { #education-toolkit-installation-guide } 
+
+## Présentation { #overview } 
+
+Les fichiers .json de métadonnées du package contiennent un composant « package » qui fournit des détails techniques sur la version et le contenu du package. Les fichiers disponibles dans la version actuelle du package sont énumérés ci-dessous.
+
+## Installation { #installation } 
+
+L'installation du module se fait en plusieurs étapes :
+
+1. Préparation du fichier de métadonnées avec les métadonnées DHIS2
+
+2. Importation de métadonnées dans DHIS2
+
+3. Configuration des métadonnées importées
+
+4. Adaptation du programme après importation
+
+Nous vous recommandons de lire tout d’abord chaque section du guide d’installation avant de commencer le processus d’installation et de configuration dans le système DHIS2. Identifiez les sections applicables en fonction du type d’importation :
+
+1. Importer dans une instance DHIS2 vide
+
+2. importation dans une instance DHIS2 avec des métadonnées existantes.
+
+> **Avertissement**
+> 
+> Les étapes décrites dans ce document doivent être testées dans une instance DHIS2 de test/staging, avant d'être appliquées à un environnement de production.
+
+## Conditions requises { #requirements } 
+
+Pour installer le module, vous devez avoir un compte administrateur dans DHIS2.
+
+Il est important de s’assurer que le serveur et l’application DHIS2 sont bien sécurisés et de configurer les droits d’accès aux données collectées. Les détails sur la sécurisation d’un système DHIS2 sortent du cadre de ce document. Veuillez consulter la [Documentation sur DHIS2] à cette adresse (https://docs.dhis2.org/).
+
+## Fichiers de métadonnées { #metadata-files } 
+
+Bien que ce ne soit pas toujours nécessaire, il peut souvent être avantageux d'apporter certaines modifications au fichier de métadonnées avant son importation dans DHIS2.
+
+### Préparation du fichier de métadonnées { #preparing-the-metadata-file } 
+
+Il est nécessaire d'apporter certaines modifications au fichier de métadonnées avant de pouvoir l'importer. Le travail à effectuer peut varier d'un package à un autre.
+
+### Dimension de données par défaut { #default-data-dimension } 
+
+Dans les premières versions de DHIS2, les UID de la dimension des données par défaut étaient générés automatiquement. Ainsi, alors que toutes les instances du DHIS2 ont une option de catégorie par défaut, une catégorie d'élément de données, une combinaison de catégories et une combinaison d'options de catégories, les UID de 
+ces valeurs par défaut peuvent être différents. Les versions plus récentes de DHIS2 ont des UID codés en dur pour la dimension par défaut, et ce sont ces UID qui 
+sont utilisés dans les packages de configuration.
+
+Pour éviter les conflits lors de l'importation des métadonnées, il est conseillé de rechercher et de remplacer l'ensemble du fichier .json pour toutes les occurrences de ces objets par défaut, en remplaçant les UID du fichier .json par les UID de l'instance dans laquelle le fichier sera importé. Le tableau 1 indique les UID qui doivent être remplacés, ainsi que les endpoints de l'API pour l'identification des UID existants.
+
+| Objet                     | UID           | Endpoint de l'API                                                                |
+|----------------------------|---------------|------------------------------------------------------------------------------|
+| Catégorie                   | `GLevLNI9wkl` | `../api/categories.json?filter=name:eq:default`                             |
+| Option de catégorie            | `xYerKDKCefk` | `../api/categoryOptions.json?filter=name:eq:default`                        |
+| Combinaison de catégories       | `bjDvmb4bfuf` | `../api/categoryCombos.json?filter=name:eq:default`                         |
+| Combinaison d’options de catégorie| `HllvX50cXC0` | `../api/categoryOptionCombos.json?filter=name:eq:default`                  |
+
+### Visualisations à l'aide de l’UID de l’unité d’organisation racine{ #visualizations-using-root-organisation-unit-uid }
+
+Les visualisations, les rapports d’événements, les tableaux de rapports et les cartes affectés à un niveau d’unité d’organisation spécifique ou à un groupe d’unités d’organisation comportent un renvoi vers l’unité d’organisation racine (niveau 1). Ces objets, s’ils sont présents dans le fichier de métadonnées, contiennent une balise `&lt;OU_ROOT_UID>` . Utilisez la fonction de recherche de l’éditeur de fichiers .json pour trouver cette balise et la remplacer par l’UID de l’unité d’organisation de niveau 1 dans l’instance cible.
+
+## Importation de métadonnées { #importing-metadata } 
+
+Utilisez l'application DHIS2 **Import/Export** pour importer des paquets de métadonnées. Il est conseillé d'utiliser la fonction « exécution sans effet » pour identifier les problèmes avant de tenter d'importer réellement les métadonnées. Si la fonction « exécution sans effet » signale des problèmes ou des conflits, consultez la section **Importer les conflits** ci-dessous.
+
+Si l'importation de l'« exécution sans effet »/« valider » fonctionne sans erreur, essayez d'importer les métadonnées. Si l'importation réussit sans erreur, vous pouvez passer à la **configuration** du module. Dans certains cas, les conflits ou problèmes d'importation n'apparaissent pas lors de l'importation de l'« exécution sans effet », mais apparaissent lors de l'importation réelle. Dans ce cas, le résumé de l'importation répertorie toutes les erreurs qui doivent être résolues.
+
+### Gestion des erreurs d'importation { #handling-import-conflicts } 
+
+> **Remarque** 
+> 
+> Si vous importez le paquet dans une nouvelle instance DHIS2, vous ne rencontrerez aucun conflit d'importation, car il n'y a pas de métadonnées dans la base de données cible. Après avoir importé les métadonnées, passez à la section « [Configuration](#ETK-toolkit-configuration) ».
+
+Différents types d'erreurs peuvent survenir, mais le plus courant est le fait que le nom, le nom court et/ou le code des objets de métadonnées du package de configuration existent déjà dans la base de données cible. Il existe plusieurs solutions alternatives à ces problèmes, chacun avec ses avantages et ses inconvénients. La solution la plus appropriée dépend, par exemple, du type d’objet à l’origine de l'erreur.
+
+#### Option 1 { #alternative-1 } 
+
+Renommez l'objet dans votre base de données DHIS2 pour lequel il y'a une erreur. L'avantage de cette approche est qu'il n'est pas nécessaire de modifier le fichier .json, car les modifications sont effectuées via l'interface utilisateur de DHIS2. Elle est donc moins susceptible d'entraîner des erreurs. Cela signifie également que le package de configuration est laissé tel quel, ce qui peut être un avantage, par exemple lorsque des mises à jour du package sont publiées. Les objets du package d'origine sont également souvent référencés dans le matériel de formation et la documentation.
+
+#### Option 2 { #alternative-2 } 
+
+Renommez l'objet pour lequel il y a une erreur dans le fichier .json. L'avantage de cette approche est que les métadonnées DHIS2 existantes sont laissées telles quelles. Cela peut être utile lorsqu'il y a du matériel de formation ou de la documentation, comme les procédures normales d'exploitation des dictionnaires de données liés à l'objet en question, et cela ne risque pas de créer de la confusion chez les utilisateurs lorsqu'ils modifient des métadonnées qui leur sont familières.
+
+> **Conseil**
+> 
+> Notez que pour les deux options 1 et 2, la modification peut être aussi simple que l'ajout d'un petit pré/post-fixe au nom, pour minimiser le risque de confusion.
+
+#### Option 3 { #alternative-3 } 
+
+Une troisième approche, plus complexe, consiste à modifier le fichier .json pour réutiliser les métadonnées existantes. Par exemple, dans les cas où un ensemble d'options existe déjà pour un concept donné (par exemple "sexe"), cet ensemble d'options pourrait être supprimé du fichier .json et toutes les références à son UID remplacées par l'ensemble d'options correspondant qui existe déjà dans la base de données. Le grand avantage de cette méthode (qui n'est pas limitée seulement aux cas où il y a une erreur d'importation directe) est d'éviter de créer des métadonnées dupliquées dans la base de données. Il y a des aspects essentiels à prendre en compte lors de ce type de modification :
+
+- Il nécessite une connaissance approfondie de la structure détaillée des métadonnées de DHIS2
+
+- Cette approche ne fonctionne pas pour tous les types d'objets. Plus précisément, certains types d'objets ont des dépendances qui sont difficiles à résoudre avec cette approche, par exemple lorsqu'il s'agit des désagrégations.
+
+- Il sera compliqué de procéder aux futures mises à jour du package de configuration.
+
+## Configuration { #ETK-toolkit-configuration }
+
+Une fois que toutes les métadonnées sont importées avec succès, des étapes doivent être observées avant que le module ne soit fonctionnel.
+
+### Partage { #sharing } 
+
+Tout d'abord, vous devrez utiliser la fonctionnalité *Partage* de DHIS2 pour configurer quels utilisateurs (groupes d'utilisateurs) doivent voir les métadonnées et les données associées au programme ainsi que qui peut enregistrer/saisir des données dans le programme. Par défaut, le partage a été configuré pour les éléments suivants :
+
+- Tableaux de bord
+- Visualisations, cartes, rapports d’événement et tableaux de rapports
+- Ensembles de données
+- Options de catégorie
+
+Pour plus d'informations sur le partage, veuillez consulter la documentation de DHIS2.
+
+Trois groupes d'utilisateurs de base sont inclus dans les packages :
+
+- Accès EMIS (afficher les métadonnées/afficher les données)
+- Administrateur EMIS (visualisation et modification des métadonnées/aucun accès aux données)
+- Saisie de données EMIS - (visualisation des métadonnées/saisie et visualisation des données)
+
+Les utilisateurs sont affectés au groupe d'utilisateurs approprié en fonction de leur rôle dans le système. Le partage des autres objets du package peut être ajusté en fonction de la configuration. Consultez la Documentation DHIS2 sur le partage pour plus d'informations.
+
+### Rôles d'utilisateur { #user-roles } 
+
+Les utilisateurs auront besoin de rôles d'utilisateur pour pouvoir utiliser les différentes applications de DHIS2. Les rôles suivants sont recommandés au minimum :
+
+1. Analyse des données - permet de visualiser des analyses d'événements et accéder aux tableaux de bord, aux rapports d'événements, au visualiseur d'événements, au visualiseur de données, aux tableaux croisés dynamiques, aux rapports et aux cartes.
+
+2. Saisie des données - permet d'ajouter des valeurs de données, de mettre à jour les entités suivies, de rechercher des entités suivies dans les unités d'organisation et d'accéder à l'application Saisie Tracker
+
+Consultez la Documentation de DHIS2 pour plus d'informations sur la configuration des rôles d'utilisateur.
+
+### Affectation aux unités d'organisation{ #organisation-unit-assignment } 
+
+Les ensembles de données doivent être affectés à des unités d'organisation dans la hiérarchie existante de sorte qu'ils soient accessibles via l'application de saisie.
+
+### Mapping des indicateurs { #indicator-mapping } 
+
+Lors de l'implémentation du *package tableau de bord* uniquement, les numérateurs et les dénominateurs des indicateurs doivent être configurés à l'aide des objets de métadonnées dans l'instance existante. Les informations de configuration sont disponibles dans la documentation tandis que la description des numérateurs et des dénominateurs peut être retrouvée dans le fichier de métadonnées. 
+
+### Métadonnées dupliquées { #duplicated-metadata } 
+
+> **Attention**
+> 
+> Cette section ne s'applique que si vous importez dans une base de données DHIS2 contenant des métadonnées existantes. Si vous travaillez avec une nouvelle instance DHIS2, veuillez ignorer cette section et passer à a section [Adaptation de la boîte à outils] (#adapting-the-ETK-toolkit). Si vous utilisez des applications tierces qui s'appuient sur les métadonnées actuelles, veuillez tenir compte du fait que cette mise à jour pourrait les interrompre.
+
+Même lorsque les métadonnées sont importées avec succès sans aucune erreur d'importation, il peut y avoir des doublons dans les métadonnées - éléments de données, attributs d'entités suivies ou ensembles d'options qui existent déjà. Comme indiqué dans la section ci-dessus sur la résolution des erreurs, il est important de garder à l'esprit que les décisions relatives à la modification des métadonnées dans DHIS2 doivent également tenir compte d'autres documents et ressources associés de différentes manières aux métadonnées existantes et aux métadonnées importées par le biais du package de configuration. La résolution des doublons ne consiste donc pas seulement à "nettoyer la base de données", mais aussi à s'assurer que cela est fait sans, par exemple, briser le potentiel d'intégration avec d'autres systèmes, la possibilité d'utiliser du matériel de formation, le non respect des procédures opérationnelles normalisées, etc. Cela dépend beaucoup du contexte.
+
+Il est important de garder à l’esprit que DHIS2 dispose d’outils capables de dissimuler certaines complexités des duplications potentielles dans les métadonnées. Par exemple, lorsqu’il existe des ensembles d’options en double, ils peuvent être masqués pour des groupes d’utilisateurs par le biais du partage
+
+## Adaptation de la boîte à outils { #adapting-the-ETK-toolkit }
+
+Une fois la boîte à outils importée, il est possible que vous souhaitiez y apporter certaines modifications. Voici quelques exemples d'adaptations locales que vous **pourrez** effectuer :
+
+- Ajout de variables supplémentaires au formulaire.
+
+- Adaptation des noms des éléments de données/options en fonction des usages au niveau national.
+
+- Ajout des traductions aux variables et/ou au formulaire de saisie des données.
+
+- Modification des indicateurs en fonction des définitions de cas au niveau local
+
+Toutefois, il est fortement recommandé de faire preuve d'une grande prudence si vous décidez de modifier ou de supprimer l'un des formulaires/métadonnées inclus. Les modifications pourraient donc briser certaines fonctionnalités, par exemple les règles de programme et les indicateurs de programme.
+
+## Suppression des métadonnées { #removing-metadata } 
+
+Pour maintenir votre instance propre et éviter les erreurs, il est recommandé de supprimer les métadonnées inutiles de votre instance. La suppression des métadonnées inutiles nécessite une connaissance avancée de DHIS2 et de ses différentes ressources.
+
