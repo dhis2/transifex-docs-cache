@@ -1,0 +1,100 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-sdk/blob/master/docs/content/developer/web-api-interaction.md"
+revision_date: '2025-03-18'
+tags:
+- Develop
+---
+
+# 网络应用程序接口交互{ #android_sdk_web_api_interaction }
+
+在使用 SDK 时，有时我们想提出默认 sdk 不支持的请求，但幸运的是，SDK 提供了另一种方法，允许您与 Web API 交互，下面是要遵循的步骤。
+
+## HttpServiceClient{ #httpserviceclient } 
+
+SDK 使用基于 Ktor 的 "HttpServiceClient "来处理对 Web API 的 HTTP 请求。您可以定义自定义服务，使用该客户端与各种端点进行交互。客户端对象可通过 d2 实例获得。
+
+在 1.12 版中，Kotlinx 引入了序列化（Kotlinx Serialization）功能，用于管理 json 对象的去序列化（de/serialization）。为使其正常工作，必须使用注释为 `@Serializable` 的类。请参阅下面的 UserDTO 示例。 
+
+有关序列化的更多信息，请参阅 [Kotlin 文档](https://kotlinlang.org/docs/serialization.html) 和 [Ktor 文档]。(https://ktor.io/docs/client-serialization.html)
+
+> 重要**
+>
+> 端点必须是 Web API 支持的端点，否则请求不会成功。
+
+``kotlin
+class CustomService(private val client: HttpServiceClient) {
+
+    suspend fun getData(
+        path：String、
+        field：String、
+        filter：字符串、
+        分页布尔、
+        page：页码：Int?
+        pageSize：页码：Int?
+    ):UserDTO {
+        return client.get {
+            url("get-endpoint-url/$path")
+            参数{
+                attribute("field", 字段)
+                attribute("filter", filter)
+                paging(paging)
+                page(page)
+                pageSize(pageSize)
+            }
+        }
+    }
+
+    suspend fun postData(
+        body：UserDTO
+    ):ResponseDTO {
+        return client.post {
+            url("postendpoint")
+            setBody(body)
+        }
+    }
+}
+
+@Serializable
+data class UserDTO(
+    val name: String、
+    val surname: String、
+    val age: Int、
+)
+
+@Serializable
+data class ResponseDTO(
+    val status：String、
+    val responseMessage：String、
+)
+```
+
+## 使用服务{ #using-the-service } 
+
+实例化服务并执行请求：
+
+
+```kotlin
+val customService = CustomService(httpServiceClient)
+
+// 获取数据
+val userDTO = customService.getData(
+    "dataPath"、
+    "dataField"、
+    "dataFielter"、
+    false、
+)
+
+// 发布数据
+val dataBody = UserDTO(name = "姓名", surname = "姓氏", age = 20)
+val responseDTO = customService.postData(dataBody)
+```
+
+> 重要**
+>
+> 这种 httpServiceClient 方法是异步的，利用 Kotlin 例程来管理请求和响应。
+
+## 笔记 { #notes } 
+- **错误处理**：确保在服务方法中处理潜在错误。
+- **请求 DSL**：定义请求的方法使用由 `RequestBuilder` 提供的 DSL 来构建请求。
+- **基于 Ktor**：httpServiceClient "使用 Ktor 的 "HttpClient "来发送 HTTP 请求。
+

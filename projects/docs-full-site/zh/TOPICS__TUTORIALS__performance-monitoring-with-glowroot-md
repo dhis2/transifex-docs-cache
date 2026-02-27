@@ -1,0 +1,142 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/tutorials/glowroot.md"
+revision_date: '2024-11-20'
+tags:
+- 教程
+---
+
+# 使用 Glowroot{ #glowroot_tutorial }
+
+[Glowroot](https://glowroot.org/)是一个轻量级 Java 应用程序性能监控器，在运行 DHIS2 时，它可以非常有用地提供对性能问题的洞察。
+
+本页旨在提供一个快速概览，以帮助您开始使用 Glowroot。
+
+- [安装]（#安装）
+- [用法]（#用法提示）
+
+## 安装 { #installation } 
+
+安装非常简单，在 Glowroot [wiki](https://github.com/glowroot/glowroot/wiki/Agent-Installation-(with-Embedded-Collector)) 中已有说明。
+我们建议你按照他们的说明进行安装，这些说明涵盖了各种不同的环境。
+
+对于基本设置，只需几个简单的步骤就可以开始使用：
+
+### 下载并解压 Glowroot{ #download-and-unpack-glowroot } 
+
+从 [releases](https://github.com/glowroot/glowroot/releases) 页面选择最新版本的 Glowroot，然后解压缩到所需位置。
+
+> 示例：
+> ```
+> # 创建一个安装 glowroot 的位置。我将使用 /opt/glowroot
+> mkdir -p /opt/glowroot
+>
+> # 下载所选版本并解压
+> cd /opt/glowroot
+> wget https://github.com/glowroot/glowroot/releases/download/v0.13.6/glowroot-0.13.6-dist.zip
+> 解压 glowroot-0.13.6-dist.zip
+>
+> 现在应该有一个名为 /opt/glowroot/glowroot.jar 的文件了
+
+> 注意：确保运行 DHIS2 服务的用户有写入 glowroot 安装目录的权限。例如，如果以 `dhis` 用户身份在 tomcat 下运行 DHIS2，则
+> chown -R dhis：/opt/glowroot
+> ```
+
+### 将 DHIS2 服务设置为使用 glowroot{ #set-your-dhis2-service-to-use-glowroot } 
+
+在应用程序服务器的 JVM args 中添加 `-javaagent:path/to/glowroot.jar`。此步骤在 [此处] 有详细描述（https://github.com/glowroot/glowroot/wiki/Where-are-my-application-server's-JVM-args%3F ）。
+然后重启 DHIS2，开始使用 glowroot。默认情况下，它可以在 `http://localhost:4000`上访问。在大多数情况下，您需要远程访问...
+
+### 设置外部访问 glowroot{ #set-up-external-access-to-glowroot } 
+
+如果要通过反向代理（如 nginx）访问 glowroot，则应将其配置为重定向到 glowroot 实例。 
+
+例如，如果在名为 "myserver.com "的主机上运行nginx，并希望访问 "https://myserver.com/glowroot "的glowroot，则需要在nginx服务器配置中设置重定向，例如  
+在这种情况下，你需要在nginx服务器配置中设置一个重定向，例如
+
+```
+位置 /glowroot {
+    proxy_pass http://127.0.0.1:4000/glowroot；
+}
+```
+在上面的例子中，由于 glowroot 是在 `glowroot` 上下文路径下运行的，因此还需要在 glowroot 配置中进行设置。这可以通过创建（或编辑）admin.json（与 glowroot.jar 位于同一目录）来更改，例如在 `web` 部分：
+
+```
+{
+  "网络"：{
+    "contextPath"："/glowroot"、
+  }
+}
+```
+
+### 设置管理员密码{ #set-an-admin-password } 
+
+在 Glowroot 用户界面的 **Administration** -> **Users** 下为管理员账户设置密码
+
+
+## 使用技巧{ #usage-tips } 
+
+Glowroot 界面非常直观，我们鼓励你去探索它，但这里有一些关于需要注意的事项的提示。
+
+### 交易选项卡{ #transactions-tab } 
+
+事务 "选项卡提供了应用程序所服务的不同 API 的各种实时信息，以及相关查询、响应时间、慢跟踪等信息。左侧窗格将显示 API 交易总数的概览，选择单个 API 交易类型后，可列出慢跟踪/响应时间/查询的详细明细。对该选项卡的实时监控将有助于确定是否有任何特定的 API 性能不佳。可以在 "慢跟踪 "选项卡中打开 API 的相应 "慢跟踪"，该选项卡可提供特定 API 的详细信息。如果从性能不佳的 API 的慢跟踪中检索到 "JVM 线程统计 "和 "查询统计"，则可了解问题是否出在特定的慢查询或内存分配过多等方面。
+
+### 错误 "选项卡{ #errors-tab } 
+
+错误 "选项卡显示系统执行过程中发生的异常堆栈跟踪。通常需要其他选项卡中的信息才能获得完整的信息。
+
+### JVM 选项卡{ #jvm-tab } 
+
+> **注意事项**
+>
+> 该选项卡有强制 GC（垃圾回收）、堆转储或线程转储等选项，因此应谨慎使用。不必要地使用这些选项会给 JVM 增加额外的压力！
+
+JVM "选项卡中的某些子部分有助于了解 JVM 的当前状态。该选项卡中的一个有用区域是 "Mbean 树 "部分。DHIS2 中的 Mbeans 公开了多个配置。其中一些是连接池配置及其当前状态。它显示了连接池的配置，如 maxPoolSize 和其他参数，以及连接池参数的实时状态，如 `numBusyConnections`, `numConnections`, `numIdleConnections` 等，让人了解连接池的运行情况。如果你注意到 "numBusyConnection "等于 "maxPoolSize "配置，而且数据库并没有在资源上挣扎，那么明智的做法是增加 "maxPoolSize "dhis2 配置，使可用连接池更大。 
+
+### 报告选项卡{ #reporting-tab } 
+
+报告 "选项卡可用于导出特定日期/时间范围内的任何指标。它支持从 "事务 "选项卡导出响应时间（平均值或百分位数）或事务计数等指标。它还支持导出与 JVM 标签相关的指标，其中包括不同内存空间的指标。在大多数情况下，实时监控和分析就足够了，但最好还是评估一下是否需要导出特定指标供将来参考。
+
+## 仪器{ #instrumentation } 
+
+默认情况下，glowroot 会将对端点的所有请求归入一个事务组。当您想对特定流程进行优化并跟踪改进情况时，这可能不是最佳选择。在这种情况下，可以对 glowroot 进行检测，根据 java 方法将请求分成不同的事务组。这可以在配置 -> 仪器中完成。 
+
+### 示例：分别对 /trackedEntityInstances 进行 GET 和 POST{ #example-separate-gets-and-posts-to-trackedentityinstances } 
+
+撷取跟踪实体实例的速度可能比创建实体实例的速度慢，因此分别监控这些类型的请求可能很有用。为此，可以将以下配置导入 glowroot（"Instrumentation -> Import"）。
+
+```
+{
+  "className"："org.hisp.dhis.webapi.controller.event.TrackedEntityInstanceController"、
+  "methodName"："getTrackedEntityInstances"、
+  "methodParameterTypes"：[
+    ".."
+  ],
+  "captureKind"："其他"、
+  "交易类型"："网络"、
+  "transactionNameTemplate"："/api/trackedEntityInstances：GET" }
+}
+```
+
+### 示例：监控异步请求{ #example-monitor-asynchronous-requests } 
+
+有些异步请求不易监控。其中一种情况是使用 `/tracker` 端点导入跟踪器，并将 `async` 参数设置为 `true`（适用于 2.37 及以上版本）。这是因为初始请求只会返回作业 ID，而不会等待作业完成。要监控跟踪器导入的内部过程，需要导入以下配置（"Instrumentation -> Import"）。 
+
+```
+{
+    "className"："org.hisp.dhis.tracker.report.DefaultTrackerImportService"、
+    "methodName"："importTracker"、
+    "methodParameterTypes"：[
+      ".."
+    ],
+    "捕获类型"："事务"、
+    "事务类型"："网络"、
+    "transactionNameTemplate"："/api/tracker: import"、
+    "alreadyInTransactionBehavior"："capture-new-transaction"、
+    "traceEntryMessageTemplate"："{{0}}",
+    "traceEntryStackThresholdMillis"：1000,
+    "traceEntryCaptureSelfNested": true、
+    "timerName"："计时器"
+  }  
+```
+

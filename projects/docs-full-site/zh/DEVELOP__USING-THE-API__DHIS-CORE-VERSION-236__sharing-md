@@ -1,0 +1,429 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.36/src/developer/web-api/sharing.md"
+revision_date: "2021-06-14"
+tags:
+    - Develop
+    - DHIS 核心版本 2.36
+---
+
+# 分享中 { #sharing }
+
+## 分享中 { #webapi_sharing }
+
+共享解决方案允许您与特定用户组共享系统中的大多数对象，并定义对象是应该公开访问还是私有。要获取和设置对象的共享状态，您可以与 _sharing_ 资源进行交互。
+
+    /api/33/sharing
+
+### 获取共享状态 { #webapi_get_sharing_status }
+
+要请求对象的共享状态，请使用GET请求执行以下操作：
+
+    / api / 33 / sharing？type = dataElement＆id = fbfJHSPpUQD
+
+响应如下所示。
+
+``json
+{
+    "meta"：{
+        "allowPublicAccess": true、
+        "allowExternalAccess": false
+    },
+    "对象"：{
+        "id"："fbfJHSPpUQD"、
+        "名称"："ANC 1st visit"、
+        "publicAccess"："rw------"、
+        "externalAccess": false、
+        "用户"：{},
+        "userGroupAccesses"：[
+            {
+                "id"："hj0nnsVsPLU"、
+                "access"："rw------"
+            },
+            {
+                "id"："qMjBflJMOfB"、
+                "access"："r-------"
+            }
+        ]
+    }
+}
+```
+
+### 设定分享状态 { #webapi_set_sharing_status }
+
+您可以使用相同的 URL 定义对象的共享状态
+一个 POST 请求，其中 JSON 格式的有效负载如下所示：
+
+``json
+{
+    "object"：{
+        "publicAccess"："rw------"、
+        "externalAccess": false、
+        "user"：{},
+        "userGroupAccesses"：[
+            {
+                "id"："hj0nnsVsPLU"、
+                "access"："rw------"
+            },
+            {
+                "id"："qMjBflJMOfB"、
+                "access"："r-------"
+            }
+        ]
+    }
+}
+```
+
+在此示例中，有效负载定义了具有读写权限的对象
+公共访问，无外部访问（无需登录），读写访问
+一个用户组和另一个用户组的只读访问权限。你可以
+使用 curl 将其提交到共享资源：
+
+```bash
+curl -d @sharing.json "localhost/api/33/sharing?type=dataElement&id=fbfJHSPpUQD"
+  -H "Content-Type:application/json" -u admin:district
+```
+
+## 排程 { #webapi_scheduling }
+
+DHIS2允许安排各种类型的作业。每种类型的作业都有不同的配置属性，可让您更好地控制作业的运行方式。此外，如果需要，您可以将同一作业配置为以不同的配置和不同的时间间隔运行。
+
+<table>
+<caption>Main properties</caption>
+<thead>
+<tr class="header">
+<th>Property</th>
+<th>Description</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>name</td>
+<td>Name of the job.</td>
+<td>String</td>
+</tr>
+<tr class="even">
+<td>cronExpression</td>
+<td>The cron expression which defines the interval for when the job should run.</td>
+<td>String (Cron expression)</td>
+</tr>
+<tr class="odd">
+<td>jobType</td>
+<td>The job type represent which task is run. In the next table, you can get an overview of existing job types. Each job type can have a specific set of parameters for job configuration.</td>
+<td>String (Enum)</td>
+</tr>
+<tr class="even">
+<td>jobParameters</td>
+<td>Job parameters, if applicable for job type.</td>
+<td>(See list of job types)</td>
+</tr>
+<tr class="odd">
+<td>enabled</td>
+<td>A job can be added to the system without it being scheduled by setting `enabled` to false in the JSON payload. Use this if you want to temporarily stop scheduling for a job, or if a job configuration is not complete yet.</td>
+<td>Boolean</td>
+</tr>
+</tbody>
+</table>
+
+<table>
+<caption>Available job types</caption>
+<thead>
+<tr class="header">
+<th>Job type</th>
+<th>Parameters</th>
+<th>Param(Type:Default)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DATA_INTEGRITY</td>
+<td>NONE</td>
+<td></td>
+</tr>
+<tr>
+<td>ANALYTICS_TABLE</td>
+<td><ul>
+<li><p>lastYears: Number of years back to include</p></li>
+<li><p>skipTableTypes: Skip generation of tables</p><p>Possible values: DATA_VALUE, COMPLETENESS, COMPLETENESS_TARGET, ORG_UNIT_TARGET, EVENT, ENROLLMENT, VALIDATION_RESULT</p></li>
+<li><p>skipResourceTables: Skip generation of resource tables</p></li>
+</ul></td>
+<td><ul>
+<li><p>lastYears (int:0)</p></li>
+<li><p>skipTableTypes (Array of String (Enum):None )</p></li>
+<li><p>skipResourceTables (Boolean)</p></li>
+</ul></td>
+</tr>
+<tr>
+<td>CONTINUOUS_ANALYTICS_TABLE</td>
+<td><ul>
+<li><p>fullUpdateHourOfDay: Hour of day for full update of analytics tables (0-23)</p></li>
+<li><p>lastYears: Number of years back to include</p></li>
+<li><p>skipTableTypes: Skip generation of tables</p><p>Possible values: DATA_VALUE, COMPLETENESS, COMPLETENESS_TARGET, ORG_UNIT_TARGET, EVENT, ENROLLMENT, VALIDATION_RESULT</p></li>
+<li><p>skipResourceTables: Skip generation of resource tables</p></li>
+</ul></td>
+<td><ul>
+<li><p>lastYears (int:0)</p></li>
+<li><p>skipTableTypes (Array of String (Enum):None )</p></li>
+<li><p>skipResourceTables (Boolean)</p></li>
+</ul></td>
+</tr>
+<tr>
+<td>DATA_SYNC</td>
+<td>NONE</td>
+<td></td>
+</tr>
+<tr >
+<td>META_DATA_SYNC</td>
+<td>NONE</td>
+<td></td>
+</tr>
+<tr>
+<td>SEND_SCHEDULED_MESSAGE</td>
+<td>NONE</td>
+<td></td>
+</tr>
+<tr>
+<td>PROGRAM_NOTIFICATIONS</td>
+<td>NONE</td>
+<td></td>
+</tr>
+<tr>
+<td>MONITORING (Validation rule analysis)</td>
+<td><ul>
+<li><p>relativeStart: A number related to date of execution which resembles the start of the period to monitor</p></li>
+<li><p>relativeEnd: A number related to date of execution which resembles the end of the period to monitor</p></li>
+<li><p>validationRuleGroups: Validation rule groups(UIDs) to include in job</p></li>
+<li><p>sendNotification: Set &quot;true&quot; if job should send notifications based on validation rule groups</p></li>
+<li><p>persistsResults: Set &quot;true&quot; if job should persist validation results</p></li>
+</ul></td>
+<td><ul>
+<li><p>relativeStart (int:0)</p></li>
+<li><p>relativeEnd (int:0)</p></li>
+<li><p>validationRuleGroups (Array of String (UIDs):None )</p></li>
+<li><p>sendNotification (Boolean:false)</p></li>
+<li><p>persistsResults (Boolean:false)</p></li>
+</ul></td>
+</tr>
+<tr>
+<td>PUSH_ANALYSIS</td>
+<td><ul>
+<li><p>pushAnalysis: The uid of the push analysis you want to run</p></li>
+</ul></td>
+<td><ul>
+<li><p>pushAnalysis (String:None)</p></li>
+</ul></td>
+</tr>
+<tr>
+<td>PREDICTOR</td>
+<td><ul>
+<li><p>relativeStart: A number related to date of execution which resembles the start of the period to monitor</p></li>
+<li><p>relativeEnd: A number related to date of execution which resembles the start of the period to monitor</p></li>
+<li><p>predictors: Predictors(UIDs) to include in job</p></li>
+</ul></td>
+<td><ul>
+<li><p>relativeStart (int:0)</p></li>
+<li><p>relativeEnd (int:0)</p></li>
+<li><p>predictors (Array of String (UIDs):None )</p></li>
+</ul></td>
+</tr>
+</tbody>
+</table>
+
+### 获取可用的工作类型 { #get-available-job-types }
+
+要获取所有可用作业类型的列表，可以使用以下端点：
+
+    获取 /api/jobConfigurations/jobTypes
+
+响应包含有关每个作业类型的信息，包括名称、作业类型、键、调度类型和可用参数。调度类型可以是 `CRON`，这意味着可以使用带有 `cronExpression` 字段的 cron 表达式来调度作业，或者是`FIXED_DELAY`，意味着可以使用 `delay` 字段将作业调度为以固定延迟运行.场延迟以秒为单位。
+
+响应将类似于以下内容：
+
+``json
+{
+    "jobTypes"：[
+        {
+            "名称"："数据完整性
+            "jobType"："data_integrity"、
+            "key"："dataIntegrityJob"、
+            "schedulingType"："CRON
+        },
+        {
+            "名称"："资源表"、
+            "jobType"："resource_table"、
+            "key"："resourceTableJob"、
+            "schedulingType"（调度类型"CRON
+        },
+        {
+            "名称"："连续分析表"、
+            "jobType"："continuous_analytics_table"、
+            "键"："continuousAnalyticsTableJob"、
+            调度类型"： "FIXED_DELAY"FIXED_DELAY
+        }
+    ]
+}
+```
+
+### 建立工作 { #create-job }
+
+要配置作业，您可以对以下资源发出POST请求：
+
+    /api/jobConfigurations
+
+不含JSON格式参数的作业如下所示：
+
+``json
+{
+    "name"："",
+    "jobType"："JOBTYPE"、
+    "cronExpression"："0 * * ?* *"
+}
+```
+
+参数为JSON格式的分析表作业的示例：
+
+``json
+{
+    "名称"："过去两年的分析表"、
+    "jobType"："analytics_table"、
+    "cronExpression"："0 * * ?* *",
+    "jobParameters"：{
+        "lastYears"："2",
+        "skipTableTypes"：[],
+        "skipResourceTables": false
+    }
+}
+```
+
+作为带有JSON格式参数的推送分析作业的示例：
+
+``json
+{
+    "name"："Push anlysis charts"、
+    "jobType"："push_analysis"、
+    "cronExpression"："0 * * ?* *",
+    "jobParameters"：{
+        "pushAnalysis"：["jtcMAKhWwnc"]]。
+    }
+}
+```
+
+An example of a job with scheduling type `FIXED_DELAY` and 120 seconds delay:
+
+``json
+{
+    "名称"："连续分析表"、
+    "jobType"："continuous_analytics_table"、
+    延迟"120",
+    "jobParameters"：{
+        "fullUpdateHourOfDay"：4
+    }
+}
+```
+
+### 找工作 { #get-jobs }
+
+列出所有作业配置：
+
+    GET /api/jobConfigurations
+
+检索作业：
+
+    GET /api/jobConfigurations/{id}
+
+响应有效负载如下所示：
+
+``json
+{
+    "lastUpdated"："2018-02-22T15:15:34.067",
+    "id"："KBcP6Qw37gT"、
+    "href"："http://localhost:8080/api/jobConfigurations/KBcP6Qw37gT"、
+    "创建"："2018-02-22T15:15:34.067",
+    "名称"："过去两年的分析"、
+    "jobStatus"："SCHEDULED"、
+    "displayName"："最近两年的分析"、
+    "enabled": true、
+    "externalAccess": false、
+    "jobType"："analytics_table"、
+    "nextExecutionTime"（下一次执行时间"2018-02-26T03:00:00.000",
+    "cronExpression"："0 0 3 ?* MON"、
+    "jobParameters"：{
+        "lastYears"：2,
+        "skipTableTypes"：[],
+        "skipResourceTables": false
+    },
+    "收藏"：false
+    "configurable": true、
+    "访问"：{
+        "read": true、
+        "更新": true
+        "外部化": true
+        "删除"：true
+        "写入"：true
+        "管理"：true
+    },
+    "lastUpdatedBy"：{
+        "id"："GOLswS44mh8"
+    },
+    "收藏夹"：[],
+    "翻译"：[],
+    "用户组访问权限"： []：[],
+    "属性值"： []：[],
+    "用户访问权限"： []：[]
+}
+```
+
+### 更新工作 { #update-job }
+
+使用以下端点和JSON有效负载格式，通过参数更新作业：
+
+    PUT /api/jobConfiguration/{id}
+
+``json
+{
+    "名称"："过去两年的分析"、
+    "enabled": true、
+    "cronExpression"："0 0 3 ?* MON"、
+    "jobType"："analytics_table"、
+    "jobParameters"：{
+        "lastYears"："3",
+        "skipTableTypes"：[],
+        "skipResourceTables": false
+    }
+}
+```
+
+### 删除工作 { #delete-job }
+
+使用以下方法删除作业：
+
+    删除/ api / jobConfiguration / {id}
+
+请注意，某些具有自定义配置参数的作业可能不会被添加，如果
+未配置所需的系统设置。一个例子是数据
+同步，这需要远程服务器配置。
+
+## 同步化 { #webapi_synchronization }
+
+本节介绍数据和元数据的提取和推送。
+
+### 数据值推送 { #webapi_sync_data_push }
+
+要将数据值推送到远程服务器，必须首先配置
+系统设置 > 中相关服务器的 URL 和凭据
+同步，然后向以下资源发出 POST 请求：
+
+    / api / 33 / synchronization / dataPush
+
+### 元数据拉取 { #webapi_sync_metadata_pull }
+
+要启动从远程 JSON 文档提取元数据，您可以使用 _url_ 作为请求负载向以下资源发出 POST 请求：
+
+    / api / 33 / synchronization / metadataPull
+
+### 可用性检查 { #webapi_sync_availability_check }
+
+检查远程数据服务器的可用性并验证用户
+您可以向以下资源发出 GET 请求：
+
+    / api / 33 /同步/可用性

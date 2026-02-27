@@ -1,0 +1,64 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-releases/blob/master/releases/2.38/README.md"
+revision_date: '2023-08-30'
+tags:
+- 实施
+- DHIS 核心 2.38 版
+---
+
+# 2.38 升级说明{ #238-upgrade-notes } 
+
+> :警告：如果从早期版本升级，**请确保您已阅读[PREVIOUS RELEASE](../2.37/README.md)中的升级说明**。
+
+## Java 支持{ #java-support } 
+
+从 DHIS 2.38 开始，需要 Java JDK 版本 11。这意味着不再支持 Java 8。
+
+自 2.35 版起，DHIS 2 已支持 Java 11。这意味着您可以将服务器升级到 JDK 11，同时仍运行 DHIS 2.35 或更高版本，为 DHIS 2.38 升级做准备。事实证明，Java 11 对于生产中的 DHIS 2 是可靠的，而且速度明显更快。
+
+由于 Java 的免费和开源性质，我们始终建议使用 OpenJDK 发行版。OpenJDK 11 发行版适用于所有主流操作系统，并且是 Ubuntu 20.04 LTS 的默认 JDK。
+
+## 数据库 { #database } 
+
+- 现在删除了所有传统元数据属性值表。这些表有 `*attributevalues` 后缀，如 `categoryattributevalues` 或 `datasetattributevalues`。
+- 在表 `sqlview` 中，已为 `type` 和 `cachestrategy` 列添加了 `not-null` 约束。
+- 删除表 `users` 并将其数据迁移到表 `userinfo` 中。(这不会影响应用程序接口，因为它保持了向后兼容性）
+- 为了添加三叉索引并与原始列类型复合，必须在数据库中创建两个扩展。这些扩展已经是 posgresql 默认安装的一部分。扩展：
+ ```
+ create extension pg_trgm;
+ create extension btree_gin;
+ ```
+- 从 2.38 版开始，PRV 有了值类型（应用程序接口中的 valueType 字段，数据库表中的 valueetype 列）  
+  由于这一新字段不能为空，系统将 valueType = TEXT 分配给所有 PRV  
+  如果您碰巧拥有源类型为 CALCULATED_VALUE 的 PRV，而这些 PRV 本应保存数值，当它们默认初始化为 TEXT 时，一些 PRV 就会受到影响。  
+  例如：
+  假设 PRV AgeYears 在 PR 的条件中使用如下
+  ```
+  #{AgeYears} > 5
+  ```
+  升级到 2.38 版后，该 PR 不再起作用，因为 #{AgeYears} 是 TEXT 类型，所以将它与数字比较会出现错误（或警告）。  
+  必须用适当的 valueType 更新非 TEXT 类型的程序规则变量。  在上例中，AgeYears 的 valueType 应设置为数值。
+
+
+## API{ #api } 
+
+- 使用 `/api/jobConfigurations/execute`手动运行作业的请求方法从`GET`改为`POST`。
+- 程序 ID 现在是程序阶段的必填项。受影响的端点有 `/programStages`、`/metadata`。
+- 删除了返回 JSONP（`Accept=application/javascript`）的 `GET /systemSettings`端点。
+- 一些 API 端点会稍微更改其响应根对象，以便与大多数端点保持一致。2.38 之前返回的根对象将成为 2.38 中返回的新根对象中名为 `response` 的成员。用户可以选择使用 `/api/37/` 来获取旧的行为，或者通过 `<root>.response` 来解压缩到新的响应，从而从 2.38 响应中解析出以前的根对象。
+
+  > **NOTE**
+  > 
+  > In case of an error, responses will return HTTP status `409 Conflict` and not `200 OK`.
+
+  受影响的端点有
+
+  - 使用`JSON`/`XML`的`POST /api/completeDataSetRegistrations`（仅限非 
+   `async`受影响)
+  - 使用`JSON`/`XML`/`ADX`/`CSV`的`POST /api/dataValueSets` （仅非`async`受影响）
+  - 用`JSON`/`XML`/`GML`/`CSV`发送`POST /api/metadata`（只影响非`async`）。
+  - POST /api/predictions"（仅非 "async "受影响）
+  - `PUT /api/predictions`（仅非 `async` 受影响）
+  - `PUT /api/relationships/{id}`
+  - 用 `JSON`/`XML` 输入 `PUT /api/users/{uid}`
+

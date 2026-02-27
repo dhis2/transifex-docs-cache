@@ -1,0 +1,47 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-releases/blob/master/releases/2.39/README.md"
+revision_date: '2023-08-30'
+tags:
+- 实施
+- DHIS 核心 2.39 版
+---
+
+# 2.39 升级说明{ #239-upgrade-notes } 
+
+> :警告：如果从较早版本升级，**请确保已阅读 [PREVIOUS RELEASE](../2.38/README.md) 中的升级说明**
+
+## 网络应用{ #web-apps } 
+
+* 之前基于 Struts 的数据审批网络模块已被移除，取而代之的是基于 React 的数据审批网络应用程序。
+
+## 追踪器 { #tracker } 
+
+* 关系现在是软删除实体。这意味着当它们被删除时，它们仍在数据库中，但仍可用于验证。因此，如果导入程序试图引用软删除的关系，导入程序将返回错误。
+* 在以前的版本中，"关系 "是通过 "UID "或 "关系类型"、"从 "字段和 "到 "字段的组合来识别的。从 2.39 版开始，关系仅由其 `UID`标识。这将导致潜在的破坏性变化，因为以前可以多次导入带有未指定`UID`的关系的有效载荷而不会出错（只是警告无法更新关系），而现在导入时会出现错误，提示已存在相同类型且连接相同实体的关系。
+
+## API{ #api } 
+
+* **元数据属性验证：** 在维护程序中保存带有属性值的对象时，将执行元数据属性验证。验证规则现在以 `Attribute.ValueType` 为基础。这些规则大多简单明了。例如，值类型 "数字 "只接受数字。另一方面，"电话号码 "有一个正则表达式验证规则`"^[0-9+\(\)#\.\s\/-ext-]{6,50}$"`。由于采用了新的验证功能，您在编辑元数据对象时可能会遇到错误，因为这些对象的属性值无效。在这种情况下，请更新属性值并保存对象。
+
+* **旧的跟踪器 API 已废弃：** 用于导入跟踪和事件数据的旧跟踪器 API 端点现已废弃。我们鼓励应用程序和扩展的开发人员过渡到新的端点。服务器到服务器同步将继续使用旧的 API 端点。这包括使用导入策略 "SYNC "进行的所有 API 调用。已废弃的 API 端点（"SYNC "除外）包括
+   ```
+   - /api/trackedEntityInstances
+   - /api/enrollments
+   - /api/events
+   ```
+  这些端点已被新的跟踪器端点取代： 
+   ```
+   - /api/tracker/
+   ```
+  [文件新跟踪器端点](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-238/new-tracker.html) | [文件旧跟踪器端点](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-238/tracker.html)
+
+* 已删除** 过时的端点：** （参见 [deprecated-features](https://github.com/dhis2/dhis2-releases/blob/master/releases/deprecated-features.md) )
+
+    * 删除了元数据 API 以及元数据导入和导出中的 XML 支持。
+
+    * 删除了 `POST /api/dataAnalysis/stdDevOutlier` 和 `POST /api/dataAnalysis/minMaxOutlier` API 端点。这些端点由 `/api/outlierDetection` API 取代，后者提供更高性能和更复杂的离群值检测。
+
+    * 用于读取后续数据值的 `POST /api/dataAnalysis/followup` API 端点已删除。该端点由 `GET /api/dataAnalysis/followup` API 端点取代。
+
+    * 删除了 `/api/analytcs` API 端点 `metadata` > `headers` 响应中的 `type` 字段。取而代之的是使用 `valueType` 字段。
+

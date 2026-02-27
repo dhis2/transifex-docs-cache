@@ -1,0 +1,97 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/tutorials/analysing-postgresql-logs-using-pgbadger.md"
+revision_date: '2025-06-28'
+tags:
+- 教程
+title: 使用 pgBadger 分析 PostgreSQL 日志
+---
+
+# 使用 pgBadger 分析 PostgreSQL 日志{ #analysing-postgresql-logs-using-pgbadger } 
+
+**作为 DHIS2 系统管理员，了解 PostgreSQL 数据库的运行情况非常重要。查看 PostgreSQL 日志可以为您提供线索，但仅仅用文本编辑器浏览日志是很困难的，因为日志会变得非常大，而且有很多重复的内容。
+
+pgBadger PostgreSQL 日志分析工具安装简单，易于理解。它能让你用简单的命令从命令行分析日志文件。本教程介绍 pgbadger PostgreSQL 日志分析工具如何帮助你从日志中获取有用信息。本教程基于 Debian/Ubuntu 环境，但在其他环境下也类似。
+
+需要使用 Perl，因此首先要确保已经安装。
+
+```
+sudo apt install perl
+```
+
+从 GitHub 发布页面下载 pgbadger 安装包。
+
+```
+https://github.com/darold/pgbadger/releases
+```
+
+解压缩并安装。调整文件名中的版本。
+
+```
+tar xvf pgbadger-13.1.tar.gz
+cd pgbadger-13.1
+perl Makefile.PL
+make && sudo make install
+```
+
+你必须调整你的 PostgreSQL 配置文件，为 pgBadger 提供它需要的信息。首先，你需要设置 "log_line_prefix"。
+
+```
+log_line_prefix = '%t [%p]: [%l-1] '
+```
+
+你应该启用 `log_min_duration_statement` 设置。该设置会使 PostgreSQL 记录所有运行时间超过给定值（以毫秒为单位）的语句，如果值为 0，则记录所有内容。确保 `log_statement` 设置为 `none`，否则 `log_min_duration_statement` 设置不会记录任何内容（反正 `none` 是默认值）。
+
+```
+log_statement = 'none'
+log_min_duration_statement = 0
+```
+
+您应该启用检查点、锁等日志记录，以便从日志分析中获得最大价值。
+
+```
+log_checkpoints = on
+log_connections = on
+log_disconnections = on
+log_lock_waits = on
+log_temp_files = 0
+log_autovacuum_min_duration = 0
+```
+
+你也可以从这里获取配置片段。请注意，无需重启 PostgreSQL 即可使更改生效，只需登录 psql 命令行并调用以下语句即可。
+
+```
+select pg_reload_conf();
+```
+
+当然，记录所有语句会对系统性能产生影响，因此可以在足够长的时间内启用它，以提供价值 50MB 至 200MB 的日志，然后再将其禁用。
+
+对于 DHIS2，我们已经知道在生成分析表和索引的过程中会有一些长时间运行的查询。我们不想让这些查询占用 pgBadger 的所有注意力，因此我们创建了一个新的日志文件，在终端中使用以下命令省略这些语句。
+
+```
+cat pg.log | grep -viE "create index|insert into analytics|vacuum analyze analytics" > pg_clean.log
+```
+
+现在我们可以进行分析了。调用下面的命令。
+
+```
+pgbadger -j 4 pg_clean.log
+```
+
+这里的 `-j` 选项指的是进程希望使用的 CPU 数量。默认情况下只使用一个 CPU，但允许使用更多 CPU 会大大加快进程。最后，"pg_clean.log "指的是日志文件。
+
+请注意，如果你使用的是亚马逊RDS for PostgreSQL，就不能更改 "log_line_prefix "设置。相反，你可以使用"-p "选项运行 pgBadger，它允许你为分析指定自定义前缀。
+
+```
+pgbadger -j 4 -p '%t:%r:%u@%d:[%p]:' pg_clean.log
+```
+
+现在，pgbdager 工具会在名为 `out.html` 的 HTML 文件中创建一个精美的分析报告。在网络浏览器中打开该文件。
+
+最有趣的部分可能是 "顶部 "菜单项。它提供了非常有用的统计信息，包括单个最慢查询和标准化的最耗时查询、最频繁查询和最慢查询。这里的*规范化*是指忽略 SQL 查询参数。这有助于从应用程序的角度了解哪些查询最慢。
+
+通过对一个特定的 DHIS2 实例进行分析，我了解到验证功能会导致相当长的查询时间，而这些查询是可以优化的。我们鼓励你分析自己的 DHIS2 实例，看看哪些查询耗时较长。在此基础上，您可以使用索引优化数据库，或向 DHIS2 软件开发团队提供有关潜在瓶颈和昂贵查询的反馈。
+
+![](resources/images/pgbadger.png)
+
+监控愉快
+

@@ -1,0 +1,377 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.36/src/developer/web-api/overview.md"
+revision_date: "2021-06-14"
+tags:
+    - Develop
+    - DHIS 核心版本 2.36
+---
+
+# 总览 { #webapi }
+
+Web API 是一个组件，它使外部系统成为可能
+访问和操作存储在 DHIS2 实例中的数据。更多的
+准确地说，它为广泛的
+为第三方等应用程序公开数据和服务方法
+软件客户端、门户网站和内部 DHIS2 模块。
+
+## 介绍 { #webapi_introduction }
+
+Web API 遵循 REST 背后的许多原则
+建筑风格。提几个重要的：
+
+1.  基本构建块被称为_资源_。资源可以是暴露在 Web 上的任何内容，从文档到业务流程 - 客户端可能想要与之交互的任何内容。资源的信息方面可以通过资源_表示_来检索或交换。表示是任何给定时间资源状态的视图。例如，DHIS2 中的_reportTable_ 资源表示特定参数集的聚合数据的表格报告。该资源可以以多种表示格式进行检索，包括 HTML、PDF 和 MS Excel。
+
+2.  所有资源都可以通过_URI_（也称为_URL_）唯一标识。所有资源都有默认表示。您可以通过提供 _Accept_ HTTP 标头、文件扩展名或 _format_ 查询参数来表明您对特定表示感兴趣。因此，为了检索报告表的 PDF 表示形式，您可以提供 _Accept: application/pdf_ 标头或将 _.pdf_ 或 _?format=pdf_ 附加到您的请求 URL。
+
+3.  与 API 交互需要正确使用 HTTP _methods_ 或 _verbs_。这意味着对于资源，当您想要检索它时，您必须发出 _GET_ 请求；当您想要创建资源时，您必须发出 _POST_ 请求；当您想要更新它时，您必须发出 _PUT_ 请求；当您想要删除它时，您必须发出 _DELETE_ 请求。因此，如果您想检索报告表的默认表示形式，您可以向例如发送 GET 请求。 _/reportTable/iu8j/hYgF6t_，其中最后一部分是报告表标识符。
+
+4.  资源表示是_可链接的_，这意味着表示通过将链接嵌入到自身中来宣传与当前资源相关的其他资源（请注意，您需要在字段过滤器中请求_href_才能使其工作。此功能极大地提高了可用性和稳健性例如，您可以使用您喜欢的表示格式通过嵌入链接从 _reportTable_ 资源轻松导航到与报告表关联的指标。
+
+虽然所有这些听起来可能很复杂，但 Web API 实际上非常
+使用简单。我们将继续在一个实际的例子中
+分钟。
+
+## 认证方式 { #webapi_authentication }
+
+DHIS2 Web API 支持两种身份验证协议，Basic
+身份验证和 OAuth 2. 您可以验证并获取有关
+通过向以下对象发出 GET 请求，当前已通过身份验证的用户
+网址：
+
+    / api / 33 / me
+
+以及有关权限的更多信息（如果用户有特定的
+权限）通过使用端点：
+
+    / api / 33 / me / authorities
+    / api / 33 / me / authorities / ALL
+
+### 基本认证 { #webapi_basic_authentication }
+
+DHIS2 Web API 支持_基本身份验证_。基本身份验证是一种客户端通过 HTTP 向 Web 服务器发送登录凭据的技术。从技术上讲，用户名附加了冒号和密码，采用 Base64 编码，前缀为 Basic，并作为 _Authorization_ HTTP 标头的值提供。更正式地说是：
+
+    授权：基本base64encode（用户名：password）
+
+大多数网络感知开发环境都提供对基本身份验证的支持，例如 _Apache HttpClient_ 和 _Spring RestTemplate_。需要注意的是，这种身份验证方案不提供安全性，因为用户名和密码以纯文本形式发送，很容易被攻击者观察到。仅当服务器使用 SSL/TLS (HTTPS) 加密与客户端的通信时，才建议使用 Basic。为了提供与 Web API 的安全交互，请将此视为硬性要求。
+
+### 两因素验证 { #webapi_2fa }
+
+DHIS2 支持两因素身份验证。这可以为每个用户启用。
+启用后，用户将被要求在登录时输入 2FA 代码。您
+可以阅读更多关于 2FA [这里](https://www.google.com/landing/2step/)。
+
+### OAuth2 { #webapi_oauth2 }
+
+DHIS2 支持 _OAuth2_ 身份验证协议。 OAuth2 是一种开放的授权标准，允许第三方客户端代表 DHIS2 用户进行连接，并为后续对 Web API 的请求获取可重用的_承载令牌_。 DHIS2 不支持细粒度的 OAuth2 角色，而是根据 DHIS2 用户的用户角色提供应用程序访问。
+
+您要允许 OAuth 2 身份验证的每个客户端都必须在 DHIS2 中注册。要添加新的 OAuth2 客户端，请转到用户界面中的`应用程序 > 设置 > OAuth2 客户端`，单击 _Add new_ 并输入所需的客户端名称和授权类型。
+
+#### 使用Web API添加客户端 { #adding-a-client-using-the-web-api }
+
+可以通过 Web API 添加 OAuth2 客户端。例如，我们可以
+发送这样的有效载荷：
+
+``json
+{
+    "name"："OAuth2 演示客户端"、
+    "cid"："demo"、
+    "secret": "1e6db50c-0fee-11e5-98d0-3c15c2c6caf6",
+    "grantTypes"（授予类型[password", "refresh_token", "authorization_code"]、
+    "redirectUris"：["http://www.example.org"].
+}
+```
+
+可用以下命令发送有效负载：
+
+```bash
+SERVER="https://play.dhis2.org/dev"
+curl -X POST -H "Content-Type: application/json" -d @client.json
+  -u admin:district "$SERVER/api/oAuth2Clients"
+```
+
+我们将使用此客户端作为下一个赠款类型示例的基础。
+
+#### 授权类型密码 { #webapi_oauth2_password }
+
+所有授权类型中最简单的是 _password_ 授权类型。此授权类型类似于基本身份验证，因为它要求客户端收集用户的用户名和密码。作为示例，我们可以使用我们的演示服务器：
+
+```bash
+SERVER="https://play.dhis2.org/dev"
+SECRET="1e6db50c-0fee-11e5-98d0-3c15c2c6caf6"
+
+curl -X POST -H "Accept: application/json" -u demo:$SECRET "$SERVER/uaa/oauth/token"
+  -d grant_type=password -d username=admin -d password=district
+```
+
+这将给您类似的响应：
+
+``json
+{
+    "expires_in"：43175,
+    "范围"："ALL"、
+    "access_token"："07fc551c-806c-41a4-9a8c-10658bd15435",
+    "refresh_token"（刷新令牌"a4e4de45-4743-481d-9345-2cfe34732fcc",
+    "token_type"（令牌类型"承载"
+}
+```
+
+现在，我们将专注于 `access_token`，这就是我们
+将用作我们的身份验证（承载）令牌。例如，我们将得到
+使用我们的令牌的所有数据元素：
+
+```bash
+SERVER="https://play.dhis2.org/dev"
+curl -H "Authorization: Bearer 07fc551c-806c-41a4-9a8c-10658bd15435" "$SERVER/api/33/dataElements.json"
+```
+
+#### 授予类型refresh_token { #webapi_refresh_token }
+
+通常，访问令牌的有效性有限。你可以看看
+在上一个示例中响应的 `expires_in` 属性处
+了解令牌何时到期。要获得新的`access_token`，您
+可以再次往返服务器并使用`refresh_token`
+这允许您获得更新的令牌而无需要求
+再次使用用户凭据。
+
+```bash
+SERVER="https://play.dhis2.org/dev"
+SECRET="1e6db50c-0fee-11e5-98d0-3c15c2c6caf6"
+REFRESH_TOKEN="a4e4de45-4743-481d-9345-2cfe34732fcc"
+
+curl -X POST -H "Accept: application/json" -u demo:$SECRET "$SERVER/uaa/oauth/token"
+  -d "grant_type=refresh_token" -d "refresh_token=$REFRESH_TOKEN"
+```
+
+响应与获得令牌开始时的响应完全相同。
+
+#### 授予类型authorization_code { #webapi_authorization_code }
+
+如果您不想的话，建议使用授权代码授予类型
+在外部存储用户凭据。它允许DHIS2收集
+用户名/密码直接来自用户而不是客户端
+收集它们，然后代表用户进行身份验证。请成为
+注意这种方法使用了客户端的` redirectUris`部分
+有效载荷。
+
+第 1 步：使用 Web 浏览器访问以下 URL。如果你有不止一个
+重定向 URI，您可能需要添加 `&redirect_uri=http://www.example.org`
+到网址：
+
+```bash
+SERVER="https://play.dhis2.org/dev"
+$SERVER/uaa/oauth/authorize?client_id=demo&response_type=code
+```
+
+第 2 步：在用户成功登录并接受您的
+客户端访问，它将重定向回您的重定向 uri，如下所示：
+
+    http://www.example.org/?code=XYZ
+
+第 3 步：这一步类似于我们在密码授予类型中所做的，
+使用给定的代码，我们现在将要求访问令牌：
+
+```bash
+SERVER="https://play.dhis2.org/dev"
+SECRET="1e6db50c-0fee-11e5-98d0-3c15c2c6caf6"
+
+curl -X POST -u demo:$SECRET -H "Accept: application/json" $SERVER/uaa/oauth/token
+-d "grant_type=authorization_code" -d "code=XYZ"
+```
+
+## 错误和信息消息 { #webapi_error_info_messages }
+
+Web API 对所有错误/警告和
+信息性消息：
+
+``json
+{
+    "httpStatus"："Forbidden"、
+    "消息"："您没有读取此类型对象的适当权限"、
+    "httpStatusCode"：403,
+    "status"："ERROR" （错误
+}
+```
+
+这里我们可以从消息中看到用户试图访问我无权访问的资源。它使用 http 状态代码 403、http 状态消息_forbidden_ 和描述性消息。
+
+ <table>
+ <caption> WebMessage属性</caption>
+ <colgroup>
+ <col style="width: 13%" />
+ <col style="width: 86%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>名称</th>
+ <th>说明</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td> httpStatus </td>
+ <td>此响应的HTTP状态消息，有关更多信息，请参阅RFC 2616（第10节）。 </td>
+ </tr>
+ <tr class="even">
+ <td> httpStatusCode </td>
+ <td>此响应的HTTP状态代码，有关更多信息，请参阅RFC 2616（第10节）。 </td>
+ </tr>
+ <tr class="odd">
+ <td>状态</td>
+ <td>DHIS2状态，可能的值是，可能的值为<em> OK </em> |<em>警告</em> |  <em>错误</em>，其中`确定`表示一切成功，`错误`表示操作未完成，`警告`表示操作部分成功，如果消息包含`响应`属性，请在此处查找更多信息。 </td>
+ </tr>
+ <tr class="even">
+ <td>消息</td>
+ <td>一个用户友好的消息，告诉操作是否成功。 </td>
+ </tr>
+ <tr class="odd">
+ <td> devMessage </td>
+ <td>更技术性，对开发人员友好的消息（当前未使用）。 </td>
+ </tr>
+ <tr class="even">
+ <td>响应</td>
+ <td>将来扩展到WebMessage格式的扩展点。开始使用时将记录在案。 </td>
+ </tr>
+ </tbody>
+ </table>
+
+## 日期和期间格式 { #webapi_date_perid_format }
+
+在整个 Web API 中，我们指的是日期和期间。日期格式
+是：
+
+    年-月-日
+
+例如，如果要表达2014年3月20日，则必须使用_2014-03-20_。
+
+下表描述了期间格式（也可在
+API 端点`/api/periodTypes`)
+
+ <table style="width:100%;">
+ <caption>期间格式</caption>
+ <colgroup>
+ <col style="width: 24%" />
+ <col style="width: 21%" />
+ <col style="width: 18%" />
+ <col style="width: 35%" />
+ </colgroup>
+ <thead>
+ <tr class="header">
+ <th>间隔</th>
+ <th>格式</th>
+ <th>示例</th>
+ <th>说明</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr class="odd">
+ <td>一天</td>
+  <td><em> yyyyMMdd </em> </td>
+  <td>20040315 </td>
+  <td>2004年3月15日</td>
+ </tr>
+ <tr class="even">
+ <td>周 </td>
+  <td><em> yyyy </em> W <em> n </em> </td>
+  <td>2004W10 </td>
+ <td>2004年第10周</td>
+ </tr>
+ <tr class="odd">
+<td> 星期三</td>
+ <td> <em> yyyy </em> WedW<em>  n</em>  </td>
+  <td>2015WedW5 </td>
+ <td>第5周，开始周三</td>
+ </tr>
+ <tr class="even">
+ <td>星期四</td>
+   <td><em>yyyy </em> ThuW <em> n </em> </td>
+<td>  2015ThuW6 </td>
+ <td>第6周，开始周四</td>
+ </tr>
+ <tr class="odd">
+ <td>每周周六</td>
+  <td><em> yyyy </em> SatW <em> n </em> </td>
+<td>  2015SatW7 </td>
+<td> 第7周，开始周六</td>
+ </tr>
+ <tr class="even">
+ <td>星期天</td>
+  <td><em> yyyy </em> SunW <em> n </em> </td>
+  <td>2015SunW8</td> 
+ <td>第8周，开始周日</td>
+ </tr>
+ <tr class="odd">
+<td> 双周</td>
+ <td> <em> yyyy </em> BiW <em> n </em></td> 
+ <td> 2015BiW1 </td>
+ <td>第1-2周20015 </td>
+ </tr>
+ <tr class="even">
+ <td>月</td>
+   <td><em>yyyyMM </em> </td>
+  <td>200403 </td>
+  <td>2004年3月</td>
+ </tr>
+ <tr class="odd">
+ <td>双月</td>
+ <td> <em> yyyyMM </em> B </td>
+  <td>200401B </td>
+  <td>2004年1月至2月</td>
+ </tr>
+ <tr class="even">
+ <td>季度</td>
+  <td><em> yyyy </em> Q <em> n </em> </td>
+ <td> 2004Q1 </td>
+<td>  2004年1月至3月</td>
+ </tr>
+ <tr class="odd">
+<td> 六个月</td>
+  <td><em> yyyy </em> S <em> n </em> </td>
+<td>  2004S1 </td>
+  <td>2004年1月至6月</td>
+ </tr>
+ <tr class="even">
+ <td>六个月的4月</td>
+   <td><em>yyyy </em> AprilSn </td>
+  <td>2004AprilS1 </td>
+ <td>2004年4月至9月</td>
+ </tr>
+ <tr class="odd">
+ <td>年</td>
+ <td>yyyy </td>
+ <td> 2004 </td>
+  <td>2004</td> 
+ </tr>
+ <tr class="even">
+<td> 财政年度四月</td>
+<td>  yyyyApril </td>
+ <td> 2004年4月</td>
+ <td>2004年4月至2005年3月</td>
+ </tr>
+ <tr class="odd">
+ <td>七月财政年度</td>
+  <td>yyyy七月</td>
+  <td>2004年7月</td>
+ <td>2004年7月至2005年6月</td>
+ </tr>
+ <tr class="even">
+ <td>财政年度十月</td>
+ <td>yyyyOct </td>
+<td> 2004年10月</td>
+<td>  2004年10月至2005年9月</td>
+ </tr>
+ </tbody>
+ </table>
+
+### 相对时期 { #webapi_date_relative_period_values }
+
+在 API 的某些部分，例如分析资源，您可以
+除了固定期间（如上定义）之外，还使用相对期间。
+相对期间是相对于当前日期并允许例如
+用于创建动态报告。可用的相对期间值是：
+
+    THIS_WEEK，LAST_WEEK，LAST_4_WEEKS，LAST_12_WEEKS，LAST_52_WEEKS，
+    THIS_MONTH，LAST_MONTH，THIS_BIMONTH，LAST_BIMONTH，THIS_QUARTER，LAST_QUARTER，
+    THIS_SIX_MONTH，LAST_SIX_MONTH，MONTHS_THIS_YEAR，QUARTERS_THIS_YEAR，
+    THIS_YEAR，MONTHS_LAST_YEAR，QUARTERS_LAST_YEAR，LAST_YEAR，LAST_5_YEARS，LAST_12_MONTHS，
+    LAST_3_MONTHS，LAST_6_BIMONTHS，LAST_4_QUARTERS，LAST_2_SIXMONTHS，THIS_FINANCIAL_YEAR，
+    LAST_FINANCIAL_YEAR，LAST_5_FINANCIAL_YEARS

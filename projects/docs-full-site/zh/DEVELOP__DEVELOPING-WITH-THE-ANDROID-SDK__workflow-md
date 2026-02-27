@@ -1,0 +1,897 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-sdk/blob/master/docs/content/developer/workflow.md"
+revision_date: '2025-08-06'
+tags:
+- Develop
+---
+
+# 工作流程{ #android_sdk_workflow }
+
+目前，SDK主要面向构建可在离线模式下运行的应用程序。简而言之，SDK维护一个本地数据库实例，该实例用于在本地完成工作（创建表单，管理数据等）。当客户端请求时，此本地数据库与服务器同步。
+
+典型的工作流程如下：
+
+1. **验证服务器网址**
+2. **登录**
+2. **同步元数据：** SDK 会下载服务器元数据的子集，以便随时使用。元数据同步完全取决于用户（详见 [Synchronization](#android_sdk_metadata_synchronization)
+3. **下载数据：**如果您希望即使脱机也可以在设备中使用现有数据，则可以下载并保存设备中的现有跟踪器和汇总数据。
+4. **执行工作：**此时，该应用程序能够创建数据输入表单并显示一些现有数据。然后，用户可以编辑/删除/更新数据。
+5. **上传数据：**有时会在本地数据库实例中完成的工作发送到服务器。
+6. **同步元数据：**建议经常同步元数据以检测元数据配置中的更改。
+
+## 验证服务器 url{ #validate-server-url } 
+
+第一步是验证服务器网址，以确定它是否是一个有效的 DHIS2 实例。SDK 提供了一种方法来确定 url 是否有效；如果有效，它会返回一些登录信息（取决于 DHIS2 版本）。
+
+该方法并非无懈可击，可能会返回误报：在旧版本的 DHIS2 中，很难判断 url 是否有效。在这种情况下，SDK 会返回有效，以便继续登录。
+
+````java
+d2.serverModule().checkServerUrl(serverUrl)
+````
+
+如果成功，该方法将返回一个 `LoginConfig` 对象，其中包括有关登录的有用信息，如应用程序标题、国旗、OidcProviders 列表....
+
+## 登录/注销 { #android_sdk_login_logout }
+
+在与服务器交互之前，需要登录 DHIS 2 实例。
+
+```java
+d2.userModule().logIn(username, password, serverUrl)
+
+d2.userModule().logOut()
+```
+
+从 1.6.0 版开始，SDK 支持为多个账户存储信息，这意味着为每对用户服务器保存一个单独的数据库。尽管如此，同一时间只能有一个账户处于活动状态（或登录）。也就是说，同一时间只能有一个用户在一个服务器上进行身份验证。 
+
+允许的最大账户数可由应用程序配置（默认为一个）。新配对用户服务器登录成功后，会自动创建一个新账户。如果账户数超过了配置的上限，则会自动删除最老的账户及其相关数据库。
+
+```java
+// 获取账户列表
+d2.userModule().accountManager().getAccounts()；
+
+// 获取当前用户的账户，如果用户尚未通过身份验证，则获取空账户
+d2.userModule().accountManager().getCurrentAccount()；
+
+// 删除当前用户的账户
+d2.userModule().accountManager().deleteCurrentAccount()；
+
+// 获取/设置账户的最大数量
+d2.userModule().accountManager().getMaxAccounts()；
+d2.userModule().accountManager().setMaxAccounts()；
+```
+
+accountManager 公开了一个可观察对象，当当前账户被删除时，它会发出一个事件。其中包括删除账户的原因。
+
+Java
+// 当前账户删除时发出事件
+d2.userModule().accountManager().accountDeletionObservable()；
+```
+
+注销后，SDK会跟踪上次登录的用户，以便能够区分重复用户和新用户。即使没有连接，它也保留用户凭据的哈希值以对用户进行身份验证。鉴于以上所述，登录方法将：
+
+- 如果已通过身份验证的用户已经存在：抛出错误。
+- Else if *Online*：
+  - 尝试**在线登录**：SDK会将用户名和密码发送到API，这将确定它们是否正确。如果成功：
+        -如果不存在数据库：从服务器创建具有加密值的新数据库。
+        -如果存在另一个[serverUrl，user]的数据库，则将其删除并从服务器创建具有加密值的新数据库。先前登录用户的未同步数据将永久丢失。
+        -如果存在用于当前[serverUrl，user]对的数据库，请打开数据库，如果服务器中的加密状态已更改，则对数据库进行加密或解密。
+  - 如果服务器中已禁用用户帐户：删除数据库并引发错误。
+- 否则，如果 *脱机*：
+  - 如果[serverUrl，user]对是最后经过身份验证的：
+    - 尝试**离线登录**：SDK 将验证凭据是否与上次提供的相同，而上次提供的凭据之前已通过 API 验证。
+  - 如果[serverUrl，user]对不是最后经过身份验证的：抛出错误
+
+在成功登录之前或注销之后调用模块或存储库方法将导致“未创建数据库”错误。
+
+注销方法会删除用户凭据，因此在与服务器进行任何交互之前都需要重新登录。元数据和数据得以保留，因此用户可以注销/登录而不会丢失任何信息。
+
+## 使用 OpenID 登录{ #android_sdk_login_open_id }
+
+SDK 支持 OpenID。要使用 OpenID 进行登录，需要一个 OpenIDConnectConfig：
+
+Java
+OpenIDConnectConfig openIdConfig = new OpenIDConnectConfig(clientId, redirectUri, discoveryUri, authorizationUrl, tokenUrl)；
+```
+
+必须提供 discoveryUri 或同时提供 authorizationUrl 和 tokenUrl。
+
+该配置可用于执行登录。
+
+```Java
+d2.userModule().openIdHandler().logIn(openIdConfig)
+```
+
+该调用会返回一个带有请求代码的 IntentWithRequestCode，在安卓应用程序中，它允许从配置提供程序启动 OpenID 登录屏幕。
+
+```Java
+startActivityForResult(intentWithRequestCode.getIntent(), intentWithRequestCode.getRequestCode())；
+```
+
+登录成功后，返回的意图数据可与服务器网址一起用于启动同步。
+
+```Java
+d2.userModule().openIdHandler().handleLogInResponse(serverUrl, data, requestCode)；
+```
+
+必须在应用程序 Manifest 文件中包含以下活动：
+
+``xml
+<activity   android:name="net.openid.appauth.RedirectUriReceiverActivity"
+            android:exported="true"
+            tools:node="replace">
+           <intent-filter>
+               <action android:name="android.intent.action.VIEW" />
+               <category android:name="android.intent.category.DEFAULT" />
+               <category android:name="android.intent.category.BROWSABLE" />
+               <data android:scheme="<your redirect url scheme>" />
+           </intent-filter>
+</activity>
+```
+
+为了配置所有参数，请检查服务器执行的以下 OpenID 提供商指南：
+
+|OpenID 提供商|
+|----------------|
+|[Google](https://github.com/openid/AppAuth-Android/blob/master/app/README-Google.md)          |
+|[GitHub](https://docs.github.com/en/developers/apps/authorizing-oauth-apps)          |
+|[ID-porten](https://docs.digdir.no/oidc_protocol_authorize.html)       |
+|[OKTA](https://github.com/openid/AppAuth-Android/blob/master/app/README-Okta.md)            |
+|[钥匙斗篷](https://www.keycloak.org/docs/latest/authorization_services/index.html#_service_authorization_api)        |
+|[Azure AD](https://docs.microsoft.com/es-es/azure/active-directory-b2c/signin-appauth-android?tabs=app-reg-ga)        |
+|[WS02](https://medium.com/@maduranga.siriwardena/configuring-appauth-android-with-wso2-identity-server-8d378835c10a)            |
+
+## 双因素身份验证 {#android_sdk_twoo_factor_authentication}
+
+SDK 现在可以让您的应用程序启用、禁用、进入 2FA 注册模式，并通过 "TwoFactorAuthManager "查询基于 TOTP 的 2FA：
+
+``kotlin
+// 获取管理器
+val twoFactorAuthManager = d2.userModule().twoFactorAuthManager()
+
+// 我们可以注册吗？
+twoFactorAuthManager.canTotp2faBeEnabled()
+  .onSuccess { allowed -> /* true = proceed */ }
+  .onFailure { error -> /* handle D2Error */ }
+
+// 获取（或自动注册 + 获取）秘密
+val secret: String = twoFactorAuthManager.getTotpSecret()
+
+// 使用验证器应用程序中的代码启用 2FA
+twoFactorAuthManager.enable2fa("123456")
+  .onSuccess { resp -> /* OK */ }
+  .onFailure { error -> /* handle */ }
+
+// 禁用 2FA
+twoFactorAuthManager.disable2fa("654321")
+  .onSuccess { resp -> /* OK */ } // Disable 2FA.
+  .onFailure { error -> /* handle */ } // Disable 2FA.
+
+// 检查当前状态（失败时返回上次已知值）
+val enabled：Boolean = twoFactorAuthManager.is2faEnabled()
+```
+行为说明：
+- 如果尚未进入注册模式，"getTotpSecret() "将 "POST "到"/2fa/enrollTOTP2FA"，然后重试获取 QR-secret。
+- SDK 会将 2FA 状态持久保存在本地 "用户 "表中，这样即使在离线状态下也能使用 "user.twoFactorAuthEnabled()"。
+
+## 元数据同步 { #android_sdk_metadata_synchronization }
+
+登录后，第一步通常是元数据同步。它获取并保留当前用户所需的元数据。要启动元数据同步，我们必须执行：
+
+```java
+d2.metadataModule().download();
+```
+
+为了节省带宽使用量和存储空间，SDK不同步服务器中的所有元数据，而是同步子集。此子集定义为用户执行数据输入任务所需的元数据：渲染程序和数据集，执行程序规则，评估内联程序指示器等。
+
+基于此，元数据同步包括以下元素：
+
+|   元件                     |   条件或范围 |
+|-----------------------        |-------------|
+| 系统信息                   | 所有 |
+| 系统设置               | KeyFlag，KeyStyle |
+| 安卓设置应用程序          | 常规设置, 同步, 外观, 分析 |
+| 用户设置                 | KeyDbLocale，KeyUiLocale |
+| 用户                          | 仅经过身份验证的用户 |
+| 用户角色                      | 分配给已验证用户的角色 |
+| 权威                     | 分配给已验证用户的权限 |
+| 程序                       | 用户具有（至少）读取数据访问权并将其分配给用户可见的任何组织单位的程序 |
+| 关系类型             | 用户可见的所有类型 |
+| 选项组                  | 仅当服务器大于2.29 |
+| 事件过滤器                  | 与下载的程序有关 |
+| 跟踪实体实例过滤器  | 与下载的程序有关 |
+| 计划阶段工作列表       | 与下载的程序有关 |
+| 数据集                       | 用户具有（至少）读取数据访问权限并已分配给该用户可见的任何组织单位的数据集 |
+| 验证规则              | 与数据集关联的验证规则 |
+| 组织单位              | CAPTURE或SEARCH范围内的组织单位（包括后代） |
+| DataElementCategoryCombo         | 分配给已下载组织的组 |
+| 组织单位级别         | 所有 |
+| 不变                      | 所有 |
+| 可视化                | 分配给分析设置的可视化（安卓设置应用程序） |
+| 指标                    | 分配给下载的数据集和可视化的指标 |
+| 短信模块元数据           | 仅在启用SMS模块时 |
+
+对于程序和数据集，元数据同步包括与之相关的所有元数据：阶段，节，数据元素，选项，类别等。与任何程序或数据集无关的那些元素均不包括在内。
+
+### 配置损坏 { #corrupted-configurations } 
+
+这种部分元数据同步可能会暴露服务器端配置错误问题。例如，指向不再属于程序的DataElement的ProgramRuleVariable。由于使用了数据库级别的约束，这种配置错误将显示为外键错误。
+
+SDK不会使同步失败，但是会将错误存储在表格中以进行检查。可以通过以下方式访问这些错误：
+
+```java
+d2.maintenanceModule().foreignKeyViolations()
+```
+
+## 数据状态 { #android_sdk_data_states }
+
+数据对象有一个只读的 "syncState "属性，表示对象与服务器同步的当前状态。该状态由 SDK 维护。 
+
+可能的状态是：
+
+- **已同步**。元素已与服务器同步。此值没有本地更改。
+- **TO_POST**. Data created locally that does not exist in the server yet.
+- **TO_UPDATE**. Data modified locally that exists in the server.
+- **正在上传**。数据正在上传。如果在收到任何服务器响应之前修改了数据，其状态将变回 `TO_UPDATE`。当服务器响应到达时，其状态不会变为 `SYNCED`，但仍保持在 `TO_UPDATE` 中，以表示本地有更改。
+- **通过短信发送**。数据已通过短信发送，但服务器尚未作出回应。有些服务器不具备发送响应的功能，因此这种状态意味着数据已发送，但我们不知道数据是否已正确导入服务器。
+- **通过短信同步**。数据通过短信发送，服务器响应成功。
+- **错误**。上次上传后从服务器接收到错误的数据。
+- **警告**。上次上传后从服务器收到警告的数据。
+
+此外，在 "TrackedEntityInstance"、"Enrollment "和 "Events "中，我们可能有：
+
+- **关系**。下载该元素的唯一目的是实现与另一元素的关系。该 "关系 "元素只有基本信息（uid、类型等）和 TrackedEntityAttributes（在 TrackedEntityInstances 的情况下）列表，以便能够打印有意义的关系信息。其他数据，如注册、事件、备注、值或关系不会被下载。此外，该元素也不能修改或上传到服务器。
+
+除了属性 "syncState "外，类 "TrackedEntityInstance"、"Enrollment "和 "Events "还有一个名为 "aggregatedSyncState "的属性，表示其子对象的同步状态。例如，如果在一个 `Event` 中修改了一个数据值，那么相关对象的状态将是
+
+| 元件               | 同步状态   | 聚合同步状态 |
+|-----------------------|-------------|---------------------|
+| 跟踪实体实例 | 同步      | 更新           |
+| 注册            | 同步      | 更新           |
+| 事件                 | 更新   | 更新           |
+
+## 跟踪器数据 { #android_sdk_tracker_data }
+
+### 追踪器数据下载 { #tracker-data-download } 
+
+> 重要**
+>
+> 请参阅 [Settings App](#android_sdk_settings_app) 部分，了解如何使用此应用程序控制同步参数。
+
+默认情况下，SDK仅下载TrackedEntityInstances和Events
+位于用户捕获范围内，但也可以
+在搜索范围内下载TrackedEntityInstances。
+
+被跟踪实体模块包含
+跟踪实体实例下载器"。下载器采用构建器
+模式，允许通过**不同的参数**以及定义一些**限制**来下载被跟踪实体实例。
+**不同的参数**以及定义一些**限制**。同样的
+行为可在事件模块中找到。
+
+下载程序会跟踪最新的成功下载，以避免
+下载未修改的数据。它尽力使用分页
+策略：如果页面无法下载或持久保存，则
+跳过，它将继续下一页。
+
+这是如何使用它的一个例子。
+
+```java
+d2.trackedEntityModule().trackedEntityInstanceDownloader()
+    .[filters]
+    .[limits]
+    .download()
+```
+
+```java
+d2.eventModule().eventDownloader()
+    .[filters]
+    .[limits]
+    .download()
+```
+
+当前，可以指定以下过滤器：
+
+- byProgramUid()`。按程序 uid 过滤并下载未同步的
+  对象。
+- `byUid（）`。按跟踪的实体实例uid过滤并下载一个
+  唯一对象。该过滤器可用于下载跟踪的实体
+  在搜索范围内找到的实例。(仅适用于跟踪实体
+  实例）。
+- byProgramStatus()`。筛选具有给定状态的注册的被跟踪实体实例。
+
+下载器还允许限制下载对象的数量。
+这些限制也可以相互组合。
+
+- `limit（）`。限制要下载的最大对象数。
+- limitByProgram()`。将已建立的限制应用于每个
+  程序。下载的对象数量将是
+  将设定的限额乘以用户程序的数量。
+- limitByOrgunit()`。将已建立的限制应用于每个
+  组织单位。将要下载的对象数量
+  是通过将设置的限制乘以用户数量而获得的
+  组织单位。
+
+其他属性
+
+- overwrite()`。默认情况下，SDK 不会覆盖状态非 SYNCED 的设备中的数据。如果要覆盖设备中的数据，无论其状态如何，请将此方法添加到查询链中。
+
+下一段代码展示了
+TrackedEntityInstanceDownloader 的使用示例。
+
+```java
+d2.trackedEntityModule().trackedEntityInstanceDownloader()
+    .byProgramUid("program-uid")
+    .limitByOrgunit(true)
+    .limitByProgram(true)
+    .limit(50)
+    .download()
+```
+
+此外，如果希望在设备中下载与 `Image` 数据值相关联的图像，则必须下载这些图像。详见 [*Dealing with FileResources*](#android_sdk_file_resources) 部分。
+
+### 跟踪器数据搜索 { #tracker-data-search } 
+
+DHIS2 具有按相关属性过滤 TrackedEntityInstances 的功能。
+属性、组织单位、计划或注册日期等相关属性来过滤被跟踪的实体实例。
+日期。Sdk 提供了 "TrackedEntitySearchCollectionRepository"（跟踪实体搜索集合存储库 
+方法，允许下载搜索范围内的被跟踪实体
+实例。可以在跟踪实体实例模块中找到它。
+
+跟踪实体实例搜索是一个功能强大的工具，它遵循
+构建器模式，允许下载跟踪实体实例
+通过**不同的参数**进行筛选。
+
+```Java
+d2.trackedEntityModule().trackedEntitySearch()
+    .[存储库模式］
+    .[过滤器］
+    .get()
+```
+
+TEI 的检索来源由 ** 资源库模式**定义。
+这些是可用的不同版本库模式：
+
+- `onlineOnly（）`。仅来自服务器的TrackedEntityInstances是
+  在列表中返回。使用该模式需要连接互联网。
+- `offlineOnly（）`。仅来自本地的TrackedEntityInstances
+  列表中返回数据库。
+- onlineFirst()`。来自服务器的 TrackedEntityInstances 是
+  排在第一位。一旦网上没有更多的结果，它
+  继续使用本地数据库中的 TrackedEntityInstances。互联网
+  使用此模式需要连接。
+- offlineFirst()`。来自本地数据库的 TrackedEntityInstances
+  返回第一位。一旦没有其他结果，它将继续
+  来自服务器的 TrackedEntityInstances。该方法可以
+  加快初始加载速度。使用时需要连接互联网
+  模式。
+
+该资源库采用与其他资源库相同的语法。
+此外，该资源库还提供不同的数据获取策略：
+
+- byAttribute()`。该方法为查询添加一个*属性*过滤器。
+  如果该方法被多次调用，则会在条件后面加上 AND
+  连接器。例如：
+
+  ```java
+  d2.trackedEntityModule().trackedEntitySearch()
+      .byAttribute("uid1").eq("value1")
+      .byAttribute("uid2").eq("value2")
+      .get()
+  ```
+
+  这意味着该实例必须有属性 `uid1` ，其值为
+  `value1` **和**属性 `uid2` 的值 `value2`。
+
+- `byFilter（）`。此方法向查询添加* filter *。如果这
+  方法被多次调用，条件附加一个AND
+  连接器。例如：
+
+  ```java
+  d2.trackedEntityModule().trackedEntitySearch()
+      .byFilter("uid1").eq("value1")
+      .byFilter("uid2").eq("value2")
+      .get()
+  ```
+
+  这意味着该实例必须有属性 `uid1` ，其值为
+  `value1` **和**属性 `uid2` 的值 `value2`。
+
+- byQuery()`。搜索带有 **any** 属性的实体实例
+  匹配查询。
+- byDataValue()`。根据事件值搜索被跟踪的实体实例。此过滤器通常与 `programStage()` 过滤器一起使用。
+- `byProgram（）`。按注册程序过滤。只能有一个程序
+  指定的。
+- byProgramStage()`。根据报名程序阶段进行筛选。只能指定一个计划阶段。
+- byOrgUnits()`。根据跟踪的实体实例组织单位进行筛选。
+  可以指定多个组织单位。
+- byOrgUnitMode()`。定义组织单位模式。
+- byProgramDate()`。定义注册日期过滤器。它仅在指定了计划时适用。
+- byIncidentDate()`。定义事件日期过滤器。
+- byEnrollmentStatus()`。定义注册状态过滤器。
+- byEventDate()`。定义事件日期过滤器。
+- byEventStatus()`。定义事件状态过滤器。
+- byTrackedEntityType()`。按 TrackedEntityType 过滤。只有一种类型
+  可以指定。
+- byIncludeDeleted()`。是否包含已删除的跟踪实体
+  实例。目前，该过滤器只适用于**离线**
+  实例。
+- `byStates（）`。按同步状态过滤。使用此滤镜力
+  **仅限脱机**模式。
+- byFollowUp()`。按 followUp 过滤。
+- byAssignedUserMode()`。使用指定的用户模式进行筛选。
+- byLastUpdatedDate()`。定义 lastUpdated 过滤器。
+- byTrackedEntities()`。按跟踪实体 uids 过滤。
+- byTrackedEntityInstanceFilter()`。trackedEntityInstanceFilters 也被称为**工作列表**，是一组预定义的查询参数。
+- byProgramStageWorkingList()`。应用 ProgramStageWorkingList 过滤器。
+
+例：
+
+```Java
+d2.trackedEntityModule().trackedEntitySearch()
+                .byOrgUnits().eq("orgunitUid")
+                .byOrgUnitMode().eq(OrganisationUnitMode.DESCENDANTS)
+                .byProgram().eq("programUid")
+                .byAttribute("attributeUid").like("value")
+                .offlineFirst()
+```
+
+> 重要**
+>
+> 使用此资源库检索的 TrackedEntityInstances 不会在数据库中持久化。可以
+跟踪实体实例模块中的 "TrackedEntityInstanceDownloader "的 "byUid() "过滤器完全下载它们。
+
+您可能会在应用程序的不同部分向查询存储库添加过滤器，但却无法清楚地了解所应用的过滤器，特别是在使用工作列表时，因为工作列表会添加一组参数。为了解决这个问题，您可以随时访问存储库中的过滤器范围：
+
+```Java
+d2.trackedEntityModule().trackedEntitySearch()
+    .[ 过滤器 ]
+    .getScope()；
+```
+
+除了所有资源库中都有的标准 "getPaged(int) "和 "getDataSource() "方法外，TrackedEntitySearch 资源库还提供了一种将响应封装在 "Result "对象中的方法："getResultDataSource()"。该方法是一种变通方法，用于解决安卓分页库第 2 版中缺乏错误管理的问题（第 3 版中几乎没有改进）。使用该数据源可以捕捉搜索错误，如 "Min attributes required "或 "Max tei count reached"。 
+
+
+### 工作列表/跟踪器过滤器{ #working-lists-tracker-filters } 
+
+为跟踪器对象建立预设过滤器有三个相关概念：
+
+- **TrackedEntityInstanceFilters**：它们定义了针对 TrackedEntity 对象使用的过滤器，并具有通过事件相关数据（如事件日期或事件状态）进行过滤的有限功能。
+- **EventFilters**：它们定义了针对事件对象使用的过滤器。
+- **ProgramStageWorkingList**：它们定义了用于 TrackedEntity 对象的过滤器，并增加了对事件相关数据过滤的支持。必须指定特定的 ProgramStage。
+
+像往常一样，它们有自己的收藏库，并可应用于 "搜索 "库。例如
+
+```Java
+// 获取过滤器
+List<TrackedEntityInstanceFilter> filters = d2.trackedEntityModule().trackedEntityInstanceFilters().blockingGet()；
+List<EventFilter> filters = d2.eventModule().eventFilters().blockingGet()；
+List<ProgramStageWorkingList> workingLists = d2.programModule().programStageWorkingLists().blockingGet()；
+
+// 应用过滤器
+d2.trackedEntityModule().trackedEntitySearch()
+    .byTrackedEntityInstanceFilter().eq("filterUid")
+    .byProgramStageWorkingList().eq("workingListUid")
+    .get()
+
+d2.eventModule().eventQuery()
+    .byEventFilter().eq("filterUid")
+    .get()；
+```
+
+### 所有权{ #ownership } 
+
+SDK 支持所有权概念。简而言之，每一对被追踪实体--程序都由一个组织单位拥有。在搜索被跟踪实体（trackedEntityInstance）时，将使用所有权来确定 TEI 属于哪个所有者组织单位。
+
+你可以使用存储库来获取每个跟踪实体实例的程序所有者：
+
+```Java
+d2.trackedEntityModule().trackedEntityInstances()
+        .withProgramOwners()
+        .get()；
+```
+
+此外，您还可以使用 OwnershipManager 永久转移所有权。这种转移将在下一次同步时自动上传到服务器。 
+
+```Java
+d2.trackedEntityModule().ownershipManager()
+        .transfer(teiUid, programUid, ownerOrgunit)；
+```
+
+### 打破玻璃{ #break-the-glass } 
+
+"打破玻璃 "的概念基于被跟踪实体--注册这一对的所有权。如果程序是**被跟踪**，而用户没有**数据捕获**到组织单位，则需要打破玻璃才能读取和修改数据。工作流程如下
+
+1. 在 **SEARCH** 范围内搜索任何被跟踪的实体实例。重要的是，不要在查询中包含程序 uid：服务器只会返回用户可以访问的 TEI，因此不会返回搜索范围内受保护的 TEI（否则，用户会知道 TEI 是否注册，而无需给出任何理由）。
+2. 使用下载器下载 TEI，并指定 **TEI uid** 和 ** 程序 uid**。必须包含这两个参数，以防止出现所有权错误。
+3. 捕获错误（如果有），并检查是否为 OWNERSHIP_ACCESS_DENIED 错误。
+4. 如果是，则使用所有权模块申请所有权（见下面的代码片段）。
+5. 再次尝试步骤 2 中的查询。
+
+Java
+TrackedEntityInstanceDownloader teiRepository = d2.trackedEntityModule().trackedEntityInstanceDownloader()
+        .byUid().eq(teiUid)
+        .byProgramUid(programUid)；
+
+try {
+    teiRepository.blockingDownload()；
+} catch (RuntimeException e) {
+    如果 (e.getCause() instanceof D2Error &&
+            ((D2Error) e.getCause()).errorCode() == D2ErrorCode.OWNERSHIP_ACCESS_DENIED) { // 显示用户对话框。
+        // 向用户显示对话框并捕捉打碎玻璃的原因
+        String reason = "打破玻璃的原因"；
+
+        // 打破玻璃
+        d2.trackedEntityModule().ownershipManager()
+                .blockingBreakGlass(teiUid、programUid、reason)；
+
+        // 再次下载
+        teiRepository.blockingDownload()；
+    } else {
+        // 处理其他异常
+    }
+}
+```
+
+建议在编辑数据后立即上传，因为所有权将在两小时后过期（可能取决于 DHIS2 版本）。如果在用户尝试上传数据时所有权已过期，SDK 将自动在后台使用原始原因执行 "打破玻璃 "查询，并添加前缀 "Android 应用程序同步："。这样，管理员就可以很容易地识别出该操作并非真正的 "打破玻璃"，而只是执行同步的辅助查询。
+
+### 跟踪器数据写入 { #tracker-data-write } 
+
+一般来说，管理数据创建/编辑/删除有两种不同的情况：对象可识别（即具有 `uid` 属性）和对象不可识别。
+
+**可识别对象**（TrackedEntityInstance、Enrollment、Event）。这些存储库有一个 `uid()` 方法，可让你访问单个对象的编辑方法。如果对象还不存在，则需要先创建它。创建/编辑对象的典型工作流程如下
+
+- 使用 `CreateProjection` 类在资源库中添加一个新实例。
+- 保存此方法返回的uid。
+- 使用带有前一个 uid 的 `uid()` 方法来访问版本方法。
+
+在代码中，它看起来像：
+
+```java
+String eventUid = d2.eventModule().events().add(
+    EventCreateProjection.create("enrollment", "program", "programStage", "orgUnit", "attCombo"));
+
+d2.eventModule().events().uid(eventUid).setStatus(COMPLETED);
+```
+
+**不可识别对象**（TrackedEntityAttributeValue、TrackedEntityDataValue）。这些资源库有一个 `value()` 方法，可让你访问单个对象的编辑方法。该方法接受的参数是能明确标识值的参数。
+
+例如，编写TrackedEntityDataValue就像：
+
+```java
+d2.trackedEntityModule().trackedEntityDataValues().value(eventUid, dataElementid).set(“5”);
+```
+
+图像 "类型的数据值需要额外的步骤来创建/更新/读取相关的文件资源。更多详情，请参阅下文[*处理文件资源*](#android_sdk_file_resources)部分。
+
+#### 只读 TEI 中的写入事件{ #write-events-in-read-only-teis } 
+
+必须特别注意用户对 TEI、注册和事件的数据访问。当执行任何*写*方法时，SDK 都会修改数据的状态，以便在下一次同步时将其上传到服务器。如果用户没有对特定元素的写入数据访问权限，应用程序应阻止该元素的编辑。
+
+应用程序必须遵守的限制有以下几条：
+
+- **TrackedEntityInstances:** 用户必须拥有对 **TrackedEntityType** 的写数据访问权限。
+- **用户必须对 ** TrackedEntityType 和程序 ** 都有写数据访问权限（这一附加限制由 SDK 强加）。
+- **事件：** 用户必须有写入**程序阶段**数据的权限。
+
+### 追踪器数据上传 { #tracker-data-upload } 
+
+TrackedEntityInstance和事件存储库具有`upload（）`方法来分别上传Tracker数据和Event数据（无需注册）。如果通过过滤方法缩小了存储库范围，则将仅上载经过过滤的对象。
+
+```java
+d2.( trackedEntityModule() | eventModule() )
+    .[ filters ]
+    .upload();
+```
+
+Data whose state is `ERROR` or `WARNING` cannot be uploaded. It is required to solve the conflicts before attempting a new upload: this means to do a modification in the problematic data, which forces their state back to `TO_UPDATE`.
+
+从 2.37 版开始，我们引入了一个新的跟踪器导入器（`/api/tracker` 端点）。默认跟踪器导入器仍是传统的跟踪器（`/api/trackedEntityInstances`），但您可以通过使用 Android 设置 webapp（请参阅 [同步](#android_sdk_synchronization_settings)）选择使用这个新的跟踪器导入器。这是 SDK 的内部功能；向应用程序公开的 API 不会改变。
+
+#### 跟踪器冲突 { #tracker-conflicts } 
+
+解析服务器响应，以确保数据已正确上传到服务器。如果服务器响应包含导入冲突，则这些冲突存储在数据库中，因此应用程序可以检查它们并采取措施解决它们。
+
+```java
+d2.importModule().trackerImportConflicts()
+```
+
+成功上传对象后，与TrackedEntityInstance，注册或事件相关联的冲突会自动消除。
+
+SDK尝试通过解析服务器响应来识别冲突dataElement或属性。如果是这样，它还会在发生冲突时存储元素的值，以便应用程序可以在尚未确定值的情况下突出显示元素。
+
+### 跟踪器数据：保留值 { #tracker-data-reserved-values } 
+
+配置为**唯一**和**自动生成**的跟踪实体属性是由服务器按照用户定义的模式生成的。这些值只能由服务器生成，这意味着我们需要提前预留这些值，以便在离线操作时使用。
+
+该应用负责离线之前保留生成的值。这可以通过以下方式触发：
+
+```java
+// Reserve values for all the unique and automatically generated trackedEntityAttributes.
+d2.trackedEntityModule().reservedValueManager().downloadAllReservedValues(numValuesToFillUp)
+
+// Reserve values for a particular trackedEntityAttribute.
+d2.trackedEntityModule().reservedValueManager().downloadReservedValues("attributeUid", numValuesToFillUp)
+```
+
+根据应用程序预期脱机的时间长短，它可以决定要保留的值的数量。如果属性模式取决于组织单位代码，则SDK将为所有相关orgunits保留值。有关Javadoc中逻辑的更多详细信息。
+
+保留值可以通过以下方式获得：
+
+```java
+d2.trackedEntityModule().reservedValueManager().getValue("attributeUid", "orgunitUid")
+```
+
+### 跟踪器数据：关系 { #tracker-data-relationships } 
+
+SDK 支持所有类型的关系。它们会在同步时下载，并可被访问、创建或修改。 
+
+
+|                    | TEI        | 注册   | 事件      |
+|--------------------|:----------:|:------------:|:----------:|
+| **TEI**            | DISPLAYKEYVALUEPAIR          | DISPLAYKEYVALUEPAIR            | DISPLAYKEYVALUEPAIR          |
+| **注册**     | DISPLAYKEYVALUEPAIR          | DISPLAYKEYVALUEPAIR            | DISPLAYKEYVALUEPAIR          |
+| **活动**          | DISPLAYKEYVALUEPAIR          | DISPLAYKEYVALUEPAIR            | DISPLAYKEYVALUEPAIR          |
+支持的关系
+
+使用关系模块可以访问关系。
+
+查询与TEI相关的关系。
+
+```java
+d2.relationshipModule().relationships().getByItem(
+    RelationshipHelper.teiItem("trackedEntityInstanceUid")
+)
+```
+
+查询与注册相关的关系。
+
+```Java
+d2.relationshipModule().relationships().getByItem(
+    RelationshipHelper.enrollmentItem("enrollmentUid")
+)
+```
+
+或查询与事件相关的关系。
+
+```Java
+d2.relationshipModule().relationships().getByItem(
+    RelationshipHelper.eventItem("eventUid")
+)
+```
+
+在同一个模块中，你可以使用 "关系助手 "创建任何类型的新关系，以建立关系模型，然后将它们添加到关系集合存储库中：
+
+```java
+Relationship relationship = RelationshipHelper.teiToTeiRelationship("fromTEIUid", "toTEIUid", "relationshipTypeUid");
+
+d2.relationshipModule().relationships().add(relationship);
+```
+
+If the related trackedEntityInstance does not exist yet and there are attribute values that must be inherited, you can use the following method to inherit attribute values from one TEI to another in the context of a certain program. Only those attribute marked as `inherit` will be inherited.
+
+```java
+d2.trackedEntityModule().trackedEntityInstanceService()
+    .inheritAttributes("fromTeiUid", "toTeiUid", "programUid");
+```
+
+要访问与 `relationshipConstraint` 关联的 `dataElements` 和 `attributes` 属性，可通过 `trackerDataView` 属性进行访问，如以下示例所示：
+
+```Java
+relationshipType.toConstraint().trackerDataView().attributes()；
+```
+
+```Java
+relationshipType.toConstraint().trackerDataView().dataElements()；
+```
+
+## 汇总数据 { #android_sdk_aggregated_data }
+
+### 汇总数据下载 { #aggregated-data-download } 
+
+> 重要**
+>
+> 请参阅 [Settings App](#android_sdk_settings_app) 部分，了解如何使用此应用程序控制同步参数。
+
+```java
+d2.aggregatedModule().data().download()
+```
+
+默认情况下，SDK 下载**汇总数据值**、**数据集
+完整注册值**和**批准**，分别对应于：
+
+- **数据集**：所有可用的数据集（用户至少已读取过的数据集）。
+  数据访问）。
+- ** OrganisationUnits **：捕获范围。
+- **期间**：所有可用期间，至少意味着：
+  - 天数：过去60天。
+  - 周：过去13周（包括开始日期的变体）。
+  - 双周刊：最近13个双周刊。
+  - 每月：过去12个月。
+  - 双月刊：最近6个双月。
+  - 宿舍：最近5个季度。
+  - 六个月一次：最近5个六个月（从一月和四月开始）。
+  - 每年：最近5年（包括财务年度变体）。
+
+  此外，如果有任何数据集允许在**未来期限**内输入数据，
+  Sdk 将下载并存储这些开放时段的数据。 
+
+Sdk还会跟踪最新的成功下载，以便
+避免下载未修改的服务器数据。
+
+在下载**数据审批**时，工作流程和属性选项
+组合标识符将被视为除
+组织单位和周期。数据审批的不同可能状态是
+数据审批的不同可能状态是
+
+- 无法提供"。数据审批不适用于此选择。数据
+  既不是*已批准*也不是*未批准*）。
+- `UNAPPROVED_WAITING`。可以批准此选择的数据，但是
+  在等待下级批准之前
+  批准。
+- `UNAPPROVED_ELSEWHERE`。数据未获批准，正在等待
+  在其他地方获得批准（此处无法批准）。
+- `UNAPPROVED_READY`。数据未获批准，随时可以批准
+  的选择。
+- `UNAPPROVED_ABOVE`。上面的数据未获批准。
+- `已批准_此处`。数据已获批准，并在此处获得批准（因此可以是
+  此处未批准）。
+- 已在别处批准`。数据已获批准，但未在此处获得批准（因此
+  这里不能不批准）。
+- `approved_above`.数据已在上方批准。
+- `accepted_here`.数据在这里被批准和接受（因此可以是
+  此处未批准）。
+- `ACCEPTED_ELSEWHERE`。数据被批准和接受，但其他地方。
+
+数据批准仅针对大于2.29的版本下载。
+
+### 汇总数据写入 { #aggregated-data-write } 
+
+#### 句号 { #periods } 
+
+为了写入数据值或数据集完整的注册，必须提供一个期间ID。期间存储在数据库的表中，并且
+提供的期间ID必须已经存在于该表中，否则，将引发外键错误。为了避免这种情况，`PeriodHelper`是
+暴露在`PeriodModule`内部。在添加与数据集相关的聚合数据之前，必须调用以下方法：
+
+```java
+Single<List<Period>> periods = d2.periodModule().periodHelper().getPeriodsForDataSet("dataSetUid");
+```
+
+这将确保 
+1. 该应用程序将选择给定的时段之一，以防止出现格式错误或错误的时段。
+2. The app will only be able to pick the future periods defined by the field `DataSet.openFuturePeriods`.
+3. 该应用程序将只能选择基于“汇总数据下载”部分中声明的限制定义的过去时间段。
+
+#### 资料值 { #data-value } 
+
+DataValueCollectionRepository 有一个 `value()` 方法，用于访问版本方法。该方法接受的参数是能明确标识值的参数。
+
+```java
+DataValueObjectRepository valueRepository = d2.dataValueModule().dataValues()
+    .value("periodId", "orgunitId", "dataElementId", "categoryOptionComboId", "attributeOptionComboId");
+
+valueRepository.set("value")
+```
+
+#### 数据集完成注册 { #data-set-complete-registration } 
+
+SDK在数据集模块内提供了一个收集存储库，用于
+数据集完整注册。该存储库包含要添加的方法
+新补全并将其删除。
+
+要添加新的数据集，可以使用`add（）`完成注册。
+方法：
+
+```java
+d2.dataSetModule().dataSetCompleteRegistrations()
+    .add(dataSetCompleteRegistration);
+```
+
+为了从数据库中删除它们，版本库有一个 `value()` 方法，可以访问删除方法（`delete()` 和`delete()`）。
+方法可以访问删除方法（`delete()` 和
+deleteIfExist()`）。该方法接受的参数是
+参数，可明确识别数据集完成
+注册。
+
+```java
+d2.dataSetModule().dataSetCompleteRegistrations()
+    .value("periodId", "orgunitId", "dataSetUid","attributeOptionCombo")
+    .delete()
+```
+
+### 汇总数据上传 { #aggregated-data-upload } 
+
+DataValueCollectionRepository 有一个 `upload()` 方法，用于上传聚合数据值。
+
+```java
+d2.dataValueModule().dataValues().upload();
+```
+
+### 数据集实例 { #dataset-instances } 
+
+SDK中的DataSetInstance是现有聚合数据的便捷表示。 DataSetInstance表示DataSet-Period-Orgunit-AttributeOptionCombo的唯一组合，并包含一些额外信息，例如同步状态，值计数或某些属性的displayName。
+
+```java
+d2.dataSetModule().dataSetInstances()
+    .[ filters ]
+    .get()
+
+// For example
+d2.dataSetModule().dataSetInstances()
+    .byDataSetUid().eq("datasetUid")
+    .byOrganisationUnitUid().eq("orgunitUid")
+    .byPeriod().in("201901", "201902")
+    .get();
+```
+
+If you only need a high level overview of the aggregated data status, you can use the repository `DataSetInstanceSummary`. It accepts the same filters and returns a count of `DataSetInstance` for each combination.
+
+## 处理FileResources { #android_sdk_file_resources }
+
+SDK 提供了一个模块（"FileResourceModule"）和两个助手（"FileResourceDirectoryHelper "和 "FileResizerHelper"），可以处理文件。
+
+在移动连接的情况下，处理文件资源可能会消耗大量带宽。因此，在下载数据时，默认情况下不会下载文件资源，如果需要，必须明确下载。建议只有在设备中必须有文件资源时才下载它们。如果不下载，则不会对数据完整性造成负面影响；唯一的影响是设备中没有这些文件。
+
+另一方面，文件资源上传并非可选项：SDK 会在上传数据时上传在设备中创建的所有文件资源。这对于成功同步和保持数据完整性非常重要。
+
+### 文件资源模块 { #file-resources-module } 
+
+该模块包含下载与下载的数据关联的文件资源和数据库的文件资源收集存储库的方法。
+
+- **文件资源下载**。
+fileResourceDownloader()`提供了过滤我们要下载的文件资源的方法。它将搜索与筛选器匹配的值，且其文件资源之前未被下载过。
+
+  ```kt
+  d2.fileResourceModule().fileResourceDownloader()
+    .byDomainType().eq(FileResourceDomainType.DATA_VALUE)
+    .byDataDomainType().eq(FileResourceDataDomainType.TRACKER)
+    .byElementType().eq(FileResourceElementType.DATA_ELEMENT)
+    .byValueType().in(FileResourceValueType.IMAGE, FileResourceValueType.FILE_RESOURCE)
+    .byMaxContentLength().eq(2000000)
+    .download()
+  ```
+
+  SDK 的默认 maxContentLength 为 6000000。
+
+  下载文件后，您可以获得通过存储库下载的不同文件资源。
+
+- **文件资源收集库**。
+通过此存储库，可以请求文件，保存新文件并将其上传到服务器。
+
+  - **获取**。它的行为方式与任何其他 SDK 资源库类似。如果需要，它允许通过应用不同的过滤器来获取集合。
+
+    ```java
+    d2.fileResourceModule().fileResources()
+        .[ filters ]
+        .get()
+    ```
+
+  - **添加**。要保存文件，必须使用版本库的 `add()` 方法，通过提供一个 `File` 类型的对象来添加文件。`add()` 方法将返回添加文件时生成的 uid。该 uid 应用于更新与文件资源相关联的跟踪实体属性值或跟踪实体数据值。
+
+    ```java
+    d2.fileResourceModule().fileResources()
+        .add(file); // Single<String> The fileResource uid
+    ```
+
+### 文件大小调整器帮助程序 { #file-resizer-helper } 
+
+Sdk提供了一个帮助调整图像文件大小的助手（`FileResizerHelper`）。该帮助器包含一个`resizeFile（）`方法，该方法接受要缩小的文件以及缩小尺寸。
+
+可能的尺寸在下表中。
+
+| 小 | 中 | 大  |
+|-------|--------|--------|
+| 256像素 | 512像素  | 1024像素 |
+
+助手将获取文件，测量图像的高度和宽度，确定两侧的哪一个较大，并将最大的一侧减小到给定的尺寸，另一侧按比例缩放。 **图像缩放将始终保持比例**。
+
+如果最后一张图像小于您要调整尺寸的尺寸，则将返回相同文件而无需修改。
+
+`resizeFile()` 方法将返回一个新文件，该文件位于要调整大小的文件的同一父目录中，文件名为 `resized-DIMENSION-` + 未调整大小的文件名。
+
+### 文件资源目录帮助程序 { #file-resource-directory-helper } 
+
+FileResourceDirectoryHelper "辅助类提供了两个方法。
+
+- getFileResourceDirectory()`。该方法返回一个 `File` 对象，其路径指向 SDK 保存文件资源相关文件的 `sdk_resources` 目录。
+
+- `getFileCacheResourceDirectory()`. This method returns a `File` object whose path points to the `sdk_cache_resources` directory. This should be the place where volatile files are stored, such as camera photos or images to be resized. Since the directory is contained in the cache directory, Android may auto-delete the files in the cache directory once the system is about to run out of memory. Third party applications can also delete files from the cache directory. Even the user can manually clear the cache from Settings. However, the fact that the cache can be cleared in the methods explained above should not mean that the cache will automatically get cleared; therefore, the cache will need to be tidied up from time to time proactively.
+
