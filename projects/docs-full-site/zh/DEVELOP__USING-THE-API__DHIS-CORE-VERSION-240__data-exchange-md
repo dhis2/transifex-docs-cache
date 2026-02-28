@@ -1,0 +1,762 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.40/src/developer/web-api/data-exchange.md"
+revision_date: '2023-09-27'
+tags:
+- DHIS 核心 2.40 版
+- DHIS核心 主版
+---
+
+# 数据交换{ #data-exchange } 
+
+## 汇总数据交换{ #aggregate-data-exchange } 
+
+本节介绍聚合数据交换服务和应用项目接口。
+
+### 介绍 { #introduction } 
+
+In addition to object counts, the data summary response also includes various usage statistics related to users and data in the form of histograms.
+`activeUsers` represents the number of users who have performed an action which results in a data statistics event (opened a dashboard, viewed a report, etc.) over the past hour (0), today (1), last 2 days (2), last 7 days (7) and last 30 days (30). Note that the "today" value represents the number of unique users who have been active since midnight server time, while the "last 2 days", "last 7 days" and "last 30 days" values represent the number of unique users who have been active in the respective time periods calculated backwards from the current time. `logins` represents the number of successful user logins over the same time periods. `userInvitations` provides the number of user invitations currently in the system, both total and expired. An example of these parts of the response is shown below:
+
+```json
+"activeUsers": {
+"0": 1,
+"1": 1,
+"2": 1,
+"7": 2,
+"30": 2
+},
+"logins": {
+"0": 1,
+"1": 1,
+"2": 131,
+"7": 131,
+"30": 131
+},
+"userInvitations": {
+"all": 0,
+"expired": 0
+}
+```
+
+* In addition, the data summary response includes information about different types of data stored in the system. `dataValueCount` represents the number of data values entered into the system over the past hour (0), today (1), last 7 days (7) and last 30 days (30). `singleEventCount` and `trackerEventCount` represents the number of single events and tracker events entered into the system over the same time periods. 
+* ```json
+"dataValueCount": {
+"0": 0,
+"1": 0,
+"7": 0,
+"30": 0
+},
+"eventCount": {
+"0": 0,
+"1": 0,
+"7": 1,
+"30": 2
+}
+....
+```
+* 预先计算跟踪器数据，并将项目指标保存为综合数据值。
+* ```json
+"system": {
+"version": "2.43-SNAPSHOT",
+"revision": "db516b5",
+"buildTime": "2025-11-18T10:53:50.000",
+"systemId": "eed3d451-4ff5-4193-b951-ffcc68954299",
+"serverDate": "2025-11-18T10:55:15.048"
+}
+```
+
+### 总览 { #overview } 
+
+In order to support the long-term monitoring of DHIS2 instances, a special endpoint is available
+which outputs the data summary information in the 
+[Prometheus text exposition format](https://prometheus.io/docs/instrumenting/exposition_formats/).
+ This can be fetched from the server by making
+a GET request to :
+    GET api/dataSummary/metrics
+
+An example of the output is provided below
+
+```text
+# HELP data_summary_object_counts Count of metadata objects { #help-data_summary_object_counts-count-of-metadata-objects } 
+# TYPE data_summary_object_counts gauge { #type-data_summary_object_counts-gauge } 
+data_summary_object_counts{type="indicator"} 77
+data_summary_object_counts{type="trackedEntity"} 73125
+data_summary_object_counts{type="visualization"} 292
+data_summary_object_counts{type="period"} 384
+data_summary_object_counts{type="programStageInstance"} 373597
+```
+
+数据交换可作为计划任务运行，其中数据交换可设置为在特定时间间隔运行。数据交换也可以通过应用项目接口按需运行。
+
+要创建和操作聚合数据交换，需要`F_AGGREGATE_DATA_EXCHANGE_PUBLIC_ADD` / `F_AGGREGATE_DATA_EXCHANGE_PRIVATE_ADD` and `F_AGGREGATE_DATA_EXCHANGE_DELETE`权限。
+
+```
+# HELP data_summary_build_info Build information { #help-data_summary_build_info-build-information } 
+# TYPE data_summary_build_info gauge { #type-data_summary_build_info-gauge } 
+data_summary_build_info{version="2.42-SNAPSHOT", commit="932e552"} 1737621197
+```
+
+This metric represents the current version and commit hash of the server. The metric itself is an integer
+and represents the build time as seconds since the epoch. This metric can be easily converted or to
+an actual date when needed.
+
+### 验证{ #authentication } 
+
+Data exchange
+
+Aggregate data exchange
+
+本节介绍聚合数据交换服务和应用项目接口。
+
+### API{ #api } 
+
+下一节将介绍汇总数据交换应用项目接口。
+
+#### 创建汇总数据交换{ #create-aggregate-data-exchange } 
+
+For data exchanges of type external, the base URL and authentication credentials for the target DHIS 2 instance must be specified. For authentication, basic authentication and personal access tokens (PAT) are supported.
+
+It is recommended to either specify basic authentication or PAT authentication. If both are specified, PAT authentication takes precedence.
+
+内部数据交换有效载荷示例，其中事件数据与项目指标一起计算，并保存为综合数据值： 
+
+``json
+{
+  "name"："内部数据交换
+  "源"：{
+    "params"：{
+      "periodTypes"：[
+        "月"、
+        季度
+      ]
+    },
+    "请求"：[
+      {
+        "名称"："ANC"、
+        "visualization": null、
+        "dx"：[
+          "fbfJHSPpUQD"、
+          "cYeuwXTCPkU"、
+          "Jtf34kNZhzP" [ "Jtf34kNZhzP" ].
+        ],
+        "pe"：[
+          "last_12_months"、
+          "202201"
+        ],
+        "ou"：[
+          "ImspTQPwCqd"
+        ],
+        "过滤器"：[
+          {
+            "维度"："Bpx0589u8y0"、
+            "项目"：[
+              "oRVt7g429ZO"、 
+              "MAs88nJc9nL"
+            ]
+          }
+        ],
+        "inputIdScheme"："UID"、
+        "outputDataElementIdScheme"："UID"、
+        "outputOrgUnitIdScheme"："UID"、
+        "outputIdScheme"："UID"UID
+      }
+    ]
+  },
+  "目标"：{
+    "类型"："INTERNAL"、
+    "请求"：{
+      "dataElementIdScheme"："UID"、
+      "orgUnitIdScheme"："UID"、
+      "categoryOptionComboIdScheme"："UID"、
+      "idScheme"："UID"UID
+    }
+  }
+}
+```
+
+Like other metadata objects, fine-grained security can be associated with aggregate data exchanges. Each exchange can be shared with individual users and/or user groups to control which users have access to the specific exchange. External data exchanges contain authentication details of users on the target system, thus great care should be
+taken to ensure that only authorized users have access to actually submit data which results from the exchange.
+
+The following table summarizes how sharing can be used with aggregate data exchanges.
+
+分享中
+
+Effective permissions
+
+"r-------"
+
+##### 成功响应示例如下
+
+"-w------"
+
+Can edit metadata of the data exchange.
+
+#### 更新汇总数据交换{ #update-aggregate-data-exchange } 
+
+Can view data which is part of the exchange.
+
+It is recommended to either specify basic authentication or PAT authentication. If both are specified, PAT authentication takes precedence.
+
+Can submit data which is part of the exchange.
+
+##### 成功响应示例如下
+
+```json
+{
+  "name": "External data exchange with basic authentication",
+  "source": {
+    "requests": [
+      {
+        "name": "ANC",
+        "visualization": null,
+        "dx": [
+          "fbfJHSPpUQD",
+          "cYeuwXTCPkU",
+          "Jtf34kNZhzP"
+        ],
+        "pe": [
+          "LAST_12_MONTHS",
+          "202201"
+        ],
+        "ou": [
+          "ImspTQPwCqd"
+        ],
+        "inputIdScheme": "UID",
+        "outputIdScheme": "CODE"
+      }
+    ]
+  },
+  "target": {
+    "type": "EXTERNAL",
+    "api": {
+        "url": "https://play.dhis2.org/2.38.2.1",
+        "username": "admin",
+        "password": "district"
+    },
+    "request": {
+      "idScheme": "CODE"
+    }
+  }
+}
+```
+
+```
+201 Created
+```
+
+#### 获取汇总数据交换{ #get-aggregate-data-exchange } 
+
+```
+Content-Type: application/json
+```
+
+内部数据交换有效载荷示例,其中事件数据与项目指标一起计算,并保存为综合数据值: 
+
+```json
+{
+  "name": "Internal data exchange",
+  "source": {
+    "params": {
+      "periodTypes": [
+        "MONTHLY",
+        "QUARTERLY"
+      ]
+    },
+    "requests": [
+      {
+        "name": "ANC",
+        "visualization": null,
+        "dx": [
+          "fbfJHSPpUQD",
+          "cYeuwXTCPkU",
+          "Jtf34kNZhzP"
+        ],
+        "pe": [
+          "LAST_12_MONTHS",
+          "202201"
+        ],
+        "ou": [
+          "ImspTQPwCqd"
+        ],
+        "filters": [
+          {
+            "dimension": "Bpx0589u8y0",
+            "items": [
+              "oRVt7g429ZO",
+              "MAs88nJc9nL"
+            ]
+          }
+        ],
+        "inputIdScheme": "UID",
+        "outputDataElementIdScheme": "UID",
+        "outputOrgUnitIdScheme": "UID",
+        "outputIdScheme": "UID"
+      }
+    ]
+  },
+  "target": {
+    "type": "INTERNAL",
+    "request": {
+      "dataElementIdScheme": "UID",
+      "orgUnitIdScheme": "UID",
+      "categoryOptionComboIdScheme": "UID",
+      "idScheme": "UID"
+    }
+  }
+}
+```
+
+##### 成功响应示例如下
+
+```json
+{
+  "name": "External data exchange with basic authentication",
+  "source": {
+    "requests": [
+      {
+        "name": "ANC",
+        "visualization": null,
+        "dx": [
+          "fbfJHSPpUQD",
+          "cYeuwXTCPkU",
+          "Jtf34kNZhzP"
+        ],
+        "pe": [
+          "LAST_12_MONTHS",
+          "202201"
+        ],
+        "ou": [
+          "ImspTQPwCqd"
+        ],
+        "inputIdScheme": "UID",
+        "outputIdScheme": "CODE"
+      }
+    ]
+  },
+  "target": {
+    "type": "EXTERNAL",
+    "api": {
+        "url": "https://play.dhis2.org/2.38.2.1",
+        "username": "admin",
+        "password": "district"
+    },
+    "request": {
+      "idScheme": "CODE"
+    }
+  }
+}
+```
+
+#### 删除汇总数据交换{ #delete-aggregate-data-exchange } 
+
+```json
+{
+  "name": "External data exchange with PAT authentication",
+  "source": {
+    "requests": [
+      {
+        "name": "ANC",
+        "dx": [
+          "fbfJHSPpUQD",
+          "cYeuwXTCPkU",
+          "Jtf34kNZhzP"
+        ],
+        "pe": [
+          "LAST_12_MONTHS",
+          "202201"
+        ],
+        "ou": [
+          "ImspTQPwCqd"
+        ],
+        "inputIdScheme": "UID",
+        "outputIdScheme": "CODE"
+      }
+    ]
+  },
+  "target": {
+    "type": "EXTERNAL",
+    "api": {
+        "url": "https://play.dhis2.org/2.38.2.1",
+        "accessToken": "d2pat_XIrqgAGjW935LLPuSP2hXSZwpTxTW2pg3580716988"
+    },
+    "request": {
+      "idScheme": "CODE"
+    }
+  }
+}
+```
+
+##### 成功响应示例如下
+
+Response
+
+```
+201 Created
+```
+
+#### 运行汇总数据交换{ #run-aggregate-data-exchange } 
+
+Update aggregate data exchange
+
+```
+PUT /api/aggregateDataExchanges/{id}
+```
+
+##### 成功响应示例如下
+
+```json
+{
+  "name": "External data exchange with basic authentication",
+  "source": {
+    "requests": [
+      {
+        "name": "ANC",
+        "visualization": null,
+        "dx": [
+          "fbfJHSPpUQD",
+          "cYeuwXTCPkU",
+          "Jtf34kNZhzP"
+        ],
+        "pe": [
+          "LAST_12_MONTHS",
+          "202201"
+        ],
+        "ou": [
+          "ImspTQPwCqd"
+        ],
+        "inputIdScheme": "UID",
+        "outputIdScheme": "CODE"
+      }
+    ]
+  },
+  "target": {
+    "type": "EXTERNAL",
+    "api": {
+        "url": "https://play.dhis2.org/2.38.2.1",
+        "username": "admin",
+        "password": "district"
+    },
+    "request": {
+      "idScheme": "CODE"
+    }
+  }
+}
+```
+
+Response
+
+```
+200 OK
+```
+
+#### 获取源数据{ #get-source-data } 
+
+Get aggregate data exchange
+
+```
+GET /api/aggregateDataExchanges/{id}
+```
+
+```
+GET /api/aggregateDataExchanges/{id}/sourceData
+```
+
+##### 成功响应示例如下
+
+```json
+{
+  "name": "External data exchange with basic authentication",
+  "source": {
+    "requests": [
+      {
+        "name": "ANC",
+        "visualization": null,
+        "dx": [
+          "fbfJHSPpUQD",
+          "cYeuwXTCPkU",
+          "Jtf34kNZhzP"
+        ],
+        "pe": [
+          "LAST_12_MONTHS",
+          "202201"
+        ],
+        "ou": [
+          "ImspTQPwCqd"
+        ],
+        "inputIdScheme": "UID",
+        "outputIdScheme": "CODE"
+      }
+    ]
+  },
+  "target": {
+    "type": "EXTERNAL",
+    "api": {
+        "url": "https://play.dhis2.org/2.38.2.1",
+        "username": "admin",
+        "password": "district"
+    },
+    "request": {
+      "idScheme": "CODE"
+    }
+  }
+}
+```
+
+##### 查询参数{ #query-parameters } 
+
+| 查询参数 | 需要 | 描述                                                  | 选项                       |
+| --------------- | -------- | ------------------------------------------------------------ | ----------------------------- |
+| ```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 200,
+  "status": "OK",
+  "response": {
+    "responseType": "ObjectReport",
+    "uid": "pG4bBTMiCqO",
+    "klass": "org.hisp.dhis.dataexchange.aggregate.AggregateDataExchange",
+    "errorReports": []
+  }
+}
+```  | 不       | An aggregate data exchange can be run directly with a POST request to the following endpoint: | ```
+POST /api/aggregateDataExchanges/{id}/exchange
+```| UID \| ```
+200 OK
+``` |
+
+```json
+{
+  "responseType": "ImportSummaries",
+  "status": "SUCCESS",
+  "imported": 36,
+  "updated": 0,
+  "deleted": 0,
+  "ignored": 0,
+  "importSummaries": ["<import summaries here>"]
+}
+```
+
+#### 获取源数据值集{ #get-source-data-value-sets } 
+
+Get source data
+
+The aggregate data for the source request of an aggregated data exchange can be retrieved in the analytics data format with a GET request to the following endpoint:
+
+```
+GET /api/aggregateDataExchanges/{id}/sourceData
+```
+
+##### 成功响应示例如下
+
+```json
+{
+  "name": "External data exchange with basic authentication",
+  "source": {
+    "requests": [
+      {
+        "name": "ANC",
+        "visualization": null,
+        "dx": [
+          "fbfJHSPpUQD",
+          "cYeuwXTCPkU",
+          "Jtf34kNZhzP"
+        ],
+        "pe": [
+          "LAST_12_MONTHS",
+          "202201"
+        ],
+        "ou": [
+          "ImspTQPwCqd"
+        ],
+        "inputIdScheme": "UID",
+        "outputIdScheme": "CODE"
+      }
+    ]
+  },
+  "target": {
+    "type": "EXTERNAL",
+    "api": {
+        "url": "https://play.dhis2.org/2.38.2.1",
+        "username": "admin",
+        "password": "district"
+    },
+    "request": {
+      "idScheme": "CODE"
+    }
+  }
+}
+```
+
+##### 查询参数{ #query-parameters } 
+
+| 查询参数 | 需要 | 描述                                                  | 选项                       |
+| --------------- | -------- | ------------------------------------------------------------ | ----------------------------- |
+| ```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 200,
+  "status": "OK",
+  "response": {
+    "responseType": "ObjectReport",
+    "uid": "pG4bBTMiCqO",
+    "klass": "org.hisp.dhis.dataexchange.aggregate.AggregateDataExchange",
+    "errorReports": []
+  }
+}
+```  | 不       | An aggregate data exchange can be run directly with a POST request to the following endpoint: | ```
+POST /api/aggregateDataExchanges/{id}/exchange
+```| UID \| ```
+200 OK
+``` |
+
+ATTRIBUTE:{ID}
+
+### 数据模型 { #data-model } 
+
+Get source data value sets
+
+| 领域                                             | 数据类型      | 强制的   | 描述                                                  |
+| ------------------------------------------------- | -------------- | ----------- | ------------------------------------------------------------ |
+| 名称                                              | 串         | 是的         | 需要                     |
+| ```json
+{
+  "source": "rspjJHg4WY1",
+  "targets": [
+    "HT0w9YLMLyn",
+    "rEpnzuNpRKM"
+  ],
+  "primaryTarget": "HT0w9YLMLyn",
+  "deleteSource": true
+}
+```                                            | 目的         | 是的         | 不                          |
+| Override the output identifier scheme for the data response.                                     | 目的         | 不          | ATTRIBUTE:{ID}                               |
+| The response payload format is identical with the data value sets API endpoint. This endpoint is useful for debugging purposes. Consult the data value sets API guide for additional details.                         | 不   | 不          | 领域 |
+| 数据类型                                   | 强制的   | 是的         | 名称                                             |
+| 串                              | 串         | 是的         | source                                      |
+| 目的                     | 串         | 不          | source.params               |
+| 目的                                | 不   | 是的         | source.params.periodTypes |
+| Array/String                                | 不   | 是的         | source.requests |
+| Array/Object                                | 不   | 是的         | source.requests.name    |
+| 串                           | 是的 | 不          | source.requests.visualization                              |
+| 串                 | 串         | 不          | source.requests.dx                         |
+| Array/String                     | 不   | 不          | source.requests.pe                             |
+| Array/String                     | 串         | 不          | source.requests.ou     |
+| Array/String         | 串         | 不          | source.requests.filters |
+| 串             | 串         | 不          | source.requests.filters.items |
+| Array/String                    | 串         | 不          | source.requests.inputIdScheme |
+| 串                                     | 目的         | 是的         | source.requests.outputDataElementIdScheme                         |
+| 串                                | 串         | 是的         | source.requests.outputDataItemIdScheme               |
+| 串                                 | 目的         | Type of target, can be `EXTERNAL`, `INTERNAL`. | 目标 API 信息，仅对`EXTERNAL`类型是必需的。  |
+| 串                             | 串         | Type of target, can be `EXTERNAL`, `INTERNAL`. | source.requests.outputIdScheme |
+| 串                     | 串         | Type of target, can be `EXTERNAL`, `INTERNAL`. | source.target |
+| 目的                        | 串         | Type of target, can be `EXTERNAL`, `INTERNAL`. | source.target.type |
+| 串                        | 串         | Type of target, can be `EXTERNAL`, `INTERNAL`. | source.target.api |
+| 目的                             | 目的         | 不          | source.target.api.url                                  |
+| 串         | 串         | 不          | source.target.api.accessToken |
+| 串             | 串         | 不          | source.target.api.username |
+| 串 | 串         | 不          | source.target.api.password |
+| 串                    | 串         | 不          | source.target.request |
+
+### 错误处理{ #error-handling } 
+
+不
+
+### 例子 { #examples } 
+
+#### 使用标识符方案代码进行外部数据交换{ #external-data-exchange-with-identifier-scheme-code } 
+
+串
+
+不
+
+* 登录**源**实例，导航到 "维护 "应用项目，观察是否存在三个项目指示器。
+
+  * source.target.request.importStrategy
+  * 串
+  * 不
+
+* 请注意，根组织单位是`塞拉利昂`，代码为`OU_525`。
+
+* 登录**目标**实例并导航至*维护*应用项目。创建三个数据元素，其中代码与前面提到的计划指标相匹配：
+
+  * Boolean
+  * 不
+  * 用代码`YELLOW_FEVER_DOSE`命名_黄热病剂量_
+
+* source.target.request.dryRun
+
+* Boolean
+
+* 不
+  ```
+  POST /api/aggregateDataExchanges
+  ```
+
+  ```
+  Content-Type: application/json
+  ```
+
+  ```json
+  {
+    "name": "Immunization doses program indicators to data elements",
+    "source": {
+      "requests": [
+        {
+          "name": "Immunization doses",
+          "dx": [
+            "BCG_DOSE",
+            "MEASLES_DOSE",
+            "YELLOW_FEVER_DOSE"
+          ],
+          "pe": [
+            "202201"
+          ],
+          "ou": [
+            "OU_525"
+          ],
+          "inputIdScheme": "code",
+          "outputIdScheme": "code"
+        }
+      ]
+    },
+    "target": {
+      "type": "EXTERNAL",
+      "api": {
+        "url": "https://play.dhis2.org/2.38.2.1",
+        "username": "admin",
+        "password": "district"
+      },
+      "request": {
+        "idScheme": "code"
+      }
+    }
+  }
+  ```
+
+* Whether to save changes on the server or just return the import summary.
+
+* 请注意，期间为`202201`或_2022 年1 月_。请注意，时间段可能需要随着时间的推移而更新。
+
+* When running a data exchange by identifier, information about the outcome of the operation will be available in the response payload. The response will contain a list of import summaries, i.e. one import summary per source request. The import summary will indicate any potential conflicts as a result of data retrieval from the source instance and data import in the target instance.
+
+* 例子
+  ```
+  POST /api/aggregateDataExchanges/{id}/exchange
+  ```
+
+* External data exchange with identifier scheme code
+  ```json
+  {
+    "responseType": "ImportSummaries",
+    "status": "SUCCESS",
+    "imported": 3,
+    "updated": 0,
+    "deleted": 0,
+    "ignored": 0
+  }
+  ```
+
+* 在**目标**实例中，导航至*数据录入*应用项目，选择组织单位_塞拉利昂_、数据集_数据交换_和期间_2022 年 1 月_。观察交换的数据值在表单中是否可见。
+
+总而言之，在此示例中，事件数据记录在组织单位层次结构中从设施级别汇总到国家级别，并使用计划指标从事件数据汇总到每月数据值。通过使用`代码`属性引用元数据，数据值与目标 DHIS 2 实例交换。
+

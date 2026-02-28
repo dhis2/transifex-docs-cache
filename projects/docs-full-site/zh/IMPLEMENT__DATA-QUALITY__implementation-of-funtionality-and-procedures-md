@@ -1,0 +1,317 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs-implementation/blob/master/content/database_design/data-quality-04-implementation.md"
+revision_date: '2023-10-10'
+tags:
+- 实施
+---
+
+# 实施数据质量功能和项目{ #implementing-data-quality-functionality-and-procedures } 
+
+正如[数据录入](data-quality-02-data-entry.md)和[分析](data-quality-03-analysis.md)相关数据质量功能部分所概述的，DHIS2 中有大量确保数据质量的功能。然而，功能的存在并不会自动导致它们的使用。本节将讨论如何提高这些功能的使用率。我们将讨论与此相关的三个主题：
+
+1. [通过仪表板和验证通知自动进行数据质量分析]（#自动数据质量分析）
+2. [在 DHIS2 中实施数据质量功能的 "最低要求"](#minimum-standards-for-data-quality)
+3. [供卫生系统各级使用的数据质量标准操作项目 (SOP)](#standard-operating-procedures)
+
+## 自动数据质量分析{ #automated-data-quality-analysis } 
+
+为了鼓励用户定期检查数据质量，数据质量功能必须易于使用，并尽可能 "推送 "给用户。在 DHIS2 中，主要有两种方法可以做到这一点：
+
+-   配置并与用户共享仪表板，提供现成的数据质量分析。
+-   使用验证规则通知功能通知用户严重的验证规则通知。
+
+### 数据质量仪表板{ #data-quality-dashboards } 
+
+包含数据质量指标的仪表盘是向用户推送自动化数据质量分析的主要方式。如下文关于[最低标准]（#数据质量最低标准）的讨论所述，不同的用户组都应能通过专为其需求设计的仪表盘访问自动化数据质量分析。在为不同用户组规划和设计仪表盘时，需要考虑几个问题。
+
+#### 选择核心指标{ #selecting-core-indicators } 
+
+我们可以在 DHIS2 中定义许多更深入的数据质量指标，这需要为我们希望评估的每个核心变量进行大量的配置工作和额外的元数据（如预测因子、用于存储计算结果的数据元素和指标）。这意味着此类度量只能针对一组核心指标进行。世卫组织 DQA 工具包](https://www.who.int/data/data-collection-tools/health-service-data/data-quality-assurance-dqa) 为某些卫生计划提供了一份核心指标清单，该清单与国家 M&E 计划中定义的核心指标一起，为确定哪些变量应优先考虑提供了一个良好的起点。这也意味着，虽然仪表盘可以概述数据质量问题，并为某些关键变量提供更深入的信息，但用户仍必须接受如何使用其他数据质量功能的[培训]（（#数据质量最低标准）），并应有[标准操作项目]（#标准操作项目）概述他们应例行开展哪些与数据质量相关的活动。
+
+#### 业务或分析重点{ #operational-or-analytical-focus } 
+
+第二个需要考虑的因素是，自动化仪表盘应在多大程度上设计为操作工具还是分析工具，或者是两者的结合。在地区和设施层面，用户直接负责及时输入准确数据，因此仪表盘的设计可以更具操作性。例如，突出显示被标记为潜在异常值的具体数据值，或尚未报告当期情况的个别设施。对于国家一级的分析人员来说，他们的需求更可能是评估数据的质量是否可以接受，以便根据数据做出明智的决策。因此，查看单个离群值的意义不大，但衡量所报告数据值中有多大比例是潜在的离群值则与分析有关。在更高层次上，分析还可以具有业务重点，例如能够监测趋势或对数据质量问题进行地域比较，以便采取干预措施。
+
+#### 为用户组定制{ #customizing-for-groups-of-users } 
+
+仪表盘应针对具有类似信息需求和数据质量相关角色的用户群体，并与他们共享。从技术上讲，在 DHIS2 中，通过使用[共享](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/about-sharing-of-objects.html?h=sharing+master+use) 功能使仪表盘*公开*（对所有用户），很容易让所有用户访问大量的仪表盘；然而，虽然可以开发一套涵盖数据质量所有关键方面的公共仪表盘，但如果这些信息中只有一小部分与用户相关，那么用户就不太可能在一套仪表盘中找到并审查可用的信息。因此，应确定关键用户群体，以仪表盘的形式为其开发量身定制的自动分析功能。
+
+有两个方面是界定这些用户群体的关键：用户所在的卫生系统级别（国家、地区、设施等），以及他们工作的卫生领域。这两者密切相关，因为较高层次的用户通常在卫生领域/计划方面更加专业化，而较低层次的用户则承担更广泛的责任。例如，在一个小型医疗机构中，可能有一两个人负责所有医疗服务的数据和报告工作；在地区，可能既有人负责 HMIS 系统的横向报告工作，也有更专门的协调人负责具体的计划；而在国家一级，每个医疗计划可能都有一个数据分析小组。
+
+在考虑 DHIS2 数据质量仪表盘要求的目标用户群时，重要的是要牢记，单个用户可以是多个用户群的一部分--无论是在他们的实际工作中，还是在 DHIS2 用户群的技术上。例如，如果有两个数据质量仪表板是专门为监测疟疾数据质量和为地区提供关键数据质量指标而开发的，那么在一个地区工作并同时负责疟疾工作的用户就应该可以访问这两个仪表板（即同时属于 "地区用户 "和 "疟疾计划用户 "组）。假定*相对*组织单位和[*相对*时期](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/understanding-the-data-model/about-data-dimensions.html?h=relative+master+use#relative-periods)的使用符合可视化和仪表盘设计的最佳实践，那么相同的仪表盘通常可以在国家和国家以下级别重复使用。但设施层面的情况例外，因为任何涉及多个组织单位间比较的分析对设施用户来说都是无效的。
+
+#### 数据质量仪表板示例{ #data-quality-dashboard-examples } 
+
+作为如何实施 DHIS2 数据质量功能的参考，HISP 中心维护的综合[HMIS 演示数据库](https://demos.dhis2.org/hmis/dhis-web-dashboard/#/c6L3VVdHTGK) 环境中提供了数据质量仪表盘示例。这些仪表盘一般遵循[数据质量原则](data-quality-01-principles.md)部分和[世界卫生组织数据质量保证框架](https://www.who.int/data/data-collection-tools/health-service-data/data-quality-assurance-dqa)中概述的数据质量原则；不过，鉴于重点是*例行*监测（如每月/每季度），围绕分母一致性和外部一致性（如与住户调查）的数据质量检查并不包括在内，因为在正常情况下，这些数据质量检查最多每年变化一次。
+
+除了外部一致性检查外，仪表板示例还提供了每个关键数据质量维度的衡量指标：
+
+-   数据集和数据元素层面的数据完整性和及时性
+
+-   相关数据之间的一致性
+
+-   随时间变化的一致性（离群点检测）
+
+根据[世界卫生组织 DQA 框架](https://www.who.int/data/data-collection-tools/health-service-data/data-quality-assurance-dqa) 推荐的核心指标，示例仪表盘中使用了四项指标（由于 HMIS 演示数据库中可用数据的限制，第五项核心指标--结核病通知--未被纳入仪表盘的初始版本）。
+
+##### 国家到地区一级{ #national-to-district-level } 
+
+仪表板 "DQ - 数据质量核心 "可在[HMIS 演示数据库](https://demos.dhis2.org/hmis/dhis-web-dashboard/#/c6L3VVdHTGK)中使用，登录信息如下：
+-  用户名 : demo_en / 密码District1#
+-  用户名 : demo_dq_district / 密码：District1#
+
+查看仪表板的最佳方式是登录 DHIS2，但此处提供了仪表板主要组成部分的摘要。
+
+**完整性**
+
+*线形图*显示核心指标的 12 个月趋势：
+
+-   报告完整性（每个数据集）
+
+-   过去 12 个月持续报告的设施
+
+上个月各核心指标的*单值图*：
+
+-   数据元素的完整性
+
+-   过去 12 个月持续报告的设施
+
+*表*列有上个月的主要完整性/及时性指标，比较组织单位（用户及以下级别）。每个核心指标包含一个表格。使用自定义图例集，根据完整性给单元格着色。
+
+![](resources/images/dqimp_image7.png)
+
+**相关数据的一致性**
+
+*散点图*显示多个组织单位（用户下一级）的核心变量与相关变量的对比情况。离群值检测功能已启用，使用修改后的 Z 分数方法突出显示离中位数超过 3 SD 值的组织单位。
+
+![](resources/images/dqimp_image13.png)
+
+过去 12 个月的*辍学率*（适用于变量），以柱状图显示，从低到高排序，负值突出显示， 并以相应的表格列出出现负值的组织单位。
+
+**长期一致性**
+
+每个变量的*年同比图表*，显示当年和前 5 年的月度数值。
+
+![](resources/images/dqimp_image11.png)
+
+四个变量中每个变量的*值均不包括异常值*：
+
+-   上个月的单值图表
+
+-   最近 12 个月的数值表，附有图例集
+
+![](resources/images/dqimp_image8.png)
+
+*用户'级别以下的组织在过去 3 个月中每个变量都有较大离群值*的表格，根据离群值的大小设置图例。
+
+![](resources/images/dqimp_image4.png)
+
+##### 设施级{ #facility-level } 
+
+使用这些登录信息，可在[HMIS 演示数据库](https://demos.dhis2.org/hmisdq_dev/dhis-web-dashboard/#/u9bbWIfAX5o)中使用仪表板 "DQ - 数据质量核心"：
+- 用户名： district_dq_facility / 密码：District1#
+
+查看仪表板的最佳方式是登录 DHIS2，但此处提供了仪表板主要组成部分的摘要。
+
+**完整性**
+
+*表*显示最近 12 个月的主要完整性/及时性指标（每个核心指标一个表），说明
+
+-   数据集预期报告：如果设施应该报告，则为 1，否则为 0
+
+-   数据集实际报告：如果机构已将数据集标记为完整，则为 1，否则为 0
+
+-   数据集按时实际报告：如果设施在报告截止日期前将数据集标记为完整，则为 1，否则为 0
+
+-   变量值（如产前检查第一次就诊）：实际数据值，用于直接评估数据元素的完整性
+
+使用自定义图例集来突出显示 0 值，但采用中性色，因为有些机构不需要报告所有关键变量。
+
+![](resources/images/dqimp_image5.png)
+
+**相关数据的一致性**
+
+过去 12 个月的*辍学率*（适用于变量），以单列图表的形式显示，负值突出显示，相应的 表格列出了负值的组织单位。
+
+![](resources/images/dqimp_image12.png)
+
+**长期一致性**
+
+每个变量的*年同比图表*，显示当年和前 5 年的月度数值。
+
+![](resources/images/dqimp_image9.png)
+
+*用户组织单位在过去 12 个月中每个变量的较大离群值*（仅为 10 以上的值）表，根据离群值的大小设置图例。
+
+![](resources/images/dqimp_image10.png)
+
+*用户组织单位在过去 12 个月中每个变量的报告值与计算离群值*比较图。
+
+![](resources/images/dqimp_image14.png)
+
+#### 世卫组织工具包中的仪表板{ #dashboards-from-who-toolkits } 
+
+作为卫生数据工具包的一部分，数据质量仪表盘被纳入具体的卫生计划。这些都是宝贵的资源，在实施各领域的数据质量仪表板时应加以审查。目前，[疟疾数据质量仪表板](https://docs.dhis2.org/en/topics/metadata/malaria/malaria-hmis/design.html#malaria-data-quality-dashboard) 已经发布，并可在[HMIS 演示数据库](https://demos.dhis2.org/hmis/dhis-web-dashboard/#/xRjeIawqMbW) 中查阅。结核病和艾滋病毒的数据质量仪表板正在开发中，将于 2023 年底前发布并在 HMIS 演示数据库中提供。
+
+### 验证规则通知{ #validation-rule-notifications } 
+
+仪表板是向用户提供自动化数据质量分析的主要方式。不过，验证规则通知也可用于此目的，如果配置得当，也是一种有用的补充。根据 DHIS2 的配置方式，可以设置验证规则通知，这样，如果某个逻辑测试为真，用户就会在 DHIS2、电子邮件或短信中收到消息。就数据质量而言，这意味着某个值超过了某个阈值，从而被标记为潜在的离群值。
+
+由于发送过多信息会导致人们不再关注，因此需要谨慎管理该功能的实施。如果有通知，情况尤其如此：
+
+-   发送给与信息无关的人（即他们没有责任检查/纠正潜在的错误）。
+
+-   包含过多的假阳性（即结果并非数据质量错误的值）； - 包含过多的假阳性（即结果并非数据质量错误的值）； - 包含过多的假阳性（即结果并非数据质量错误的值）。
+
+-   没有重要到需要发送专门信息的程度
+
+因此，在数据质量监测中应谨慎使用验证规则通知，它最适用于数据质量一直存在问题的高度优先变量。
+
+### 参考--数据质量度量{ #reference-data-quality-metrics } 
+
+以下是数据质量指标和分析的参考清单，可在 DHIS2 中进行配置，并通过仪表盘或推送通知对单一变量进行自动分析。
+
+**完整性**
+
+-   数据集的完整性和及时性。
+
+-   数据元素完整性。可为分母配置不同的衡量标准（"预期报告"）。
+
+-   各单位/设施始终如一地提交报告
+
+**相关数据之间的一致性**
+
+-   对照相关变量的散点图
+
+-   突出负辍学率的图表（如适用）
+
+**长期一致性**
+
+-   用于直观识别异常值的同比图表
+
+-   离群值测量
+
+    -   不包括离群值的总值
+
+    -   离群值的数量和比例
+
+    -   按时期/组织单位分列的离群值清单
+
+-   如果数值超过离群值阈值，则发出通知（DHIS2 信息、电子邮件或短信
+
+## 数据质量最低标准{ #minimum-standards-for-data-quality } 
+
+DHIS2 具有确保和评估数据质量的多种功能；但是，其中大部分功能需要 DHIS2 核心团队进行配置，而且必须提供给最终用户。除了 DHIS2 的配置外，为 DHIS2 的最终用户提供的培训也必须包括数据质量功能，并为各级工作人员制定工作计划，明确规定他们在确保数据质量方面的职责。本节概述了我们认为确保数据质量的最低配置和实施标准。
+
+### 数据录入配置{ #data-entry-configuration } 
+
+-   为当前使用的所有数据集配置验证规则，涵盖所有可根据验证规则最佳实践定义逻辑比较的数据元素。
+
+    -   健康数据工具包为若干健康计划提供了建议的验证规则参考。
+
+-   在生成最小-最大值时，应考虑常规使用至少一年且报告完整度合理的数据集。
+
+    -   除使用内置的 "最小-最大值生成 "功能外，还应使用其他方法
+
+### 仪表板和指标{ #dashboards-and-indicators } 
+
+-   数据质量指标应（至少）为卫生部/保健计划的高度优先指标配置：
+
+    -   数据元素的完整性
+
+    -   持续报告的设施
+
+    -   排除异常值的数据
+
+-   应根据所有用户的数据质量分析需求，开发数据质量仪表板并提供给他们
+
+    -   应审查卫生数据工具包中的数据质量仪表板，作为参考
+
+### 用户角色和访问{ #user-roles-and-access } 
+
+-   用户应能访问 "数据质量 "核心应用项目和其他已安装/配置的数据质量应用项目（如世卫组织数据质量工具）。这包括
+
+    -   负责输入和验证数据的所有用户至少应
+
+    -   除非有明确的理由，否则其他有数据分析权限的用户
+
+### 其他配置{ #other-configuration } 
+
+-   安装和配置世卫组织数据质量工具，以支持年度数据质量审查
+
+-   考虑了验证规则通知（实际上，实施该规则**不被视为最低数据质量标准的一部分）
+
+    -   如果使用验证规则通知，则配置通知选项（电子邮件和/或短信
+
+### 培训和工作辅助{ #training-and-job-aides } 
+
+-   为使用 DHIS2 的工作人员提供的培训课程和材料应包括数据质量功能的使用
+
+-   向用户提供的工作指南、用户手册和其他资源应涵盖数据质量功能
+
+### 标准操作项目{ #standard-operating-procedures } 
+
+-   应确定数据质量的标准操作项目，并提供给用户
+
+    -   这可以是专门的数据质量 SOP，也可以是数据收集和/或数据分析 SOP 中的数据质量内容
+
+## 数据质量标准操作项目{ #sop-for-data-quality } 
+
+应为各级卫生系统的数据使用者提供有关数据质量的标准操作程序。标准操作程序应概述*谁*做*什么*，*何时*做*，以及*如何*做。这意味着必须明确与数据质量有关的关键角色，以及每个角色的职责。应说明的数据质量相关活动示例包括
+
+-   如果在数据录入过程中出现违反验证规则或最小/最大值的情况，应采取什么措施？
+
+-   什么时候报告数据，什么时候审查数据？
+
+-   各级卫生系统应采取哪些步骤来审查数据
+
+-   发现错误值或离群值时该怎么办？
+
+数据质量 SOP 必须根据每次实施的具体情况和既定项目来制定。不过，[此处](https://docs.google.com/document/d/1w9bhvCEgewrKLSNsizfpPBoAv2WCd3aM9wzbt3x4yHE/edit?usp=sharing) 提供了一个数据质量 SOP 模板，可作为制定针对具体国家的版本的起点。
+
+
+## 主要维修业务{ #key-maintenance-operations } 
+
+为了使此处描述的数据质量功能发挥预期作用，还必须设置某些基础功能。
+
+### 排程 { #scheduling } 
+
+有几种数据质量度量依赖于使用预测器来执行基础计算。就异常值而言，需要两套预测器：首先计算异常值阈值，然后根据这些阈值评估数据。预测器必须使用[Scheduler 应用项目](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/maintaining-the-system/scheduling.html?h=scheduler+master+use#scheduling)进行调度，其运行应在分析表生成作业之前完成，通常是每晚。
+
+排定的工作不能串联在一起，这样前一个工作完成后，后一个工作才会开始。因此，为确保所需工作以正确的顺序运行，必须测量每个工作完成所需的时间，并相应地安排它们。
+
+以下是生成预测因子并用于分析的示例
+
+![](resources/images/dqimp_image2.png)
+
+在第二个示例中，我们可以为验证规则和通知的使用添加监控任务
+
+![](resources/images/dqimp_image15.png)
+
+
+在下面的示例中，计算数据质量阈值的预测器在 23:00 开始，大约 15 分钟内完成。计算其他数据质量指标的预测器在 23:30 开始，耗时 45 分钟。最后，分析表更新工作在 02:00 开始。***在开发系统中仔细执行测试，跟踪每个工作所需的时间，并相应地安排它们。
+
+![](resources/images/dqimp_image1.png)
+
+### 电子邮件和短信通知设置{ #email-and-sms-notifications-settings } 
+
+无论是用户直接发送的信息、验证通知还是系统通知，默认情况下都是作为 DHIS2 内部信息发送的。若要通过电子邮件和/或短信转发这些信息，需要对 DHIS2 进行适当配置，用户需要启用电子邮件/短信通知功能。
+
+#### 电子邮件配置{ #email-configuration } 
+
+DHIS2 要发送电子邮件通知，需要在[系统设置](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-238/configuring-the-system/system-settings.html?h=smtp+2.38#system_email_settings)下配置 SMTP 服务器。原则上，任何提供 SMTP 服务的邮件提供商都可用于此目的。也可通过[教程](https://docs.dhis2.org/en/topics/tutorials/setting-up-email.html?h=smtp+tutorials#setting-up-email-on-a-server)在 DHIS2 主机服务器上设置电子邮件服务。
+
+#### 短信配置{ #sms-configuration } 
+
+要让 DHIS2 发送（和接收）短信，需要配置一个[短信网关](https://en.wikipedia.org/wiki/SMS_gateway)。这里](https://docs.dhis2.org/en/manage/performing-system-administration/dhis-core-version-238/using-gateways-for-sms-reporting.html#sms_report_android_gateway)讨论了 DHIS2 短信网关的其他选择。[使用安卓设备作为网关](https://docs.dhis2.org/en/manage/performing-system-administration/dhis-core-version-238/using-gateways-for-sms-reporting.html#sms_report_android_gateway) 在技术上是可行的，但只建议用于测试和小规模试点。[专用 SMS 网关](https://docs.dhis2.org/en/manage/performing-system-administration/dhis-core-version-238/using-gateways-for-sms-reporting.html#sms_report_dedicated_gateway) 通常由商业供应商或移动运营商提供（收费），这些服务供应商将提供配置网关所需的参数。
+
+在 DHIS2 中配置短信网关的具体步骤见 [此处](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-238/maintaining-the-system/configure-sms.html?h=#sms-configuration-gateways)，更多详情见 [此处](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-238/maintaining-the-system/mobile.html#mobile_sms_service)。
+
+#### 启用和禁用通知{ #enabling-and-disabling-notifications } 
+
+每个用户都可以选择是否将这些信息转发至短信或电子邮件（假设已按上述方式进行了配置）。方法是打开 DHIS2 菜单栏的用户设置，打开或关闭短信/电子邮件的每个选项（设置为 "是 "才能启用）。
+
+![](resources/images/dqimp_image6.png)
+
+![](resources/images/dqimp_image3.png)
+

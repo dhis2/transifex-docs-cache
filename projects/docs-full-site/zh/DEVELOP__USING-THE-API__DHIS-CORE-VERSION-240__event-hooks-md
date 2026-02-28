@@ -1,0 +1,130 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.40/src/developer/web-api/event-hooks.md"
+revision_date: '2023-05-03'
+tags:
+- DHIS 核心 2.40 版
+- DHIS核心 主版
+---
+
+# 活动钩子{ #event-hooks } 
+
+## 事件钩子{ #webapi_event_hooks }
+
+通过事件钩子应用程序接口，用户可以订阅 DHIS2 中发生的事件。目前，可发布的事件有两类：用于创建、更新和删除元数据对象的元数据事件，以及用于运行任何类型的内部计划任务（如分析）的调度程序事件。
+
+端点位于 `/api/eventHooks`，必须在 `dhis.conf` 中使用
+键启用 "event_hooks.enabled = on "才能正常工作。
+
+事件钩子有两个主要概念，您需要配置源（包括路径、
+和要应用的字段过滤器）以及一个或多个目标（网络钩子、JMS 等）。
+
+为了说明其中一些要点，我们将通过一个简单的网络钩子来说明，该网络钩子会监听 dataElements 的元数据变化，并启用了网络钩子目标。
+
+在 `source` 和 `target` 之外，还有两个属性需要您注意，一个是您提供的 `name` 属性，用于在用户界面中查看时的视觉提示；另一个是 `disabled`属性，默认情况下为 false，但可以暂时禁用某些在当前情况下可能不相关的事件钩子。
+默认为假，但可以暂时禁用某些可能与当前无关的事件钩子。
+
+``json
+{
+  "name"："webhook-api-token"、
+  "disabled": false、
+  "source"：{
+    "path"："metadata.dataElement"、
+    "字段"："id、code、name"
+  },
+  "目标"： [[
+    {
+      "类型"："webhook"、
+      "url"："http://localhost:3000/api/gateway"、
+      "auth"：{
+        "type"："api-token"、
+        "令牌"： {"EB3F6799-AA5A-47E8-B6B7-97EA54EB3873"
+      }
+    }
+  ]
+}
+```
+
+### 来源{ #source } 
+
+在此，我们将重点关注事件钩子的 `source.path` 部分。对于 `path` 属性，我们支持 2 种主要路径：
+
+例如，您可以使用 `metadata` 监听所有元数据，也可以使用 `metadata.type.id` 只监听组织单位操作。
+组织单位操作。
+
+调度程序事件也是如此，路径是 `scheduler.type.id` 。
+因此示例为 `scheduler.ANALYTICS_TABLE`。
+
+还支持字段过滤，默认为 `id,displayName` 字段，但可自由使用任何字段过滤。
+但您可以自由使用任何字段过滤。为了减少工作量，不建议请求过大的有效载荷（因为根据路径不同，可能会有很多事件发生）
+
+### 目标{ #target } 
+
+准备好 "源"（包括路径和过滤器）后，现在必须
+设置一个或多个目标。所有目标都需要 `type` 属性，然后
+有效载荷本身也会因此而有所不同。
+
+#### 控制台{ #console } 
+
+控制台 "目标是我们拥有的最简单的目标，它没有参数，所做的只是将事件打印到系统日志中（测试时非常有用）。
+
+``json
+{
+  "类型"："console"
+}
+```
+
+#### Webhook{ #webhook } 
+
+`webhook` 目标会向目标 `url` 发送一个外发 http 请求。
+可选择包含开箱即支持的身份验证（`api-token` 和 `http-basic`）。如果您有任何自定义需求，也可以添加任何头信息。有效载荷将以 `application/json` 的形式发送，内容
+将取决于您在源代码中设置的字段过滤器。
+
+``json
+{
+  "type"："webhook"、
+  "url"："http://localhost:3000/api/gateway"、
+  "headers"：{},
+  "auth"：{
+    "类型"："api-token"、
+    "令牌"："EB3F6799-AA5A-47E8-B6B7-97EA54EB3873"
+  }
+}
+```
+
+``json
+{
+  "type"："webhook"、
+  "url"："http://localhost:3000/api/gateway"、
+  "auth"：{
+    "type"："http-basic"、
+    "用户名"："admin"、
+    密码"admin
+  }
+}
+```
+
+#### Apache Artemis JMS{ #apache-artemis-jms } 
+
+jms "目标允许您向 Apache Artemis 实例发送 JMS 消息（支持 JMS 2/3）。该目标非常适合对这些事件进行异步处理，而且在处理过程中不会阻塞服务器。如果您更喜欢使用 "队列"，可以将 "useQueue "设置为 "true"。
+
+``json
+{
+  "type"："jms"、
+  "brokerUrl"："tcp://localhost:61616",
+  "useQueue": false、
+  "用户名"："guest"、
+  密码"guest
+}
+```
+
+#### Apache Kafka{ #apache-kafka } 
+
+与 `jms` 目标类似，使用 `kafka` 目标可将这些事件发送到 Apache Kafka 实例中。目前还不支持身份验证。
+
+``json
+{
+  "type"："kafka"、
+  "topic"："dhis2.hooks"
+}
+```
+
