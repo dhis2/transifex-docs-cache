@@ -1,0 +1,206 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.41/src/developer/web-api/route.md"
+revision_date: '2025-11-11'
+tags:
+- DHIS 核心 2.41 版
+- DHIS核心 主版
+---
+
+# 路线{ #route } 
+
+## 路线{ #webapi_route }
+
+路由 API 允许 DHIS2 网络应用程序与外部 HTTP 网关和代理进行通信。它旨在成为一种轻量级解决方案，用于扩展需要与第三方服务（如民事登记处）交换数据的应用程序。路由端点在 URL 路径"/api/routes "上可用。路由可通过向 `/api/routes/{id}/run` 发送 HTTP `GET` 或 `POST` 来运行。DHIS2 会在发送到路由目标的每个请求中包含 `X-Forwarded-User` 头信息。该标头包含发起请求的 DHIS2 用户名，以便目标做出相应反应。
+
+在这里的示例中，我们将使用 Postman 的 [Echo API](https://learning.postman.com/docs/developer/echo-api/)，它只会返回您发送给它的内容（在 `POST` 的情况下包括 body）。
+
+### 所需权限{ #required-permissions } 
+
+要配置和查看路由，当前用户必须拥有 "ALL "权限，或者在用户角色中添加 "Route "权限。添加权限的方法是进入用户管理应用程序 -> 用户角色选项卡，然后在元数据权限下搜索 "路由 "一词。然后就可以将权限分配给用户的角色，并保存对角色的更新。
+
+![](resources/images/routes/route-authorities.png)
+
+属性
+route.remote_servers_allowed = https://*.server1.com/
+```
+
+请注意，不接受 URL 中的路径。
+
+### 运行路线{ #running-a-route } 
+
+下面是一个创建路由的 JSON 请求示例：
+
+``json
+{
+  "name"："Postman Echo"、
+  "代码"："postman"、
+  "disabled": false、
+  "url"："https://postman-echo.com/get"
+}
+```
+
+将上述请求发送至 `/api/routes` API 端点后，即可从 DHIS2 运行路由。您可以使用返回的 ID 或分配给它的代码运行路由，如下图所示：
+
+```
+GET /api/routes/{id}/run
+GET /api/routes/postman/run
+```
+
+如果希望 DHIS2 将请求 _POST_ 发送到路由目标，请在调用 `run` 端点时使用 _POST_ HTTP 方法，而不是 `GET` HTTP 方法：
+
+```
+POST /api/routes/postman/run
+```
+
+### 使用验证运行路由{ #running-a-route-with-authentication } 
+
+运行路由时支持多种身份验证模式。这些验证模式会在 DHIS2 发送的路由请求中添加标头或查询参数。在使用验证模式创建路由时，DHIS2 会对敏感的标头或查询参数进行加密。这意味着无法从数据库或 Web API 读取明文机密。以下是支持的验证模式：
+
+* http-basic`：在路由请求中添加一个 _Authorization_ 标头，用于 HTTP 基本访问身份验证。下面是创建配置了 `http-basic` 身份验证的路由的示例：
+
+  ```json
+  {
+    "name": "Postman Echo",
+    "code": "postman-get",
+    "disabled": false,
+    "url": "https://postman-echo.com/get",
+    "auth": {
+      "type": "http-basic",
+      "username": "admin",
+      "password": "admin"
+    }
+  }
+  ```
+
+* api-token`：为[Personal Access Token (PAT) authentication]（个人访问令牌（PAT）身份验证）添加一个 _Authorization_ 标头(https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/working-with-your-account/personal-access-tokens.html) 。值得注意的是，PAT 身份验证是 DHIS2 特有的，因此如果路由的目标 URL 不是 DHIS2 实例，你可能需要考虑使用更通用的 `api-headers` 身份验证模式（将在下文介绍）。下面是一个创建路由的示例，路由配置了 "api-token "身份验证：
+
+  ```json
+  {
+    "name": "Postman Echo",
+    "code": "postman-get",
+    "disabled": false,
+    "url": "https://postman-echo.com/get",
+    "headers": {
+      "a": "1",
+      "b": "2",
+      "c": "3"
+    },
+    "auth": {
+      "type": "api-token",
+      "token": "74478F79-7B85-424A-9C93-8A6F924AA9F9"
+    }
+  }
+  ``` 
+  请注意，该请求将路由配置为静态标头，以便 DHIS2 发送的请求中包含这些标头。请注意，DHIS2 不会将这些静态标头加密存储。 
+
+* api-headers`：为 API 身份验证添加用户定义的标头。下面是创建配置了 `api-headers` 身份验证的路由的示例：
+
+  ```json
+  {
+    "name": "Postman Echo",
+    "code": "postman-get",
+    "disabled": false,
+    "url": "https://postman-echo.com/get",
+    "auth": {
+      "type": "api-headers",
+      "headers": {
+        "X-API-KEY": "aXJgm4Kwv1xk9UfFRYIIR8b6mEV1cQz3lcxMQlaQz9lwI35j4ZIUK5T2O2aQDfIY"
+      }
+    }
+  }
+  ```
+
+* api-query-params`：为 API 身份验证添加用户定义的查询参数。下面是创建配置了 `api-query-params` 身份验证的路由的示例：
+
+  ```json
+  {
+    "name": "Postman Echo",
+    "code": "postman-get",
+    "disabled": false,
+    "url": "https://postman-echo.com/get",
+    "auth": {
+      "type": "api-query-params",
+      "queryParams": {
+        "token": "aXJgm4Kwv1xk9UfFRYIIR8b6mEV1cQz3lcxMQlaQz9lwI35j4ZIUK5T2O2aQDfIY"
+      }
+    }
+  }
+  ```
+
+### 使用身份验证和自定义权限运行路由{ #running-a-route-with-authentication-and-custom-authority } 
+
+在下面的示例中，我们使用 "http-basic "身份验证配置路由，并为其分配自定义权限：
+
+``json
+{
+  "name"："Postman Echo"、
+  "代码"："postman-post"、
+  "disabled": false、
+  "url"："https://postman-echo.com/post"、
+  "auth"：{
+    "类型"："http-basic"、
+    "用户名"："admin"、
+    密码"admin
+  },
+  "权限"：["my_custom_app"]
+}
+```
+
+自定义权限允许无权管理路由的 DHIS2 客户端仍能运行路由。这样就能从您的应用程序中运行路由。
+
+### 使用自定义响应超时运行路由{ #running-a-route-with-custom-response-timeout } 
+
+出于性能考虑，路由响应的最长传输时间为 5 分钟。当上游服务器响应体的传输超过这一限制时，DHIS2 服务器会向客户端返回网关错误。另一方面，运行路由时，上游服务器响应的预配置超时为 5 秒。这意味着网络级读取时间超过 5 秒，DHIS2 服务器就会向客户端返回网关超时错误。不过，如下图所示，在创建或更新路由时，可以对该超时进行调整：
+
+``json
+{
+  "name"："Postman Echo"、
+  "代码"："postman-post"、
+  "disabled": false、
+  "url"："https://postman-echo.com/post"、
+  "responseTimeoutSeconds"：10
+}
+```
+
+允许的最小响应超时时间为 1 秒，最大超时时间为 60 秒。应谨慎使用 `responseTimeoutSeconds` 设置，因为并发的、长时间运行的路由可能会降低 DHIS2 的整体性能。 
+
+>重要： 从 DHIS2 v40.10 和 v41.6 开始，可以自定义响应超时。早期版本的 DHIS2 响应超时为 10 秒，以下版本除外：
+>* 40.8 ≤ v< 40.10
+>* 41.4 ≤ v< 41.6
+>
+>这些版本的响应超时为 30 秒。
+
+### 通配符路由{ #wildcard-routes } 
+
+可以创建支持子路径请求的 "通配符路由"，然后将其传递给上游服务。为此，路由 URL 必须以 `/**` 结尾。然后，可以在 `/run`后追加子路径来指定子路径。
+
+``json
+{
+  "name"："Postman Wildcard"、
+  "code"："postman-wildcard"、
+  "disabled": false、
+  "url"："https://postman-echo.com/**"
+}
+```
+
+将其发送至 `/api/routes`后，您就可以使用路由了，可以使用返回的 ID 运行路由，也可以使用代码。请注意，子路径 `/get` 和 `/post` 已在下面请求的 URL 中传递，这将分别触发对 `https://postman-echo.com/get` 和 `https://postman-echo.com/post` 的请求。
+
+```
+GET /api/routes/{id}/run/get
+GET /api/routes/postman-wildcard/run/get
+POST /api/routes/{id}/run/post
+POST /api/routes/postman-wildcard/run/post
+```
+
+## 安全注意事项 { #security-considerations } 
+
+DHIS2 将来自上游服务器的响应视为可信响应。这意味着路由不会验证上游服务器生成的数据。例如，尽管路由请求的 `Accept` 标头中包含了 `application/json` 内容类型，路由客户端仍可能收到 JavaScript 代码等无效 JSON。当上游响应不可信时，路由客户端（如 DHIS2 应用程序）就有责任对路由响应中的数据进行验证和可能的消毒。
+
+## 路线管理应用程序{ #route_manager_app }
+
+路由管理器应用程序](https://apps.dhis2.org/app/5dbe9ab8-46bd-411e-b22f-905f08a81d78) 是一个 DHIS2 应用程序，可从 App Hub 获取，它为管理和测试路由提供了一个用户界面：
+
+路由管理器应用程序](./resources/images/route-manager/route-manager-list.png)
+
+请访问 [DHIS2 系统维护指南](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/maintaining-the-system/route-manager.html) 了解更多有关使用路由管理器的信息。
+

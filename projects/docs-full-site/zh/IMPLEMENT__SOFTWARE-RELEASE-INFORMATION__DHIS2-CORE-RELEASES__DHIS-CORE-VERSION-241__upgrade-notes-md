@@ -1,0 +1,475 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-releases/blob/master/releases/2.41/README.md"
+revision_date: '2025-02-27'
+tags:
+- DHIS 核心 2.41 版
+- 实施
+---
+
+# DHIS2 第 41 版升级说明{ #dhis2-version-41-upgrade-notes } 
+
+欢迎阅读 DHIS2 第 41 版的升级说明。
+
+> 在尝试升级之前**，熟悉这些说明的内容非常重要。
+>
+> :警告：如果从早期版本升级，**请确保您也阅读了[PREVIOUS RELEASE](../2.40/README.md)中的升级说明**。
+
+为帮助您浏览文件，这里有一份详细的目录。
+
+## 目录{ #table-of-contents } 
+
+  - [先决条件]（#先决条件）
+  - [应用程序接口变更](#api-changes)
+    - [共享]（#共享）
+    - [分析](#分析)
+      - [未登录的表格](#unlogged-tables)
+      - [资源表（***可能会破坏***某些现有脚本）](#resource-tables-may-break-some-existing-scripts-out-there)
+      - [跟踪实体属性更新脚本增强](#tracked-entity-attribute-update-script-enhancement)
+        - [验证哪些属性会受到影响：]（#验证哪些属性会受到影响）
+    - [跟踪器]（#跟踪器）
+      - [重大变化]（#重大变化）
+      - [ACL 跟踪器导出中断更改](#acl-tracker-export-breaking-changes)
+      - [已废弃的应用程序接口](#deprecated-apis)
+        - [分页]（#分页）
+        - [分号作为标识符 (UID) 的分隔符](#semicolon-as-separator-for-identifiers-uid)
+        - [命名](#命名)
+          - [已废弃的端点](#deprecated-endpoints)
+          - [API 响应体中的废弃密钥](#deprecated-keys-in-api-response-bodies)
+        - [后续拼写修正]（#followup-spelling-fix）
+    - [元数据](#metadata)
+  - [数据库
+    - [跟踪器]（#跟踪器-1）
+      - [突破性更改：重命名表格和列](#breaking-changes-renamed-tables-and-columns)
+      - [已重命名的表格]（#已重命名的表格）
+      - [已重命名列]（#已重命名列）
+      - [Postgres 参考资料]（#postgres-reference）
+  - [弃用和删除](#deprecations-and-removals)
+
+<!--
+1. [Functional Changes](#functional-changes)
+2. [Performance Enhancements](#performance-enhancements)
+3. [Security](#security)
+4.  [Known Issues](#known-issues)
+5.  [Additional Notes](#additional-notes)
+-->
+
+---
+## 先决条件{ #prerequisits } 
+
+> 重要**
+>
+> DHIS2 第 41 版 **现在需要 Java 17** 运行环境。
+
+
+## 应用程序接口变更{ #api-changes } 
+### 分享中 { #sharing } 
+
+- 删除**传统共享属性**：从 2.36 版起引入了新的 "共享 "属性，以取代传统共享属性 userAccesses、userGroupAccesses、publicAccess、externalAccess。为了保持网络协议的向后兼容性，我们的网络协议和所有相关功能都支持新属性和传统属性。不过，为了实现新功能并保持代码库的整洁，我们需要在 2.41 中删除传统格式。因此，从该版本开始，您将无法从我们的网络协议中获取这些属性：
+
+  用户权限"、"用户组权限"、"公共权限"、"外部权限
+
+  相反，这些属性可以在新的 `sharing` 属性中访问，[此处](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-237/sharing.html#new-sharing-object)。
+
+- 仪表板应用程序中的**重大变更**：在 2.40 及更旧的版本中，即使没有链接至仪表板项目的所有元数据对象的 `METADATA_READ` 权限，用户也可以查看仪表板内容。这是因为我们的 Web api 中存在一个漏洞，只要知道 `uid `，任何用户都可以查看任何元数据对象的详细信息。这个漏洞长期以来一直造成问题，因此已在 2.41 中删除。因此，许多用户将无法查看仪表盘，因为他们没有足够的仪表盘内容的 `METADATA_READ` 权限。为了解决这个问题，系统管理员或仪表板所有者可以使用 [Cascade sharing for Dashboard](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-237/sharing.html#cascade-sharing-for-dashboard) 功能向受影响的用户授予所需的权限。
+
+### 分析工具 { #analytics } 
+
+#### 未登录的表格{ #unlogged-tables } 
+分析未记录表现在默认启用（"on"）。如果启用，这可能会大大提高分析表的导出速度。但这是有代价的："未记录 "表无法复制。这意味着无法进行集群。此外，如果 PostgreSQL 突然重置（突然重置/崩溃），分析表将被自动截断。如果你负担不起上述费用，就应该禁用它（设置为 "关闭"）。应在 `dhis.conf` 中设置，即： `analytics.table.unlogged = off` 。
+
+#### 资源表（***可能会破坏***某些现有脚本）{ #resource-tables-may-break-some-existing-scripts-out-there } 
+下划线 (`_`) 一直是分析资源表的前缀。
+但在此版本中，前缀发生了变化。现在，资源表将以 "analytics_rs_"作为前缀：
+
+`_categorystructure`->`analytics_rs_categorystructure`。
+
+在上面的示例中，在此版本发布之前，相应的资源表名为 `_categorystructure`。
+从本版本开始，它将被命名为 `analytics_rs_categorystructure`。
+
+由于这一更改，一些依赖于这些表格的自定义脚本可能会崩溃。因此，请注意这一点。
+
+#### 跟踪实体属性更新脚本增强功能{ #tracked-entity-attribute-update-script-enhancement } 
+
+在此版本中，引入了一个 Flyway 脚本来增强 DHIS 系统。该脚本旨在更新所有跟踪实体属性（TEA）的 valueType，这些属性的值与声明的属性类型不兼容。
+
+具体来说，脚本会将这些属性的类型更新为 "TEXT"。例如，如果 TEA 声明为数值，但其值是文本字符串，脚本将把属性类型修改为文本。
+
+这一增强功能可确保数据完整性，并使属性类型与其实际值保持一致，这在分析中尤为必要。
+
+##### 验证哪些属性会受到影响：{ #verifying-which-attributes-will-be-affected } 
+
+升级前可执行以下查询，以验证哪些 TEA 会受到影响。
+
+查询还将显示更新语句
+
+``` SQL
+创建或替换 FUNCTION can_be_casted(s text, type text) RETURNS bool AS
+$$
+开始
+    执行'SELECT $1::'|| type || ';' USING s；
+    返回 true；
+异常
+    当其他情况发生时
+        返回 false；
+结束；
+$$ LANGUAGE plpgsql STRICT；
+
+select uid、
+    valetype、
+    描述、
+    update trackedentityattribute set valuetype=''TEXT'' where uid = ''' || uid || ''';' as suggested_fix_statement
+from (select tea.uid、
+    tea.valuetype、
+    tea.description、
+    teav.value、
+    情况
+        当 tea.valuetype 在（'NUMBER'、'UNIT_INTERVAL'、'PERCENTAGE'）中时，则 can_be_casted（teav.值，'双精度'）。
+        当 tea.valuetype like '%INTEGER%' 时，can_be_casted（teav.值，'整数'）。
+        当 tea.valuetype 在（'DATE'、'DATETIME'、'AGE'）中时，can_be_casted(teav.value, 'timestamp')
+    end as safe_too_cast
+    from trackedentityattribute tea
+    join trackedentityattributevalue teav on tea.trackedentityattributeid = teav.trackedentityattributeid) as t1
+其中 safe_too_cast = false
+通过 uid、valueetype、description 进行分组；
+
+DROP 函数，如果存在 can_be_casted(s text, type text)；
+```
+> 注意**
+> 无需手动运行更新，因为系统会在下次启动时自动执行更新。
+
+> 注意
+> 如果不想自动更改类型，也可以使用此迁移来确定需要更正的 TEA。
+
+> 重要**
+> 新版本首次启动时，将自动执行该脚本（升级后的首次启动可能会因运行该脚本而稍慢）。
+
+### 追踪器 { #tracker } 
+
+#### 突破性变革{ #breaking-changes } 
+
+删除了以下查询参数，因为使用 "筛选器 "参数可以实现相同的功能
+
+* `/tracker/trackedEntities?query` `/tracker/trackedEntities?
+* `/tracker/trackedEntities?attribute` 属性
+
+删除了下列查询参数，因为它们具有误导性，不能提供任何有用信息
+
+* `/tracker/trackedEntities?includeAllAttributes` `/tracker/trackedEntities?
+
+以下查询参数已被删除，因为它们从未执行过，因此对响应没有影响
+影响
+
+* `/tracker/trackedEntities?attachment`
+* `/tracker/events?attachment`
+
+删除了以下参数，因为从 JSON 响应中包含或排除字段可通过使用 `fields` 查询参数来实现
+
+* `/tracker/trackedEntities?skipMeta` `/tracker/trackedEntities?
+* `/tracker/events?skipMeta` `/tracker/events?
+* `/tracker/events?skipEventId`
+
+删除了跟踪器导入报告中实体的 `index` 字段。
+
+使用 `POST /tracker` 端点导入跟踪器实体时，响应将遵循 [此处](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker.html#import-summary-structure) 所描述的格式。
+
+索引 "字段已从 "对象报告 "中删除，因为现在对象的排序方式与请求中的相同。
+
+已从 `GET /tracker/enrollments` 和 `GET /tracker/events` 端点删除了 `orgUnitName` 字段，因此无法再根据该字段进行排序。
+
+已从 `GET /tracker/enrollments` 端点删除了 `trackedEntityType` 字段。
+
+在 `GET /tracker/events` CSV 端点的响应中，"followup "字段已更名为 "followUp"。
+
+#### ACL 跟踪器导出破坏性更改{ #acl-tracker-export-breaking-changes } 
+
+除非另有明确说明，否则后续的突破性修改仅适用于 2.41 及以后的版本。
+
+1. 事件 "和 "跟踪器/事件 "请求的有效性
+    * [TECH-1630](https://dhis2.atlassian.net/browse/TECH-1630)：如果提供的组织单位在用户的搜索范围内，无论程序访问级别如何，对 `/events` 和 `/tracker/events`的请求现在都被视为有效。这与 `/tracker/trackedEntities`和 `/tracker/enrollments`当前的行为一致。在以前的版本中，指定受保护或已关闭的程序，或在请求中省略程序，再加上用户捕获范围之外的组织单位，都会导致异常。这一更改从 2.38 版开始生效。
+    * [TECH-1663](https://dhis2.atlassian.net/browse/TECH-1663)：此外，在 `/events` 和 `/tracker/events`中，使用 `ACCESSIBLE` 模式而不指定程序的请求现在将返回用户搜索范围内（在 `OPEN` 或 `AUDITED` 程序中）的所有事件，以及用户捕获范围内（在 `PROTECTED` 或 `CLOSED` 程序中）的所有事件。以前，它只会返回用户捕获范围内的事件。这一更改自 2.38 版起生效。
+
+2. 带组织单位模式的 API 请求
+    * [TECH-1585](https://dhis2.atlassian.net/browse/TECH-1585)：如果在请求中指定了额外的组织单位，使用组织单位模式（"ALL"、"ACCESSIBLE "或 "CAPTURE"）之一的 API 请求现在将导致 "400|Bad Request"。在以前的版本中，这种请求会容忍组织单位的存在，即使从数据库获取结果时不会使用该组织单位。但是，如果提供的组织单位不在用户范围内，请求将返回异常。
+
+3. 默认组织单位模式
+    * [TECH-1588](https://dhis2.atlassian.net/browse/TECH-1588)：当请求中既未指定组织单位也未指定组织单位模式时，默认模式将是 `ACCESSIBLE`。相比之下，旧版本的 `/trackedEntities`和 `/enrollments`在两者都未指定时会返回异常。如果指定了组织单位，SELECTED 模式将继续作为默认模式。
+
+4. 组织 单位 模式 ALL 授权
+    * [TECH-1589](https://dhis2.atlassian.net/browse/TECH-1589)：在 `/enrollments`和 `/tracker/enrollments`中，组织单位模式 `ALL` 现在仅限于拥有 `ALL` 或 `F_TRACKED_ENTITY_INSTANCE_SEARCH_IN_ALL_ORGUNITS` 权限的用户，这与其他两个端点一致。在此之前，任何用户都可以使用 `ALL` 模式，即使该模式可能不会根据用户范围返回任何结果。此更改自 2.38 版起生效。
+
+    * [tech-1634](https://dhis2.atlassian.net/browse/TECH-1634) [tech-1668](https://dhis2.atlassian.net/browse/TECH-1668)：在所有三个端点中，超级用户和授权为 "在所有组织单位中搜索跟踪实体实例 "的用户将收到全系统数据，而不管其用户范围如何。未经授权的用户现在会收到 "400|Bad Request"。在此之前，即使是超级用户也只能接收其用户范围内的数据。
+
+5. 跟踪器输出端点响应
+    * [TECH-1630](https://dhis2.atlassian.net/browse/TECH-1630)：使用组织单位模式 "CHILDREN "向"/events "和"/tracker/events "发出的请求，现在将产生由请求的组织单位及其直接子单位的元素组成的响应。这一调整使行为与 `/tracker/trackedEntities`和 `/tracker/enrollments`一致。在此之前，它不包括所提供的组织单位的事件，只有其子单位才会出现在响应中。此更改自 2.38 版起生效。
+
+    * [TECH-1656](https://dhis2.atlassian.net/browse/TECH-1656) 如果用户无法访问所请求的程序或被跟踪实体类型，对`/tracker/trackedEntities`的请求现在会导致`403|Forbidden`。在过去，这种情况会触发`409|冲突`。
+
+    * [TECH-1658](https://dhis2.atlassian.net/browse/TECH-1658) 端点 `/tracker/trackedEntities`和 `/tracker/enrollments`现在会在涉及程序字段或其任意组合的参数不一致时发出`400|Bad Request`。以前，这种情况会导致`409|冲突`。
+
+    * [TECH-1589](https://dhis2.atlassian.net/browse/TECH-1589)：访问 `/tracker/enrollments endpoint` 时，如果用户缺乏对指定程序、被跟踪实体类型或被跟踪实体的或程序的被跟踪实体类型的授权，则会触发 `403|Forbidden` 状态。以前触发的是 "409|冲突 "状态。
+
+#### 废弃的应用程序接口{ #deprecated-apis } 
+
+##### 分页 { #pagination } 
+
+在跟踪器端点中
+
+* 跟踪实体
+* 跟踪/注册
+* 跟踪器/事件
+* 跟踪/关系
+* 程序通知实例
+* 程序通知模板/过滤器
+* 潜在副本
+
+与分页相关的字段
+
+``json
+{
+  "page"：3,
+  "pageSize"：2,
+  "total": 373570、
+  "pageCount"：186785,
+  "实例"： [[
+  ]
+}
+```
+
+已被弃用，转而使用 `pager` 对象。如果启用分页功能，上面显示的平面分页字段和
+嵌套的 `pager` 对象都会在启用分页后从 2.41 版开始返回。平面字段将在
+将在未来的版本中删除。
+
+``json
+{
+  "pager"：{
+    "page"：3,  
+    "pageSize"：2,
+    "total": 373570、
+    "pageCount"：186785,
+  },
+  "页"：3,
+  "pageSize"：2,
+  "total": 373570、
+  "pageCount"：186785,
+}
+```
+
+以前在 `instances` 中返回的实际数据将以一个以被返回实体本身的复数命名的键返回。
+的复数命名的键中返回。例如，"/tracker/trackedEntities "以键
+trackedEntities "中的已跟踪实体，而"/potentialDuplicates "返回的是 "potentialDuplicates "中的潜在重复实体。
+
+查询参数 `paging` 取代了 `skipPaging`。请注意，`paging`是`skipPaging`的反义词。
+这意味着如果要禁用分页，请使用 `paging=false` 而不是 `skipPaging=true`。
+分页功能默认为打开。
+
+这使 Tracker 中的分页与其他 DHIS2 端点保持一致。
+
+##### 分号作为标识符 (UID) 的分隔符{ #semicolon-as-separator-for-identifiers-uid } 
+
+接受多个值（如 UID）的字段或查询参数现在统一用逗号", "而不是分号"; "分隔。
+逗号", "分隔，而不是分号"; "分隔。这是为了确保 UID 在所有 DHIS2 端点上一致地用逗号
+分隔。
+
+受影响的字段如下
+* 事件.属性类别选项"（以及作为关系 "from/to "的一部分返回的事件）
+
+以下接受一个或多个分号分隔 UID 的查询参数已被弃用，改为接受**小数点分隔** UID 的参数。
+而改为使用**逗号分隔** UID 的参数。名称现在也统一使用
+复数来表示允许一个以上的 UID。
+
+| 终点                  | 已废弃参数 | 新参数            |
+|---------------------------|----------------------|--------------------------|
+| 跟踪实体| 指定用户       | 指定用户          |
+| 跟踪实体| `orgUnit`            | orgUnits               |
+| 跟踪实体| `trackedEntity`      | 跟踪实体        |
+| 跟踪/注册    | `orgUnit`            | orgUnits               |
+| 跟踪/注册    | 注册         | 注册            |
+| 跟踪器/事件         | 指定用户       | 指定用户          |
+| 跟踪器/事件         | 属性 Cos       | 属性类别选项|
+| 跟踪器/事件         | 事件              | 事件                 |
+
+在这些特定端点上使用 DHIS2 API 时，请参考新参数。
+
+##### 命名{ #naming } 
+
+随着时间的推移，跟踪器名称已发生变化。为了提供一致的 API，我们已废弃了以下查询参数和路径，转而使用新的查询参数和路径，并统一使用`trackedEntity`、`enrollment`和`event`。
+
+下表总结了旧跟踪器名称与新跟踪器名称之间的 API 术语变化：
+
+| 终点                              | 已废弃的参数/路径    | 新参数/路径       |
+|---------------------------------------|------------------------------|--------------------------|
+| 跟踪/关系              | `tei`                        | `trackedEntity`          |
+| 跟踪器/事件                     | 属性 Cc                | 属性类别组合 |
+| 跟踪器/所有权/转让         | `trackedEntityInstance`      | `trackedEntity`          |
+| 跟踪器/所有权/覆盖         | `trackedEntityInstance`      | `trackedEntity`          |
+| `/messages/`                          | 程序实例            | 注册             |
+| `/messages/`                          | 程序阶段实例       | 事件                  |
+| 信息/计划/发送            | 程序实例            | 注册             |
+| 信息/计划/发送            | 程序阶段实例       | 事件                  |
+| 审计/跟踪实体数据值      | `psi`                        | 事件                 |
+| 审计/跟踪实体属性值 | `tei`                        | 跟踪实体        |
+| `/audits/trackedEntityInstance`（审计/跟踪实体实例       | `tei`                        | 跟踪实体        |
+| 程序通知实例       | 程序实例            | 注册             |
+| 程序通知实例       | 程序阶段实例       | 事件                  |
+| 跟踪实体            | 你的模式                     | orgUnitMode            |
+| 跟踪/注册                | 你的模式                     | orgUnitMode            |
+| 跟踪器/事件                     | 你的模式                     | orgUnitMode            |
+
+###### 废弃的端点{ #deprecated-endpoints } 
+
+| 已废弃的端点                                     | 新终端                                   |
+|---------------------------------------------------------|------------------------------------------------|
+| `/maintenance/softDeletedTrackedEntityInstanceRemoval`.  | `/maintenance/softDeletedTrackedEntityRemoval`. |
+| `/maintenance/softDeletedProgramInstanceRemoval`.        | `/maintenance/softDeletedEnrollmentRemoval`.    |
+| `/maintenance/softDeletedProgramStageInstanceRemoval`.   | 维护/软删除事件移除         |
+| `/audits/trackedEntityInstance`（审计/跟踪实体实例                         | 审计/跟踪实体                        |
+
+###### API 响应体中的废弃密钥{ #deprecated-keys-in-api-response-bodies } 
+
+| 已废弃的密钥              | 新钥匙                | 受影响的 API 响应                    |
+|-----------------------------|------------------------|------------------------------------------|
+| `trackedEntityInstance`     | `trackedEntity`        | 对象计数 "中的"/api/dataSummary     |
+| 程序实例           | 注册           | 对象计数 "中的"/api/dataSummary     |
+| 程序阶段实例      | 事件                | 对象计数 "中的"/api/dataSummary     |
+| `trackedEntityInstance`     | `trackedEntity`        | `/api/system/objectCounts` `/api/system/jectCounts               |
+| 程序实例           | 注册           | `/api/system/objectCounts` `/api/system/jectCounts               |
+| 程序阶段实例      | 事件                | `/api/system/objectCounts` `/api/system/jectCounts               |
+
+我们鼓励用户熟悉新术语，以确保今后 API 使用的一致性。
+
+
+##### 后续拼写修正{ #followup-spelling-fix } 
+
+字段 `followup` 已被弃用，在以下 API 响应体中，将使用驼峰大小写版本的 `followUp`：
+* 跟踪器/事件
+* 事件对象中的 `/tracker/relationships
+
+### 元数据 { #metadata } 
+1. 数据维度类型 "属性现在对 "类别选项组 "和 "类别选项组集 "是强制性的。带有`null`值的现有记录需要用`DISAGGREGATION`或`ATTRIBUTE`手动更新。
+2. 在 "元数据导入导出 "应用程序和端点 "api/metadata "中删除了 "mergeMode "参数。这意味着更新对象时，所有现有属性值都将被覆盖，即使新值为 "空"。如果要对对象进行部分更新，请使用 [JSON Patch API](#webapi_partial_updates)。
+## 数据库 { #database } 
+
+我们删除了 `category` 和 `categoryoption` 表中的前缀 `dataelement`，因为这样更易于阅读。
+
+| 旧表名称                | 新表名               |
+| ------------------------------|:----------------------------:|
+| 数据元素类别选项     | 类别选项               |
+| 数据元素类别           | 类别                     |
+
+### 追踪器 { #tracker } 
+
+#### 重大变更：重新命名表格和列{ #breaking-changes-renamed-tables-and-columns } 
+
+我们根据跟踪器在应用程序接口中新增的 [naming](#naming)，重新命名了一些表格和列。
+
+鉴于新的数据库命名约定，如果您运行**自定义 SQL 脚本**或创建了**SQL 视图**，您可能需要适应本节所述的中断更改。
+
+因此，我们将数据库名称与应用于 `trackedEntityInstance`、`programInstance` 和 `programStageInstance` 的更改保持一致。
+
+此外，我们还使 "trackedentitycomment "及其相关数据库表与 "note "的 API 命名保持一致。
+
+#### 重新命名表格{ #renamed-tables } 
+
+| 旧表名称              | 新表名                 |
+| ----------------------------|:------------------------------:|
+| 跟踪实体实例       | 跟踪身份                  |
+| 程序实例             | 文本                     |
+| 程序阶段实例        | The message text.                          |
+| 程序阶段实例过滤器  | 事件过滤器                    |
+| 跟踪实体实例审计  | 跟踪审计             |
+| 跟踪实体实例过滤器 | 跟踪身份过滤器            |
+| 跟踪地址评论        | updatedBy                           |
+| 程序阶段实例评论| 事件注释                    |
+| 程序实例注释     | 注册注释               |
+
+#### 重命名列{ #renamed-columns } 
+
+以下与 `programstageinstance` 相关的列已重命名
+
+| 表格（新名称）           | 列 旧名称                | 列新名称        |
+| ----------------------------|:------------------------------:|-----------------------:|
+| The message text.                       | programstageinstanceid         | eventid                |
+| 事件过滤器                 | Programstageinstancefilterid   | 事件过滤          |
+| 关系项            | programstageinstanceid         | eventid                |
+| 跟踪实体数据价值审计 | programstageinstanceid         | eventid                |
+| 程序消息              | programstageinstanceid         | eventid                |
+| 程序通知实例 | programstageinstanceid         | eventid                |
+| 事件评论               | programstageinstanceid         | eventid                |
+| 跟踪实体数据价值审计 | programstageinstanceid         | eventid                |
+
+以下与 "程序实例 "相关的列已重新命名
+
+| 表格（新名称）           | 列 旧名称                | 列新名称        |
+| ----------------------------|:------------------------------:|-----------------------:|
+| 文本                  | 程序实例              | 注册编号           |
+| 注册评论          | 程序实例              | 注册编号           |
+| 关系项            | 程序实例              | 注册编号           |
+| 程序通知实例 | 程序实例              | 注册编号           |
+| 程序消息              | 程序实例              | 注册编号           |
+| The message text.                       | 程序实例              | 注册编号           |
+
+以下与 "trackedentityinstance "相关的列已重新命名
+
+| 表格（新名称）                | 列 旧名称                | 列新名称        |
+| ---------------------------------|:------------------------------:|-----------------------:|
+| 跟踪身份                    | trackedentityinstanceid        | trackedentityid        |
+| 跟踪审计               | 跟踪实体实例          | 跟踪身份          |
+| 跟踪审计               | 被跟踪实体实例审计编号   | 追踪的审计编号   |
+| 跟踪身份过滤器              | 跟踪实体实例过滤器 ID  | trackedentityfilterid  |
+| 文本                       | trackedentityinstanceid        | trackedentityid        |
+| 被跟踪实体属性值审计 | trackedentityinstanceid        | trackedentityid        |
+| 程序消息                   | trackedentityinstanceid        | trackedentityid        |
+| 关系项                 | trackedentityinstanceid        | trackedentityid        |
+| 跟踪城市计划负责人        | trackedentityinstanceid        | trackedentityid        |
+| 计划        | trackedentityinstanceid        | trackedentityid        |
+| 程序管理员                 | trackedentityinstanceid        | trackedentityid        |
+| 计划负责人历史          | trackedentityinstanceid        | trackedentityid        |
+
+以下与 "跟踪entitycomment "相关的列已重新命名
+
+| 表格（新名称）                | 列 旧名称                | 列新名称        |
+| ---------------------------------|:------------------------------:|-----------------------:|
+| updatedBy                             | 跟踪的主题评论编号         | 备注                 |
+| updatedBy                             | 注释文本                    | 注释               |
+| 事件评论                   | 跟踪的主题评论编号         | 备注                 |
+| 注册评论              | 被跟踪的主题评论编号         | noteid                 |
+
+以下 "注册 "日期列已重新命名
+
+| 表格（新名称）                | 列 旧名称                | 列新名称        |
+| ---------------------------------|:------------------------------:|-----------------------:|
+| 文本                       | 结束日期                        | 完成日期          |
+| 文本                       | 事发日期                   | 发生日期           |
+
+以下 "事件 "日期列已重新命名
+
+| 表格（新名称）                | 列 旧名称                | 列新名称        |
+| ---------------------------------|:------------------------------:|-----------------------:|
+| The message text.                            | 日期                        | 预定日期          |
+| The message text.                            | 执行日期                  | 发生日期           |
+
+#### Postgres 参考{ #postgres-reference } 
+
+摘自 Postgres 文档中的 [alter table] （更改表(https://www.postgresql.org/docs/current/sql-altertable.html)
+
+> RENAME 表单可以更改表（或索引、序列、视图、物化视图或外来表）的名称、
+> 表中单列的名称，或表的约束名称。
+> 当重命名有底层索引的约束时，索引也会被重命名。**对存储数据没有影响。
+
+重新命名表或表的列不会影响数据。例如，重新建立主键索引的成本可能会很高，但对于大型表来说，这种情况应该不会发生。
+因此，迁移后预计不会出现停机。
+
+您可以通过事务提交来检查索引创建在迁移后是否有变化。
+
+``sql
+select pg_xact_commit_timestamp(xmin)
+from pg_class
+where relname = 'programstageinstance_pkey'；
+```
+请注意，如果要运行查询，Postgres 需要以 `-c track_commit_timestamp=on` 开头。
+
+## 折旧和删除{ #deprecations-and-removals } 
+
+### 删除谷歌和必应应用程序接口密钥{ #google-bing-api-keys-removed } 
+谷歌和必应地图 API 密钥已从代码中删除。要设置和使用必应地图 API 密钥，请查看 [本指南](https://docs.dhis2.org/en/topics/tutorials/google-earth-engine-sign-up.html#accessing-bing-maps-basemaps)。
+

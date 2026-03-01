@@ -1,0 +1,80 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-server-tools/blob/main/docs/how-to/CustomPostgreSQLConfig.md"
+revision_date: '2025-06-30'
+tags:
+- 系统管理
+---
+
+### 手动覆盖 PostgreSQL 参数{ #manually-override-postgresql-parameters } 
+
+在此设置中，PostgreSQL 的部分配置由 **Ansible** 管理。某些配置文件是在运行 playbook 时自动生成的。本指南介绍如何安全地覆盖 PostgreSQL 设置，而不会在未来部署时丢失更改。
+
+> **注**：
+>
+> 本示例假定您使用的是 **PostgreSQL 版本 16**，因此所有路径都引用了 `/etc/postgresql/16/main/`。
+> 实际版本取决于 Ansible 清单或主机变量中定义的 `postgresql_version` 变量的值。
+
+---
+
+####   配置文件结构{ #configuration-file-structure } 
+
+* **Ansible 管理文件**：
+  /etc/postgresql/16/main/conf.d/dhispg.conf`。
+  → 由 Ansible 自动生成。
+  → **不要直接编辑** - 每次运行 Ansible 时都会覆盖更改。
+
+* **用户管理覆盖文件**：
+  /etc/postgresql/16/main/conf.d/custom`。
+  → **可安全手动编辑**。
+  → 包含在 `dhispg.conf` 的末尾，因此优先。
+
+---
+
+#### 包含顺序和覆盖行为{ #inclusion-order-and-override-behavior } 
+
+PostgreSQL 按以下顺序处理配置文件：
+
+1. postgresql.conf
+2. → 包括 `dhispg.conf` （由 Ansible 管理）
+3. → 包括`自定义`（用户管理）
+
+**任何参数均以最后定义的值为准**。
+自定义 "中的任何设置都将覆盖 "dhispg.conf "和 "postgresql.conf "中的值。
+
+---
+
+#### 安全覆盖设置的步骤{ #steps-to-safely-override-settings } 
+
+1. 打开或创建自定义配置文件：
+
+   ```bash
+   sudo nano /etc/postgresql/16/main/conf.d/custom
+   ```
+
+2. 添加或覆盖参数。例如
+
+   ```conf
+   work_mem = '32MB'
+   max_connections = 200
+   ```
+
+3. 保存并退出文件。
+
+4. 重新加载 PostgreSQL，使更改生效：
+
+   ```bash
+   sudo systemctl reload postgresql
+   ```
+
+---
+
+#### 简表{ #summary-table } 
+
+| 文件路径                                    | 管理人 | 可编辑？ | 笔记                                           |
+| -------------------------------------------- | ---------- | --------- | ----------------------------------------------- |
+| /etc/postgresql/16/main/postgresql.conf`。    | PostgreSQL | **没有**         | 包括 Ansible 管理的配置                |
+| /etc/postgresql/16/main/conf.d/dhispg.conf`。 | Ansible    | **没有**         | 每次运行剧本时自动覆盖 |
+| /etc/postgresql/16/main/conf.d/custom`。      | 用户（您） | **是**         | 安全用于手动覆盖                |
+
+---
+

@@ -1,0 +1,154 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.41/src/developer/web-api/query-alias.md"
+revision_date: '2024-05-15'
+tags:
+- DHIS 核心 2.41 版
+- DHIS核心 主版
+---
+
+# 查询别名{ #query-alias } 
+
+## 查询别名{ #webapi_query_alias }
+
+查询别名应用程序接口（Query Alias API）是一项**实验性**功能，支持使用内置的 URL 缩短服务缩短较长的 DHIS2 REST API 查询。  当超长的 URL 路径超过浏览器或网络中继设定的限制时（通常会导致[HTTP 414 - URI Too Long](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/414)错误），该功能会非常有用。  建议仅在遇到 414 错误时使用此查询别名功能作为备用。
+
+> 请注意，查询别名只支持 GET 目标
+
+别名是短暂的，服务器可随时删除。  别名通常会持续几个小时，但这并不能保证。  访问已过期的别名 URL 时，服务器将返回 "404 Not Found "错误。  如果再次需要，可以创建目标相同的新别名。
+
+### 创建别名{ #creating-an-alias } 
+
+要创建新的查询别名，应向 `/api/query/alias` 端点发送 POST 请求，POST 主体如下，其中 `<target>` 是目标 Rest API 路径（以 `/api/` 开头）。
+
+```
+{
+    "目标"："/api/path/to/long/rest/endpoint?withQuery=true&id=123456789"
+}
+```
+
+返回值将如下所示：
+
+```
+{
+    "id"："689a368a3f23e0985558eb4cff63e7fb4e63d736",
+    "path"："/api/query/alias/689a368a3f23e0985558eb4cff63e7fb4e63d736",
+    "href"："https://my-dhis2-instance.com/api/query/alias/689a368a3f23e0985558eb4cff63e7fb4e63d736",
+    "目标"："/api/path/to/long/rest/endpoint?withQuery=true&id=123456789"。
+}
+```
+
+### 访问先前创建的别名{ #accessing-a-previously-created-alias } 
+
+创建别名后，可通过响应体中的相对 "path "或绝对 "href "URI 对其进行访问。  相对路径的形式为 `/api/query/alias/<md5hash>`，其中 `<md5hash>` 是传递的 `target` 路径的 md5 哈希值。  这确保了查询别名的确定性--相同的目标将始终产生相同的别名。
+
+要通过已创建的别名访问 "目标 "资源，可向 "href "响应属性中返回的别名 URI 发送 GET 请求。  例如
+
+GET https://my-dhis2-instance.com/api/query/alias/689a368a3f23e0985558eb4cff63e7fb4e63d736
+
+然后，服务器将做出响应，就像客户端直接向 https://my-dhis2-instance.com/api/path/to/long/rest/endpoint?withQuery=true&id=123456789（别名的目标）发出请求一样
+
+
+### 创建并立即访问别名{ #creating-and-immediately-accessing-an-alias } 
+
+也可以创建一个别名，然后按照 `303 See Other` 重定向直接访问该别名，而不是解析 JSON 响应。  使用 "303 See Other "响应而不是 "302 Found"，是因为遵循重定向需要将 HTTP verb 从 POST（创建别名）改为 GET（访问已创建的别名）。
+
+要创建并立即访问别名，请向 `/api/query/alias/redirect`"发送包含`target`属性的相同 JSON POST 主体有效载荷的 POST 请求。  别名将像之前一样创建，但将返回重定向 HTTP 响应，而不是 HTTP 200 成功。
+
+HTTP 303 参见其他
+Location: https://my-dhis2-instance.com/api/query/alias/689a368a3f23e0985558eb4cff63e7fb4e63d736
+
+大多数客户端会自动遵循这一重定向，直接向 https://my-dhis2-instance.com/api/query/alias/689a368a3f23e0985558eb4cff63e7fb4e63d736 发送后续 GET 请求，并返回响应，就像直接访问原始目标一样。  请注意，当遇到 `303 See Other` 时，某些客户端可能无法正确处理从 POST 到 GET 的切换，这将导致 `501 Not Implemented` 错误。
+
+### 自动返回查询别名的客户端代码示例{ #an-example-of-client-code-which-automatically-falls-back-to-query-aliasing } 
+
+下面的简短代码片段（用 typescript 编写）获取 API 端点的目标路径并尝试访问它。  如果 URI 太长（超过任意长度限制或返回 "414 URI Too Long "错误），则将创建一个查询别名，并在该客户端再次访问该目标时使用。  如果查询别名已过期，则会自动重新创建。
+
+请注意，这是一个非常勉强的示例，**不应在生产应用程序中使用**。  今后，应用程序运行时查询引擎将自动执行这种回退逻辑，这样应用程序开发人员就不必担心构建过长的 URI。
+
+```ts
+类型 AliasRequest = {
+    target: string
+}
+
+类型 别名响应 = {
+    id: string
+    path: string
+    href: string
+    target: string
+}
+
+type FetchResponse = {
+    status: number
+    data：AliasResponse
+}
+
+const BASE_URL = "https://my-dhis2-instance.com"
+const MAX_URI_LENGTH = 2000
+const ALIAS_API_PATH = "api/query/alias
+
+const cachedAliases：Record<string, AliasResponse> = {}
+
+const joinPath = (...segments: string[]) => {
+    const firstPart = segments.shift()?.replace(/^\//, '')
+
+    return segments.reduce((parts, segment) => {
+        segment = segment.replace(/^\/, '').replace(/\/$/, '')
+        return parts.concat(segment.split('/'))
+    }, [firstPart]).join('/')
+}
+
+const fetchDHIS2 = async (path: string, init?: RequestInit)：Promise<FetchResponse> => {
+    const response = await fetch(joinPath(BASE_URL, path), {
+        ...初始化
+    })
+    返回 {
+        status: response.status、
+        data: (response.status == 200) ? await response.json() : undefined
+    }
+}
+
+const createAlias = async (path: string) => {
+    const body：AliasRequest = {
+        target: path
+    }
+    return await fetchDHIS2(ALIAS_API_PATH, {
+        method: 'POST'、
+        body：JSON.stringify(body)
+    })
+}
+
+const fetchDHIS2WithAliasFallback = async (path: string, init?: RequestInit, recreateOnFailure = true)：Promise<FetchResponse> => {
+    const uri = joinPath(BASE_URL, path)
+    const alias = cachedAliases[path]
+
+    if (alias) {
+        const response = await fetchDHIS2(alias.path)
+        if (response.status === 404 && recreateOnFailure) {
+            删除 cachedAliases[path]；
+            return fetchDHIS2WithAliasFallback(path, init, false)
+        }
+        return response；
+    }
+
+    if (uri.length >= MAX_URI_LENGTH) {
+        const response = await createAlias(path)；
+        if (response.status === 201) {
+            cachedAliases[path] = response.data
+        }
+        return fetchDHIS2WithAliasFallback(path, init, false)
+    }
+
+    const response = await fetchDHIS2(path, init)
+    if (response.status === 414) {
+        const response = await createAlias(path)；
+        if (response.status === 201) {
+            cachedAliases[path] = response.data
+        }
+        return fetchDHIS2WithAliasFallback(path, init, false)
+    }
+
+    返回响应
+}
+export default fetchDHIS2WithAliasFallback
+```
+

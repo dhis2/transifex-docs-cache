@@ -1,0 +1,81 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.41/src/sysadmin/user-impersonation.md"
+revision_date: '2024-02-08'
+tags:
+- 系统管理
+- DHIS 核心 2.41 版
+---
+
+# 在 DHIS2 中使用用户假冒功能{ #user_impersonation }
+
+## 总览 { #overview } 
+
+用户冒充（也称用户切换）是 DHIS2 提供的一项强大功能，可让管理用户
+以其他用户身份登录。这项功能在排除故障或解决与用户相关的问题时特别有用，因为它
+管理员可以像用户一样体验 DHIS2。
+
+此功能基于 Spring Security 的`SwitchUserFilter`构建，但具有附加配置选项。
+
+> **注意**
+>
+> 该功能默认**禁用**。要启用它，您必须设置 `switch_user_feature.enabled` 属性
+> 为`true`
+> 你的 `dhis.conf` 文件。
+>
+> 此功能被视为**实验性**，仅适用于从配置的 IP 地址调用。因此，为了
+> 使用它
+> 您必须知道要调用它的 IP 地址并配置 `switch_user_allow_listed_ips`
+> 财产
+> 在 `dhis.conf` 文件中。此限制将来可能会被取消。
+
+## 如何使用{ #how-it-works } 
+
+用户冒充功能的运行方式如下：
+
+1. 管理用户使用`username`向特定 URL（例如`/impersonate?username=USERNAME`）发出请求
+   参数
+   表明他们希望冒充的用户的用户名。
+
+2. 用户冒充功能拦截此请求，将`SecurityContext`切换到新用户，并重定向。
+   到主页。
+
+3. 在冒充其他用户时，管理用户可以像被冒充用户一样提出请求。
+
+4. 要切换回原来的用户，管理用户需要向另一个 URL (
+   例如，`/impersonateExit`。用户冒充功能拦截此请求，切换`SecurityContext`。
+   返回给原用户，并重定向到主页。
+
+## 如何使用{ #how-to-use } 
+
+请按照以下步骤使用用户假冒功能：
+
+1. 作为具有`ALL`或`F_IMPERSONATE_USER`权限的管理员用户登录。
+2. 导航到用户冒充的URL（例如，`/impersonate?username=USERNAME`）。
+3. 提供您希望冒充的用户的`用户名`参数。
+4. 系统将把你的会话切换到冒充用户的会话，然后你将被重定向到主页。
+5. 执行故障排除或用户支持所需的任何操作。
+6. 当你完成后，请导航到URL以结束冒充（例如，`/impersonateExit`）。你的会话将被结束。
+   切换回原来的管理用户。
+
+## 组态 { #configuration } 
+
+用户假冒功能配置选项。
+
+* switch_user_feature.enabled`（启用或禁用该功能，默认为`disabled`）。
+* switch_user_allow_listed_ips"（默认允许的 IP 地址为："localhost,127.0.0.1,[0:0:0:0:0:0:0:1]"）。
+
+## 安全限制{ #security-restrictions } 
+* 必须在配置文件 `dhis.conf` 中启用该功能，默认值为 `disabled`。
+* 试图冒充的用户需要从允许的 IP 发送请求。
+* 没有 "ALL "权限的用户不能冒充另一个拥有 "ALL "权限的用户。
+* 用户不能冒充自己。
+
+## 安全影响{ #security-implications } 
+
+由于其固有的安全影响，应谨慎使用此功能。只有受信任的管理员
+才有权冒充用户。此外，还建议注意与冒充用户相关的日志事件。
+冒充用户的相关日志事件。
+
+用户冒充事件的记录格式如下
+格式记录：验证事件：AuthenticationSwitchUserEvent; username: USER_DOING_THE_IMPERSONATION; targetUser: USER_BEING_IMPERSONATED;`
+

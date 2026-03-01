@@ -1,0 +1,123 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/sysadmin/reference/logging.md"
+revision_date: '2025-10-28'
+tags:
+- 系统管理
+---
+
+# 应用程序日志记录 { #install_application_logging } 
+
+本节介绍 DHIS2 中的应用程序日志记录。
+
+## 日志文件 { #log-files } 
+
+DHIS2 应用程序的日志输出被定向到多个文件和位置。
+首先，日志输出被发送到标准输出。Tomcat 服务程序容器
+通常会将标准输出输出到 "logs "下的一个文件：
+
+属性
+
+<tomcat-dir>/logs/catalina.out
+
+```
+
+其次，日志输出被写入 DHIS2 主目录下的 "logs "目录。
+环境变量所定义的目录下的 "logs "目录。有一个主
+日志文件，以及各种后台进程的单独日志文件。
+进程的单独日志文件。主文件还包括后台进程日志。日志文件
+文件的上限为 50 Mb，日志内容会不断添加。
+属性
+
+<DHIS2_HOME>/logs/dhis.log    
+<DHIS2_HOME>/logs/dhis-analytics-table.log
+<DHIS2_HOME>/logs/dhis-data-exchange.log
+<DHIS2_HOME>/logs/dhis-data-sync.log
+
+```
+
+## 日志配置 { #log-configuration } 
+
+要覆盖默认日志配置，您可以指定一个名为
+属性，其名称为 `log4j2.configurationFile` ，值指向
+[Log4j 版本 2］(https://logging.apache.org/log4j/2.x/manual/configuration.html)
+配置文件，如下所示：
+
+```属性
+-配置文件=/home/dhis/config/log4j2.properties
+```
+
+Java 系统属性可通过 *JAVA\_OPTS* 环境变量或在 tomcat 启动脚本中设置。
+环境变量或在 tomcat 启动脚本中设置。
+
+覆盖日志配置的第二种方法是在 `dhis.conf` 配置文件中指定日志属性。
+属性。支持的属性有
+
+```属性
+＃日志文件的最大大小，默认为'100MB'
+logging.file.max_size = 250MB
+
+＃最大滚动日志归档文件数，默认为0
+logging.file.max_archives = 2
+```
+
+DHIS2 最终将逐步停止将日志记录到标准输出/catalina.out。
+因此建议使用 `DHIS2_HOME` 下的日志。
+
+DHIS2 将提供以下背景值：
+
+* `sessionId`: Current user's session ID
+* `xRequestID`：由 `X-Request-ID` HTTP 头信息发送的字母数字 ID
+  为当前处理的请求；如果未提供，则为空
+
+要在日志中使用上下文变量，请使用 `-X{<name>}` 将其添加到日志中。
+模式中添加：
+
+    *%-5p %d {ISO8601} %m (%F [%t])%X{sessionId} %X{xRequestID}%n
+
+## 日志级别配置{ #log-level-configuration } 
+
+要设置单个软件包的日志级别，可在 `dhis.conf` 中指定格式为
+格式指定属性。例如，要将整个 Spring 框架的
+日志级别为 DEBUG 及以上，可以指定
+
+```
+logging.level.org.springframework = DEBUG
+```
+要将 DHIS2 服务的日志级别设置为 DEBUG，可以指定
+
+```
+logging.level.org.hisp.dhis = DEBUG
+```
+
+常见的日志级别是`DEBUG`、`INFO`、`WARN`和`ERROR`。
+
+> **注**
+> 
+> 嵌入式 DHIS2 Jetty 版本不支持日志级别配置。
+
+## 更新日志{ #changelog } 
+
+当系统中的某些实体被更改时，DHIS2 会将条目写入更改日志。
+系统中的某些实体被更改时，DHIS2 会将条目写入更改日志。这些实体分为两类：聚合（_Aggregate_）和跟踪（_tracker_）。其中
+汇总 "类别包括对汇总数据值的更改。跟踪
+类别包括对跟踪实体属性值和事件数据值的更改。
+
+更新日志的好处是可以查看对数据所做的更改。
+数据所做的更改。禁用更新日志的好处是
+性能提升，避免了向数据库写入更新日志项的成本，并减少了使用的数据库存储空间。
+和减少数据库存储空间的使用。建议启用
+更新日志，禁用时应格外小心。
+
+聚合更新日志默认已启用。您可以通过 
+配置文件中使用以下属性控制其行为。可用的 
+选项为`on`（默认）和`off`：
+
+属性
+# 聚合更新日志，可以是 "开启"（默认）或 "关闭
+changelog.aggregate = on
+```
+
+跟踪器更新日志是按程序和被跟踪实体类型配置的。在 
+维护应用程序中，可以为每个程序和被跟踪实体类型单独启用或禁用更改日志。 
+和被跟踪实体类型分别启用或禁用更改日志。
+

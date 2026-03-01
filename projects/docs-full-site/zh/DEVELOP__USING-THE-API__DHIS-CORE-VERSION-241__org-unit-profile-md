@@ -1,0 +1,323 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.41/src/developer/web-api/organisation-unit-profile.md"
+revision_date: '2021-11-19'
+tags:
+- DHIS 核心 2.41 版
+- DHIS核心 主版
+---
+
+# `PUT` `/api/{store}/pets/whiskers?path=favFood.[0]` with body `"carrot"` updates the first element in the `favFood` array only. So a `GET` request to `/api/{store}/pets/whiskers` would now show the updated `favFood`:
+
+```json
+{
+    "name": "wisker",
+    "favFood": [
+        "carrot",
+        "rabbit"
+    ]
+}
+```
+
+```
+/api/organisationUnitProfile
+```
+
+smaller payloads required for small changes
+
+less error-prone (no copy-pasting large entries to change 1 property)
+
+- Roll (Experimental) { #roll-experimental } 
+- The `roll` request param enables the user to have a 'rolling' number of elements in an array. In our example we have the `favFood` array. If we wanted to update this array previously, we'd have to supply the whole payload like so:  
+`PUT` `/api/{store}/pets/whiskers` with body
+- ```json
+{
+    "name": "wisker",
+    "favFood": [
+        "fish",
+        "rabbit",
+        "carrot"
+    ]
+}
+```
+- Now we can use the `roll` request param (with the `path` functionality) to state that we want the rolling functionality for _n_ number of elements.
+In this example we state that we want the array to have a rolling value of 3, passing in an extra element in the call.  
+`PUT` `/api/{store}/pets/whiskers?roll=3&path=favFood` with body `"carrot"` would result in the following state.
+- ```json
+{
+    "name": "wisker",
+    "favFood": [
+        "fish",
+        "rabbit",
+        "carrot"
+    ]
+}
+```
+- Since we passed the rolling value of `3`, this indicates that we only want the last 3 elements passed into the array. So if we now make another call and add a new element to the array, we would expect the first element (`fish`) to be dropped from the array.
+`PUT` `/api/{store}/pets/whiskers?roll=3&path=favFood` with body `"bird"` would result in the following state:
+
+## ```json
+{
+    "name": "wisker",
+    "favFood": [
+        "rabbit",
+        "carrot",
+        "bird"
+    ]
+}
+```
+
+要定义组织单位配置文件，可以使用`POST`请求：
+
+```
+POST /api/organisationUnitProfile
+```
+
+JSON 格式的有效载荷如下所示，其中`attributes `指元数据属性，`groupSets `指组织单位组集，`dataItems `指数据元素、指标、数据集和计划指标：
+
+If we wanted to add another breed using a rolling array we could make the call:
+`PUT` `/api/{store}/pets/whiskers?roll=3&path=type.breed` with body `"small"` which would result in the following state:
+
+```json
+{
+  "name": "wisker",
+  "favFood": [
+    "fish", "rabbit"
+  ],
+  "type": {
+    "breed": ["shorthair, small"]
+  }
+}
+```
+
+## Benefits { #benefits } 
+
+Only interested in keeping track of _n_ values which may change over time
+
+```
+GET /api/organisationUnitProfile
+```
+
+The organisation unit profile resource allows you to define and retrieve an information profile for organisation units in DHIS 2.
+
+## ```
+/api/organisationUnitProfile
+```
+
+A single organisation unit profile can be created and applies to all organisation units.
+
+```
+GET /api/organisationUnitProfile/{org-unit-id}/data?period={iso-period}
+```
+
+Name, short name, description, parent organisation unit, level, opening date, closed date, URL.
+
+* `org-unit-id `路径变量为必填项，指要提供汇总数据的组织单位的 ID。
+* 查询参数 `iso-period `是可选参数，指的是为数据项提供汇总数据的 ISO 期间 ID。如果没有指定，则将使用 _this year_ 相对期间作为后备。
+
+Metadata attributes (configurable).
+
+* Organisation unit group sets and groups (configurable).
+* `属性`:元数据属性及相应的属性值。
+* `组集`：组织单位组集，包含该组织单位所属的相应组织单位组。
+* `数据项`带有相应汇总数据值的数据项。
+
+```
+POST /api/organisationUnitProfile
+```
+
+请求示例如下所示：
+
+```
+GET /api/organisationUnitProfile/DiszpKrYNg8/data?period=2021
+```
+
+The `F_ORG_UNIT_PROFILE_ADD` authority is required to define the profile.
+
+```json
+{
+  "info": {
+    "id": "DiszpKrYNg8",
+    "code": "OU_559",
+    "name": "Ngelehun CHC",
+    "shortName": "Ngelehun CHC",
+    "parentName": "Badjia",
+    "level": 4,
+    "levelName": "Facility",
+    "openingDate": "1970-01-01T00:00:00.000",
+    "longitude": -11.4197,
+    "latitude": 8.1039
+  },
+  "attributes": [
+    {
+      "id": "n2xYlNbsfko",
+      "label": "NGO ID",
+      "value": "GHE51"
+    },
+    {
+      "id": "xqWyz9jNCA5",
+      "label": "TZ code",
+      "value": "NGE54"
+    }
+  ],
+  "groupSets": [
+    {
+      "id": "Bpx0589u8y0",
+      "label": "Facility Ownership",
+      "value": "Public facilities"
+    },
+    {
+      "id": "J5jldMd8OHv",
+      "label": "Facility Type",
+      "value": "CHC"
+    }
+  ],
+  "dataItems": [
+    {
+      "id": "WUg3MYWQ7pt",
+      "label": "Total Population",
+      "value": 3503
+    },
+    {
+      "id": "DTVRnCGamkV",
+      "label": "Total population < 1 year",
+      "value": 140
+    },
+    {
+      "id": "vg6pdjObxsm",
+      "label": "Population of women of child bearing age (WRA)",
+      "value": 716
+    },
+    {
+      "id": "Uvn6LCg7dVU",
+      "label": "ANC 1 Coverage",
+      "value": 368.2
+    },
+    {
+      "id": "eTDtyyaSA7f",
+      "label": "FIC <1y",
+      "value": 291.4
+    }
+  ]
+}
+```
+
+## To retrieve the organisation unit profile definition you can use a `GET` request:
+
+要为组织单位上传图片，可以使用 `fileResources` 端点。
+
+```
+/api/fileResources
+```
+
+`文件资源`端点接受原始文件作为请求体。组织单位图像支持 `JPG`、`JPEG` 和 `PNG` 格式。组织单位图像的域为 `ORG_UNIT`。
+
+To retrieve the organisation unit profile data you can use a `GET` request:
+
+要上传图片，可以发送一个以 `ORG_UNIT` 作为域查询参数的 `POST` 请求，并将图片作为请求有效载荷。 `Content-Type` 头应与上传的文件类型相匹配。
+
+```
+POST /api/fileResources?domain=ORG_UNIT
+```
+
+JSON 响应中的 `response` > `fileResource` 对象的 `id ` 属性将包含对文件资源标识符的引用。
+
+组织单位实体有一个 `image` 属性，指向文件资源图像。要在组织单位上设置文件资源引用，可以向组织单位发送带有 JSON 有效负载的`PATCH`请求：
+
+```
+PATCH /api/organisationUnits/{id}
+```
+
+`info`: Fixed information about the organisation unit.
+
+`属性`:元数据属性及相应的属性值。
+
+```
+PUT /api/organisationUnits/{id}
+```
+
+`数据项`带有相应汇总数据值的数据项。
+
+## Note that access control checks are performed and metadata items which are not accessible to the current user will be omitted.
+
+请求示例如下所示:
+
+```
+GET /api/organisationUnits/{id}
+```
+
+The profile data response payload in JSON format will look like this, where the `id` and `label` fields refer to the metadata item, and the `value` field refers to the associated value:
+
+```json
+{
+  "info": {
+    "id": "DiszpKrYNg8",
+    "code": "OU_559",
+    "name": "Ngelehun CHC",
+    "shortName": "Ngelehun CHC",
+    "parentName": "Badjia",
+    "level": 4,
+    "levelName": "Facility",
+    "openingDate": "1970-01-01T00:00:00.000",
+    "longitude": -11.4197,
+    "latitude": 8.1039
+  },
+  "attributes": [
+    {
+      "id": "n2xYlNbsfko",
+      "label": "NGO ID",
+      "value": "GHE51"
+    },
+    {
+      "id": "xqWyz9jNCA5",
+      "label": "TZ code",
+      "value": "NGE54"
+    }
+  ],
+  "groupSets": [
+    {
+      "id": "Bpx0589u8y0",
+      "label": "Facility Ownership",
+      "value": "Public facilities"
+    },
+    {
+      "id": "J5jldMd8OHv",
+      "label": "Facility Type",
+      "value": "CHC"
+    }
+  ],
+  "dataItems": [
+    {
+      "id": "WUg3MYWQ7pt",
+      "label": "Total Population",
+      "value": 3503
+    },
+    {
+      "id": "DTVRnCGamkV",
+      "label": "Total population < 1 year",
+      "value": 140
+    },
+    {
+      "id": "vg6pdjObxsm",
+      "label": "Population of women of child bearing age (WRA)",
+      "value": 716
+    },
+    {
+      "id": "Uvn6LCg7dVU",
+      "label": "ANC 1 Coverage",
+      "value": 368.2
+    },
+    {
+      "id": "eTDtyyaSA7f",
+      "label": "FIC <1y",
+      "value": 291.4
+    }
+  ]
+}
+```
+
+```
+GET /api/fileResources/{id}/data
+```
+
+`Content-Type`（内容类型）标头将反映正在检索的文件类型。
+

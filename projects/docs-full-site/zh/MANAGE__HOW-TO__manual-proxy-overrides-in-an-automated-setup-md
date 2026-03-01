@@ -1,0 +1,71 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-server-tools/blob/main/docs/how-to/CustomNginx_Apache2Config.md"
+revision_date: '2025-08-25'
+tags:
+- 系统管理
+---
+
+### Nginx 配置{ #nginx-configuration } 
+
+Ansible 根据是否定义了**完全合格域名（FQDN）**生成 Nginx 配置文件：
+
+| 条件          | Ansible 生成的文件              |
+| ------------------ | ----------------------------------- |
+| 定义了 `fqdn  | /etc/nginx/conf.d/{{fqdn}}.conf`。 |
+| 未定义 `fqdn | /etc/nginx/conf.d/default.conf`。    |
+
+这些文件由 Ansible**完全管理，这意味着**任何手动更改都会在重新应用播放本时丢失**。
+
+#### 安全手动定制{ #safe-manual-customization } 
+
+每个 Ansible 生成的配置文件都包含一个**显式静态文件**，该文件在初始设置时创建，此后 Ansible 将不再修改。
+
+| 条件          | 包含静态文件（可安全手动编辑） |
+| ------------------ | -------------------------------------------- |
+| 定义了 `fqdn  | /etc/nginx/static/{{fqdn}}.conf`。          |
+| 未定义 `fqdn | /etc/nginx/static/default.conf`文件             |
+
+仅自定义动态配置中的静态文件。由于 Ansible 不会触及静态文件，因此它将**在运行播放列表时继续存在**。
+
+**重要**：更改后，手动重新加载 Nginx：
+
+```bash
+sudo systemctl reload nginx
+```
+
+---
+
+### Apache2 配置{ #apache2-configuration } 
+
+Apache2 使用与 Nginx 类似的设置，但目录结构略有不同。
+
+#### Ansible 管理文件{ #ansible-managed-files } 
+
+Ansible 会根据是否定义了**完全合格域名 (FQDN)** 生成主配置文件。  
+这些文件会在每次运行 playbook 时被覆盖，请勿手动编辑。
+
+| 条件          | Ansible 生成的文件                |
+|--------------------|---------------------------------------|
+| 定义了 `fqdn  | /etc/apache2/sites-enabled/{{fqdn}}.conf`。 |
+| 未定义 `fqdn | /etc/apache2/sites-enabled/default.conf`。    |
+
+#### 用于手动编辑的静态文件{ #static-files-for-manual-edits } 
+
+每个 Ansible 配置都包含一个在设置时创建的静态文件，此后不再修改。  
+将所有手动更改放在此处。
+
+| 条件          | 静态文件（可安全进行手动编辑）     |
+|--------------------|------------------------------------------|
+| 定义了 `fqdn  | etc/apache2/static/{{ fqdn }}.conf    |
+| 未定义 `fqdn | etc/apache2/static/default.conf       |
+
+> **注** 
+>
+> 始终手动更改静态文件。这些明确包含在主 Ansible 配置中。
+
+#### 编辑后重新加载 Apache{ #reload-apache-after-edits } 
+
+```bash
+sudo systemctl reload apache2
+```
+

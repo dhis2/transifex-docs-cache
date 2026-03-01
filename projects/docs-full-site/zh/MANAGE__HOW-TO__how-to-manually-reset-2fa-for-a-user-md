@@ -1,0 +1,133 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/sysadmin/how-to/reset2fa.md"
+revision_date: '2025-09-14'
+tags:
+- 系统管理
+---
+
+# 如何手动重置用户的 2FA{ #how-to-manually-reset-2fa-for-a-user } 
+
+本指南指导系统管理员直接在 DHIS2 数据库中手动重置（禁用）用户账户的双因素身份验证 (2FA)。如果管理员因丢失 2FA 凭据或其他与 2FA 相关的问题而被锁定，本程序将作为最后手段。
+
+## ⚠️ 警告{ #warning } 
+
+直接操作数据库可能会有风险，如果操作不当，可能会导致数据损坏或不稳定。在进行任何更改之前，请务必对数据库进行完整备份。请仔细阅读以下说明。
+
+**关于 DHIS2 版本的说明：** "twofactortype "列是在 DHIS2 2.42 版中引入的，它被定义为 "NOT NULL"。如果使用的是旧版本，`userinfo` 表的模式将有所不同。本指南在必要时会为不同版本提供单独的说明。
+
+## 先决条件{ #prerequisites } 
+
+-   DHIS2 数据库服务器的管理访问权限。
+-   用于连接 DHIS2 PostgreSQL 数据库的 SQL 客户端（如 `psql`、DBeaver、pgAdmin）。
+-   需要重置 2FA 的用户账户的用户名。
+
+## 步骤 1：连接 DHIS2 数据库{ #step-1-connect-to-the-dhis2-database } 
+
+使用您喜欢的 SQL 客户端，连接到 DHIS2 数据库。您将需要数据库名称、主机、端口和具有足够权限读取和修改表的用户的凭据。
+
+## 步骤 2：识别用户并检查 2FA 状态{ #step-2-identify-the-user-and-check-2fa-status } 
+
+在进行任何更改之前，必须确定正确的用户并检查其当前的 2FA 状态。
+
+#### 适用于 DHIS2 2.42 及更新版本{ #for-dhis2-242-and-newer } 
+
+执行以下 SQL 查询，用被锁定用户的实际用户名替换"'some_admin'"：
+
+```sql
+SELECT userinfoid, username, secret, twofactortype FROM userinfo WHERE username = 'some_admin'；
+```
+
+**预期产出：**
+
+如果用户已启用 2FA，则会在 `secret` 和 `twofactortype` 列中看到值。双因素类型 "可能是 "TOTP_ENABLED "或 "EMAIL_ENABLED"。
+
+```
+ userinfoid | username | secret | twofactortype
+------------+------------+-----------------------------------------+---------------
+          1 | some_admin | FVG4... (长密匙) ...24X2 | TOTP_ENABLED
+(1行)
+```
+
+如果 `secret` 为 `NULL` 且 `twofactortype` 为 `NOT_ENABLED`，则该用户未启用 2FA，本指南可能无法解决登录问题。
+
+#### 适用于 DHIS2 2.42 之前的版本{ #for-dhis2-versions-before-242 } 
+
+对于旧版本的 DHIS2，不存在 "twofactortype "列。请使用以下查询代替：
+
+```sql
+SELECT userinfoid, username, secret FROM userinfo WHERE username = 'some_admin'；
+```
+
+**预期产出：**
+
+如果启用了 2FA，则会在 "secret "栏中看到一个值。
+
+```
+ userinfoid | username | secret
+------------+------------+-----------------------------------------
+          1 | some_admin | FVG4... （一个长密匙） ...24X2
+(1行)
+```
+
+如果 `secret` 列为 `NULL`，则不会为该用户启用 2FA。
+
+## 第 3 步：禁用用户的 2FA{ #step-3-disable-2fa-for-the-user } 
+
+要禁用 2FA，需要清除用户的 "secret "并更新 "twofactortype "字段。记住要将 `'some_admin'` 替换为正确的用户名。
+
+#### 适用于 DHIS2 2.42 及更新版本{ #for-dhis2-242-and-newer } 
+
+```sql
+UPDATE userinfo SET secret = NULL, twofactortype = 'NOT_ENABLED' WHERE username = 'some_admin'；
+```
+
+#### 适用于 DHIS2 2.42 之前的版本{ #for-dhis2-versions-before-242 } 
+
+```sql
+UPDATE userinfo SET secret = NULL WHERE username = 'some_admin'；
+```
+
+执行查询后，您会看到记录已更新的确认信息。
+
+## 第 4 步：验证更改{ #step-4-verify-the-change } 
+
+要确保已禁用 2FA，请再次运行步骤 2 中的相应 "SELECT "查询。
+
+#### 适用于 DHIS2 2.42 及更新版本{ #for-dhis2-242-and-newer } 
+
+```sql
+SELECT userinfoid, username, secret, twofactortype FROM userinfo WHERE username = 'some_admin'；
+```
+
+**预期产出：**
+
+secret "列现在应为 "NULL"，"twofactortype "应为 "NOT_ENABLED"，表明该用户的 2FA 已不再激活。
+
+```
+ userinfoid | username | secret | twofactortype
+------------+------------+--------+---------------
+          1 | some_admin | | NOT_ENABLED
+(1行)
+```
+
+#### 适用于 DHIS2 2.42 之前的版本{ #for-dhis2-versions-before-242 } 
+
+```sql
+SELECT userinfoid, username, secret FROM userinfo WHERE username = 'some_admin'；
+```
+
+**预期产出：**
+
+秘密 "列现在应为 "空"。
+
+```
+ userinfoid | username | secret
+------------+------------+--------
+          1 | some_admin |
+(1行)
+```
+
+## 步骤 5：登录{ #step-5-log-in } 
+
+现在，用户只需输入用户名和密码即可登录，无需提示输入 2FA 验证码。登录成功后，强烈建议通过 DHIS2 用户界面的用户配置文件设置重新注册 2FA，以确保安全。
+

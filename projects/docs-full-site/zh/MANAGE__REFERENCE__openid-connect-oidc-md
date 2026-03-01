@@ -1,0 +1,298 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/sysadmin/reference/oauth.md"
+revision_date: '2025-03-26'
+tags:
+- 系统管理
+---
+
+# OpenID Connect（OIDC）配置 { #install_oidc_configuration } 
+
+DHIS2 支持用于单点登录（SSO）的 OpenID Connect（OIDC）身份层。OIDC 是一种标准身份验证协议，用户可通过身份提供商（IdP）（如谷歌）登录。用户成功登录其 IdP 后，将自动登录 DHIS2。
+
+本节提供了与 OIDC 提供商一起使用 DHIS2 的一般信息，以及完整的配置示例。
+
+DHIS2 OIDC "授权码 "验证流程：
+
+1. 用户尝试登录 DHIS2 并点击登录页面上的 OIDC 提供商按钮。
+
+2. DHIS2 会将浏览器重定向到 IdP 的登录页面。
+
+3. 如果尚未登录，系统会提示用户输入凭据。身份验证成功后，IdP 会响应重定向，返回 DHIS2 服务器。重定向包括为用户生成的唯一授权码。
+
+4. DHIS2 服务器会在内部将用户的授权代码连同自己的客户 ID 和客户秘密凭证一起发回给 IdP 服务器。
+
+5. IdP 向 DHIS2 服务器返回 ID 令牌。DHIS2 服务器对令牌进行验证。
+
+6. DHIS2 服务器根据 ID 令牌中的映射要求（默认为电子邮件）查找 DHIS2 内部用户，授权用户并完成登录过程。
+
+## 将 OIDC 与 DHIS2 结合使用的要求：{ #requirements-for-using-oidc-with-dhis2 } 
+
+### IdP 服务器账户{ #idp-server-account } 
+
+您必须在 DHIS2 支持的在线身份供应商 (IdP) 或独立服务器上拥有一个管理员账户。
+
+目前支持并测试了以下 IdP：
+
+* 谷歌
+* Azure AD
+* WSO2
+* Okta（请参阅单独的教程：[此处](#configure-openid-connect-with-okta))
+
+还有一个**通用提供商**配置，可支持 "任何 "兼容 OIDC 的提供商。
+
+### DHIS2 用户账户{ #dhis2-user-accounts } 
+
+要在 DHIS2 中进行开放身份连接（OIDC）认证，必须在 DHIS2 中创建用户账户，并将其映射到身份供应商（IdP）平台中的相应条目。这种映射通过为每个 DHIS2 用户账户配置*OIDC 映射值*属性来实现。
+
+请注意，映射值区分大小写。例如，如果在 IdP 中使用电子邮件地址作为申请，而电子邮件地址使用大写和小写字母，则在输入 DHIS2 用户 OIDC 映射值时一定要考虑大写字母。
+
+目前不支持从 Active Directory 等外部目录导入用户。OIDC 标准不支持使用外部身份存储对用户进行供应和管理。
+
+### 用户的IdP声明和映射 { #idp-claims-and-mapping-of-users } 
+
+要使用 OIDC 登录 DHIS2，必须在 IdP 中配置特定用户，然后将其映射到 DHIS2 中的用户账户。OIDC 使用一种方法，依靠声明与其他应用程序共享用户账户属性。声明包括电子邮件、电话号码、姓名等用户账户属性。DHIS2 依靠 IdP 索赔将 IdP 中的用户账户映射到 DHIS2 服务器中的用户账户。默认情况下，DHIS2 希望 IdP 传递 _email_ 声明。根据 IdP 的不同，您可能需要配置 DHIS2 以使用不同的 IdP 声明。
+
+如果使用 Google 或 Azure AD 作为 IdP，默认行为是使用 _email_ 索赔将 IdP 身份映射到 DHIS2 用户账户。
+
+> **注**
+>
+> 为了使 DHIS2 用户能够使用 IdP 登录，用户配置文件的复选框必须选中：必须选中 *External authentication only OpenID or LDAP*（外部身份验证仅限 OpenID 或 LDAP），并且 *OpenID* 字段必须与 IdP 返回的请求（映射请求）相匹配。电子邮件是 Google 和 Azure AD 使用的默认声明。
+
+## 为OIDC配置身份提供者 { #configure-the-identity-provider-for-oidc } 
+
+本主题提供有关配置身份提供者 (IdP) 以在 DHIS2 中使用 OIDC 的一般信息。这是一个多步骤过程中的一个步骤。每个 IdP 的配置方法略有不同。关于如何创建和配置 OIDC 应用项目，请查阅 IdP 自己的文档。在此，我们将 DHIS2 服务器称为 OIDC "应用项目"。
+
+### 重定向网址 { #redirect-url } 
+
+所有 IdP 都需要一个指向 DHIS2 服务器的重定向 URL。 
+您可以使用以下模式构建它：
+
+```
+(协议）：/（您的 DHIS2 主机）/oauth2/code/PROVIDER_KEY
+```
+
+使用 Google IdP 时的示例：
+
+```
+https://mydhis2-server.org/oauth2/code/google
+```
+
+配置 IdP 说明的外部链接：
+
+* [Google](https://developers.google.com/identity/protocols/oauth2/openid-connect)
+* [Azure AD 教程](https://medium.com/xebia-engineering/authentication-and-authorization-using-azure-active-directory-266980586ab8)
+
+
+## Google{ #example-setup-for-google } 设置示例 
+
+1. 注册一个账户并登录。例如，对于 Google，您可以访问 Google [developer console](https://console.developers.google.com)。
+2. 在 Google 开发人员控制面板中，点击 "创建新项目"。
+3. 请按照说明创建 OAuth 2.0 客户端 ID 和客户秘密。
+4. 将 "授权重定向 URL "设置为`https://mydhis2-server.org/oauth2/code/google`
+5. 复制并妥善保管 "客户 ID "和 "客户秘密"。
+
+> **提示**
+>
+> 在笔记本电脑等本地 DHIS2 实例上进行测试时，可以使用 localhost 作为重定向 URL，如下所示：`https://localhost:8080/oauth2/code/google`
+> *记得在谷歌开发者控制台中也添加重定向 URL*。
+
+### Google dhis.conf 示例：{ #google-dhisconf-example } 
+属性
+# 启用 OIDC 登录
+oidc.oauth2.login.enabled = on
+
+# 客户端 ID，由 Google 开发者控制台提供
+oidc.provider.google.client_id =<my-client-id>
+
+# 客户秘密，由 Google 开发者控制台提供
+oidc.provider.google.client_secret =<my-client-secret>
+
+# [可选] 授权重定向 URI，与在 Google 开发者控制台中设置的相同 
+# 如果您的公共主机名与服务器内部看到的不同、 
+# 您需要提供完整的公共 url，如下所示。
+oidc.provider.google.redirect_url = https://mydhis2-server.org/oauth2/code/google
+
+# [可选] 注销后重定向到哪里。
+# 如果您的公共主机名与服务器内部看到的不同、 
+# 您需要提供完整的公共 url，如下所示。 
+oidc.logout.redirect_url = https://mydhis2-server.org
+```
+
+## Azure AD 设置示例{ #example-setup-for-azure-ad } 
+
+确保 Azure 门户中的 Azure AD 账户配置了重定向 URL，如`(协议):/(主机)/oauth2/code/PROVIDER_KEY`。 
+要在 Azure 门户中将 DHIS2 服务器注册为 "应用程序"，请按照以下步骤操作：
+
+> **注**
+>
+> PROVIDER_KEY 是配置密钥的 "名称 "部分，例如"oidc.provider.PROVIDER_KEY.tenant = My Azure SSO
+> 如果要配置多个 Azure 提供商，可以使用这种名称形式：(azure.0)、(azure.1) 等。
+> 重定向 URL 示例：https://mydhis2-server.org/oauth2/code/azure.0
+
+1. 搜索并选择*应用程序注册*。
+2. 点击*新注册*。
+3. 在 *Name* 字段中，输入 DHIS2 实例的描述性名称。
+4. 在 *重定向 URI* 字段中，输入上文指定的重定向 URL。
+5. 点击*注册*。
+
+### Azure AD dhis.conf 示例：{ #azure-ad-dhisconf-example } 
+属性
+# 启用 OIDC 登录
+oidc.oauth2.login.enabled = on
+
+# 第一个提供程序 (azure.0)：
+
+# 租户 ID，也称目录 ID，UUID 格式
+oidc.provider.azure.0.tenant =<my-tenant-id>
+
+# 客户 ID，在 Azure 门户中提供给你，UUID 格式
+oidc.provider.azure.0.client_id =<my-client-id>
+
+# 客户秘密，由 Azure 门户提供
+oidc.provider.azure.0.client_secret = # 客户秘密，在 Azure 门户中给出。<my-client-secret>
+
+# [可选] 授权重定向 URI，与在 Azure 门户中设置的一致 
+# 如果您的公共主机名与服务器内部看到的不同、 
+# 您需要提供完整的公共 URL
+oidc.provider.azure.0.redirect_url = https://mydhis2-server.org/oauth2/code/azure.0
+
+# [可选] 注销后的重定向位置。
+# 如果您的公共主机名与服务器内部看到的不同、 
+# 您需要提供完整的公共 URL
+oidc.logout.redirect_url = https://mydhis2-server.org
+
+# [可选]，默认为 "电子邮件
+oidc.provider.azure.0.mapping_claim = email
+
+# [可选]，默认为 "开启
+oidc.provider.azure.0.support_logout = on
+
+# 第二个提供程序（azure.1）：
+
+# 租户 ID，也称为目录 ID，UUID 格式
+oidc.provider.azure.1.tenant =<my-client-id>
+...
+```
+
+## 通用提供商{ #generic-providers } 
+
+通用提供项目可用于配置与 "Spring Security "兼容的 "任何 "标准 OIDC 提供项目。
+
+在下面的示例中，我们将使用提供商密钥`helseid`配置挪威政府 _HelseID_ OIDC 提供商。
+
+已定义的提供项目将作为按钮出现在登录页面上，默认名称为提供项目的密钥、 
+或 `display_alias` 的值（如果已定义）。提供项目的关键字是任意的，可以是任何字母数字字符串、 
+除了特定提供项目使用的保留名称（`google`、`azure.0,azure.1...`、`wso2`）。
+
+> **Note**
+> The generic provider uses the following hardcoded configuration defaults:
+> **(These are not possible to change)**
+> * Client Authentication, `ClientAuthenticationMethod.BASIC`: [rfc](https://tools.ietf.org/html/rfc6749#section-2.3)
+> * Authenticated Requests, `AuthenticationMethod.HEADER`: [rfc](https://tools.ietf.org/html/rfc6750#section-2) 
+
+### 通用 (helseid) dhis.conf 示例：{ #generic-helseid-dhisconf-example } 
+
+属性
+# 启用 OIDC 登录
+oidc.oauth2.login.enabled = on
+
+# 必要变量：
+oidc.provider.helseid.client_id =<my-client-id>
+oidc.provider.helseid.client_secret =<my-client-secret>
+oidc.provider.helseid.mapping_claim = helseid://claims/identity/email
+oidc.provider.helseid.authorization_uri = https://helseid.no/connect/authorize
+oidc.provider.helseid.token_uri = https://helseid.no/connect/token
+oidc.provider.helseid.user_info_uri = https://helseid.no/connect/userinfo
+oidc.provider.helseid.jwk_uri = https://helseid.no/.well-known/openid-configuration/jwks
+oidc.provider.helseid.end_session_endpoint = https://helseid.no/connect/endsession
+oidc.provider.helseid.scopes = helseid://scopes/identity/email
+
+# 可选] 授权重定向 URI，与 Azure 门户中设置的一致 
+# 如果您的公共主机名与服务器内部看到的不同、 
+# 您需要提供完整的公共 url，如下所示。
+oidc.provider.helseid.redirect_url = https://mydhis2-server.org/oauth2/code/helseid
+
+# [可选]，默认为 "on
+oidc.provider.helseid.enable_logout = on
+
+# [可选] 注销后重定向到哪里。
+# 如果你的公共主机名与服务器内部看到的不同、 
+# 您需要提供完整的公共 URL，如下所示。
+oidc.logout.redirect_url = https://mydhis2-server.org
+
+# [可选] PKCE 支持，参见：https://oauth.net/2/pkce/)，默认为 "false
+oidc.provider.helseid.enable_pkce = on
+
+# 可选）附加到请求中的额外变量。 
+# 必须是键值对，如"key1 value1,key2 value2,..."
+oidc.provider.helseid.extra_request_parameters = acr_values lvl4,other_key value2
+
+# 可选] 这是 DHIS2 登录页面中登录按钮上显示的别名/名称
+oidc.provider.helseid.display_alias = HelseID
+
+# 可选] 链接到徽标的 URL。(可使用绝对或相对 URL）
+oidc.provider.helseid.logo_image = ../security/btn_helseid.svg
+
+# [可选] 徽标图像的 CSS 填充
+oidc.provider.helseid.logo_image_padding = 0px 1px
+```
+
+## JWT 承载令牌验证{ #jwt-bearer-token-authentication } 
+
+在配置 OIDC 时，可为基于 API 的客户端启用*JWT 承载令牌*身份验证。 
+DHIS2 Android 客户端就是这种类型的客户端，如果启用了 OIDC 登录，就必须使用 JWT 身份验证。
+
+> **注**
+>
+> DHIS2 目前仅支持使用 JWT 进行身份验证的 OAuth2 授权代码授予流（也称为 "三脚 OAuth"）。
+> 在使用 JWT 标记时，DHIS2 目前仅支持将 Google 用作 OIDC 提供商
+
+
+## 要求 { #requirements } 
+* 如上所述配置 Google OIDC 提供商 
+* 将配置参数 ```oauth2.authorization.server.enabled```"设为 "off"，禁用该参数
+* 将配置参数```oidc.jwt.token.authentication.enabled```"设置为 "on"，启用该参数
+* 按照 [此处](https://developers.google.com/identity/protocols/oauth2/native-app#creatingcred) 的描述生成 Android OAuth2 client_id
+
+## JWT 身份验证示例{ #jwt-authentication-example } 
+
+以下`dhis.conf`部分显示了如何为基于 API 的客户端启用 JWT 身份验证的示例。
+
+属性
+# 启用 OIDC 登录
+oidc.oauth2.login.enabled = on
+
+# 所需配置变量的最小值：
+oidc.provider.google.client_id =<my-client-id>
+oidc.provider.google.client_secret =<my-client-secret>
+
+# 启用 JWT 支持
+oauth2.authorization.server.enabled = off
+oidc.jwt.token.authentication.enabled = on
+
+# 使用 JWT 标记定义客户端 1
+oidc.provider.google.ext_client.0.client_id =<my-jwt-client-id>
+
+# 使用 JWT 令牌定义客户端 2
+oidc.provider.google.ext_client.1.client_id =<my-jwt-client-id>
+```
+
+> **注**
+>
+> 查看我们的教程，将 Okta 设置为通用 OIDC 提供商](././././topics/tutorials/configure-oidc-with-okta.md)
+
+## 将单个身份供应商账户连接到多个 DHIS2 账户{ #connect_single_identity_to_multiple_accounts }
+
+DHIS2 能够将一个身份供应商账户映射到多个 DHIS2 账户。API 调用可用于列出链接账户，并在这些账户之间进行切换。
+
+选择该选项时，`用户信息`表中的 `openid `数据库字段无需唯一。  当身份提供者提供一个 `openid` 值时，DHIS2 将登录最近登录的用户。
+
+下面的 `dhis.conf` 部分说明了如何启用链接账户。
+
+```properties
+# Enable a single OIDC account to log in as one of several DHIS2 accounts
+linked_accounts.enabled = on
+```
+
+有关如何列出链接账户并在它们之间切换的说明，请参阅开发人员文档 "用户 "一章中的[*在连接到同一身份供应商账户的用户账户之间切换*](./././develop/using-the-api/dhis-core-version-master/users.html#switching-between-user-accounts-connected-to-the-same-identity-provider-account)
+

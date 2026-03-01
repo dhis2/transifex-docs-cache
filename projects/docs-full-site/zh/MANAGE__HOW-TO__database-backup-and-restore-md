@@ -1,0 +1,122 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-server-tools/blob/main/docs/how-to/db-backup-and-restore.md"
+revision_date: '2025-06-08'
+tags:
+- 系统管理
+---
+
+# 如何备份和还原 DHIS2（基于 LXD 的设置）{ #how-to-backup-and-restore-dhis2-lxd-based-setup } 
+
+本指南将简单介绍在使用 LXD 容器时如何备份和还原 DHIS2 数据库。
+数据库的方法。备份是使用由
+[dhis2-server-tools](https://github.com/dhis2/dhis2-server-tools)项目提供的脚本进行自动备份。
+
+---
+
+## 您需要了解的信息{ #what-you-need-to-know } 
+
+* ** 备份可在服务器崩溃或损坏时保护您的数据**。
+* **在 LXD 容器内还原**数据库有点复杂，但还原脚本简化了这一过程。
+
+---
+
+## 备份说明{ #backup-instructions } 
+
+### 1.自动备份脚本{ #1-automated-backup-script } 
+
+系统已包含一个脚本：
+**`/usr/local/bin/dhis2-backup`**
+
+它的功能如下
+
+* 运行每日备份。
+* 在 `/var/pgbackups` 中存储转储。
+* 不包括与分析有关的表格。
+* 转储并截断 `audit` 表。
+* 支持加密备份
+
+### 2.它支持什么{ #2-what-it-backs-up } 
+
+* 常规数据库表（分析除外）
+* 审计表（并在备份后将其截断）
+
+### 3.备份去向{ #3-where-the-backups-go } 
+
+* 所有备份都保存在
+  /var/pgbackups/db-backup/``
+  `/var/pgbackups/audit-backup/`
+
+* 加密备份（可选）的存储方式与此类似。
+
+### 4.工作原理（简化版）{ #4-how-it-works-simplified } 
+
+* 设置加载自
+  /usr/local/etc/dhis/dhis2-env`。
+* 对于每个数据库，它
+
+  1. 删除审计表。
+  2. 截断审计表。
+  3. 转存主数据库（不包括分析）。
+  4. 可选择加密转储。
+
+---
+
+## 恢复说明{ #restore-instructions } 
+
+### 1.还原脚本{ #1-restore-script } 
+
+使用此脚本：
+**`/usr/local/bin/dhis2-restoredb`**
+
+您需要
+
+* .sql.gz "文件（您的备份）
+* 数据库名称
+
+### 2.脚本的作用{ #2-what-the-script-does } 
+
+* 删除旧数据库（在 LXD 容器内）
+* 以正确的所有者身份重新创建数据库
+* 恢复转储，忽略所有权问题
+* 重新分配剩余的 "根 "所有对象
+
+### 3.如何运行{ #3-how-to-run-it } 
+
+```bash
+sudo /usr/local/bin/dhis2-restoredb /var/pgbackups/db-backup/mybackup.sql.gz dhis2
+```
+
+确保
+
+* PostgreSQL 在名为 "postgres "的 LXD 容器中运行
+* 数据库用户与数据库名称一致（在 DHIS2 中通常如此）
+
+### 还原逻辑示例{ #sample-restore-logic } 
+
+```bash
+sudo lxc exec postgres dropdb dhis2
+sudo lxc exec postgres -- createdb -O dhis2 dhis2
+zcat mybackup.sql.gz | grep -v 'ALTER .* OWNER' | sudo lxc exec postgres -- psql dhis2
+echo "REASSIGN OWNED BY root TO dhis2" | sudo lxc exec postgres -- psql dhis2
+```
+
+---
+
+## 最佳做法{ #best-practices } 
+
+* 使用专用的 PostgreSQL 用户进行备份。
+* 为敏感备份加密。
+* 保护备份文件夹："chmod 750 "用于目录，"chmod 600 "用于文件。
+
+---
+
+## 摘要{ #summary } 
+
+使用 `dhis2-server-tools` 的 DHIS2 部署预配置了备份和还原脚本：
+
+* 每天**次自动备份。
+* 备份保存在 `/var/pgackups`。
+* 还原是通过一个脚本完成的，该脚本在 LXD 内部处理权限和所有权。
+
+即使在复杂的 LXD 环境中，这些工具也能使 PostgreSQL 的备份和还原变得可靠而简单。
+

@@ -1,0 +1,318 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/sysadmin/getting-started/linux-manual-install.md"
+revision_date: '2025-08-12'
+tags:
+- 系统管理
+---
+
+# 在 Ubuntu 服务器上手动安装{ #getting_started_linux_manual_install }
+
+## 导言{ #install_server_setup } 
+本指南介绍如何在 Ubuntu 22.04 上手动安装 DHIS2
+服务器上手动安装 DHIS2。指南还建议
+代理（如 nginx 或 Apache）和监控工具（如 Munin 或
+Zabbix）以提高性能。虽然所有组件都可以单独托管
+尽管所有组件都可以单独托管，但本指南重点介绍简单的单服务器设置。
+
+本指南主要供一般安装实践参考。
+做法的参考。安装步骤会因操作系统、数据库选择和其他配置等因素而有所不同、
+数据库选择和其他配置等因素而有所不同。因此
+因此，强烈建议在安装过程中使用一些自动化方法。
+关于生产设置，请参阅[Ubuntu 上的自动安装](#getting_started_linux_automated_install)
+
+为获得最佳性能，建议分配 PostgreSQL 数据库
+数据库分配一半以上的可用内存，其余一半由
+dhis2 实例和某些操作系统共享。标记为
+*可选*的步骤，如性能调整步骤，可在稍后阶段完成。
+
+这里的 "invoke "是指直接在终端中运行命令。
+
+## 先决条件{ #prerequisites } 
+* 运行 Ubuntu 22.04 的服务器
+* 使用具有 "sudo "权限的 "非 root "用户进行 SSH 访问
+
+## 创建一个用户来运行DHIS2 { #install_creating_user } 
+Tomcat 上的 DHIS2 绝不应以 "root "用户身份运行。相反，应创建一个
+标准用户并用它来运行 Tomcat 实例，以提高安全性、
+
+> **重要**
+>
+>您不应以root用户等特权用户身份运行DHIS2服务器。
+
+* 创建 dhis2 系统用户 
+   ```sh
+   sudo useradd -d /home/dhis -m dhis -s /bin/false
+   ```
+
+* 为创建的用户设置密码
+   ```sh
+   sudo passwd dhis
+   ```
+  确保您设置了至少 15 个随机字符的强密码。
+
+## 创建配置目录 { #install_creating_config_directory } 
+* 为 DHIS2 实例创建配置目录。该目录也将是
+  用于应用程序、文件和日志文件。 
+   ```sh
+   sudo -u dhis mkdir /home/dhis/config
+   ```
+* DHIS2 会查找一个名为 "DHIS2_HOME "的环境变量，以找到
+  DHIS2 配置目录。该目录将被称为
+  本安装指南中的 `DHIS2_HOME`。我们将定义环境
+  变量。
+* 如果未找到环境变量 `DHIS2_HOME`，则默认配置为
+  文件位置 `/opt/dhis2`。
+
+## 设置服务器时区和地域{ #install_setting_server_tz } 
+* 可能需要重新配置服务器的时区，使其与
+  DHIS2 服务器将覆盖的时区。如果
+  使用虚拟专用服务器时，默认时区可能与
+  DHIS2 所在地的时区。您可以轻松地重新配置时间
+  调用下面的程序，并按照说明操作，就可以在"......
+   ```sh
+   sudo dpkg-reconfigure tzdata
+   ```
+
+* PostgreSQL 对本地语言很敏感，因此您可能需要安装本地语言
+  首先。检查现有本地程序并安装新程序（如美国英语）：
+   ```sh
+   locale -a
+   sudo locale-gen en_US.utf8
+   ```
+
+## PostgreSQL安装 { #install_postgresql_installation } 
+
+按以下步骤安装 PostgreSQL
+
+*  添加 PostgreSQL 存储库
+   ```sh
+   sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+   ```
+* 导入 PostgreSQL 版本库签名密钥：
+   ```sh
+   curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc|sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+   ```
+* 更新软件包列表 
+   ```sh
+   sudo apt update -y && sudo apt upgrade -y 
+   ```
+* 安装 PostgreSQL 16
+   ```sh
+   sudo apt-get install -y postgresql-16 postgresql-16-postgis-3
+   ```
+
+*  确保 postgresql 已启动并启用
+   ```
+   sudo systemctl start postgresql
+   sudo systemctl enable postgresql
+   ```
+
+* 使用下面的 "命令 "创建一个非特权数据库用户 `dhis`：
+   ```sh
+   sudo -u postgres createuser -SDRP dhis
+   ```
+  在提示符下输入安全密码：
+
+   > **Note**
+   >
+   > This database user and password will be used by your DHIS2 application to
+   > connect to the database. You will need to write down this user and password
+   > in the  `dhis.conf`  file at a later stage.
+
+*  调用以下命令创建一个名为 `dhis` 的数据库，由 `dhis` 数据库用户拥有：
+   ```sh
+   sudo -u postgres createdb -O dhis dhis;
+   ```
+* 需要使用 *PostGIS* 扩展才能使用多项 GIS/制图功能。
+  DHIS2 会尝试在启动时安装 PostGIS 扩展，但其
+  行不通，因为他的用户不是超级用户。添加三角符号
+  索引，并将其与原始列类型相结合，有两种扩展方法
+  将在 DHIS 2 2.38 版及以后版本的数据库中创建。数据库
+  扩展已经是 posgresql 默认安装的一部分：由于
+  DHIS2 数据库用户没有创建扩展名的权限，请创建
+  在控制台中使用 `postgres` 用户并执行以下命令：
+   ```sh
+   sudo -u postgres psql -c "create extension postgis;" dhis
+   sudo -u postgres psql -c "create extension btree_gin;" dhis
+   sudo -u postgres psql -c "create extension pg_trgm;" dhis
+   ```
+  检查 [PostgreSQL 性能调优](#install_postgresql_performance_tuning) 以获取优化参数。
+<!-- Exit the console and return to your previous user with *\\q* followed by -->
+<!-- *exit*. -->
+## Java安装 { #install_java_installation } 
+---
+
+| **DHIS2 版本** | **JRE（推荐）** | **JRE（最低要求）** | **汤姆猫版本** | **推荐使用 Ubuntu LTS** |
+| ----------------- | --------------------- | -------------------------- | ------------------ | -------------------------- |
+| 2.42              | 17                    | 17                         | 10                 | 24.04                      |
+| 2.41              | 17                    | 17                         | 9                  | 22.04                      |
+| 2.40              | 17                    | 11                         | 9                  | 22.04                      |
+| 2.38              | 11                    | 11                         | 9                  | 22.04                      |
+| 2.35              | 11                    | 8                          | 9                  | 22.04                      |
+| 2.35 前          | 8                     | 8                          | 9                  | 22.04                      |
+
+
+要为您的 DHIS2 版本安装推荐的 JRE，请使用以下命令，将<jre_version> 替换为上表中的值：
+
+```
+sudo apt-get install -y openjdk-<jre_version>-jre-headless
+
+```
+通过调用以下命令来验证安装是否正确：
+```
+Java版本
+```
+
+## DHIS2配置 { #install_database_configuration } 
+
+数据库连接信息通过配置文件
+配置文件 "dhis.conf "提供给 DHIS2。创建该文件并将其保存在
+DHIS2_HOME` 目录中。例如，该位置可以是
+
+``sh
+sudo -u dhis touch /home/dhis/config/dhis.conf
+```
+
+与上述设置相对应的PostgreSQL配置文件具有
+这些属性：
+
+编辑文件并添加如下内容、 
+
+```
+sudo -u dhis vim /home/dhis/config/dhis.conf
+```
+
+属性
+# ----------------------------------------------------------------------
+# 数据库连接
+# ----------------------------------------------------------------------
+
+# JDBC 驱动程序类
+connection.driver_class = org.postgresql.Driver
+
+# 数据库连接 URL
+connection.url = jdbc:postgresql:dhis
+
+# 数据库用户名
+connection.username = dhis
+
+# 数据库密码
+connection.password = xxxx
+```
+
+### Tomcat和DHIS2安装 { #install_tomcat_dhis2_installation } 
+
+*  要安装 Tomcat 服务程序容器，我们将使用 Tomcat 用户
+   使用以下命令安装、
+   ```
+   sudo apt-get install -y tomcat9-user
+   ```
+   该软件包允许创建一个新的 Tomcat 实例。该实例将
+   将在当前目录下创建。适当的位置是
+   用户的目录：
+*  使用以下命令在 `/home/dhis/tomcat-dhis` 目录中创建名为 `tomcat-dhis` 的实例
+   ```
+   sudo tomcat9-instance-create /home/dhis/tomcat-dhis
+   sudo chown -R dhis:dhis /home/dhis/tomcat-dhis/
+   ```
+   > **Note** 
+   >
+   > `tomcat9-user` package allows for creating any number of DHIS2 instances if
+   > that is desired.
+
+*  编辑文件 `/home/dhis/tomcat-dhis/bin/setenv.sh`，并添加以下各行
+   文件的结尾。 
+   `sudo -u dhis vim /home/dhis/tomcat-dhis/bin/setenv.sh`
+   ```
+   export JAVA_HOME='/usr/lib/jvm/java-<jre_version>-openjdk-amd64/'
+   export JAVA_OPTS='-Xms3g -Xmx6g'
+   export DHIS2_HOME='/home/dhis/config'
+   ```
+      * JAVA_HOME "设置 JRE 的安装位置。
+      * `JAVA_OPTS` 将参数传递给 JVM。
+         * `-Xms` 将内存初始分配到 Java 堆内存空间。
+         * Xmx` 为 Java 堆内存空间分配最大内存。这应反映您希望为服务器上的 DHIS2 软件应用程序分配多少内存。
+      * DHIS2_HOME "设置 DHIS2 配置文件 "dhis.conf "的位置。
+   检查 Java 二进制文件的路径是否正确，因为它们可能会从
+   例如，在 AMD 系统上，您可能会看到
+   `/java-<jre_version>-openjdk-amd64`.请注意，应根据您的
+   环境
+
+* 切勿以特权用户身份运行 DHIS2。在您修改了
+  setenv.sh`文件，修改`startup.sh`脚本以检查并验证
+  脚本未以 root 身份调用。
+  ```
+   sudo -u dhis vim  /home/dhis/tomcat-dhis/bin/startup.sh
+  ```
+  ```sh
+  #!/bin/sh
+  set -e
+
+  if [ "$(id -u)" -eq "0" ]; then
+    echo "This script must NOT be run as root" 1>&2
+    exit 1
+  fi
+
+  export CATALINA_BASE="/home/dhis/tomcat-dhis"
+  /usr/share/tomcat9/bin/startup.sh
+  echo "Tomcat started"
+  ```
+
+*  Tomcat 配置文件位于
+   /home/dhis/tomcat-dhis/conf/server.xml`。定义
+   与 DHIS 的连接是端口为 8080 的 *Connector* 元素。您可以更改
+   必要时，将连接器元素中的端口号改为所需的端口。端口号
+   relaxedQueryChars "属性是允许在
+   DHIS2 前端使用的 URL。
+   ```xml
+   <Connector port="8080" protocol="HTTP/1.1"
+     connectionTimeout="20000"
+     redirectPort="8443"
+     relaxedQueryChars="[]" />
+   ```
+
+*  下一步是下载 DHIS2 WAR 文件，并将其放置到
+   Tomcat 的 _webapps_ 目录。您可以从
+   以下地点 
+   ```sh
+   https://releases.dhis2.org/
+   ```
+   下载 dhis2 v40.3.0 版本的示例
+   ```
+   wget -O dhis.war https://releases.dhis2.org/40/dhis2-stable-40.3.0.war
+   ```
+   将 WAR 文件移到 Tomcat 的 `webapps` 目录中。我们要调用
+   WAR 文件 `ROOT.war` 以便直接在 `localhost` 上提供该文件
+   不带上下文路径：使用上述 wget 示例下载的 war 文件： 
+
+   ```sh
+   sudo mv dhis.war /home/dhis/tomcat-dhis/webapps/ROOT.war
+   ```
+
+## 运行DHIS2 { #install_running_dhis2 } 
+
+*  使用下面的命令启动 DHIS2 实例：
+   ```sh
+   sudo -u dhis /home/dhis/tomcat-dhis/bin/startup.sh
+   ```
+
+> :灯泡：**重要**
+> 
+> DHIS2 服务器绝不能以 root 或其他特权用户身份运行。
+
+* 实时查看日志：
+   ```
+   tail -f /home/dhis/tomcat-dhis/logs/catalina.out
+   ```
+
+* 要停止 DHIS2 实例：
+   ```sh
+   sudo -u dhis /home/dhis/tomcat-dhis/bin/shutdown.sh
+   ```
+
+* 如果部署在 `webapps` 中的 WAR 文件名为 ROOT.war，您现在可以通过以下 URL 访问 DHIS2 实例：
+
+    http://localhost:8080
+
+## 创建 systemd 服务来管理实例{ #creating-systemd-service-to-manage-the-instance } 
+

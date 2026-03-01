@@ -1,0 +1,201 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/sysadmin/reference/postgresql.md"
+revision_date: '2025-02-27'
+tags:
+- 系统管理
+---
+
+## Postgresql 提示和食谱{ #postgresql-tips-and-recipes } 
+
+本节包含有关 postgresql 数据库服务器调整、执行备份和使用读取副本的建议。
+
+### PostgreSQL性能调优 { #install_postgresql_performance_tuning } 
+
+调整 PostgreSQL 是实现高性能系统的必要条件，但就 DHIS2 的运行而言，它是可选的。
+是可选的。各种设置可以在`postgresql.conf`配置文件中指定，或者最好在 `conf.d`目录下的特定
+文件中指定。这些设置基于为PostgreSQL 分配 8 GB 内存为基础，实际应根据环境进行相应调整。
+
+```sh
+须藤nano /etc/postgresql/12/main/postgresql.conf
+```
+
+设置以下属性
+
+```properties
+jit = off
+```
+
+这对于 postgresql 12 及更高版本来说非常重要。  jit 编译器 
+功能会大大降低许多 DHIS2 特定查询的速度，例如 
+项目指示器查询。  对于 11 及以下版本，该设置默认为关闭。
+
+```属性
+max_connections = 200
+```
+
+确定PostgreSQL允许的最大连接数。
+
+```properties
+shared_buffers = 3GB
+```
+
+确定应专门分配多少内存
+PostgreSQL缓存。此设置控制共享内核的大小
+应该为PostgreSQL保留的内存。应该设置为
+PostgreSQL专用内存的40％。
+
+```properties
+work_mem = 24MB
+```
+
+确定用于内部排序和哈希的内存量
+操作。此设置是针对每个连接，针对每个查询的，因此需要大量内存
+如果将其提高得太高，可能会被消耗掉。正确设置该值
+对于DHIS2聚合性能至关重要。
+
+```属性
+maintenance_work_mem = 1GB
+```
+
+确定PostgreSQL可用于维护的内存量
+创建索引，运行真空，添加外部文件等操作
+键。增大此值可能会提高索引创建的性能
+在分析生成过程中。
+
+```properties
+temp_buffers = 16MB
+```
+
+设置每个数据库会话使用的最大临时缓冲区数量。 
+会话。这些是会话本地缓冲区，仅用于访问临时表。 
+表。 
+
+```properties
+effective_cache_size = 8GB
+```
+
+操作系统（非分配）可用于磁盘缓存的内存估算值，PostgreSQL 用它来判断查询计划是否适合放入内存。若设置值高于实际可用内存，会导致性能下降。该值应包含`shared_buffers`设置。PostgreSQL 有两层缓存：第一层使用内核共享内存，由shared_buffers控制；第二层交由操作系统磁盘缓存，可用内存大小可通过`effective_cache_size`设置指定。
+
+```属性
+checkpoint_completion_target = 0.8
+```
+
+设置WAL写过程中用于缓冲的内存。
+增大此值可能会提高大量写入系统的吞吐量。
+
+```属性
+sync_commit =关
+```
+
+指定事务提交是否将等待WAL记录
+是否将其写入磁盘，然后再返回客户端。设定这个
+关闭将大大提高性能。这也意味着那里
+交易之间的轻微延迟被报告为成功
+客户端，它实际上是安全的，但是数据库状态不能为
+已损坏，这是性能密集型和
+像DHIS2这样的重写入系统。
+
+```properties
+wal_writer_delay = 10s
+```
+
+指定WAL写操作之间的延迟。将此设置为较高
+价值可能会提高大量写入系统的性能，因为
+一次刷新到磁盘就可以执行许多写操作。
+
+```属性
+random_page_cost = 1.1
+```
+
+*仅SSD。*设置查询计划程序对非连续获取的磁盘页面的成本的估计。较低的值将导致系统比顺序扫描更喜欢索引扫描。对于在SSD上运行的数据库或在内存中大量缓存的数据库，较低的值有意义。默认值为4.0，这对于传统磁盘而言是合理的。
+
+```属性
+max_locks_per_transaction = 96
+```
+
+指定为每个事务分配的对象锁的平均数量。设置该参数主要是为了允许完成涉及大量表的升级例程。
+
+```properties
+track_activity_query_size = 8192
+```
+
+指定为跟踪每个活动会话的当前执行命令而预留的字节数。用于查看完整的查询字符串，以监控当前运行的查询。
+
+通过调用以下命令来重新启动PostgreSQL：
+
+```sh
+sudo systemctl restart postgresql
+```
+
+## 读取副本数据库配置 { #install_read_replica_configuration } 
+
+DHIS 2允许利用主数据库的只读副本
+（主DHIS 2数据库）。只读副本的目的是为了增强
+数据库读取查询的性能并扩展容量
+超越了单个数据库的限制。大量读取操作，例如
+因为分析和事件查询将从中受益。
+
+该配置要求您已创建一个或多个复制实例。PostgreSQL通过*流复制*的概念来实现。
+本指南不涉及为 PostgreSQL 配置读取复制。
+
+读取复制可在配置文件 `dhis.conf` 中定义。每个 DHIS 2 实例最多可
+每个 DHIS 2 实例最多可指定 5 个读取副本。每个读取副本
+用介于 1 和 5 之间的数字表示。JDBC 连接 URL 必须
+必须为每个副本定义。可指定用户名和密码；如果未指定用户名和密码，则将使用数据库的用户名和密码。
+则将使用主数据库的用户名和密码。
+用户名和密码。
+
+`dhis.conf` 中的读取副本配置如下所示。
+每个副本都使用配置关键字 *readN* 前缀指定、
+其中 N 指的是副本编号。
+
+```属性
+＃读取副本1的配置
+
+＃数据库连接URL，用户名和密码
+read1.connection.url = jdbc：postgresql：//127.0.0.11/dbread1
+read1.connection.username = dhis
+read1.connection.password = xxxx
+
+＃读取副本2的配置
+
+＃数据库连接URL，用户名和密码
+read2.connection.url = jdbc：postgresql：//127.0.0.12/dbread2
+read2.connection.username = dhis
+read2.connection.password = xxxx
+
+＃读取副本3的配置
+
+＃数据库连接URL，后退到主用户名和密码
+read3.connection.url = jdbc：postgresql：//127.0.0.13/dbread3
+```
+
+请注意，您必须重新启动servlet容器才能更改
+生效。 DHIS 2将自动在
+读取副本。副本的顺序没有任何意义。
+
+## 使用PostgreSQL数据库 { #install_working_with_the_postgresql_database } 
+
+管理 DHIS2 实例时的常见操作是转储和恢复数据库。请注意，在备份 DHIS2 数据库时，最好排除系统生成的表，如资源表和分析表。要将数据库转储（复制）到文件中，可以调用以下命令。
+
+```bash
+pg_dump{database} -U{user} -T "_*" -T "analytics*" -f{filename}
+```
+在下面的示例中，数据库名称是 `dhis2`，用户是 `dhis`，输出文件名是 `dhis2.sql`：
+
+```bash
+pg_dump dhis2 -U dhis -T "analytics*" -T "_*" -f dhis2.sql
+```
+
+如果想用 `gzip` 压缩输出文件，可以这样做：
+
+```bash
+pg_dump dhis2 -U dhis -T "analytics*" -T "_*"| gzip > dhis2.sql.gz
+```
+
+要在另一个系统上恢复数据库副本，您首先需要创建一个空数据库，如安装部分所述。如果您创建了压缩版本，还需要`gunzip`副本。要恢复副本，您可以调用以下命令：
+
+```bash
+psql -d dhis2 -U dhis -f dhis2.sql
+```
+

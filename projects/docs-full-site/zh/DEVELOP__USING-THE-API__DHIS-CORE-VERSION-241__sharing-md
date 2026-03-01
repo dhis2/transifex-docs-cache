@@ -1,0 +1,421 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.41/src/developer/web-api/sharing.md"
+revision_date: '2022-02-04'
+tags:
+- DHIS 核心 2.41 版
+- DHIS核心 主版
+---
+
+# 分享中 { #sharing } 
+
+## 分享中 { #webapi_sharing } 
+
+共享解决方案允许您共享系统中的大多数对象
+特定的用户组并定义对象是否应该公开
+可访问或私有。要获取和设置对象的共享状态，您可以
+与*共享*资源互动。
+
+    /api/33/sharing
+
+### 获取共享状态 { #webapi_get_sharing_status } 
+
+要请求对象的共享状态，请使用GET请求执行以下操作：
+
+    / api / 33 / sharing？type = dataElement＆id = fbfJHSPpUQD
+
+响应如下所示。
+
+```json
+{
+  "meta": {
+    "allowPublicAccess": true,
+    "allowExternalAccess": false
+  },
+  "object": {
+    "id": "fbfJHSPpUQD",
+    "name": "ANC 1st visit",
+    "publicAccess": "rw------",
+    "externalAccess": false,
+    "user": {},
+    "userGroupAccesses": [
+      {
+        "id": "hj0nnsVsPLU",
+        "access": "rw------"
+      },
+      {
+        "id": "qMjBflJMOfB",
+        "access": "r-------"
+      }
+    ]
+  }
+}
+```
+
+### 设定分享状态 { #webapi_set_sharing_status } 
+
+您可以使用相同的 URL 定义对象的共享状态
+一个 POST 请求，其中 JSON 格式的有效负载如下所示：
+
+```json
+{
+  "object": {
+    "publicAccess": "rw------",
+    "externalAccess": false,
+    "user": {},
+    "userGroupAccesses": [
+      {
+        "id": "hj0nnsVsPLU",
+        "access": "rw------"
+      },
+      {
+        "id": "qMjBflJMOfB",
+        "access": "r-------"
+      }
+    ]
+  }
+}
+```
+
+在此示例中，有效负载定义了具有读写权限的对象
+公共访问，无外部访问（无需登录），读写访问
+一个用户组和另一个用户组的只读访问权限。你可以
+使用 curl 将其提交到共享资源：
+
+```bash
+curl -d @sharing.json "localhost/api/33/sharing?type=dataElement&id=fbfJHSPpUQD"
+  -H "Content-Type:application/json" -u admin:district
+```
+要检索数据审批工作流及其数据审批级别,您
+可以发出类似这样的 GET 请求:
+    /api/dataApprovalWorkflows?
+      fields=id,name,periodType,dataApprovalLevels[id,name,level,orgUnitLevel]
+
+
+
+
+## 新共享对象{ #new-sharing-object } 
+`F_DATA_APPROVAL_WORKFLOW` : allow user to Add/Update Data Approval Workflow
+
+`F_DATA_APPROVAL_LEVEL` : allow user to Add/Update Data Approval Level
+分享中
+
+### 使用新的 JSON 补丁应用项目设置共享状态{ #webapi_set_sharing_status_using_json_patch_api } 
+共享解决方案允许您共享系统中的大多数对象
+特定的用户组并定义对象是否应该公开
+可访问或私有。要获取和设置对象的共享状态,您可以
+与*共享*资源互动。
+    /api/33/sharing
+获取共享状态 { #webapi_get_sharing_status } 
+要请求对象的共享状态,请使用GET请求执行以下操作:
+    / api / 33 / sharing?type = dataElement&id = fbfJHSPpUQD
+响应如下所示。
+```json
+{
+  "meta": {
+    "allowPublicAccess": true,
+    "allowExternalAccess": false
+  },
+  "object": {
+    "id": "fbfJHSPpUQD",
+    "name": "ANC 1st visit",
+    "publicAccess": "rw------",
+    "externalAccess": false,
+    "user": {},
+    "userGroupAccesses": [
+      {
+        "id": "hj0nnsVsPLU",
+        "access": "rw------"
+      },
+      {
+        "id": "qMjBflJMOfB",
+        "access": "r-------"
+      }
+    ]
+  }
+}
+```
+设定分享状态 { #webapi_set_sharing_status } 
+您可以使用相同的 URL 定义对象的共享状态
+一个 POST 请求,其中 JSON 格式的有效负载如下所示:
+```json
+{
+  "object": {
+    "publicAccess": "rw------",
+    "externalAccess": false,
+    "user": {},
+    "userGroupAccesses": [
+      {
+        "id": "hj0nnsVsPLU",
+        "access": "rw------"
+      },
+      {
+        "id": "qMjBflJMOfB",
+        "access": "r-------"
+      }
+    ]
+  }
+}
+```
+
+## 级联共享仪表板{ #cascade-sharing-for-dashboard } 
+
+### 总览 { #overview } 
+
+- **Note**
+- > It is possible to create surprising sharing combinations. For
+> instance, if `externalAccess` is set to `true` but `publicAccess` is
+> set to `--------`, then users will have access to the object 
+> only when they are logged out.
+- New Sharing object
+- From 2.36 a new `sharing` property has been introduced in order to replace the old sharing properties `userAccesses`, `userGroupAccesses`, `publicAccess`, `externalAccess` in all metadata classes that have sharing enabled. This `Sharing` object is saved as a JSONB column in database. 
+However, in order make it backward compatible the old sharing objects still work normally as before, for both import and export. In backend sharing data will be saved to new  JSONb `sharing` column instead of the old `*accesses` tables.
+- The format looks like this:
+- ```json
+{
+  "name": "ANC 1st visit",
+  "publicAccess": "rw------",
+  "externalAccess": false,
+  "userGroupAccesses": [
+      {
+          "access": "r-r-----",
+          "userGroupUid": "Rg8wusV7QYi",
+          "displayName": "HIV Program Coordinators",
+          "id": "Rg8wusV7QYi"
+      }
+  ],
+  "userAccesses": [],
+  "user": {
+      "displayName": "Tom Wakiki",
+      "name": "Tom Wakiki",
+      "id": "GOLswS44mh8",
+      "username": "system"
+  },
+  "sharing": {
+      "owner": "GOLswS44mh8",
+      "external": false,
+      "users": {},
+      "userGroups": {
+          "Rg8wusV7QYi": {
+              "access": "r-r-----",
+              "id": "Rg8wusV7QYi"
+          }
+      },
+      "public": "rw------"
+  }
+}
+```
+
+### 用例示例{ #sample-use-case } 
+
+- You can use [JSON Patch API](#webapi_partial_updates) to update sharing for an object by sending a `PATCH` request to this endpoint with header `Content-Type: application/json-patch+json`
+- ```
+api/dataElements/fbfJHSPpUQD
+```
+- Please note that this function ***only supports*** new `sharing` format. The payload in JSON format looks like this:
+- ```json
+[
+  {
+    "op": "replace",
+    "path": "/sharing/users",
+    "value": {
+      "NOOF56dveaZ": {
+        "access": "rw------",
+        "id": "NOOF56dveaZ"
+      },
+      "Kh68cDMwZsg": {
+        "access": "rw------",
+        "id": "Kh68cDMwZsg"
+      }
+    }
+  }
+]
+```
+
+### 应用项目接口端点{ #api-endpoint } 
+
+- ```json
+[
+  {
+    "op": "add",
+    "path": "/sharing/users",
+    "value": {
+      "NOOF56dveaZ": {
+        "access": "rw------",
+        "id": "NOOF56dveaZ"
+      },
+      "Kh68cDMwZsg": {
+        "access": "rw------",
+        "id": "Kh68cDMwZsg"
+      }
+    }
+  }
+]
+```
+You can add one user to `sharing` like this
+
+
+### 应用项目接口参数{ #api-parameters } 
+
+| 名称 | 默认 | 描述 |
+| --- | --- | -- |
+| 总览 | 假 | This function will not copy `METADATA_WRITE` access. The copied `UserAccess` and `UserGroupAccess` will **only** receive the `METADATA_READ` permission. 
+| The bulk sharing API allow you to apply sharing settings to multiple metadata objects. This means the ability to add or remove many users and user groups to many objects in one API operation. | 假 | The current user must have `METADATA_READ` sharing permission to all target objects. If the user does not, error `E5001` is thrown.
+
+The current user must have `METADATA_WRITE` sharing permission to update any target objects. If a target object should be updated and the user does not have this permission, error `E3001` is thrown.
+
+Sample use case
+
+### 响应特性： { #response-properties } 
+
+- DashboardA has VisualizationA which has DataElementA.
+- VisualizationA, DataElementA have `publicAccess` *disabled* and are *not shared* to userA.
+- After executing cascade sharing for DashboardA, userA will have `METADATA_READ` access to VisualizationA and DataElementA.
+
+## 应用项目接口端点 
+- Send `POST` request to endpoint 
+- 该应用项目接口不应支持元数据对象的长期同步，而应将其视为一次性操作。
+- 应用项目接口需要尊重共享访问控制，即当前用户必须有权限编辑正在更新的对象的共享。
+- 名称
+- 默认
+
+### 描述
+- dryRun
+- 假
+
+If this is set to `true`, then cascade sharing function will proceed without updating any objects. </br> The response will includes errors if any and all objects which will be updated. </br>This helps user to know the result before actually executing the cascade sharing function.
+atomic
+
+### 使用`/api/metadata/sharing`和`PATCH`请求{ #using-apimetadatasharing-with-patch-request } 
+- If this is set to `true`, then the cascade sharing function will stop and not updating any objects if there is an error. </br>Otherwise, if this is `false` then the function will try to proceed with best effort mode.
+
+例：
+```json
+{
+  "errorReports": [
+    {
+      "message": "No matching object for reference. Identifier was s46m5MS0hxu, and object was DataElement.",
+      "mainKlass": "org.hisp.dhis.dataelement.DataElement",
+      "errorCode": "E5001",
+      "errorProperties": [
+        "s46m5MS0hxu",
+        "DataElement"
+      ]
+    }
+  ],
+  "countUpdatedDashBoardItems": 1,
+  "updateObjects": {
+    "dataElements": [
+      {
+        "id": "YtbsuPPo010",
+        "name": "Measles doses given"
+      },
+      {
+        "id": "l6byfWFUGaP",
+        "name": "Yellow Fever doses given"
+      }
+    ]
+  }
+}
+```
+
+## 参数{ #parameters } 
+- 两个补丁应用项目端点的参数相同：
+
+| 名称  |  默认  |  描述  |
+| ---- | ---- | -------------------- |
+| The bulk sharing API allow you to apply sharing settings to multiple metadata objects. This means the ability to add or remove many users and user groups to many objects in one API operation. | 假 | 应用项目接口需要尊重共享访问控制,即当前用户必须有权限编辑正在更新的对象的共享。 |
+
+
+## 删除源
+- Please note that those `PATCH` request must use header `Content-type:application/json-patch+json`
+- Using `/api/{object-type}/sharing` with `PATCH` request
+- This endpoint allows user to apply one set of Sharing settings for multiple metadata objects of *one object-type*.
+
+## 成功响应示例如下
+- Example: 
+
+## 有效载荷格式{ #payload-formats } 
+- Using `/api/metadata/sharing` with `PATCH` request
+```json
+{
+  "dataSets":[
+    "cYeuwXTCPkU",
+    "aYeuwXTCPkU"
+  ],
+  "patch":[
+    {
+      "op":"add",
+      "path":"/sharing/users/DXyJmlo9rge",
+      "value":{
+        "access":"rw------",
+        "id":"DXyJmlo9rge"
+      }
+    },
+    {
+      "op":"remove",
+      "path":"/sharing/users/N3PZBUlN8vq"
+    }
+  ]
+}
+```
+
+- This endpoint allows user to apply Sharing settings for *multiple object-types* in one payload.
+```json
+{
+  "dataElements": {
+    "fbfJHSPpUQD": [
+      {
+        "op": "replace",
+        "path": "/sharing/users",
+        "value": {
+          "NOOF56dveaZ": {
+            "access": "rw------",
+            "id": "CotVI2NX0rI"
+          },
+          "Kh68cDMwZsg": {
+            "access": "rw------",
+            "id": "DLjZWMsVsq2"
+          }
+        }
+      }
+    ]
+  },
+  "dataSets": {
+    "cYeuwXTCPkA": [
+      {
+        "op": "remove",
+        "path": "/sharing/users/N3PZBUlN8vq"
+      }
+    ],
+    "cYeuwXTCPkU": [
+      {
+        "op": "add",
+        "path": "/sharing/users/DXyJmlo9rge",
+        "value": {
+          "access": "rw------",
+          "id": "DXyJmlo9rge"
+        }
+      }
+    ]
+  },
+  "programs": {
+    "GOLswS44mh8": [
+      {
+        "op": "add",
+        "path": "/sharing/userGroups",
+        "value": {
+          "NOOF56dveaZ": {
+            "access": "rw------",
+            "id": "NOOF56dveaZ"
+          },
+          "Kh68cDMwZsg": {
+            "access": "rw------",
+            "id": "Kh68cDMwZsg"
+          }
+        }
+      }
+    ]
+  }
+}
+```
+

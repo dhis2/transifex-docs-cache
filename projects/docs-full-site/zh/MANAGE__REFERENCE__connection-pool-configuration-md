@@ -1,0 +1,156 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/sysadmin/reference/connection-pool.md"
+revision_date: '2025-07-17'
+tags:
+- 系统管理
+---
+
+# 连接池配置{ #connection-pool-configuration } 
+
+## 介绍 { #introduction } 
+
+在 DHIS2 中，数据库连接池用于管理数据库连接。与每次数据库请求都要打开和关闭一个新会话（这是一个昂贵的过程）不同，现有会话的连接是从连接池中 "借用"，并在请求完成后 "归还"。这极大地改善了性能和资源管理，尤其是在负载较重的情况下。
+
+DHIS2 支持多种连接池实现方式，从而提供了灵活性。无论是内置池、高性能替代方案还是外部解决方案，您都可以选择最适合您部署需求的方案。
+
+连接池的配置在 `dhis.conf` 文件中完成。
+
+## 泳池类型{ #pool-types } 
+
+DHIS2 支持以下数据库池类型：
+
+*  **[HikariCP](https://github.com/brettwooldridge/HikariCP)**：这是一个维护良好的连接池，以高性能著称。从第 43 版开始，HikariCP 取代 C3P0 成为默认数据库池。
+*  **[C3P0](https://www.mchange.com/projects/c3p0/)**：这是 v43 之前的默认连接池。从 v43 开始，C3P0 将被弃用，默认连接池为 HikariCP。我们鼓励服务器管理员按照[迁移指南]（#migrating-to-hikaricp）尽快迁移到 HikariCP。
+* **未池化**：该选项不使用连接池，并为每个请求创建一个新连接。它主要用于外部连接池，如 [PgBouncer](https://www.pgbouncer.org/)。
+
+### 选择游泳池类型{ #selecting-a-pool-type } 
+
+您可以通过在`dhis.conf`文件中设置`db.pool.type`属性来选择所需的池类型。
+
+**`dhis.conf`示例：**
+
+属性
+# 使用 HikariCP（默认 >= v43）
+db.pool.type = hikari
+
+# 要使用 c3p0（默认值 < v43）
+# db.pool.type = c3p0
+
+# 要使用外部池器
+# db.pool.type = unooled
+```
+
+在 v43 之前，如果未设置该属性，DHIS2 默认为 `c3p0`。从 v43 开始，该属性默认为 `hikari`。
+
+## 配置参数{ #configuration-parameters } 
+
+以下各节详细介绍了每种池类型可用的配置参数。
+
+### 常用参数{ #common-parameters } 
+
+这些参数适用于所有连接池类型。
+
+| 键                                    | 描述                                                                                                                  | 默认值           |
+|----------------------------------------|------------------------------------------------------------------------------------------------------------------------------|-------------------------|
+| `connection.url`                       | DHIS2 主数据库的 JDBC URL。                                                                                    | --                       |
+| 连接.用户名                  | 数据库连接的用户名。                                                                                    | --                       |
+| 连接密码                  | 数据库连接的密码。（敏感）                                                                        | --                       |
+| 连接驱动程序类              | JDBC 驱动程序类名称。                                                                                                  | org.postgresql.Driver |
+| 连接池的最大容量             | 连接池中的最大连接数。                                                                               | `80`                    |
+| 连接池首选测试查询 | 用于测试连接有效性的查询。如果未设置，则使用 JDBC 驱动程序的默认值。                  |
+| 连接池最大闲置时间        | 一个连接在被丢弃前可以保持池状态但未被使用的时间（以秒为单位）。0 表示闲置连接永不过期。 | `7200`                  |
+
+---
+
+### C3P0 连接池{ #c3p0-connection-pool } 
+
+这些参数仅适用于 `db.pool.type = c3p0` 时。
+
+| 键                                        | 描述                                                                                                                                  | 默认值 |
+|--------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|---------------|
+| 连接池最小大小                 | 在任何给定时间内池所能维持的最少连接数。                                                                    | `5`           |
+| 连接池初始大小             | 池启动时尝试获取的连接数。应介于 `min_size` 与 `max_size`之间。                              | `5`           |
+| `connection.pool.acquire_incr` 连接。             | 连接池用完时每次要获取的连接数。                                                                   | `5`           |
+| 连接池获取重试尝试次数   | 在放弃之前尝试获取新连接的次数。数值 <= 0 表示无限期尝试。                         | `30`          |
+| 连接池获取重试延迟      | 以毫秒为单位的连接获取尝试之间的延迟。                                                                           | `1`           |
+| Connection.pool.max_idle_time_excess_con | 超过 `min_size` 的连接在被清除前允许保持空闲的时间（以秒为单位）。0 表示不执行。 | 名称           |
+| 连接池空闲测试期     | 如果该值大于 0，DHIS2 将每隔这么多秒钟测试一次所有空闲的池连接。                                    | 名称           |
+| 登录时的连接池测试          | 如果为 "true"，则在连接返回到连接池时对其有效性进行异步测试。                                                   | 上          |
+| `connection.pool.test.on.checkout`         | 如果为 "true"，则在从连接池中借用连接时会测试其有效性。                                                                | 关闭         |
+| Connection.pool.num.helper.threads       | c3p0 用于内部任务的辅助线程数。                                                                                | `3`           |
+
+---
+
+### HikariCP 连接池{ #hikaricp-connection-pool } 
+
+这些参数仅适用于 `db.pool.type = hikari` 时。
+
+| 键                                       | 描述                                                                                                                                                     | 默认值    | 版本 |
+|-------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|---------|
+| 连接池超时                 | 客户端从池中等待连接的最大毫秒数。可接受的最低连接超时为 250 毫秒。                           | `30000` (30s)    | 2.36+   |
+| 连接池验证超时      | 连接池等待连接验证为存活的最大毫秒数。                                                           | `5000` (5s)      | 2.36+   |
+| 连接池最小闲置时间                | 池中要保持的最小空闲连接数。                                                                                                 | `10`             | 43+     |
+| 连接池 keep_alive_time_seconds | 保持空闲连接的时间间隔（以秒为单位）。不会重置空闲超时。                                                                            | 120"（2 分钟）   | 43+     |
+| Connection.pool.max_lifetime_seconds    | 连接池中连接的最长使用期限（秒）。使用中的连接不会退役。                                                          | 1800`（30 分钟） | 43+     |
+| 连接池警告最大年龄            | 泄漏检测阈值（毫秒）。如果连接离开池的时间超过此值，则记录一条消息。0 "禁用。必须 >= 2000ms。 | 名称              | 42.1+   |
+
+---
+
+## 分析连接池{ #analytics-connection-pool } 
+
+DHIS2 可配置为使用单独的数据库进行分析查询。分析数据库可以有自己的连接池设置，这样就可以独立于主事务数据库，对分析工作负载的性能进行微调。该功能从版本 `2.41`起可用。
+
+分析数据库的所有连接池参数都以 `analytics.`为前缀。例如，"connection.pool.max_size "变为 "analytics.connection.pool.max_size"。
+
+使用 HikariCP 池的分析数据库的**`dhis.conf`示例：**
+
+```属性
+analytics.database = POSTGRESQL
+analytics.connection.url = jdbc:postgresql://analytics-db-host:5432/dhis2
+analytics.connection.username = dhis
+analytics.connection.password = secret
+
+# 将 hikari 用于分析池，独立于主池类型
+# 注意：目前，分析池使用与主数据库池相同的池类型。
+# 将使用主数据库池类型。
+
+# 分析的特定池设置
+analytics.connection.pool.max_size = 100
+analytics.connection.pool.min_idle = 20
+```
+
+可为分析池配置与主数据库对应的以下键值：
+
+*   analytics.connection.url
+*   分析连接用户名
+*   分析连接密码
+*   分析.连接.驱动程序类
+*   分析连接池的最大大小
+*   分析连接池首选测试查询
+*   分析连接池超时
+*   analytics.connection.pool.validation_timeout
+*   analytics.connection.pool.acquire_incr
+*   analytics.connection.pool.acquire_retry_attempts
+*   analytics.connection.pool.acquire_retry_delay
+*   分析连接池的最大闲置时间
+*   analytics.connection.pool.min_size
+*   analytics.connection.pool.initial_size
+*   `analytics.connection.pool.test.on.checkin` `分析连接池在签到时进行测试
+*   `analytics.connection.pool.test.on.checkout`
+*   analytics.connection.pool.max_idle_time_excess_con
+*   Analytics.connection.pool.idle.con.test.period
+*   analytics.connection.pool.num.helper.threads
+*   `analytics.connection.pool.min_idle` (v43+)
+*   `analytics.connection.pool.keep_alive_time_seconds` (v43+)
+*   `analytics.connection.pool.max_lifetime_seconds` (v43+)
+
+## 迁移到 HikariCP{ #migrating-to-hikaricp } 
+
+HikariCP 配置简单，维护良好，性能可以说优于 C3P0，而且得益于活跃的开源社区。因此，从第 43 版开始，HikariCP 将成为默认连接池。C3P0 已经过时，最终将从 DHIS2 中移除。因此，服务器管理员应尽快从 C3P0 迁移到 HikariCP。如果 (a) `dhis.conf` 中的 `db.pool.type` 属性未定义且运行的 DHIS2 版本早于 v43，或 (b) `db.pool.type` 属性设置为 `c3p0`，则后续步骤适用于您的安装。
+
+1. 将 `db.pool.type` 属性设置为 `hikari`。
+2. 如果设置了 `connection.pool.initial_size` 且至少使用了 DHIS2 v43，则应删除该属性，并通过设置 `connection.pool.min_idle` 属性来模拟它。
+3. 如果设置了 `connection.pool.max_idle_time_excess_con` 属性，请将其替换为 `connection.pool.max_idle_time` 属性。
+4. 删除剩余的 [C3P0 专用参数](#c3p0-connection-pool)。HikariCP 的内部工作方式与 C3P0 不同，因此许多 C3P0 设置无法转换为 HikariCP 设置。 
+5. DHIS2 未为 C3P0 池类型配置连接超时，导致请求在数据库连接池用完后无限期等待。这被认为是不好的做法，因此 DHIS2 将 HikariCP 池类型的连接超时默认配置为 30 秒。速度较慢的 DHIS2 实施应谨慎地将其连接超时设置为默认值。迁移后，管理员应留意 DHIS2 服务器日志，看是否在活动频繁时出现连接超时错误。如果出现连接超时错误，建议管理员解决导致数据库连接请求超时的性能问题。不过，管理员可以设置 `connection.pool.timeout` 属性来增加连接超时值，以减少超时错误。
+
