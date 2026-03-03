@@ -1,0 +1,209 @@
+---
+edit_url: "https://github.com/dhis2-metadata/C19_AGG/blob/master/docs/c19_agg-design.md"
+revision_date: '2023-03-31'
+tags:
+- 实施
+---
+
+# COVID-19 监控--综合系统设计指南{ #c19-agg-design }
+
+## 目的 { #purpose } 
+
+COVID-19 监测汇总系统设计文件概述了用于开发 COVID-19 监测汇总数字数据包的设计原则和指南。本文件旨在供国家和地区层面的 DHIS2 实施者使用，以支持该数据包的实施和本地化。COVID-19 元数据包可根据当地需求和国家指导方针进行调整。在本地化和采用本软件包中的程序时，尤其应考虑当地的工作流程和国家指导方针。
+
+## 背景 { #background } 
+
+本汇总设计已更新，以反映[COVID-19全球监测：世卫组织汇总数据报告流程](https://www.who.int/publications/i/item/aggregated-weekly-reporting-form)中新的汇总报告要求，最后更新日期为2020年8月7日。COVID-19 数字数据包是根据各国提出的快速调整 COVID-19 数据管理解决方案的需求而开发的。UiO 为三种数据模型（跟踪器、基于事件的汇总）开发了 COVID-19 监测软件包，使各国能够根据疾病负担和可用资源选择最适合其国情的模型。下文概述了这些模式及其相对优势/局限性：
+
+| **监控包类型** | **个案监测（跟踪）** | **案件监控线路列表（事件）** | **案件监测（总数）** |
+| --- | --- | --- | --- |
+| **描述** | 登记病例并通过实验室确认和病例结果进行长期跟踪 | 以行列表格式捕获关键案例详细信息 | 可每周报告关键综合数据点 |
+| **优点** | 高度精细的数据和用于分析的多个时间维度，可以支持分散的工作流，所有事件都与案例相关 | 比汇总更精细，可以捕获关键的时间维度（即报告日期与症状发作）；与跟踪器相比，减少了数据输入的负担，并且几乎没有复杂性 | 低复杂度，易于实施，在案件数量高时最易于管理 |
+| **缺点** | 当案件数达到阈值时，数据输入的负担可能会不堪重负；实施的复杂性 | 不支持个案跟进或其他分散式工作流程 | 进行详细分析的粒度较小（即仅根据病例报告日期进行分析，分类范围有限）|
+
+**本文件仅涉及汇总包的设计**；DHIS2 追踪包和行列表（基于事件）包有单独的系统设计文件。随着病例的迅速增加，一些国家可能会因负担过重而难以进行基于病例的报告。汇总软件包的设计旨在满足最关键的报告要求以及监测和响应的分析能力。
+
+COVID-19监视的目标是：
+
+1. 监测发生人际传播的疾病趋势；
+2. 在病毒未传播的国家中迅速发现新病例；
+3. 提供流行病学信息以在国家，区域和全球范围内进行风险评估；和
+4. 提供流行病学信息以指导准备和应对措施。
+
+系统设计以世卫组织和 UiO 自 2017 年以来合作制定的现有疾病监测原则和信息系统要求为基础。开发 COVID-19 软件包的目的是与 2020 年 8 月 7 日最后更新的[世卫组织关于 nCoV-19 监测和病例定义的技术指南](https://www.who.int/emergencies/diseases/novel-coronavirus-2019/technical-guidance/surveillance-and-case-definitions) 保持一致。请注意，本设计不一定反映世卫组织制定的最新可用临时全球指南，因为更新可能会迅速发布。各国的指导方针和政策可能各不相同，建议根据当地情况调整这套指南。
+
+## 系统设计摘要 { #system-design-summary } 
+
+在开发本配置包的过程中，我们努力遵循 UiO 的[一般设计原则](https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/general-design-principles-for-who-metadata-packages.html) 和通用[命名约定](https://docs.dhis2.org/en/topics/metadata/dhis2-who-digital-health-data-toolkit/naming-conventions.html) 。
+
+COVID-19 综合监控包包括
+
+1. 用于主要 COVID-19 监测报告的每周汇总数据集和数据元素
+2. 数据分类类别
+3. 核心指标
+4. 仪表板及其项目
+
+该数据集收集了符合当前世卫组织每周报告要求的最低数量的数据点；并生成一套核心指标和仪表板，供国家和国家以下各级决策者快速分析和应对疾病趋势。
+
+| **名称** | **周期** | **目的** |
+| --- | --- | --- |
+| 每周监测汇总 | ADX 数据消息的结构与您可能的结构非常相似
+从前面描述的 DXF 2 数据中已经熟悉了。有一个
+几个重要的区别。我们将描述这些差异
+参考一个小例子:| 报告主要的 COVID-19 监测数据，包括病例、检测和死亡。 |
+
+建议将每周数据集分配给卫生系统中可报告数据的最低一级组织单位，如卫生设施。
+
+数字数据包通过 DHIS2 Capture App（可在 [GooglePlay 商店]（https://play.google.com/store/apps/details?id=com.dhis2&amp;hl=en）免费下载）进行了优化，可用于 Android 数据收集。
+
+### 目标用户 { #intended-users } 
+
+- 医疗机构用户：获取并报告在医疗机构就诊的 COVID-19 病例和死亡病例的关键数据
+- 监督官员：国家和国家以下一级的监督官员可负责支持数据录入和分析。
+- 国家和地方卫生当局：通过仪表板和分析工具监测和分析疾病监测数据，以进行风险评估和计划应对措施；生成区域和全球报告的报告
+
+## 数据集 { #datasets } 
+
+该数据集旨在获取快速应对疾病传播所需的每周数据。如果报告负担过重，或该国不再将其视为紧急情况，则可根据卫生部的政策将数据集改为月度数据集。
+
+### 日常监控数据元素{ #daily-surveillance-data-elements } 
+
+下面列出了数据集所包含的数据元素和分类（类别组合）：
+
+| **数据元素** | **类别组合** |
+| --- | --- |
+| 新确诊病例 | 性别（男/女/未知）和年龄（0-4,5-9,10-14,15-19,20-29,30-39,40-49,50-59,60-64,65-69,70-74,75-79,80+,未知年龄） |
+| 新的疑似病例 | 性别（男/女/未知）和年龄（0-4,5-9,10-14,15-19,20-29,30-39,40-49,50-59,60-64,65-69,70-74,75-79,80+,未知年龄） |
+| 新确认的死亡人数 | 性别（男/女/未知）和年龄（0-4,5-9,10-14,15-19,20-29,30-39,40-49,50-59,60-64,65-69,70-74,75-79,80+,未知年龄） |
+| 新的可能死亡人数 | 性别（男/女/未知）和年龄（0-4,5-9,10-14,15-19,20-29,30-39,40-49,50-59,60-64,65-69,70-74,75-79,80+,未知年龄） |
+| 新住院病例 | 没有 |
+| 新出院病例 | 没有 |
+| 卫生工作者中的新病例（确诊+可能） | 没有 |
+| 卫生工作者新增死亡人数（确认+可能） | 没有 |
+| 接受 COVID-19 检测的人数 | 没有 |
+| 接受 PCR 检测的人数 | 没有 |
+| 传输分类 | 没有 |
+
+### 每周监测数据输入表{ #weekly-surveillance-data-entry-form } 
+
+- **第 1 部分：新确诊和疑似病例**
+
+应输入报告期内报告的所有新确诊病例和疑似病例的数据。确诊病例是指根据世卫组织指南由实验室确诊的病例；世卫组织将疑似病例定义为实验室检测结果不确定的病例；但各国可采用自己的病例定义。总计一栏在输入数据时自动求和。
+图片1](resources/images/AGG_Picture1.png)
+
+- **第 2 部分：新确认的和可能的死亡**
+
+应为报告期内新报告的确诊和可能死亡病例输入数据。总计一栏在输入数据时自动求和。
+
+图片2](resources/images/AGG_Picture2.png)
+
+- **第 3 部分：卫生工作者的感染和死亡**
+
+本节收集报告期内卫生工作者报告的新确诊病例和疑似病例（包括死亡病例）的数据。
+
+图片3](resources/images/AGG_Picture3.png)
+
+- **第 4 部分：住院和出院**
+
+本节记录了报告期内新住院和出院的数据。
+
+图片4](resources/images/AGG_Picture4.png)
+
+- **第 5 部分：进行的测试**
+
+本节收集在报告期内进行的检测数据，并要求报告使用 PCR 进行的检测。
+
+图片5](resources/images/AGG_Picture5.png)
+
+- **第 6 节：传动装置分类**
+
+本节概述了报告单位经历的主要传输分类形式。
+
+图片7](resources/images/AGG_Picture6.png)
+
+### 定制数据录入表单{ #customizing-data-entry-forms } 
+
+本软件包中的数据集不包含自定义表单。为提高数据录入表单的可用性，实施者可根据 DHIS2 用户手册设计自定义表单，以满足其需要：[https://docs.dhis2.org/2.33/en/user/html/dhis2\_user\_manual\_en\_full.html#manage\_customform](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-master/configuring-the-system/metadata.html#manage_customform)
+
+## 数据验证{ #data-validation } 
+
+已配置以下数据验证规则。这些验证规则并不在数据输入表中运行，因为预计在紧急报告数据时，事件会在不同的时间段内发生（例如，一周内可能只有 3 个新病例，但却有 5 例死亡病例）。
+
+| **名称** | **操作员** | **指导** | **左侧说明*** | **右侧说明*** |
+| --- | --- | --- | --- | --- |
+| COVID19 - PCR 检测&lt;= 已检测 | less\_than\_or\_equal\_to | 用 PCR 进行的检测应少于或等于已进行的检测总数 | 用 PCR 检测 | 已进行测试 |
+| COVID19 - 住院新病例 （&lt;= 所有新病例 | less\_than\_or\_equal\_to | 住院新病例应少于或等于所有新病例 | 新住院病例 | 所有新案例 |
+| COVID19 - 新确诊死亡病例&lt;= 新确诊病例 | less\_than\_or\_equal\_to | 新确诊死亡人数应少于或等于新确诊病例数 | 新确认的死亡人数 | 新确诊病例 |
+| COVID19 - 可能死亡病例 （&lt;= 新的可能病例 | less\_than\_or\_equal\_to | 可能死亡病例应少于或等于新的可能病例 | 可能的死亡人数 | 新的可能病例 |
+| COVID19 - HW 新死亡病例（确诊 + 可能） \&lt;= 报告的所有死亡病例 | less\_than\_or\_equal\_to | HW 新死亡人数（确诊 + 可能）应少于或等于报告的所有死亡人数 | 新死亡 HW（确诊 + 可能死亡） | 报告的所有死亡人数 |
+| COVID19 - HW 中的新病例（确诊 + 可能） \&lt;= 所有新病例 | less\_than\_or\_equal\_to | 生化武器中的新病例（确诊+可能）应少于或等于 所有新病例 | 卫生工作者中的新病例（确诊+可能） | 所有新案件 |
+| COVID19 - HW 中的新死亡病例（确诊 + 可能） \&lt;= HW 中的新病例（确诊 + 可能） | less\_than\_or\_equal\_to | 人类健康新死亡病例（确诊+可能）应少于或等于人类健康新病例（确诊+可能）。 | 新死亡 HW（确诊 + 可能死亡） | 卫生工作者中的新病例（确诊+可能） |
+
+## 用户组{ #user-groups } 
+
+元数据包中包括以下用户组：
+
+1. COVID19 admin -- 用于系统管理员的元数据编辑权限
+2. COVID19 数据采集--旨在让数据录入人员有机会采集数据
+3. COVID19 访问权限--面向分析用户等用户，他们应能查看数据，但不能编辑元数据。
+
+更多信息请参阅[安装指南]（covid-19-aggregate-installation.html）。
+
+## 指标 { #indicators } 
+
+从获取的数据中，我们至少可以计算出以下指标，其中许多指标是世界卫生组织推荐的[每周报告](https://apps.who.int/iris/bitstream/handle/10665/331506/WHO-2019-nCoV-SurveillanceGuidance-2020.6-eng.pdf)，并将其显示在仪表板中。所有 COVID-19 计划指标都归入指标组 "COVID19"。
+
+| **姓名*** | **说明** |
+| --- | --- |
+| COVID19 - 新增确诊死亡病例 | 新确认死亡人数 |
+| COVID19 - 生化武器中的新病例（确诊+可能） | 卫生工作者中的新病例数（确诊+可能） |
+| COVID19 - HW 在报告病例中所占比例（%） | HW 在报告病例中所占比例 (%) |
+| COVID19 - 在办案件 | 在办案件数量 |
+| COVID19 - 已结案 | 结案数量 |
+| COVID19 - 新增确诊病例 | 新确诊病例数 |
+| COVID19 - 回收率 (%) | 确诊病例的康复率 |
+| COVID19 - 生化武器中的病死率（%）。 | 卫生工作者的病死率 |
+| COVID19 - 新住院病例 | 新住院病例 |
+| COVID19 - 已测试 | 测试总数 |
+| COVID19 - 用 PCR 检测法检测 | 通过 PCR 检测 |
+| COVID19 - 阳性率 (%) | 积极率 |
+| COVID19 - 新的疑似病例 | 新增疑似病例数 |
+| COVID19 - 新出院病例 | 新出院病例数 |
+| COVID19 - 生化武器新增死亡病例（确诊+可能） | 卫生工作者新死亡人数（确认+可能） |
+| COVID19 - PCR 检测比例 (%) | 进行 PCR 检测的比例 |
+| COVID19 - 所有病例（确诊+可能） | 所有病例数（确诊 + 可能） |
+| COVID19 - 新的可能死亡病例 | 新的可能死亡人数 |
+| COVID19 - 病例死亡率（%） | 确诊病例中的病死率 |
+
+## 仪表板 { #dashboards } 
+
+关键分析项目已配置并添加到仪表板 "COVID19 - 每周监测汇总 "上。这些项目包括数据透视表、图表和地图，旨在为根据指标获取的部分数据提供数据可视化。在采用该软件包的过程中，用户可以根据自己的分析需要修改或创建其他项目，同样也可以对仪表板进行必要的调整。
+
+| **姓名***|**类型***|
+| --- | --- |
+|COVID19 - 按国家以下各级分列的今年检测人数、PCR 检测人数和阳性率 |数据透视表|
+|COVID19 - 今年报告病例中的 HW |图表|
+|COVID19 - HW 的死亡率。|图表|
+|COVID19 - 过去 12 周新增确诊病例和死亡病例|图表|
+|COVID19 - 已进行的累计检测、报告的病例、住院、出院和死亡人数|图表|
+|COVID19 - 按次国家分列的累计确诊病例|地图|
+|COVID19 - 按年龄组分列的上周死亡人数|图表|
+|COVID19 - 过去 14 周按性别分列的确诊病例|图表|
+|COVID19 - 国家以下各级上月结案和在审案件|图表|
+|COVID19 - 过去 12 周的病例恢复率和死亡率|图表|
+|COVID19 - 过去 12 周内正在处理和已结案的案件|图表|
+
+## 引用 { #references } 
+
+- 安装指南：[https://www.dhis2.org/covid-19](covid-19-aggregate-installation.html)
+- 世卫组织关于 nCoV-19 监测和病例定义的临时指南（2020 年 3 月 20 日最后更新）
+[https://www.who.int/emergencies/diseases/novel-coronavirus-2019/technical-guidance/surveillance-and-case-definitions>](<https://www.who.int/emergencies/diseases/novel-coronavirus-2019/technical-guidance/surveillance-and-case-definitions>)
+- 世卫组织 COVID-19 监测数据字典 (v6)
+[https://www.who.int/docs/default-source/coronaviruse/data-dictionary-covid-crf-v6.xlsx?sfvrsn=a7d4ef98\_2](https://www.who.int/docs/default-source/coronaviruse/data-dictionary-covid-crf-v6.xlsx?sfvrsn=a7d4ef98_2)
+- 世卫组织对人类疑似病例进行的 2019 年新型冠状病毒（2019-nCoV）实验室检测（最后更新日期：2020 年 3 月 2 日）
+  [https://www.who.int/publications-detail/laboratory-testing-for-2019-novel-coronavirus-in-suspected-human-cases-20200117](https://www.who.int/publications-detail/laboratory-testing-for-2019-novel-coronavirus-in-suspected-human-cases-20200117)
+- 世卫组织冠状病毒情况报告
+  [https://www.who.int/emergencies/diseases/novel-coronavirus-2019/situation-reports>](<https://www.who.int/emergencies/diseases/novel-coronavirus-2019/situation-reports>)
+- COVID-19 的全球监测：世卫组织汇总数据报告程序
+[https://www.who.int/publications/i/item/aggregated-weekly-reporting-form](https://www.who.int/publications/i/item/aggregated-weekly-reporting-form)
+

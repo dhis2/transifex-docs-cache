@@ -1,0 +1,144 @@
+---
+edit_url: "https://github.com/dhis2-metadata/GEN_DOCS/blob/master/IMM_VC/design.md"
+revision_date: '2022-10-30'
+tags:
+- 实施
+---
+
+# 疫苗接种活动的实时监控 - 设计 { #imm-vc-design }
+
+## 介绍 { #introduction } 
+
+本设计指南面向**DHIS2实施者和系统设计者**，为DHIS2的配置和定制提供指导和实用建议，以便对疫苗接种活动进行实时监测。本文件是对 "活动工具包使用指南 "的补充，为评估配置选项提供技术指导，以便在当地活动的实际限制条件下实现务实、稳健的设计。
+
+虽然许多创新设计可用于规划、实施和评估活动的各个方面，但本设计指南特别侧重于实时监测活动的实施绩效，并包括以下组成部分：
+
+- 建立适合活动运作和监测的组织单位等级制度
+- 根据微观计划为目标人群和活动目标建模
+- 支持实时（每日）报告
+- 在活动期间提供多级访问的实时仪表板
+- 将活动数据（如覆盖范围）纳入 HMIS 的考虑因素
+
+## 系统设计概述{ #system-design-overview } 
+
+用于记录施用剂量（按年龄段和其他与抗原和目标人群相适应的维度分列）、库存/损耗以及代表覆盖指标目标群体的分母的元数据，与通过常规卫生机构报告所记录的数据非常相似。在某些情况下，还创建了额外的元数据，以方便对业务活动进行日常监测，如活动人员的可用性。
+
+要优化 DHIS2 配置以对 SIA 进行实时监控，需要特别注意以下几点：
+
+- **组织单位的层级结构** - 通常延伸到地区以下，包括分区疫苗接种单位或单个接种点；
+- **报告频率** - 至少每天一次，以满足实时监测的需要
+用户管理--这通常会将 DHIS2 用户群扩大到大量活动工作人员，以便他们输入数据
+- ** 仪表板设计** - 可能需要为消费和使用数据的非传统用户进行定制，如指挥中心，甚至是监测竞选绩效的总理办公室
+
+与世界卫生组织共同为常规疫苗接种活动和 COVID-19 疫苗接种活动定义的 DHIS2 免疫接种元数据基本遵循相同的结构。这一原则同样适用于为 SIA 生成数据集。建议 SIA 活动遵循类似的元数据结构，以便于将 SIA 数据整合到活动后的 HMIS 中，并与常规免疫接种数据进行三角对比。在为 SIA 创建元数据时，可参考以下世卫组织批准的元数据包：
+
+- [**HMIS 常规免疫模块（扩大免疫方案汇总包）**] **(https://docs.dhis2.org/en/topics/metadata/immunization/immunization-aggregate/design.html)
+- [**COVID-19用于 RTM 的疫苗交付汇总包**](https://docs.dhis2.org/en/topics/metadata/covid-19-vaccine-delivery/covac-aggregate/version-110/design.html)
+
+根据地方层面的实施选择，SIA 元数据可以**克隆**，并使用此处提供的模型进行修改（如目标/年龄组的接种剂量、人员可用性、人口数据、库存监测）。如["规划和实施实时监测方法以加强疫苗接种活动"](https://www.gavi.org/sites/default/files/evaluations/Planning-Implementing-RTM-Approaches-Strengthen-Vaccination-Campaigns.pdf), only data that is useful for decision making should be collected (e.g. population data - **children and pregnant women -, targets, uptake, disease incidence for reactive campaigns, adverse events following immunization, staff, cold chain, and stock data**; and the most **sensitive data (such as data tracking individual children) should be collected infrequently and anonymized**. For this reason, this guidance document focuses on an aggregate real-time monitoring solution. The RTM design can be supplemented by use of routine DHIS2 Tracker-based solutions ([**Immunization registry**](https://docs.dhis2.org/en/topics/metadata/immunization/eir-immunization-eregistry/design.html) 和[**AEFI 跟踪器**](https://docs.dhis2.org/en/topics/metadata/immunization/adverse-events-following-immunization-aefi-tracker/design.html) 的指导中所述）。
+
+### 重塑世界卫生组织常规免疫（EPI）元数据，用于 SIAs{ #re-modeling-who-routine-immunisation-epi-metadata-for-sias } 
+
+本节提出的示例内容旨在以现有的扩大免疫方案包为基础，指导 SIA 元数据的设计。特别是，本练习将举例说明白喉、百日咳、破伤风三联疫苗（DPT-HepB-Hib）的清理活动。
+当然，这些实用章节中提供的建议和信息也可用于任何疫苗。同样，这些建议和信息也可用于不同的疫苗包，如 COVAC 或 COVIDVAC。
+
+创建 SIA 元数据主要有两种方法：一种是手动方法，即直接在系统中创建元数据；第二 种是自动方法，即使用平面文件导入系统。
+**手动方法包括不自动克隆现有的 EPI 元数据**。
+通过克隆，可以快速更新前缀（如从 EPI 到 SIA），以**适应名称、代码和表格名称、描述，并在必要时**循环使用 CatCombos 和 Legends。最重要的是，**它会自动分配一个新的 ID**。这对于将 SIA DE 从原始 EPI DE 分支，以便在同一实例中导入所有元数据，并将 SIA 数据与 EPI 和 IDSR 数据进行三角测量至关重要。
+同样的原则也适用于指标，但需要使用 SIA DE 来调整公式。
+
+重复 EPI DE](resources/images/SIA_014.png){ .center }
+
+![EPI 至 SIA](resources/images/SIA_015.png){ .center }
+
+如有需要，这些方法也可用于复制股票数据集。
+
+![EPI 至 SIA 股票](resources/images/SIA_018.png){ .center }
+
+使用**平面文件**无疑缩短了调整元数据的时间，但需要足够的技术知识来理解平面文件的结构，并导出和重新导入元数据。这种方法可以很容易地**更改前缀或任何其他需要更新的 DE**、指标，但需要**手动更改活动期间使用的每种新型元数据**的 ID。同样，这对于以后将 SIA 数据导入 HMIS 以便将结果与日常活动进行三角测量是至关重要的。
+
+## 报告频率{ #frequency-of-reporting } 
+
+在这一点上，常规免疫元数据与活动免疫元数据之间最重要的区别在于数据报告的周期。全球数据包的默认发布周期为每周/每月一次，而小规模免疫接种通常需要**每日报告，以便对活动进行实时监测。因此，在实施过程中应考虑到用户、基础设施、通信和服务器，以便在活动期间能够支持每天的高强度工作。
+
+与时间周期相关的另一个重要考虑因素是活动的目标人群。常规免疫接种活动的**人口数据**通常设定为年度数据集，而活动的目标人口在数量、空间和时间上都非常明确，与活动本身的地点和周期相关。有关人口数据和分母的更多信息和见解，请参阅["微观规划"](#geoenabled-microplanning)和["指标"](#indicators)部分。
+
+### EPI 到 SIA：频率和目标人群{ #epi-to-sia-frequency-and-target-population } 
+
+![Periodicity](resources/images/SIA_016.png){ .center }
+
+必须创建一个**独立的 SIA 数据集**，其中包含 SIA 元数据。如上所述，疫苗接种活动期间的活动通常时间有限，可能需要一个**日常数据集**。此外，鉴于疫苗接种活动的周期较短，数据集可设置为**数据输入的开始和结束数据**。这对于经常开展 SIA 或同时开展多项活动的站点尤为重要。根据层次结构，活动可能会给数据录入员造成混乱，他们可能会在错误的站点/数据集中输入数据。
+
+疫苗接种活动的人群通常具有很强的针对性，就像活动一样，时间也很短。通常情况下，特定的地点和疫苗接种工作都是针对一定数量的目标人群。解决这一问题的方法是直接在疫苗接种数据集中**目标人群部分。这种方法与["指标"]（#指标）部分提供的信息相结合，应能提供可靠的覆盖率指标。
+
+![Periodicity](resources/images/SIA_017.png){ .center }
+
+在本实例中，人口部分包括孕妇和按年龄组划分的人口。根据物流、疫苗抗原和具体目标的不同，年龄组和数据点也会相应改变和应用。这些人群将成为特定接种点和特定接种日的分母。要想了解疫苗接种工作的累积概况，用户可能需要在分析期间选择 "**固定时间段**"，在更高层次（如地区）和活动期间对数据进行分析。
+
+## 组织单位结构{ #organisation-unit-structure } 
+
+在规划阶段的众多考虑因素中，[组织单位](https://www.youtube.com/watch?v=UDwmYw0W9gg) 层次结构及其级别的作用是最**关键的**要点之一，应与计划的数据收集类型（汇总？跟踪？）一并考虑。例如，什么**类型的地点**属于层次结构（卫生设施、社区、与卫生无关的结构？
+以下几点提供了在系统中设计运动式活动时应考虑的一些主要思考。
+选择[层级](https://docs.dhis2.org/en/implement/database-design/organisation-units.html) 的层级还应考虑活动元数据是否将完全纳入国家 HMIS 系统，还是将在一个单独的实例中进行。总之，强烈建议**将 HMIS 层次结构与相关的国家以下级别相一致**，以支持数据的分析和未来整合，即使在活动期间使用单独的 DHIS2 实例也是如此。
+
+> **示例**
+>
+> 使用中的**dhis2：**
+>
+> 在 2022 年 10 月莫桑比克开展的**脊髓灰质炎免疫接种活动中，莫桑比克 HISP 选择建立一个**独立实例**，专门用于 SIA 期间。SIA 实例的 OU 结构包括通常不包括在国家 HMIS OU 层次结构中的级别：邻里。由于邻近地区属于卫生机构的特定服务区，因此，将 SIA 值纳入 HMIS 的数据映射可将卫生设施与特定地区联系起来。然后在区一级汇总数据，每天同步 SIA 实例的值，**SIA 的业务单元结构与国家 HMIS 的业务单元层次结构完全吻合**。
+
+补充免疫活动 (SIA) 如大规模疫苗接种活动通常需要额外的**分区级组织单位和非家庭保健疫苗接种点**（如社区中心、学校和其他机构），这对实时监控活动的工作非常重要。改变 "常规 "设施报告层级（组织单位）以适应活动的运作结构（如分区活动团队；农村与城市接种点、社区外联会议）可能会导致系统中的组织单位数量大大增加。
+
+> **示例**
+>
+> 使用中的**dhis2：**
+>
+> 在**乌干达**大规模运动的早期阶段，他们曾尝试使用**非卫生设施疫苗接种点**，如学校和贸易中心作为报告OU，但在常规OU层次结构中引入和管理这一点变得过于复杂。目前，他们选择将县以下（县级）作为报告 OU，即使在使用非卫生设施地点进行疫苗接种时，也是在这一级进行微观规划/定位。
+
+为便于扫描广泛的层次结构，可将地点归类为["**地点类型**"](https://docs.dhis2.org/en/implement/database-design/organisation-units.html#organisation-unit-groups-and-group-sets)，以便进行分组分析。疟疾全球汇总包的设计指南中也概述了类似的方法，其中向用户概述了[如何按地点所有权分类](https://docs.dhis2.org/en/topics/metadata/malaria/malaria-aggregate/version-200/design.html#special-considerations-malaria-data-disaggregated-by-public-facility-vs-private-sector-vs-community-service-delivery)--在疟疾用例中，分类只显示两种所有权类型（公共和私人设施），但为了 SIA 的目的，这些类型也可配置为包括疫苗接种点、社区中心、卫生站或学校及其他与健康无关的地点。
+
+实施者还可以利用 DHIS2 的访问模式，通过**设计具有不同权限**的用户（取决于他们在活动中的角色）和/或不同级别的访问权限（例如，疫苗接种团队可以只访问分配给他们的某些特定站点，或团队经理可以访问预定义的区域或地区），对活动的各个级别进行数据分析和监控。
+
+## 监督是一个维度{ #supervision-as-a-dimension } 
+
+**监测活动工作人员的分布和绩效**有助于在活动期间优化操作和重新分配人力资源。虽然全球软件包已经提供了相关元数据来设计基线数据点以监控工作人员的可用性，但却没有预定义的数据元素来监控单个接种人员或接种团队。如果在 SIA 的数据集设计中增加 "**团队人数**"或 "**接种人员**"这一数据元素或**数据集属性**，就能更好地监测准则的遵守情况和地面团队的表现。
+
+**类别组合**也可作为一个属性分配给一个跟踪程序或一个数据集，其中一个类别的选项只与一个组或一个特定用户共享用于数据录入。这样就可以对报告中的数据进行分解，以确定归属于特定用户或特定组织单位用户组的事件数量。在这种使用情况下，CatCombo 可以包含疫苗接种单位的列表，以便在分析应用程序中对数据进行切分，并按疫苗接种单位对性能进行比较。CatCombo 中配置的类别选项数量应易于管理，同时还能在分析中提供实用性。
+
+> **示例**
+>
+> 使用中的**dhis2：**
+>
+> 在**尼日利亚**，40,000 多家医疗机构中每家都有 10 个流动医疗单位，这并不需要创建 40,000 个 CatOptions。相反，**10 个 CatOptions** 与 org 单位维度和用户组相结合，就足以从设施层面分析流动单位的性能。
+
+## 分析工具 { #analytics } 
+
+### 指标 { #indicators } 
+
+**覆盖率**是小规模影响评估期间监测的关键指标之一（联合国儿童基金会，2021](<https://www.unicef.org/media/93781/file/gavi-unicef-digital-technology-immunization-2021.pdf>)。数据质量差和监测不足会使覆盖范围模糊不清，更难发现差距，从而对规划和目标定位产生不利影响。此外，例行报告的每月周期性与活动中数据收集频率的增加（每日）会使覆盖结果出现偏差。
+
+建议使用[**累计超时总量指标**](https://docs.dhis2.org/en/use/user-guides/dhis-core-version-235/configuring-the-system/metadata.html#manage_indicator)，以确保覆盖范围的准确计算。在 2.35.12 以上版本的指标中，可以使用 **periodOffset 函数**。因此，覆盖率指标使用过去 12 个月的总和作为分子，而不是将指标按年计算。这是比按年计算覆盖率指标更准确的计算方法。
+
+使用 periodOffset 函数的累计超时指标表达式示例可参考[常规免疫程序包](https://dhis2.org/metadata-package-downloads/)
+
+| | |
+|-----------|-----------|
+| 指示符 | **EPI - BCG 覆盖率（%） - 期间抵消** |
+| 用户标识 | `lnC0fWd3sD4` |
+| 分子 | ** 卡介苗剂量< 1 year this month plus last 11 months** <br> _EPI - 卡介苗剂量<1年 + EPI - 卡介苗剂量<1年.periodOffset(-1) + EPI - 卡介苗剂量<1年.periodOffset(-2) + EPI - 卡介苗剂量<1年.periodOffset(-3) + EPI - 卡介苗剂量<1年.periodOffset(-4) + EPI - 卡介苗剂量<1年.periodOffset(-5) + EPI - 卡介苗剂量<1年.periodOffset(-6) + EPI - 卡介苗剂量<1年.periodOffset(-7) + EPI - 卡介苗剂量<1年.periodOffset(-8) + EPI - 卡介苗剂量<1年.periodOffset(-9)EPI - 卡介苗给药剂量 <1 year.periodOffset(-8) + EPI - 卡介苗给药剂量 <1 year.periodOffset(-9) + EPI - 卡介苗给药剂量 <1 year.periodOffset(-10) + EPI - 卡介苗给药剂量 <1 year.periodOffset(-11)_ |
+| 分母 | ** 活产**<br> _GEN - 人口活产数_ |
+
+| | |
+|-----------|-----------|
+| 指示符 | **EPI - DPT-HepB-Hib 1 覆盖率（%） - 期间抵消** |
+| 用户标识 | `WhCBfgiqVbr`|
+| 分子 | **DPT- 1 剂< 1 year this month + last 11 months** <br> _EPI - DPT-HepB-HIB 1 剂<1 年 + EPI - DPT-HepB-HIB 1 剂<1 年.periodOffset(-1) + EPI - DPT-HepB-HIB 1 剂<1 年.periodOffset(-2) + EPI - DPT-HepB-HIB 1 doses given <1 year.periodOffset(-3) + EPI - DPT-HepB-HIB 1 doses given <1 year.periodOffset(-4) + EPI - DPT-HepB-HIB 1 doses given <1 year.periodOffset(-5) + EPI - DPT-HepB-HIB 1 doses given <1 year.periodOffset(-6) + EPI - DPT-HepB-HIB 1 doses given <1 year.periodOffset(-7) + EPI - DPT-HepB-HIB 1 doses given <1 year.periodOffset(-8) + EPI - DPT-HepB-HIB 1 次给药 <1 year.periodOffset(-9) + EPI - DPT-HepB-HIB 1 次给药 <1 year.periodOffset(-10) + EPI - DPT-HepB-HIB 1 次给药 <1 year.periodOffset(-11)_ |
+| 分母 | ** 人口< 1 year** <br> _GEN - 人口 < 1 year_ |
+
+| | |
+|-----------|-----------|
+| 指示符 | **EPI - IPV覆盖率（%） - 期间抵消** |
+| 用户标识 | `w3NhG64hp9v`|
+| 分子 | ** IPV 给药剂量< 1 year this month + last 11 months** <br> _EPI - IPV 给药剂量 <1 年 + EPI - IPV 给药剂量 <1 年.periodOffset(-1) + EPI - IPV 给药剂量 <1 年.periodOffset(-2) + EPI - IPV 给药剂量 <1 年.periodOffset(-3) + EPI - IPV 给药剂量 <1 年.periodOffset(-4) + EPI - IPV 给药剂量 <1 年.periodOffset(-5) + EPI - IPV 给药剂量 <1 year.periodOffset(-6) + EPI - IPV 给药剂量 <1 year.periodOffset(-7) + EPI - IPV 给药剂量 <1 year.periodOffset(-8) + EPI - IPV 给药剂量 <1 year.periodOffset(-9)IPV 给药剂量 <1 year.periodOffset(-8) + EPI - IPV 给药剂量 <1 year.periodOffset(-9) + EPI - IPV 给药剂量 <1 year.periodOffset(-10) + EPI - IPV 给药剂量 <1 year.periodOffset(-11)_ |
+| 分母 | ** 人口< 1 year** <br> _GEN - 人口 < 1 year_ |
+

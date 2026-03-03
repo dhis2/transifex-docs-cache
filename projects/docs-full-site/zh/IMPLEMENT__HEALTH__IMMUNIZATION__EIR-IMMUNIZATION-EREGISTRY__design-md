@@ -1,0 +1,409 @@
+---
+edit_url: "https://github.com/dhis2-metadata/IMM_EIR/blob/master/docs/imm_eir-design.md"
+revision_date: '2024-02-23'
+tags:
+- 实施
+---
+
+# 免疫接种电子登记--跟踪系统设计{ #imm-eir-design }
+
+## 目的 { #purpose } 
+
+免疫接种电子登记跟踪系统设计文件概述了用于配置跟踪程序的概念设计，该程序用于对儿童进行免疫接种登记，并通过免疫接种时间表对儿童进行跟踪。本文件旨在供国家和地区一级的 DHIS2 实施者使用，以便能够支持成套方案的实施和本地化。在本地化和调整本配置包时，应考虑当地的工作流程和国家指导方针。
+
+## 背景 { #background } 
+
+免疫接种电子登记数字数据包是根据各国和合作伙伴的明确需求开发的，目的是通过扩大免疫接种计划（EPI）提高数据的及时性和准确性，扩大覆盖面，提高效率和效益。电子登记册旨在根据全球标准为保健提供者提供免疫接种时间表和禁忌症方面的临床指导，并为各级保健系统的决策生成可靠的数据。
+
+免疫接种电子登记跟踪器是根据[世界卫生组织儿童常规免疫接种建议](https://www.who.int/teams/immunization-vaccines-and-biologicals/policies/who-recommendations-for-routine-immunization---summary-tables) (2018)以及挪威公共卫生研究所等合作机构的资源设计的。这些资源可在参考文献部分找到。本设计还借鉴了赞比亚、博茨瓦纳和卢旺达的免疫接种国家使用案例，以及泛美卫生组织发表的文献。请注意，各国的指导方针和政策可能各不相同，因此强烈建议根据当地情况调整本程序包。
+
+## 系统设计概述{ #system-design-overview } 
+
+### 使用案例{ #use-case } 
+
+DHIS2 中的跟踪器数据模型可对个人进行登记，并在一段时间内对一系列医疗服务进行跟踪。可以利用这一模型来确保卫生系统中的每个儿童都能按照国家政策接受完整的疫苗接种。因此，免疫接种电子登记软件包包括用于获取常规和非常规疫苗接种计划数据的元数据。
+
+个人层面的数据还能够获取和分析高度细化的数据，并增加信息系统的细微差别，为进行特别分析、随时间变化调整指标和提高数据质量提供机会。因此，该跟踪软件包旨在优化数据收集和数据分析过程，提供临床决策支持，促进对儿童整个免疫计划的监测和跟踪，并生成世卫组织为监测扩大免疫计划（EPI）而制定的标准指标。
+
+此外，免疫接种电子登记程序的配置还可支持与国家民事登记和人口动态统计系统（CRVS）的连接，如果接受免疫接种服务的儿童尚未在国家民事登记和人口动态统计系统中登记，程序就会生成出生通知。这些组件是可选的，如果与国情不相关，可以删除。
+
+### 预期用户{ #intended-users } 
+
+免疫接种电子登记册旨在支持临床/设施一级的用户，为工作人员提供更好的决策工具，并将客户置于信息系统的中心，同时也消除他们的报告冗余。不过，根据国内的基础设施和可用资源情况，数据录入可在地区一级根据纸质登记册完成。
+
+* 临床用户：免疫接种电子登记跟踪程序经过优化，可用于护理点数据录入，并为 0-18 个月的免疫接种提供决策支持，帮助临床医生遵守疫苗接种计划。
+* 医疗机构工作人员：如果护理点数据录入不可行，也可由数据录入人员将数据输入电子登记册。工作清单旨在支持医疗机构工作人员监测需要跟进或逾期未接受免疫接种的病人。
+* 机构管理人员、地区卫生办公室和国家计划工作人员：通过电子登记册生成的数据旨在为扩大免疫方案的标准指标提供信息，以提高数据质量和分析水平。通过获取个人和机构层面的免疫接种电子登记册数据，可以按层次对数据进行分类，并在适合机构、地区和国家层面的仪表板上显示。此外，还可按客户特征（性别、月龄等）分析服务提供趋势。卫生监督员和项目经理也可以利用这些数据来监督和跟进护理质量和文件要求。
+
+### 工作流程 { #workflow } 
+
+根据文献审查和与各国的磋商，确定了进入免疫接种电子登记册的四个共同点。该计划旨在支持儿童进入计划的多个入口，如下所示：
+
+工作流程](resources/images/epi_tracker_01.png)
+
+### 免疫接种电子登记计划结构{ #immunization-eregistry-program-structure } 
+
+![报名](resources/images/epi_tracker_02.png)
+
+程序阶段](resources/images/epi_tracker_03.png)
+
+通知](resources/images/epi_tracker_04.png)
+
+#### 常规免疫接种时间表{ #routine-immunization-schedule } 
+
+免疫电子登记跟踪程序默认配置为使用以下疫苗接种时间表，详见[世卫组织立场文件-常规免疫接种建议](https://www.who.int/immunization/policy/Immunization_routine_table2.pdf?ua=1) (2018)。可根据国家指导方针添加或更改其他疫苗和修改免疫接种时间表。本程序中配置的默认时间表如下：
+
+| 儿童年龄 | 需要接种的疫苗 |
+|-|-|
+| 出生日期 | 卡介苗 0.05 毫克、bOPV0、乙肝疫苗 |
+| 6 周 | bOPV1、Penta1、PCV1、RV1 |
+| 10周 | bOPV2, Penta2, PCV2, RV2 |
+| 14周 | bOPV3, IPV1, Penta3, PCV3 |
+| 9 个月 | 麻疹 1，风疹 1 |
+| 18 个月 | 麻疹 2 |
+
+#### 非例行免疫接种{ #non-routine-immunizations } 
+
+免疫接种电子登记跟踪程序还包括世卫组织指南中的非例行免疫接种清单，使免疫接种计划的用户能够记录例行免疫接种计划之外的任何免疫接种。在本地化和采用非例行免疫接种时应考虑国家指导方针。
+
+该计划包括以下非例行免疫接种：
+
+* MR [2剂]
+* 麻风腮疫苗[2剂］
+* 日本脑炎（灭活vero细胞衍生）[2剂］
+* 日本脑炎（减毒活疫苗）[2 剂］
+* 黄热病[1剂］
+* 蜱传脑炎[3剂］
+* 伤寒 TCV（Typbar）[1 剂］
+* 伤寒（Vi PS）[1 剂］
+* 伤寒（Ty21a）[4 剂］
+* 霍乱[3剂］
+* 脑膜炎球菌[2剂］
+* 甲型肝炎[1剂］
+* 狂犬病[2剂］
+* 登革热 [3剂］
+* 水痘[2剂］
+* mOPV
+* 白喉、百日咳和破伤风三联疫苗（加强型）1
+* DTwP（含 Td） 1
+* DTap（含 Td） 1
+* 百白破（含 Td 和 ap） 1
+* B2 型肝炎
+* B3 型肝炎
+
+### 计划结构的理由{ #rationale-for-program-structure } 
+
+** 出生详情[不可重复]**：此阶段用于采集出生详细信息，如分娩方式、出生体重等，只需输入一次。因此，出生详情阶段不可重复。我们决定不添加出生详情数据点作为属性，因为这些数据点不是相关的病例标识符，纵向分析也不需要。
+
+**免疫接种[可重复]**：单个可重复阶段用于获取所有免疫接种数据（而不是每个疫苗剂量/计划的多个计划阶段），因为：
+
+* 它能根据年龄和以往的疫苗接种史制定程序规则，确定儿童应接种的疫苗；
+* 这对数据质量更有利，因为只有到期的疫苗才能进行数据录入，而且整个疫苗周期是通过计划规则建立的；
+* 用户更容易进行数据录入，特别是当某一年龄段的所有疫苗不在一起接种时；以及
+* 根据程序规则管理日程安排提醒更容易。
+
+## 跟踪器程序配置{ #tracker-program-configuration } 
+
+| 结构 | 描述 |
+|-|-|
+| 结构  | 描述 |
+| 注册 | 儿童作为跟踪实体实例（TEI）注册并加入免疫计划，有关该儿童的数据将作为归属记录在 "注册 "中。注册日期被配置为向用户显示 "注册日期"。TEI 属性： <br> <br> 唯一系统标识符 (EPI)<br> 国家 ID 名<br> 中间名<br> 姓<br> 出生日期*<br> 性别<br> 村/社区<br> 家庭住址<br> 主要联系人的名*<br> 主要联系人的姓*<br> 主要联系人的 ID 主要联系人的 ID主要联系人的身份证<br> 主要联系人的电话号码<br> 护理人员的名<br> 护理人员的姓<br> 护理人员的身份证<br> 护理人员的联系电话<br> 照片<br> <br> 该计划在计划规则中广泛使用出生日期（例如，确定应接种哪种疫苗）。例如，确定应显示哪种疫苗），并将其配置为强制属性。 <br> *强制属性 |
+| 程序第 1 阶段：出生信息<br> （不可重复） | 这是一个不可重复的阶段，用于记录婴儿出生/分娩的相关信息。 <br> <br> 出生体重<br> 胎龄<br> 胎次<br> 出生类型<br> 助产士<br> 出生地<br> 出生地<br> 出生设施<br> 出生村庄<br> 分娩方式 |
+| 计划阶段 2：免疫<br> （可重复） | 这是一个可重复的阶段。每次儿童接受疫苗接种服务时都要在此阶段输入数据。程序阶段的配置是根据出生日期和以前的疫苗接种历史，利用程序规则显示相应的疫苗接种。 <br> 事件日期 = 提供服务的日期 |
+| 第 2.1 节：出生通知（可选） | 关于儿童是否已在国家民事登记和人口动态统计系统中登记的信息。并非所有国家都需要此部分内容。 |
+| 第 2.2 节：免疫接种前的问题 | 包括儿童在哪里接种这些疫苗的信息，以及在提供疫苗接种时是否有任何潜在的过敏症和禁忌症。 |
+| 第 2.3 节：常规免疫接种 | 包括按照上述世界卫生组织建议的常规免疫接种时间表为 18 个月以下儿童提供疫苗接种（即麻疹/风疹第二剂结束）的详细情况。如果未提供疫苗，则应在此阶段记录其原因。 |
+| 第 2.4 节：免疫接种计划优先权 | 本部分包括两个数据元素，用于触发程序规则，以覆盖根据技术教育指标（TEI）的出生日期为每个接种事件生成疫苗接种计划的程序规则。通过 "覆盖 "基于出生日期和免疫接种历史的程序规则，用户将可以访问常规和非常规免疫接种的完整列表，进行数据录入。 |
+| 第 2.5 节：非例行免疫接种 | 本部分记录不属于常规免疫接种计划的疫苗接种（如黄热病、日本脑炎等）。只有当用户在 "疫苗接种计划覆盖 "部分选中 "显示非常规疫苗 "复选框时，本部分才会显示。 |
+
+### 计划详情{ #program-details } 
+
+该计划的**跟踪实体类型**是 "人"。在集成的 DHIS2 实例中，跟踪实体类型通常是跨计划共享的。属性包括相关的个案标识符和登记详情，如儿童姓名、出生日期、地点、父母姓名和联系信息。其他属性是根据对参考文献中所列资源的审查而选择的。
+
+该程序的配置是**要求用户在注册新儿童前至少搜索 2 个属性**。该配置可根据国家要求进行调整。
+
+#### 访问 { #access } 
+
+**访问**级别配置为**受保护，以**保护个人身份数据，防止未经授权的访问。
+
+用户可以搜索和读取被分配了数据采集访问权限的组织单位所拥有的跟踪实体实例。如果用户搜索的 TEI 存在于其组织单位之外，则用户可以选择先记录理由，然后访问患者记录。这种保护隐私的方法被称为 "打破玻璃"，因为它允许用户在没有外部许可或协助的情况下开展工作，但会留下清晰的线索供审计。一旦用户给出了打破玻璃的理由，就可以获得被跟踪实体实例的临时所有权（更多信息请参阅[跟踪器用户指南](https://docs.dhis2.org/2.34/en/dhis2_user_manual_en/using-the-tracker-capture-app.html#breaking-the-glass)）。
+
+注意，截至 2.2.0 版，DHIS2 Android 采集应用程序尚不支持 "打破玻璃 "功能；对于希望使用 Android 应用程序实施免疫接种跟踪的国家，如果用户必须能够访问和读取在其数据采集组织单位之外登记的 TEI，则可能需要更改访问级别的配置。
+
+**示例：** 一名儿童在 A 机构注册，在 A 机构接种卡介苗第一剂，然后到 B 机构接种 PCV 第一剂。如果程序中的访问级别受保护，用户在输入打破玻璃的原因后就可以访问该儿童的记录。
+
+打破玻璃](resources/images/epi_tracker_05.png)
+
+### 注册详情{ #enrollment-details } 
+
+注册日期描述为 "注册日期"。用户输入注册日期的目的是将儿童注册到免疫接种电子登记程序的日期。
+
+### 属性 { #attributes } 
+
+由于免疫接种程序广泛使用出生日期来决定应显示哪种疫苗，因此出生日期是必填项。强制输入的字段有限，目的是在用户无法输入所有数据字段的情况下降低输入错误数据的风险。虽然注册信息应在病例首次注册时填写，但如果有新信息（如联系信息），属性值可在活动注册期间的任何时候更新。
+
+### 标识符{ #identifiers } 
+
+该程序配置了两种类型的唯一标识符。根据国家背景，程序还可添加其他标识符。
+
+* [唯一标识符]: An automatically generated ID which is unique to the entire system (e.g. the instance of DHIS2 being used). This TEI attribute is configured to generate the attribute value based on a pattern: CURRENT_DATE(yyyy-MM-dd)-"-"-SEQUENTIAL(#####).
+* 请注意，只有当母亲/儿童获得一张印有号码的卡片，帮助用户在以后的就诊中识别他们时，才能在系统中找到病人。
+* [国民身份证]: This ID is manually entered. In many countries, the National ID is the identification number given to the child by the National Civil Registry and Vital Events (CRVS) system once the child’s birth has been registered.
+
+_*安卓系统注意事项：[保留 ID](https://docs.dhis2.org/2.34/en/implementer/html/dhis2_android_implementation_guideline_full.html#configuration_reserved_id)和[保留 ID 失效](https://community.dhis2.org/t/question-regarding-expiry-of-reserved-ids-of-an-auto-generated-unique-values-configured-with-a-text-pattern-containing-current-date-mm-yyyy/40761/2)_
+
+![报名](resources/images/epi_tracker_06.png)
+
+### 计划第 1 阶段：出生详情 [不可重复]{ #program-stage-1-birth-details-non-repeatable } 
+
+本阶段收集的信息只需输入一次。此阶段为可选阶段，并非所有国家都需要。在某些情况下，这些信息可能会记录在其他项目中（如儿童项目、分娩项目、营养项目等）。这些信息对于儿童的纵向健康数据非常重要。
+
+设施/出生医院 "数据元素被配置为 "组织单位层次结构 "类型，使用户能够在组织单位层次结构中选择医疗设施。[^1]
+
+### 计划阶段 2：免疫接种 [可重复]{ #program-stage-2-immunization-repeatable } 
+
+#### 安排活动{ #scheduling-events } 
+
+该阶段被配置为 "阶段完成时要求用户创建新事件"，这将触发一个弹出窗口来安排后续预约。标准间隔天数 "目前设置为 30 天，因此下一个预约（事件）日期默认安排在当前事件日期的 30 天后。用户可以根据需要更改预定的事件日期。
+
+#### 第 2.1 节 出生通知{ #section-21-birth-notification } 
+
+出生通知部分可向国家民事登记和人口动态统计 (CRVS) 系统发出通知。此部分为可选项，根据国内的决定和工作流程，可能并不需要。详细信息请参阅 [出生通知跟踪程序](https://drive.google.com/file/d/1MQwYspJQe3jY3ja-DaVL7GUc7nwRGW5q/view?usp=sharing) 文档。
+
+出生通知](resources/images/epi_tracker_07.png)
+
+#### 第 2.2 节 免疫接种前问题{ #section-22-pre-immunization-questions } 
+
+包括儿童在何处接受这些疫苗接种的信息，以及在提供疫苗接种时是否存在任何潜在的过敏症和禁忌症。这些问题是根据[世卫组织立场文件-常规免疫接种建议](https://www.who.int/immunization/policy/Immunization_routine_table2.pdf?ua=1) (2018) 设计的。
+
+免疫接种前的问题应在每次 "事件 "中完成，"事件 "代表一次免疫接种服务。根据所选答案触发程序规则，以提供决策支持、设施监控和后续服务。这些规则显示在 TEI 面板中（如过敏、高风险状态），还可用于在提供免疫接种服务时触发警告和禁忌症，如下图所示：
+
+免疫前问题](resources/images/epi_tracker_08.png)
+
+#### 第 2.3 节 免疫接种--常规{ #section-23-immunization-routine } 
+
+本部分记录所提供的免疫接种服务。计划规则用于显示儿童根据世界卫生组织疫苗接种时间表计划接受的疫苗接种。计划规则基于儿童的出生日期和之前的疫苗接种史、病情和过敏症。如果未接种疫苗，则会包含数据元素，供用户记录未接种疫苗的原因，未接种的疫苗会显示在后续事件/访问中，直到服务被记录下来。
+
+免疫接种 - 常规](resources/images/epi_tracker_09.png)
+
+#### 第 2.4 节：免疫接种时间表覆盖{ #section-24-immunization-schedule-override } 
+
+本部分包含的数据元素会触发程序规则，向用户显示所有可用的疫苗和剂量，而不是只显示根据儿童年龄和免疫接种史应该接种的疫苗和剂量。
+
+##### [DE] 显示所有常规免疫剂量{ #de-show-all-routine-immunization-doses } 
+
+如果选中此 DE，且用户为数据元素 _'显示所有免疫剂量（解释）'_ 输入自由文本（至少 4 个字符），则程序规则将在 "常规免疫接种 "部分显示整个常规免疫接种计划列表，以便用户完成数据输入。首次解锁整个免疫接种计划时，事件日期将作为数据元素记录下来，并写入患者的所有后续事件中，直到再次打开为止。在随后的访问中，计划表解锁日期也会显示在顶部栏中。这将对未来的用户起到警告作用，提醒他们在之前的就诊中提供的剂量超出了计划。
+
+##### [DE] 显示非例行免疫接种{ #de-show-non-routine-immunization } 
+
+如果选中此 DE，并在数据元素"[请解释为什么需要显示所有可能的非例行剂量 "中提供解释（至少 4 个字符）作为自由文本，那么所有非例行疫苗都会显示出来，以便用户完成数据输入](https://who-dev.dhis2.org/tracker_dev/dhis-web-tracker-capture/index.html) 在 "非例行免疫接种 "部分。首次解锁非例行免疫接种时，事件日期会作为数据元素记录下来，并写入患者的所有后续 事件中。这将对未来的用户起到警告作用，提醒他们在之前的就诊期间提供了非例行剂量。
+
+在覆盖部分记录的常规免疫接种将在表格数据录入 "疫苗卡 "中显示。在随后的就诊中，计划表中将不会出现由覆盖部分记录的疫苗。程序规则的设置是根据预先配置的时间间隔和之前就诊时前一剂疫苗的接种情况来显示系列疫苗中的下一剂疫苗[......]。
+
+[参见程序规则](#epi-tracker-程序规则)
+
+疫苗卡](resources/images/epi_tracker_10.png)
+
+疫苗接种计划覆盖](resources/images/epi_tracker_11.png)
+
+免疫接种 - 常规](resources/images/epi_tracker_12.png)
+
+#### 第 2.5 节：免疫接种--非例行{ #section-25-immunization-non-routine } 
+
+本部分包含用于输入非例行免疫接种（如黄热病、蜱传脑炎等）的数据元素。默认情况下，整个部分根据程序规则被隐藏，只有当用户在疫苗接种表覆盖部分选中 "显示非 常规疫苗 "复选框并填写解释数据元素时才会显示。
+
+默认情况下，所有非例行免疫接种都不会显示在疫苗卡上。在实施过程中，扩大免疫方案管理人员应审查最常提供的 "非例行 "剂量，并考虑将其纳入疫苗卡。
+
+疫苗接种计划覆盖](resources/images/epi_tracker_13.png)
+
+免疫 - 非例行](resources/images/epi_tracker_14.png)
+
+### 计划阶段通知{ #program-stage-notifications } 
+
+计划阶段通知已根据计划规则进行了配置，以启用 CRVS 出生通知和使用案例中所述的对家长/护理人的预约提醒。这些通知可通过系统消息（DHIS2 内部）、外部电子邮件或短信发送。
+
+#### 短信提醒：下次预约{ #sms-reminders-next-appointment } 
+
+在下图所示的示例中，截图中文字的提醒信息将在预约前两天发送给孩子的看护人。这些提醒信息的文本和日期可根据国家要求进行配置。
+
+在创建预约后，会根据免疫接种记录中的属性生成一条新的预约信息。该信息将在预约前两天通过 SMS 网关发送到母亲/护理人员的电话号码上。
+
+下一个约会](resources/images/epi_tracker_15.png)
+
+程序阶段通知](resources/images/epi_tracker_16.png)
+
+#### 系统消息：CRVS 工作流程{ #system-messages-crvs-workflow } 
+
+计划规则还可通过 DHIS2 消息传递系统触发消息。这对于将免疫登记数据纳入 CRVS 管理员的日常工作特别有用。
+
+下面的示例说明了对出生通知回复 "是 "后通过 DHIS2 消息系统向 CRVS 管理员发送即时信息的情况。在标准元数据包内，信息也可在出生证明送达或未送达后发送。
+
+示例：CRVS 出生通知 -> 出生证明
+
+1. 在免疫阶段输入新的出生通知。
+ 已完成 CRVS 通知，但尚未收到证书。
+出生通知](resources/images/epi_tracker_17.png)
+
+2. DHIS2 会立即为这一新通知生成一条信息，并发送给 CRVS 管理员用户组。
+![信息](resources/images/epi_tracker_18.png)
+
+3. 信息将发送到 DHIS2 收件箱（如有配置，也可向用户发送电子邮件）。
+ 该信息提供了报告的位置和孩子的姓名。
+收件箱](resources/images/epi_tracker_19.png)
+
+4. CRVS 用户可在免疫登记 "计划摘要 "报告中查看出生详情，并跟踪出生证明的交付情况。
+计划摘要报告](resources/images/epi_tracker_20.png)
+
+有关如何配置程序通知的更多信息，请访问 [docs.dhis2.org](https://docs.dhis2.org/2.33/en/dhis2_user_manual_en/configure-programs-in-the-maintenance-app.html#create-program-notifications_1) 。要启用 SMS 通知，需要 SMS 网关并将连接配置到 DHIS2。有关 DHIS2 和 SMS 网关的更多信息，请访问 [此处](https://docs.dhis2.org/master/en/developer/html/webapi_sms.html )。
+
+### 计划规则{ #epi-tracker-program-rules }
+
+程序规则被广泛用于根据出生日期（属性）和以前的疫苗接种史（数据元素）在常规 免疫接种事件中显示常规疫苗接种的数据元素。**[^2]例如，当出生日期与提供服务的日期一致时（如儿童为新生儿），常规免疫接种表上只显示前两种疫苗接种（卡介苗和 bOPV 0），这与世界卫生组织的标准疫苗接种时间表一致。 
+
+_儿童出生时的常规免疫接种表（按当前事件日期与 TEI 属性 "出生日期 "之间的时间计算）：_
+
+常规免疫接种表 - 出生](resources/images/epi_tracker_21.png)
+
+_6周大儿童的常规免疫接种表（按当前事件日期与 TEI 属性 "出生日期 "之间的时间计算）：__
+
+常规免疫接种表 - 6 周大](resources/images/epi_tracker_22.png)
+
+如果错过常规计划中的疫苗接种，该系列中的下一种疫苗将不会出现。例如，如果未记录 RV1 接种剂量，则无论儿童年龄大小，该疫苗接种都将继续出现在常规免疫接种表格的后续事件中，直到记录为接种为止。 
+
+### 为支持计划而配置的其他功能{ #additional-features-configured-to-support-the-program } 
+
+#### 表格数据录入："免疫卡"{ #tabular-data-entry-immunization-card } 
+
+表格式数据录入视图为医疗服务提供者或数据录入员显示一张电子免疫卡，其格式与通常要求家长在儿童接种时携带的黄色纸质免疫卡相同。该卡提供了儿童所有免疫接种的历史记录。使用 "i "按钮可查看标准图例，图例显示事件已完成（灰色）、事件未完成（黄色）、事件已安排（绿色）、事件已逾期（红色）。
+
+免疫卡](resources/images/epi_tracker_23.png)
+
+疫苗状态在表格数据输入（疫苗卡）中以表格形式显示 **目前只显示常规疫苗**。可根据用户要求在列表中添加或删除更多疫苗。这可通过在计划阶段配置页面中选择报告中的视图选项来实现。
+
+疫苗状态显示](resources/images/epi_tracker_24.png)
+
+如果对非常规疫苗进行了疫苗覆盖，则疫苗卡上不显示 "是"。如果对常规疫苗进行了疫苗覆盖，则 "是 "会显示在该事件和剂量的疫苗卡上。是 "会被带入后续事件，显示已接种的剂量。但是，这并不会中断计划表中后续剂量的接种。例如，在 8 周的就诊中，bOPV 1 按常规进行接种，bOPV 2 则通过 "覆盖 "计划进行接种。bOPV 2 将不会在未来的 10 周就诊时（该剂量的正常计划时间）再次显示。同时，bOPV 3 仍可在 14 周就诊时接种。
+
+疫苗覆盖](resources/images/epi_tracker_25.png)
+
+#### 顶部栏设置{ #top-bar-settings } 
+
+顶栏设置可让医疗服务提供者/数据录入员快速一目了然地查看儿童的最重要信息，包括属性（名、姓、唯一标识符）、就诊年龄、反馈（风险状况、过敏症）和指标（计算年龄）。单击顶部栏最右侧的设置图标，可根据国家背景定义/添加/更改顶部栏的设置。点击设置按钮可进入 "顶栏设置 "视图（见下面的截图），用户可在此更改顶栏显示的患者信息。
+
+顶部栏设置截图：_
+
+顶部栏](resources/images/epi_tracker_26.png)
+
+顶部栏设置](resources/images/epi_tracker_27.png)
+
+### 预定义工作列表{ #predefined-working-lists } 
+
+为支持在设施级别快速搜索患者，在 Tracker Capture 登陆页面的 "列表 "选项卡中预定义了 [四个独立的 "工作列表"](https://docs.dhis2.org/master/en/user/html/dhis2_user_manual_en_full.html#simple_tracked_entity_instance_search)。每个工作列表都显示符合特定条件的 TEI，如即将到来的预约或错过的预约。它们分别显示五个关键属性：唯一系统标识符、姓名、姓氏、出生日期、性别和母亲的联系信息。
+
+工作列表](resources/images/epi_tracker_28.png)
+
+下表描述了每个列表的过滤器，可通过 API 进行更改（请参阅"[跟踪实体实例过滤器](https://docs.dhis2.org/en/develop/using-the-api/dhis-core-version-master/tracker-deprecated.html#webapi_tei_filters) "文档）。
+
+| 名称 | 描述 | 组态 |
+|-|-|-|
+| 所有正在接受免疫接种的患者 | 这将提供当前机构单位免疫接种计划中登记的所有病人名单 | 注册状态：激活 |
+| 本周预约 | 这将提供本周（今天和未来 6 天）在当前机构单位预约的病人名单 | 注册状态：ACTIVE<br> 事件状态（免疫：'s53RFfXA75f'）：SCHEDULE<br> Period (related to current date in days)：0-6 |
+| 今天的预约 | 这将提供当前组织单位今天已安排预约的病人名单 | 注册状态：ACTIVE<br> 事件状态（免疫：'s53RFfXA75f'）：SCHEDULE<br> Period (related to current date in days)：0-0 |
+| 错过预约 | 这将提供已错过当前机构单位预约的患者名单 | 注册状态：ACTIVE<br> 事件状态（免疫：'s53RFfXA75f'）：OVERDUE<br> Period (related to current date in days)：-1000;0 |
+
+## 分析与指标{ #analytics-indicators } 
+
+这些指标基于[世卫组织扩大免疫方案总体计划](https://dhis2.org/who-package-downloads/#epi), with the intention that the relevant data collected in the Tracker program can be reported to the aggregate HMIS indicators. Note that the Immunization Tracker program can only calculate a subset of the [recommended aggregate indicators](https://who.dhis2.org/documentation/pck/EPI_DASHBOARD_V0_DHIS2.29/reference.html) ，包括 "已接种剂量"、"辍 苗率"。免疫接种浪费率和覆盖率指标需要分别从后勤系统和人口统计数据中获取。
+
+此外，免疫跟踪计划的许多指标都是基于队列而非原始计数。这是一个重要的区别，它可能导致基于跟踪系统的指标值与基于汇总系统的指标值之间存在重大差异，尤其是在计算辍学率时，如下图所示。
+
+许多国家在使用月度汇总数据估算辍学率时，会比较特定时间段内特定疫苗方案的第一剂和最后一剂的总剂数。
+
+这里的分母是一个月内的所有首次剂量。这假定了稳定的入学率。但比较一下 2 月份和 12 个月后的 DPT1 剂量。如果注册率随着时间的推移而增加，那么接受第一剂的患者总是多于有资格接受最后一剂的患者。这就使辍学率指标出现偏差。
+
+辍学率--按剂量和月份](resources/images/epi_tracker_29.png)
+
+相比之下，跟踪数据会评估所有已登记的 DPT1 患者的年龄，从而计算出每月应服用 DPT3 的婴儿群组。
+
+如果一批婴儿满 6 个月并已接种 DPT1，则被视为应接种 DPT3。如果他们到了三联疫苗接种的时间，但在 6 个月时没有接种三联疫苗，则被视为辍学。为避免重复计算，婴儿只有在满 6 个月时才能 "到期 "接受三联疫苗接种。
+
+虽然注册人数在不断增加，但大多数符合白喉、百日咳、破伤风三联疫苗接种资格的婴儿已经接受了最后一剂疫苗。
+
+辍学率 - 按组群和月份划分](resources/images/epi_tracker_30.png)
+
+### 仪表板 { #dashboards } 
+
+元数据包中包括四个仪表盘，分别基于计划指标和专门从免疫计划数据中得出的指标。默认情况下，所有可以访问免疫接种计划的用户，包括 "免疫接种管理员"、"免疫接种数据采集 "用户组的用户，都可以访问仪表盘。"免疫数据采集 "用户组。
+
+下表介绍了每个仪表板。
+
+* EPI 全面铺开
+* EPI 年龄段
+* EPI 辍学率
+* EPI 疫苗剂量
+
+#### EPI 全面推广{ #epi-overall-rollout } 
+
+本年度和上一日历年度登记和接种的婴儿总数；登记和就诊时的年龄；提供服务的地点；以及免疫接种障碍（如禁忌症和缺货）。
+
+* 扩大免疫方案是如何逐步扩展的？该计划惠及了多少儿童？
+* 婴儿何时开始接种疫苗？他们在哪里接种疫苗？
+* 在前来接种疫苗的儿童中，接种疫苗最常见的障碍是什么？
+
+整体推出](resources/images/epi_tracker_31.png)
+
+#### EPI 年龄段{ #epi-age-ranges } 
+
+刚过关键年龄基准（6 周、14 周、18 个月等）并在此之前接种过全部疫苗的登记婴儿比例。
+
+* 6 周前接受 bOPV、HepB1 和 BCG0.05 的新生儿比例是多少？是否存在地区差异？(按组织单位细分？）
+* 有多少注册婴儿已满 18 个月？有多少婴儿在满 18 个月时接受了所有必要的免疫接种？
+* 各年龄段之间是否有明显的 "下降"？哪种剂量会导致 10 到 14 周之间的覆盖率发生变化？
+
+年龄范围](resources/images/epi_tracker_32.png)
+
+#### EPI 辍学率{ #epi-dropout-rates } 
+
+接种了每种推荐疫苗最后一剂的目标人群百分比。包括 DPT1-3、BCG-MCV 和 MCV1-2 的月接种率，按接种剂数和合格 "组群 "分列。
+
+* 大多数婴儿是否接种了每种疫苗所需的全部剂量？
+* 同一年龄组的辍学率与哨点剂量的辍学率有何差异？是什么原因造成了这种差异？
+
+辍学率](resources/images/epi_tracker_33.png)
+
+#### EPI 疫苗剂量{ #epi-vax-doses } 
+
+* 过去 12 个月和过去 4 个季度的 OPV/IPV、Penta、PCV 和 RV 注射剂量。
+* 哪些疫苗使用最多？在使用多种剂量的疫苗中，哪种剂量最落后？
+* 随着时间的推移，扩大免疫方案是如何按疫苗进行扩展的？
+
+![alt_text](resources/images/epi_tracker_34.png)
+
+### 计划指标 { #program-indicators } 
+
+有关数据元素、计划指标和指标的详细信息，请点击此处：
+
+以下是展示计划的链接[数据元素概览，含说明和指标](https://docs.google.com/spreadsheets/d/12XceAnwhofnShvE-_HTCXDCVX3VqoVMdSd8Gy2uZRUc/edit?usp=sharing)
+
+## 安卓兼容性{ #android-compatibility } 
+
+数字数据包通过 DHIS2 Capture 应用程序进行了优化，可用于 Android 数据收集，该应用程序可在 [Google Play 商店](https://play.google.com/store/apps/details?id=com.dhis2&hl=en) 免费下载。以下是 DHIS2 Android Capture 应用程序 2.2.0 版的已知限制，对本跟踪包有影响：
+
+**如果程序配置为 "受保护"，Android 的默认行为将与程序配置为 "关闭 "时相同。这意味着 Android 用户将无法在其组织单位之外读取或编辑 TEI 的注册信息。在搜索 OU 中注册的 TEI 将通过 TE 类型搜索返回，但如果程序已关闭或受保护，则不允许用户查看或创建新的注册。如果 Android 用户必须能够访问其数据采集组织单位之外的 TEI，则应将程序配置为访问级别为 "开放"。
+
+## 引用 { #references } 
+
+泛美卫生组织。电子免疫登记：电子免疫登记：规划、开发、实施和评估的实际考虑因素》。华盛顿特区：泛美卫生组织；2017 年。[https://iris.paho.org/handle/10665.2/34865](https://iris.paho.org/handle/10665.2/34865)
+
+世卫组织（2018 年）。卫生设施数据的分析和使用：免疫规划管理人员指南。检索自
+
+[https://www.who.int/healthinfo/FacilityAnalysisGuide_Immunization.pdf?ua=1](https://www.who.int/healthinfo/FacilityAnalysisGuide_Immunization.pdf?ua=1)
+
+[世卫组织立场文件--常规免疫接种建议](https://www.who.int/immunization/policy/Immunization_routine_table2.pdf?ua=1) (2018)。取自：[https://www.who.int/immunization/policy/immunization_tables/en/](https://www.who.int/immunization/policy/immunization_tables/en/)
+
+DHIS2 EPI 汇总数字数据包。取自：[https://dhis2.org/who-package-downloads/#epi](https://dhis2.org/who-package-downloads/#epi)
+
+[^1]: 该数据元素的可用设施取决于为最终用户配置的 "搜索组织单位"。如果临床医生只有搜索和查看本省记录的权限，那么她将无法选择本省以外的机构作为 "出生机构"。系统管理员一般没有这种限制，可以输入系统内的所有设施。
+
+[^2]: 默认情况下，出生日期对最终用户是强制性的，以确保正确显示儿童的疫苗接种计划。但是，对于系统管理员来说，出生日期是非强制性的，他们可以在没有出生日期的情况下创建测试数据，例如排除程序规则的故障。
+

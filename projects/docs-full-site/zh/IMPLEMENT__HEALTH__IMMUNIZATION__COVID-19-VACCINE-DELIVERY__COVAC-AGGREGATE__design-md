@@ -1,0 +1,416 @@
+---
+edit_url: "https://github.com/dhis2-metadata/CVC_AGG/blob/master/docs/cvc_agg-design.md"
+revision_date: '2023-04-17'
+tags:
+- 实施
+---
+
+# COVID-19 疫苗递送 (COVIDVAC) 聚合系统设计指南 - 1.1.0 版{ #cvc-agg-design }
+
+## 1.导言{ #1-introduction } 
+
+1.1.0 版的 COVID-19 疫苗接种汇总 (COVIDVAC) 元数据包是作为一种可安装的解决方案开发的，各国可根据更新版的[世界卫生组织关于制定 COVID-19 国家部署和疫苗接种计划的指南](https://www.who.int/publications/i/item/monitoring-covid-19-vaccination-interim-guidance) 更新其基于 DHIS2 的 HMIS 和免疫接种数据系统。
+
+COVIDVAC 聚合系统设计文件概述了用于开发 WHO 标准元数据包以监测 COVID-19 疫苗接种实施情况的设计原则和全球技术指南。本文件旨在供国家和地区层面的 DHIS2 实施者使用，以支持该数据包的实施和本地化。COVIDVAC 元数据包可根据当地需求和国家指导方针进行调整。
+
+该元数据包可用于疫苗接种点工作人员或更高级别的工作人员直接进行电子报告，也可作为一套 "目标 "元数据，用于汇总来自电子、移动或纸质收集工具的个人水平数据。这些软件包中包含的分析和仪表板旨在支持国家和国家以下各级对 Covid-19 疫苗数据的常规分析和使用。
+
+## 2.背景{ #2-background } 
+
+COVID-19 疫苗接种数字数据包的开发是为了满足各国表达的需求，即快速调整解决方 案，以管理计划中/已开展的免疫接种工作所产生的数据。UiO 开发了 COVIDVAC 数据包，既可用于综合数据，也可用于单个数据，以便各国根据工作量和可用资源情况选择最适合本国国情的模式。这些模型及其相对优势/局限性概述如下：
+
+**汇总数据包：**
+
+- 可每日报告有关疫苗接种活动和库存管理的关键综合数据点。
+- 复杂性低，易于实施。当病例数较多，或由于跟踪器实例的复杂性或疫苗接种活动与数据录入活动相比负担较重而无法进行单个数据录入时，最容易管理。
+
+**个人数据包（跟踪器）：**
+
+- 登记病例并跟踪患者的疫苗接种时间表
+- 高度细化的数据和多个时间维度的分析，可支持分散的工作流程，所有事件都与案件相关联。
+
+**本文件仅涉及 1.1.0 版聚合软件包的设计。** COVAC DHIS2 追踪软件包和 COVAC 聚合软件包 1.0.0 版有单独的系统设计文件。
+
+汇总包旨在满足最关键的报告要求和分析能力，以监测疫苗接种活动。
+
+COVIDVAC 集成包的目标是
+
+1. 监测疫苗接种活动及其在目标人群中的发展情况；
+2. 快速检测吸收趋势和辍学率；
+3. 提供有关疫苗接种工作开展情况的地理信息；
+4. 提供有关库存管理和废物质量数据的信息。
+
+该系统设计借鉴了世卫组织和 UiO 自 2017 年以来合作制定的现有疾病监测和疫苗接种指导方针原则和信息系统要求。
+
+各国的指导方针和政策可能有所不同，建议根据当地情况调整本套资料。
+
+### 2.1 1.1.0 版与 1.0.0 版对比{ #21-version-110-vs-version-100 } 
+
+COVIDVAC 版本的 COVID-19 疫苗接种包（1.1.0 版）是对 COVAC COVID-19 疫苗接种包（1.0.0 版）的优化。它的开发旨在支持世卫组织非洲区域办事处的数据收集和报告工具。
+
+尽管存在一些差异（如下所列），但 COVIDVAC 版本与 COVAC 版本一样，都符合并支持全球和区域报告要求，如 [eJRF](https://www.who.int/immunization/monitoring_surveillance/routine/reporting/en/)。
+
+两个版本的主要区别在于
+
+- 年龄分类：成人/老年人 VS 0-59 岁/60 岁以上
+- 在 "疫苗接种数据集 "中增加了 "现有基础疾病/无基础疾病 "的分类，将有基础疾病的人数作为接种疫苗总人数的一个子集。
+- 现有疫苗清单作为 "疫苗接种数据集 "的一个属性，可根据疫苗 1、2、3 对数据进行分类。
+- 同样，"疫苗库存数据集 "中也提供了可用疫苗清单，并按疫苗 1、2、3 对数据进行了分类。
+- 人口数据集 "可根据人口数据的可用性进行编辑。
+- 常数为目前可用的所有疫苗 VS 一般占位符 疫苗 1、2、3。
+
+有关 COVIDVAC 数据集和章节的详细信息，请参见本文件的 [第 4 节]（#4.-数据集）。
+
+如果各国决定转换版本，本文件[第 10 节]（#10.-mapping-of-covidvac and-covac-indicators-for-analysis）中提供了可用于继续分析数据的 DE 和指标的映射。
+
+## 3.系统设计概要{ #3-system-design-summary } 
+
+在开发本配置包的过程中，我们努力遵循 UiO 的[一般设计原则](https://who.dhis2.org/documentation/general_design_principles.html) 和通用[命名约定](https://who.dhis2.org/documentation/naming_convention.html) 。
+
+COVIDVAC 总包包括
+
+1. 关键 Covid-19 疫苗接种的每日汇总数据集和数据元素
+2. 主要库存管理监督的每日汇总数据集和数据元素
+3. 目标人群的年度汇总数据集
+4. 两个数据集的核心指标
+5. 仪表板
+
+该软件包收集了符合当前世卫组织报告要求的最低数量的数据点。这些数据将生成一套核心指标，为国家和国家以下各级决策者的仪表板提供信息，以便迅速分析和应对奇异的趋势和数字。
+
+**1）** **COVIDVAC--疫苗接种交付**
+
+- 每日周期
+
+目的：报告主要的 COVID-19 疫苗接种工作--数据包括剂量、疫苗类型、疫苗瓶浪费、AEFI 和护理点可用人员。
+
+**2)** **COVIDVAC - 疫苗库存**
+
+- 每日周期
+
+- 目的报告主要库存管理数据--剂量、小瓶和其他核心物品的库存清单
+
+**3)** **COVIDVAC - 人口**
+
+- 年周期
+
+- 目的：确定接种人群的总目标或分类目标。
+
+建议将疫苗接种报告和疫苗库存数据集分配给卫生系统**可报告数据的最低级别的**组 织单位，如卫生机构。目标人口数据集可分配到地区一级，或与其他两个数据集分配到同一级别，这取决于是否有详细的人口相关信息。
+
+数字数据包通过 DHIS2 Capture App（可在 [GooglePlay 商店](https://play.google.com/store/apps/details?id=com.dhis2&hl=en) 免费下载）优化了安卓数据收集。
+
+### 3.1 预期用户{ #31-intended-users } 
+
+- 医疗机构用户：在医疗点采集并报告有关疫苗管理和浪费的关键数据。
+
+- 物流和供应管理人员：获取并报告有关疫苗和其他物品库存的关键数据。
+
+- 国家和地方卫生当局：监测和分析疫苗接种活动的进展情况，并为地区和全球报告编制报告
+
+## 4.数据集{ #4-datasets } 
+
+疫苗接种交付和库存数据集的设计属性是 COVID-19 疫苗，该属性基于所列疫苗选项的类别组合 "COVIDVAC 疫苗（属性）"。在为该数据集输入数据时，用户必须选择在给定时间段内接种的疫苗，以便开始登记所收集的数据。从分析角度看，这意味着可以按疫苗过滤分析数据集中的任何数据点。
+
+数据录入](resources/images/COVAC_AGG_1.1.0_1.png)
+
+### 4.1 COVIDVAC - 疫苗接种数据输入表{ #41-covidvac-vaccination-delivery-data-entry-form } 
+
+#### 第 1 部分：一线医护人员（HCWs）的剂量{ #section-1-doses-administered-to-front-line-health-care-workers-hcws } 
+
+剂量--卫生工作者](resources/images/COVAC_AGG_1.1.0_2.png)
+
+应根据接种剂量输入所有接种过疫苗的医护人员 (HCW) 的数据。数据可按成年程度（成人与老年人--**老年人**被定义为国家指导方针认为有风险的人口部分）、性别（男性和女性）以及是否存在基础疾病（基础疾病和无基础疾病）进行细分。数据输入表已经提供了按行和列分列的总数，作为数据正确性的额外验证。
+
+#### 第 2 部分：基本工人的剂量{ #section-2-doses-administered-to-essential-workers } 
+
+剂量--基本工人](resources/images/COVAC_AGG_1.1.0_3.png)
+
+本部分记录了为基本工作人员施用的剂量数--基本工作人员的定义因国家而异，应相应调整和定义。应根据接受的剂量输入数据。数据可按成年程度（成人与老年人--国家指导方针将老年人定义为高危人群）、性别（男性与女性）和是否存在基础疾病（基础疾病与无基础疾病）进行细分。数据输入表已经提供了按行和列分列的总数，作为数据正确性的额外验证。
+
+#### 第 3 部分："其他 "人群的剂量{ #section-3-doses-administered-to-the-other-population } 
+
+剂量 - 其他人群](resources/images/COVAC_AGG_1.1.0_4.png)
+
+本部分记录了对**"其他人群 "**所注射的剂量数，即根据当地免疫接种活动的分类和组织，不属于任何其他人群的那部分人口。该数据在不同部分之间是互斥的，也就是说，在该部分输入的数据代表了所有既未被归类为医护人员也未被归类为基本工作者的人群。数据应根据接受的剂量输入。数据可按成年（成人与老年人--老年人是指被国家指导方针视为高危人群的那部分人）、性别（男性和女性）和是否存在基础疾病（基础疾病和无基础疾病）进行细分。数据输入表已经提供了按行和列分列的总数，作为数据正确性的额外验证。
+
+#### 第 4 部分：免疫接种后的不良事件（AEFIs）{ #section-4-adverse-events-following-immunization-aefis } 
+
+![AEFI](resources/images/COVAC_AGG_1.1.0_5.png)
+
+本节按事件的严重程度收集有关 AEFI 的信息。有关 AEFI 或严重与非严重事件的更多信息，请参阅[COVID-19 疫苗：安全监测手册](https://www.who.int/vaccine_safety/committee/Module_AEFI.pdf?ua=1) 或[世卫组织全球疫苗安全](https://www.who.int/vaccine_safety/initiative/detection/AEFI/en/) 网页。
+
+#### 第 5 部分：按原因分列的废弃剂量{ #section-5-discarded-doses-by-reason } 
+
+废弃剂量](resources/images/COVAC_AGG_1.1.0_6.png)
+
+该部分的设置是为了报告有多少剂量被丢弃、原因以及这些剂量是属于开放式小瓶还是封闭式小瓶。
+
+#### 第 6 部分：PoC 的工作人员可用性{ #section-6-staff-availability-at-poc } 
+
+工作人员可用性](resources/images/COVAC_AGG_1.1.0_7.png)
+
+本节旨在简要介绍疫苗接种活动开展期间医务人员的可用情况。
+
+### 4.2 COVAX - 疫苗库存数据输入表{ #42-covax-vaccine-stock-data-entry-form } 
+
+#### 第 1 部分：疫苗库存状况{ #section-1-vaccine-stock-status } 
+
+疫苗库存状况](resources/images/COVAC_AGG_1.1.0_8.png)
+
+该部分已预先配置了可用疫苗列表。该列表必须根据疫苗可用性进行本地调整。该表的第一列是 "只读 "部分，将使用常量进行预配置，应按照[常量元数据]（#7.常量）部分的说明进行更新。根据这些常量，库存状态的每个组成部分都将根据数据集中输入的药瓶自动计算剂量数。
+
+#### 第 2 部分：其他物品的库存情况{ #section-2-stock-status-of-other-items } 
+
+库存状况 - 其他](resources/images/COVAC_AGG_1.1.0_9.png)
+
+本节提供疫苗接种活动期间所需的其他物品（如注射器、冷藏箱）管理的核心信息。期末余额将自动计算。根据常规报告周期，预测器也会根据上期报告的库存自动填入期初余额。
+
+### 4.3 COVIDVAC - 人口（年度）数据输入表{ #43-covidvac-population-annual-data-entry-form } 
+
+该数据集可以分配到地区或卫生站一级，具体取决于是否有最新的可靠人口数据。
+
+数据集的设计在人口数据可用性方面具有灵活性--每个部分的分类程度越来越高。因此，不要求各国填写所有部分。反过来，这也意味着在软件包实施后，可以根据当地可用的数据删除不必要的部分。根据所选择的部分，数据分析必须考虑不同的分母，以监测覆盖范围。
+
+#### 第 1 部分：总人口{ #section-1-total-population } 
+
+人口总数](resources/images/COVAC_AGG_1.1.0_10.png)
+
+这是可输入系统的最基本人口信息。如果人口数据非常近似，且没有任何所需的细分数据，建议各国使用第一部分。
+
+如果各国在第一部分填写了目标人口，则无需填写任何其他部分。
+
+使用的指标：COVIDVAC - 总人口和 COVIDVAC - 人口覆盖率 (%)
+
+#### 第 2 部分：目标人口总数{ #section-2-total-target-populations } 
+
+目标人口总数](resources/images/COVAC_AGG_1.1.0_11.png)
+
+本部分要求提供按优先群体类型分列的目标人群的合计总数。优先群体应根据国家疫苗接种系统在当地确定。不同总数的总和应为疫苗接种活动覆盖的总人口。同样，如果各国选择输入这些人口数据，则无需输入第 1 和第 3 部分，因此可将其从数据集中删除。
+
+使用的指标：COVIDVAC--一线医护人员总数、COVIDVAC--基本工作人员总数、COVIDVAC--其他人口总数、COVIDVAC--医护人员覆盖率（%）、COVIDVAC--基本工作人员覆盖率（%）、COVIDVAC--其他人员覆盖率（%）、COVIDVAC--总覆盖率（%）。
+
+#### 第 3 部分：分类目标人群{ #section-3-disaggregated-target-populations } 
+
+目标人群分类](resources/images/COVAC_AGG_1.1.0_12.png)
+
+这是数据集中最广泛的部分，如果目标优先群体的现有人口数据可以按成年和性别分列，则应使用该部分。如果选择第 3 部分，则无需输入第 2 和第 1 部分的数据。
+
+使用的指标：COVIDVAC - 目标为一线医护人员，COVIDVAC - 目标为基本工作者，COVIDVAC - 目标为其他人群，COVIDVAC - 目标为医护人员的覆盖率（%），COVIDVAC - 目标为基本工作者的覆盖率（%），COVIDVAC - 目标为其他人群的覆盖率（%），以及 COVIDVAC - 目标为总体人群的覆盖率。
+
+#### 第 4 部分：有潜在疾病的人{ #section-4-people-with-underlying-conditions } 
+
+有潜在疾病的人群](resources/images/COVAC_AGG_1.1.0_13.png)
+
+最后一部分适用于对受潜在疾病影响的人数有较好估计的国家。它们既可以决定输入至少患有一种基础疾病的总人数，也可以按成年和性别输入相同的数据。根据所选表格的不同，各国将能够监测 COVIDVAC - 基础疾病患者覆盖率（%）或 COVIDVAC - 基础疾病患者覆盖率（%）的具体覆盖情况。
+
+## 5.调整自定义数据输入表单{ #5-adapting-the-custom-data-entry-forms } 
+
+本软件包中的库存管理数据集包含一个自定义表单，用于提高数据录入表单的可用性。在实施人员调整本软件包时，可能需要进行编辑，以适应国家实施工作的需要和要求。对定制表格的修改主要源于国家使用的疫苗，因此需要审查 "COVIDVAC 疫苗（属性）"类别中的选项，然后对表格进行必要的调整。有关自定义表格使用和管理的更多信息，请参阅 DHIS2 用户手册：[https://docs.dhis2.org/2.33/en/user/html/dhis2_user_manual_en_full.html#manage_customform](https://docs.dhis2.org/2.33/en/user/html/dhis2_user_manual_en_full.html#manage_customform)
+
+## 6.数据元素{ #6-data-elements } 
+
+以下数据元素已创建并用于设计数据集和所有相关元数据。所有 COVIDVAC 数据元素都分配给数据元素组 "COVIDVAC - 疫苗接种"。
+
+||||
+|--- |--- |- |
+|资料集|名称|分类|
+|COVIDVAC - 疫苗接种服务|COVIDVAC - 废弃剂量|小瓶状态（打开的小瓶/关闭的小瓶）和原因（污染/部分使用/颜色变化（VVM）/过期/其他原因）|
+|COVIDVAC - 疫苗接种服务|COVIDVAC - AEFIs|严重程度（严重/非严重）|
+|COVIDVAC - 疫苗接种服务|COVIDVAC - HCW 注射第一剂|成年（成人/老年人）、性别（男性/女性）、病症（潜在病症/无潜在病症）|
+|COVIDVAC - 疫苗接种服务|COVIDVAC - HCW 注射第二剂|成年（成人/老年人）、性别（男性/女性）、病症（潜在病症/无潜在病症）|
+|COVIDVAC - 疫苗接种服务|COVIDVAC - HCW 得到加强剂量|成年（成人/老年人）、性别（男性/女性）、病症（潜在病症/无潜在病症）|
+|COVIDVAC - 疫苗接种服务|COVIDVAC - 为基本工作人员注射第一剂|成年（成人/老年人）、性别（男性/女性）、病症（潜在病症/无潜在病症）|
+|COVIDVAC - 疫苗接种服务|COVIDVAC - 给基本工人注射第二剂|成年（成人/老年人）、性别（男性/女性）、病症（潜在病症/无潜在病症）|
+|COVIDVAC - 疫苗接种服务|COVIDVAC--为基本工作人员提供加强剂量|成年（成人/老年人）、性别（男性/女性）、病症（潜在病症/无潜在病症）|
+|COVIDVAC - 疫苗接种服务|COVIDVAC - 其他人群服用第一剂|成年（成人/老年人）、性别（男性/女性）、病症（潜在病症/无潜在病症）|
+|COVIDVAC - 疫苗接种服务|COVIDVAC - 给其他人群注射第二剂|成年（成人/老年人）、性别（男性/女性）、病症（潜在病症/无潜在病症）|
+|COVIDVAC - 疫苗接种服务|COVIDVAC - 其他人群加强剂量|成年（成人/老年人）、性别（男性/女性）、病症（潜在病症/无潜在病症）|
+|COVIDVAC - 疫苗接种服务|COVIDVAC - 其他人群||
+|COVIDVAC - 疫苗接种服务|COVIDVAC - 普通人口总数||
+|COVIDVAC - 疫苗接种服务|COVIDVAC - 在 PoC 提供工作人员||
+|COVIDVAC - 疫苗接种服务|COVIDVAC - 预计将有工作人员前往 PoC||
+|COVIDVAC - 人口|COVIDVAC - 至少患有一种潜在疾病的总人数||
+|COVIDVAC - 人口|COVIDVAC - 针对至少患有一种潜在疾病的人群|成年（成人/老年人）, 性别（男性/女性）|
+|COVIDVAC - 人口|COVIDVAC - 基本工人总数||
+|COVIDVAC - 人口|COVIDVAC - 一线医护人员总数||
+|COVIDVAC - 人口|COVIDVAC--针对重要工作人员|成年（成人/老年人）, 性别（男性/女性）|
+|COVIDVAC - 人口|COVIDVAC - 针对一线医护人员|成年（成人/老年人）, 性别（男性/女性）|
+|COVIDVAC - 人口|COVIDVAC - 总人口||
+|COVIDVAC - 疫苗库存|COVIDVAC - 废弃封闭的小瓶||
+|COVIDVAC - 疫苗库存|COVIDVAC - 丢弃冷藏箱||
+|COVIDVAC - 疫苗库存|COVIDVAC - 稀释剂已丢弃||
+|COVIDVAC - 疫苗库存|COVIDVAC - 废弃稀释注射器||
+|COVIDVAC - 疫苗库存|COVIDVAC - 打开的小瓶已丢弃||
+|COVIDVAC - 疫苗库存|COVIDVAC - 丢弃安全箱||
+|COVIDVAC - 疫苗库存|COVIDVAC - 带针头的注射器 1 毫升已丢弃||
+|COVIDVAC - 疫苗库存|COVIDVAC - 疫苗接种卡被丢弃||
+|COVIDVAC - 疫苗库存|COVIDVAC - 配电冷箱||
+|COVIDVAC - 疫苗库存|COVIDVAC - 稀释剂已分发||
+|COVIDVAC - 疫苗库存|COVIDVAC - 分发稀释注射器||
+|COVIDVAC - 疫苗库存|COVIDVAC - 安全箱已分发||
+|COVIDVAC - 疫苗库存|COVIDVAC - 1 毫升分布式带针注射器||
+|COVIDVAC - 疫苗库存|COVIDVAC - 发放疫苗接种卡||
+|COVIDVAC - 疫苗库存|COVIDVAC - 稀释注射器||
+|COVIDVAC - 疫苗库存|COVIDVAC - Colx 箱||
+|COVIDVAC - 疫苗库存|COVIDVAC - 安全箱||
+|COVIDVAC - 疫苗库存|COVIDVAC - 稀释剂||
+|COVIDVAC - 疫苗库存|COVIDVAC - 1 毫升带针注射器||
+|COVIDVAC - 疫苗库存|COVIDVAC - 疫苗接种卡||
+|COVIDVAC - 疫苗库存|COVIDVAC - 疫苗瓶||
+|COVIDVAC - 疫苗库存|COVIDVAC - 已分发的小瓶||
+|COVIDVAC - 疫苗库存|COVIDVAC - 冷藏箱开口平衡||
+|COVIDVAC - 疫苗库存|COVIDVAC - 稀释剂期初余额||
+|COVIDVAC - 疫苗库存|COVIDVAC - 稀释注射器开口天平||
+|COVIDVAC - 疫苗库存|COVIDVAC - 安全箱开启平衡||
+|COVIDVAC - 疫苗库存|COVIDVAC - 带针头的注射器 1 毫升开口天平||
+|COVIDVAC - 疫苗库存|COVIDVAC - 疫苗接种卡期初余额|疫苗类型|
+|COVIDVAC - 疫苗库存|COVIDVAC - 小瓶期初余额|疫苗类型|
+|COVIDVAC - 疫苗库存|COVIDVAC - 收到冷藏箱||
+|COVIDVAC - 疫苗库存|COVIDVAC - 收到稀释剂||
+|COVIDVAC - 疫苗库存|收到 COVIDVAC - 稀释注射器||
+|COVIDVAC - 疫苗库存|收到 COVIDVAC - 安全箱||
+|COVIDVAC - 疫苗库存|COVIDVAC - 收到 1 毫升带针注射器||
+|COVIDVAC - 疫苗库存|COVIDVAC - 收到疫苗接种卡||
+|COVIDVAC - 疫苗库存|COVIDVAC - 已收到小瓶|疫苗类型|
+|COVIDVAC - 疫苗库存|COVIDVAC - 重新分配冷藏箱||
+|COVIDVAC - 疫苗库存|COVIDVAC - 稀释剂再分配||
+|COVIDVAC - 疫苗库存|COVIDVAC - 重新分配稀释注射器||
+|COVIDVAC - 疫苗库存|COVIDVAC - 重新分配安全箱||
+|COVIDVAC - 疫苗库存|COVIDVAC - 重新分配的 1 毫升带针注射器||
+|COVIDVAC - 疫苗库存|COVIDVAC - 重新分发疫苗接种卡||
+|COVIDVAC - 疫苗库存|COVIDVAC - 小瓶再分配|疫苗类型|
+|COVIDVAC - 疫苗库存|COVIDVAC - 手头的冷藏箱库存||
+|COVIDVAC - 疫苗库存|COVIDVAC - 库存稀释剂||
+|COVIDVAC - 疫苗库存|COVIDVAC - 稀释注射器库存||
+|COVIDVAC - 疫苗库存|COVIDVAC - 手头的安全箱存货||
+|COVIDVAC - 疫苗库存|COVIDVAC - 带针头的注射器 1 毫升库存||
+|COVIDVAC - 疫苗库存|COVIDVAC - 疫苗接种卡库存||
+|COVIDVAC - 疫苗库存|COVIDVAC - 小瓶库存|疫苗类型|
+|COVIDVAC - 疫苗库存|COVIDVAC - 冷藏箱缺货天数||
+|COVIDVAC - 疫苗库存|COVIDVAC - 稀释剂缺货天数||
+|COVIDVAC - 疫苗库存|COVIDVAC - 稀释注射器缺货天数||
+|COVIDVAC - 疫苗库存|COVIDVAC - 安全箱缺货日||
+|COVIDVAC - 疫苗库存|COVIDVAC - 1 毫升带针注射器缺货天数||
+|COVIDVAC - 疫苗库存|COVIDVAC - 疫苗接种卡缺货日||
+|COVIDVAC - 疫苗库存|COVIDVAC - 疫苗缺货日||
+|名称|Get translations|价值|
+|COVIDVAC--小瓶剂量（阿斯利康/AZD12222）|每瓶剂量（阿斯利康/AZD12222）|10|
+|COVIDVAC--小瓶中的剂量（阿斯利康/AZ-SKBio）|小瓶中的剂量（阿斯利康/AZ-SKBio）|10|
+|COVIDVAC - 小瓶剂量（Gamaleya/Sputnik V）|小瓶中的剂量（Gamaleya/Sputnik V）|5|
+|COVIDVAC - 小瓶剂量（强生公司）|小瓶中的剂量（强生公司）|5|
+|COVIDVAC - 小瓶剂量（Moderna/mRNA-1273）|每瓶剂量（Moderna/mRNA-1273）|10|
+|COVIDVAC--小瓶装剂量（辉瑞公司/Biontech/Comirnaty）|小瓶中的剂量（辉瑞/Biontech/Comirnaty）|5|
+|COVIDVAC - 小瓶装剂量（国药集团/科罗纳瓦克）|小瓶中的剂量（国药集团/科罗纳瓦克）|5|
+
+## 7.常数{ #7-constants } 
+
+创建以下常量是为了一次性获取每种疫苗药瓶中的剂量数。在实施时需要根据最新信息对其进行审查和更新。
+
+||||
+|--- |--- |--- |
+|名称|Get translations|价值|
+|COVIDVAC--小瓶剂量（阿斯利康/AZD12222）|每瓶剂量（阿斯利康/AZD12222）|10|
+|COVIDVAC--小瓶中的剂量（阿斯利康/AZ-SKBio）|小瓶中的剂量（阿斯利康/AZ-SKBio）|10|
+|COVIDVAC - 小瓶剂量（Gamaleya/Sputnik V）|小瓶中的剂量（Gamaleya/Sputnik V）|5|
+|COVIDVAC - 小瓶剂量（强生公司）|小瓶中的剂量（强生公司）|5|
+|COVIDVAC - 小瓶剂量（Moderna/mRNA-1273）|每瓶剂量（Moderna/mRNA-1273）|10|
+|COVIDVAC--小瓶装剂量（辉瑞公司/Biontech/Comirnaty）|小瓶中的剂量（辉瑞/Biontech/Comirnaty）|5|
+|COVIDVAC - 小瓶装剂量（国药集团/科罗纳瓦克）|小瓶中的剂量（国药集团/科罗纳瓦克）|5|
+
+## 8.指标{ #8-indicators } 
+
+根据所获取的数据，我们至少可以计算出以下指标（其中许多指标是世界卫生组织建议每月报告的指标），并将其显示在仪表板上。所有 COVIDVAC 指标都归入 "COVIDVAC - 疫苗接种 "指标组。以下是部分核心指标。
+
+||||
+|--- |--- |- |
+|指示符|分母描述|分母描述|
+|COVIDVAC - 总剂量数|所有分发的剂量|1|
+|COVIDVAC - 第 1 次用药的总次数|分发所有第一剂|1|
+|COVIDVAC - 第 2 次给药的总次数|分发所有第 2 剂|1|
+|COVIDVAC - HCW：第 1 次给药次数|向人道主义工作者分发第一剂|1|
+|COVIDVAC - HCW：注射第二剂的次数|向人道主义工作者分发第二剂|1|
+|COVIDVAC - HCW：给药总数|为高危产妇注射的所有剂量|1|
+|COVIDVAC - 其他人群：第一次用药次数|向其他人群分发所有第 1 剂|1|
+|COVIDVAC - 其他人群：第 2 次给药次数|向其他人群分发所有第 2 剂|1|
+|COVIDVAC - 其他人群：总剂量|将所有剂量分配给其他人群|1|
+|COVIDVAC - 基本工作人员：第 1 次注射剂量|向基本工作人员分发所有第 1 剂|1|
+|COVIDVAC - 基本工作人员：注射第二剂的人数|向基本工作人员分发所有第 2 剂|1|
+|COVIDVAC - 基本工作人员：总剂量|分发给基本工作人员的所有剂量|1|
+|COVIDVAC - 总辍学率（百分比）|(第一剂 - 第二剂）|第 1 剂|
+|COVIDVAC - HCW：辍学率 (%)|(第一剂 - 第二剂）|第 1 剂|
+|COVIDVAC - 基本工人：辍学率 (%)|(第一剂 - 第二剂）|第 1 剂|
+|COVIDVAC - 其他人群：辍学率 (%)|(第一剂 - 第二剂）|第 1 剂|
+|COVIDVAC - HCW：疫苗接种率 (%)|向人道主义工作者提供首批剂量|总剂量|
+|COVIDVAC - 其他人群：疫苗接种率 (%)|为其他人群注射第一剂|总剂量|
+|COVIDVAC - 基本工作者：疫苗接种率 (%)|向基本工作人员提供第一批剂量|总剂量|
+|COVIDVAC - 人口覆盖率 (%)|第一次总剂量|人口|
+|COVIDVAC - 医护人员中的覆盖率（%） - COVIDVAC - 医护人员中的覆盖率（%） - COVIDVAC|给高危产妇的第一剂|医护人员目标人群|
+|COVIDVAC--基本工作人员的覆盖率（%）。|基本工作人员的第一剂|目标基本工人群体|
+|COVIDVAC - 在其他方面的覆盖率 (%)|对他人的第一剂量|其他目标人群|
+|COVIDVAC - 总覆盖率 (%)|高危工人+重要工人+其他人员的第一剂量|目标人群： 医护人员+基本工人+其他人群|
+|COVIDVAC - 覆盖目标 HCW (%)|为高危产妇注射第一剂|针对一线医护人员|
+|COVIDVAC--覆盖目标为基本工人（%）。|为基本工作人员注射第一剂|以基本工人为目标|
+|COVIDVAC - 覆盖目标 其他 (%)|给其他人注射第一剂|其他目标|
+|COVIDVAC - 覆盖目标总人口|为高危工人+基本工人+其他人员注射第一剂疫苗|针对一线医护人员+基本工人+其他人员|
+|COVIDVAC - 有潜在疾病者的覆盖率（%）|针对患病人群的第一剂|所有有条件的目标人群|
+|COVIDVAC - 基础疾病患者的覆盖率 (%)|给有潜在疾病的人群注射第一剂|有潜在疾病的人群|
+|COVIDVAC - 针对一线医护人员|以一线医护人员为目标|1|
+|COVIDVAC--针对重要工作人员|以基本工人为目标|1|
+|COVIDVAC - 针对其他人群|针对其他人群|1|
+|COVIDVAC - 一线医护人员总数|前线医护人员总数|1|
+|COVIDVAC - 基本工人总数|基本工人总数|1|
+|COVIDVAC - 其他人口总数|其他人口总数||
+|COVIDVAC - 总人口|总人口||
+|COVIDVAC - 浪费 - 封闭小瓶 (%)|封闭式小瓶|小瓶总数|
+|COVIDVAC - 浪费 - 开封瓶 (%)|打开药瓶|小瓶总数|
+|COVIDVAC - 工作人员可用率 (%)|工作人员出席|工作人员预期|
+|COVIDVAC - 严重 AEFI|严重 AEFI|1|
+|COVIDVAC - 非严重 AEFI|非严重 AEFI|1|
+|COVIDVAC - 密闭药瓶损耗率（%） - COVIDVAC - 密闭药瓶损耗率（%） - COVIDVAC - COVIDVAC|废弃封闭的小瓶剂量|废弃剂量|
+|COVIDVAC - 期末余额|(期初余额+收款）-（分配+再分配+弃款）|1|
+|COVAC - 库存差异率 (%)|(期末余额-库存）|库存|
+
+## 9.仪表板{ #9-dashboard } 
+
+该软件包包括一个预定义的仪表板（COVIDVAC - COVID-19 疫苗接种交付），用户可以通过该仪表板一目了然地了解疫苗接种活动以及接种状况。
+
+仪表板的第一部分包括疫苗接种活动和接种人群（第一剂、接种率、覆盖率、第二剂、工作人员可用性、辍苗和 AEFI）。
+
+仪表板](resources/images/COVAC_AGG_1.1.0_14.png)
+
+仪表板的第二部分包括疫苗和其他报告项目的库存状况概览。此外，它还提供了差异率、缺货天数和疫苗使用情况等有用信息。
+
+仪表板](resources/images/COVAC_AGG_1.1.0_15.png)
+
+## 10.绘制 COVIDVAC 和 COVAC 分析指标图{ #10-mapping-of-covidvac-and-covac-indicators-for-analysis } 
+
+以下是可用于连续性分析的指标清单，以连接 1.0.0 版（COVAC）和 1.1.0 版（COVIDVAC）。
+
+||||
+|--- |--- |- |
+|1.0.0 (COVAC)|1.1.0 (covidvac)|说明和评论|
+|COVAC - 服用第一剂的人群|COVIDVAC - 第 1 次用药的总次数|COVAC IND 可添加到 COVIDVAC - 第 1 次用药累计次数图表中|
+|COVAC - 注射第二剂的人群|COVIDVAC - 第 2 次给药的总次数|COVAC IND 可添加到 COVIDAC - 第 2 次给药累计次数图表中|
+|COVAC - 给基本工作人员注射第一剂<br> COVAC - 给一线医护人员注射第一剂|COVIDVAC - 基本工人：<br> COVIDVAC - HCW：已注射的第一针剂数||
+|COVAC - 给基本工作人员注射第二剂<br> COVAC - 给一线医护人员注射第二剂|COVIDVAC - 基本工人：<br> COVIDVAC - HCW：注射第二剂的数量|COVAC IND 可作为 COVIDVAC - 按优先组别分列的第 2 次用药累计次数图表的一部分添加，也可将不同组别映射到单独的新图表中 *。|
+|COVAC - 目标人群的辍学率|COVIDVAC - 总辍学率（百分比）|COVAC ind 可作为 COVIDVAC 的一部分添加 - 辍学率随时间变化图表|
+|COVAC - 基本工作者的辍学率<br> COVAC - 一线保健工作者的辍学率|COVIDVAC - 基本工人：<br> COVIDVAC - HCW：辍学率（百分比|COVAC IND 可添加到 COVIDVAC - 按优先组别分列的不同时期辍学率图表中。*|
+|COVAC .注射第一剂的目标人群比例|COVIDVAC - 基本工作者：接种率（%）<br> COVIDVAC - 其他人群：疫苗接种率（%）<br> COVIDVAC - HCW：疫苗接种率（%） COVIDVAC - HCW：疫苗接种率（%） COVIDVAC - HCW：疫苗接种率（%） COVIDVAC - HIV|在 COVIDVAC 中，摄入量是按人群来衡量的。 <br> 针对全体人口的 COVIDVAC 连续性指标需要在分子<br> 中包含<br> （COVIDVAC - HCW 给予第 1 剂 + COVIDVAC - Essential workers 给予第 1 剂 + COVIDVAC - Others 给予第 1 剂）和（COVIDVAC - HCW 给予第 1 剂 + COVIDVAC - Essential workers 给予第 1 剂 + COVIDVAC - Others 给予第 2 剂）。COVIDVAC--HCW给予第1剂+COVIDVAC--基本工人给予第1剂+COVIDVAC--其他给予第1剂+COVIDVAC--HCW给予第2剂+COVIDVAC--基本工人给予第2剂+COVIDVAC--其他给予第2剂)作为分母*。|
+|COVAC - 现有工作人员比例|COVIDVAC - 工作人员可用率 (%)|COVAC IND 可以添加到 COVIDVAC - 工作人员可用性图表中|
+|COVAC - 严重/非严重 AEFI|COVIDVAC - 报告的严重/非严重 AEFI|如果疫苗匹配，则可将 COVAC IND 添加到 COVIDVAC - 按疫苗分类的严重 AEFI 和 COVIDVAC - 按疫苗分类的非严重 AEFI 中。否则，可创建新图表来简单映射严重和非严重 AEFI 病例数。|
+
+
+***** 请注意，在 1.1.0 版中，有基础疾病的人群不再是一个人群组。因此，由于 1.0.0 版中缺乏互斥性，可为总人口而非不同目标群体创建基础病症的连续性指标。
+
+**库存指标**几乎相同，只是前缀不同。将它们映射到 COVIDVAC 图表中，就意味着将它们添加到预定义 COVIDVAC 面板中的项目分析中。
+
+## 11.参考文献{ #11-references } 
+
+制定 COVID-19 国家部署和疫苗接种计划指南》，世界卫生组织 [https://www.who.int/publications/i/item/monitoring-covid-19-vaccination-interim-guidance](https://www.who.int/publications/i/item/monitoring-covid-19-vaccination-interim-guidance)，已更新：2021 年 3 月 3 日
+
+世界卫生组织/联合国儿童基金会联合报告程序，世界卫生组织，[https://www.who.int/immunization/monitoring_surveillance/routine/reporting/en/](https://www.who.int/immunization/monitoring_surveillance/routine/reporting/en/)最后更新2020 年 11 月 13 日
+
+COVID-19 疫苗：安全监测手册，模块：应对 COVID-19 免疫接种后的不良事件 (AEFIs)，世界卫生组织，[https://www.who.int/vaccine_safety/committee/Module_AEFI.pdf?ua=1](https://www.who.int/vaccine_safety/committee/Module_AEFI.pdf?ua=1)
+
+免疫接种后不良事件（AEFI），全球疫苗安全（GVSI），世界卫生组织，[https://www.who.int/vaccine_safety/initiative/detection/AEFI/en/](https://www.who.int/vaccine_safety/initiative/detection/AEFI/en/)
+
