@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/metadata.md"
-revision_date: '2026-02-05'
+revision_date: '2026-02-25'
 tags:
-- Develop
 - DHIS核心 主版
+- Develop
 ---
 
 # 元数据{ #webapi_metadata }
@@ -2302,6 +2302,247 @@ additional checks:             | 检索和删除项目通知模板 | ```json
 
 
 
+## 类别组合{ #category-combo } 
+
+### 合并类别组合{ #category_combo_merge }
+
+类别组合合并端点允许您将多个类别组合（源）合并为一个目标类别组合。
+
+> **注**
+>
+> 类别组合只有在以下情况下才能合并：
+>
+> 源类别组合和目标类别组合具有相同的类别<br>
+> 属于所涉类别组合的所有类别选项组合都是有效的（选项数量正确，选项成员有效）<br>
+> 所涉及的类别组合中不存在重复的类别选项组合<br>
+>
+> 这些约束条件确保只有等同的类别组合才能被合并，并有助于维护系统的完整性。
+
+> 警告
+>
+> 类别组合合并会产生重复的类别选项组合。在类别组合合并后，应立即合并这些组合，以保持系统的完整性。可以使用数据完整性检查 "category_option_combos_have_duplicates "发现重复。
+
+#### 请求{ #request } 
+
+执行类别组合合并所需的主要权限是 `F_CATEGORY_COMBO_MERGE`。
+
+####     /api/33/programs/orgUnits?programs={programIdA} 、{programIdB}
+
+通过 POST 请求合并类别组合：
+
+```
+POST /api/categoryCombos/merge
+```
+
+下表描述了 JSON 属性。
+
+表格合并有效载荷字段
+
+领域
+
+需要
+
+| The manual merge is suitable when there are resolvable conflicts or when not all the data needs to
+be moved during the merge. For example, if an attribute has different values in both tracked
+entities , the user can specify whether to keep the original value or move over the duplicate's
+value. Since the manual merge involves the user explicitly requesting to move data, there are some
+additional checks:         | 检索和删除项目通知模板 | ```json
+{
+  "object": {
+    "publicAccess": "rw------",
+    "externalAccess": false,
+    "user": {},
+    "userAccesses": [],
+    "userGroupAccesses": [
+      {
+        "id": "hj0nnsVsPLU",
+        "access": "rw------"
+      },
+      {
+        "id": "qMjBflJMOfB",
+        "access": "r-------"
+      }
+    ]
+  }
+}
+```                                                                              |
+|---------------|----------|------------------------------------------------------------------------------------|
+| 要合并的类别选项(源类别选项)的标识符数组       | ```json
+{
+    "name": "Case notification",
+    "notificationTrigger": "ENROLLMENT",
+    "subjectTemplate": "Case notification V{org_unit_name}",
+    "displaySubjectTemplate": "Case notification V{org_unit_name}",
+    "notifyUsersInHierarchyOnly": false,
+    "sendRepeatable": false,
+    "notificationRecipient": "ORGANISATION_UNIT_CONTACT",
+    "notifyParentOrganisationUnitOnly": false,
+    "displayMessageTemplate": "Case notification A{h5FuguPFF2j}",
+    "messageTemplate": "Case notification A{h5FuguPFF2j}",
+    "deliveryChannels": [
+        "EMAIL"
+    ]
+}
+```      | 要合并的类别组合（源类别组合）的标识符数组  |
+| 将来源合并为指标(目标指标)的标识符        | ```json
+{
+    "name": "Case notification",
+    "notificationTrigger": "ENROLLMENT",
+    "subjectTemplate": "Case notification V{org_unit_name}",
+    "displaySubjectTemplate": "Case notification V{org_unit_name}",
+    "notifyUsersInHierarchyOnly": false,
+    "sendRepeatable": false,
+    "notificationRecipient": "ORGANISATION_UNIT_CONTACT",
+    "notifyParentOrganisationUnitOnly": false,
+    "displayMessageTemplate": "Case notification A{h5FuguPFF2j}",
+    "messageTemplate": "Case notification A{h5FuguPFF2j}",
+    "deliveryChannels": [
+        "EMAIL"
+    ]
+}
+```      | 将来源合并为类别组合（目标类别组合）的标识符 |
+| 是否在操作后删除源类别选项。默认为假。 | Program notification template       | 是否在操作后删除源类别组合。默认为假。 |
+
+合并操作将把源类别组合合并到目标类别组合中。可以指定一个或多个源类别组合。只能指定一个目标。
+
+合并操作会将所有源类别组合元数据关联转移到目标类别组合。
+以下元数据将被更新：
+
+| 采取的行动             | 指标组                    | 类别选项组合               |
+|----------------------|-----------------------------|----------------------------|
+| The status code will be `204 No Content` if the data value was successfully saved or updated, or `409 Conflict` if there was a validation error (e.g. more than one `SHORT_NAME` for the same `locale`).             | 类别组合              | 类别选项组合             |
+| 删除来源,添加目标  | 类别组合               | 表情              |
+| Property name          | 类别组合               | 表情              |
+| 设定为目标       | 类别组合               | 表情              |
+| DataElementGroup              | 类别组合               | 表情              |
+| IndicatorGroup              | 类别组合               | 表情              |
+| IndicatorGroup              | 注册类别组合     | 表情              |
+| 以目标取代源     | 类别组合               | 表情              |
+| 以目标取代源     | 属性类别组合      | 表情              |
+| 数据审批工作流程 | 类别组合               | 表情              |
+
+
+#### 删除源
+
+错误代码
+
+描述
+
+| json(应用项目/ json) | Parameter name                                                                                                                       |
+|------------|-----------------------------------------------------------------------------------------------------------------------------------|
+| E1531      | 必须指定至少一个源 CategoryCombo                                                                               |
+| E1532      | 必须指定目标类别组合                                                                                            |
+| E1533      | 目标分类组合不能是源分类组合                                                                             |
+| 回复{ #response }       | 源/目标 CategoryCombo 不存在： `{uid}`                                                                               |
+| E1545      | 源和目标类别组合必须具有相同的类别：源 `{uid}` 具有 `{categories}`                                |
+| E1546      | CategoryOptionCombo 的 CategoryOptions 数量不正确。本应是 `{n}`，但发现 `{m}` 的 COC: `{uid}`。                     |
+| E1547      | CategoryOptionCombo 具有对 CategoryCombo 类别无效的 CategoryOptions：`{uid}`                              |
+| E1548      | 为 CategoryCombo `{uid}` 找到重复的 CategoryOptionCombo `{uid}`。请在尝试合并前修复此问题。                     |
+
+
+#### 成功响应示例如下
+##### ```json
+{
+    "httpStatus": "OK",
+    "httpStatusCode": 200,
+    "status": "OK",
+    "response": {
+        "mergeReport": {
+            "mergeErrors": [],
+            "mergeType": "IndicatorType",
+            "sourcesDeleted": [
+                "vQ0dGV9EDrw"
+            ],
+            "message": "IndicatorType merge complete"
+        }
+    }
+}
+```
+错误响应示例如下
+
+``json
+{
+    "httpStatus"："OK"、
+    "httpStatusCode"：200,
+    "status"："确定"、
+    "响应"：{
+        "mergeReport"：{
+            "mergeErrors"：[],
+            "mergeType"："CategoryCombo"、
+            "sourcesDeleted"：[
+                "FbLZS3ueWbQ"、"dPSWsKeAZNw"
+            ],
+            "消息"："类别组合合并完成。合并后会出现重复的 CategoryOptionCombos。应立即合并，以保持系统完整性。可以使用数据完整性检查 "category_option_combos_have_duplicates "发现重复。
+        }
+    }
+}
+```
+
+##### ```json
+{
+    "httpStatus": "Conflict",
+    "httpStatusCode": 409,
+    "status": "WARNING",
+    "message": "One or more errors occurred, please see full details in merge report.",
+    "response": {
+        "mergeReport": {
+            "mergeErrors": [
+                {
+                    "message": "At least one source DataElement must be specified",
+                    "errorCode": "E1530",
+                    "args": []
+                },
+                {
+                    "message": "Target DataElement does not exist: `abcdefg1221`",
+                    "errorCode": "E1533",
+                    "args": [
+                        "Target",
+                        "abcdefg1221"
+                    ]
+                }
+            ],
+            "mergeType": "DataElement",
+            "sourcesDeleted": [],
+            "message": "DataElement merge has errors"
+        }
+    }
+}
+```
+数据库约束样本错误响应:
+
+``json
+{
+    "httpStatus"："冲突"、
+    "httpStatusCode"：409,
+    "status"："WARNING"、
+    "消息"："发生了一个或多个错误，请查看合并报告中的全部详情。"、
+    "响应"：{
+        "mergeReport"：{
+            "mergeErrors"：[
+                {
+                    "message"："必须指定至少一个源 CategoryCombo"、
+                    "errorCode"："E1530",
+                    "args"：[]
+                },
+                {
+                    "message"："目标 CategoryCombo 不存在：`abcdefg1221`"、
+                    "errorCode"："E1533",
+                    "args"：[
+                        "目标"、
+                        "abcdefg1221"
+                    ]
+                }
+            ],
+            "合并类型"："CategoryCombo"、
+            "sourcesDeleted"：[],
+            "信息"："类别组合合并有错误
+        }
+    }
+}
+```
+
+
+
 ## > **注意事项**
 >
 > 合并 DataElements 时应格外小心。特别注意
@@ -2885,7 +3126,7 @@ additional checks:         | 检索和删除项目通知模板 | ```json
 
 描述
 
-| json(应用项目/ json) | 描述                                     |
+| json(应用项目/ json) | Parameter name                                     |
 |------------|-------------------------------------------------|
 | E1531      | 必须指定目标指标 |
 | E1532      | 目标指标不能是源指标              |
@@ -3744,7 +3985,7 @@ categories such as defined in the above `categoryMappings` example:
 | 数据 | 用于不同操作中的表达式。有关各操作类型中如何使用该表达式的详细说明,请参阅操作类型概述。ASSIGN 必须使用。SHOWWARNING、SHOWERROR、WARNINGONCOMPLETE、ERRORONCOMPLETE、DISPLAYTEXT、CREATEEVENT 和 DISPLAYKEYVALUEPAIR 可选。 | 强制性 |
 | 数据元素 | 用于将规则操作链接到数据元素。有关在每种操作类型中如何使用的详细说明,请参阅操作类型概述。SHOWWARNING、SHOWERROR、WARNINGONCOMPLETE、ERRORONCOMPLETE、ASSIGN 和 HIDEFIELD 的可选项。 | 强制性 |
 | 跟踪属性 | 用于将规则操作链接到跟踪实体属性(trackedEntityAttributes)。有关在每种操作类型中如何使用的详细说明,请参阅操作类型概述。SHOWWARNING、SHOWERROR 和 HIDEFIELD 的可选项。 | 强制性 |
-| 项目阶段 | 用于将规则操作链接到选项。有关在每种操作类型中如何使用的详细说明,请参阅操作类型概述。HIDEOPTION 的可选项 | 强制性 |
+| See an example payload below. | 用于将规则操作链接到选项。有关在每种操作类型中如何使用的详细说明,请参阅操作类型概述。HIDEOPTION 的可选项 | 强制性 |
 | 选项组 | 用于将规则操作链接到选项组。有关在每种操作类型中如何使用的详细说明,请参阅操作类型概述。SHOWOPTIONGROUP 和 HIDEOPTIONGROUP 必须使用。 | 强制性 |
 
 ##### 项目阶段
@@ -3871,7 +4112,7 @@ XML:
     /api/dataSets/BfMAe6Itzgt/form.json?metaData=true
 
 | 检索填充了特定时期数据值的表单,并
-XML 中的组织单位: | 描述 |
+XML 中的组织单位: | Parameter name |
 |---|---|
 | displayColumnOrder | ```bash
 curl -d @form.html "localhost/api/dataSets/BfMAe6Itzgt/form"
@@ -3972,15 +4213,15 @@ VALIDATION_RULE
 ``` || 索引 |
 | 2 | 串 | Program notification template | 串 | OptionSetUid |
 | 3 | zscore | Program notification template || 是的 |
-| 4 | 稳定的标识符。最多 11 个字符。如果未指定,将由系统生成。 | 不 | 指标{ #webapi_csv_indicators }  | 稳定的标识符。正好 11 个字母数字字符,以字母开头。如果未指定,将由系统生成。 |
+| 4 | 稳定的标识符。最多 11 个字符。如果未指定,将由系统生成。 | Program notification template | 指标{ #webapi_csv_indicators }  | 稳定的标识符。正好 11 个字母数字字符,以字母开头。如果未指定,将由系统生成。 |
 | 5 | Parameter name | Program notification template || 不 |
-| 6 | 简称 | 不 || 名称 |
-| 7 | 如果未指定,将返回姓名的前 50 个字符。最多 50 个字符。唯一。 | 不 | 不 | 自由文本描述。 |
+| 6 | 简称 | Program notification template || 名称 |
+| 7 | 如果未指定,将返回姓名的前 50 个字符。最多 50 个字符。唯一。 | Program notification template | 不 | 自由文本描述。 |
 | 8 | false &#124; true | Program notification template | 最大 230 字符。 | 域名类型 |
 | 9 | 不 | Program notification template | 数据元素的域类型,可以是聚合或跟踪。最多 16 个字符。 | 值类型 |
 | 10 | 不 | Program notification template | 串 | 聚集类型 |
-| 11 | 不 | 不 || 聚合类型,表示如何按不同维度聚合数据。最多 16 个字符。 |
-| 12 | 类别组合 | 不 | 假 | 类别组合的 UID。如果未指定,将默认为默认类别组合。 |
+| 11 | 不 | Program notification template || 聚合类型,表示如何按不同维度聚合数据。最多 16 个字符。 |
+| 12 | 类别组合 | Program notification template | 假 | 类别组合的 UID。如果未指定,将默认为默认类别组合。 |
 | 13 | 网址 | Program notification template | 串 | 零具有重要意义 |
 | 14 | 不 | Program notification template | 串 | 表示该数据元素是否存储零值。 |
 
@@ -4012,10 +4253,10 @@ VALIDATION_RULE
 }
 ``` || 表格:组织单位 CSV 格式 |
 | 2 | 串 | Program notification template | 串 | 需要 |
-| 3 | zscore | 不 || 是的 |
-| 4 | 姓名。最多 230 个字符。唯一。 | 不 | 串 | 用户标识 |
-| 5 | 稳定的标识符。最多 11 个字符。如果未指定,将由系统生成。 | 不 | 指标{ #webapi_csv_indicators }  | 稳定代码。最多 50 个字符。 |
-| 6 | Parameter name | 不 || 不 |
+| 3 | zscore | Program notification template || 是的 |
+| 4 | 姓名。最多 230 个字符。唯一。 | Program notification template | 串 | 用户标识 |
+| 5 | 稳定的标识符。最多 11 个字符。如果未指定,将由系统生成。 | Program notification template | 指标{ #webapi_csv_indicators }  | 稳定代码。最多 50 个字符。 |
+| 6 | Parameter name | Program notification template || 不 |
 | 7 | 上级组织单位的 UID。 | Program notification template | 不 | 50 名字的第一个字符 |
 | 8 | 如果未指定,将返回姓名的前 50 个字符。最多 50 个字符。唯一。 | Program notification template || 不 |
 | 9 | async | Program notification template || 不 |
@@ -4039,7 +4280,16 @@ VALIDATION_RULE
 
 | 是的 | Specific id schemes such as dataElementIdScheme or | 检索和删除项目通知模板 | 姓名。最多 230 个字符。唯一。 | Parameter name |
 |---|---|---|---|---|
-| 1 | 类型 | ```json
+| 1 | 类型 | 是的 || 表格:组织单位 CSV 格式 |
+| 2 | 串 | Program notification template | 串 | 需要 |
+| 3 | zscore | Program notification template || 是的 |
+| 4 | Parameter name | Program notification template || 不 |
+| 5 | 用户标识 | Program notification template || 码 |
+| 6 | 不 | Program notification template | 描述 | 不 |
+| 7 | 自由文本描述。 | Program notification template | 不 | 自由文本教学。 |
+| 8 | 所需值 | Program notification template | 中 | 高 |
+| 9 | Retrieve the `id` property of the returned file resource. | Program notification template | 规则类型(忽略) | 不 |
+| 10 | 验证 | ```json
 {
     "name": "Case notification",
     "notificationTrigger": "ENROLLMENT",
@@ -4055,16 +4305,7 @@ VALIDATION_RULE
         "EMAIL"
     ]
 }
-``` || 表格:组织单位 CSV 格式 |
-| 2 | 串 | Program notification template | 串 | 需要 |
-| 3 | zscore | Program notification template || 是的 |
-| 4 | Parameter name | Program notification template || 不 |
-| 5 | 用户标识 | Program notification template || 码 |
-| 6 | 不 | Program notification template | 描述 | 不 |
-| 7 | 自由文本描述。 | Program notification template | 不 | 自由文本教学。 |
-| 8 | 所需值 | Program notification template | 中 | 高 |
-| 9 | Retrieve the `id` property of the returned file resource. | Program notification template | 规则类型(忽略) | 不 |
-| 10 | 验证 | 是的 || 操作员 |
+``` || 操作员 |
 | 11 | 不 | ```json
 {
     "name": "Case notification",
@@ -4082,7 +4323,7 @@ VALIDATION_RULE
     ]
 }
 ``` || 左侧表达 |
-| 12 | 期间类型 | 不 | 月刊 | 日刊 |
+| 12 | 期间类型 | Program notification template | 月刊 | 日刊 |
 | 13 | 周刊 | ```json
 {
     "name": "Case notification",
@@ -4142,7 +4383,7 @@ VALIDATION_RULE
     ]
 }
 ``` || 基于数据元素和选项组合 UID 的数学公式。 |
-| 2 | 右侧表达描述 | 不 | 串 | 右侧缺失值策略 |
+| 2 | 右侧表达描述 | Program notification template | 串 | 右侧缺失值策略 |
 | 3 | 不 | Program notification template || 是的 |
 | 4 | never_skip | ```json
 {
@@ -4190,7 +4431,23 @@ VALIDATION_RULE
 
 | 是的 | Specific id schemes such as dataElementIdScheme or | 检索和删除项目通知模板 | 姓名。最多 230 个字符。唯一。 | Parameter name |
 |---|---|---|---|---|
-| 1 | 选项名称 | 是的 || 基于数据元素和选项组合 UID 的数学公式。 |
+| 1 | 选项名称 | ```json
+{
+    "name": "Case notification",
+    "notificationTrigger": "ENROLLMENT",
+    "subjectTemplate": "Case notification V{org_unit_name}",
+    "displaySubjectTemplate": "Case notification V{org_unit_name}",
+    "notifyUsersInHierarchyOnly": false,
+    "sendRepeatable": false,
+    "notificationRecipient": "ORGANISATION_UNIT_CONTACT",
+    "notifyParentOrganisationUnitOnly": false,
+    "displayMessageTemplate": "Case notification A{h5FuguPFF2j}",
+    "messageTemplate": "Case notification A{h5FuguPFF2j}",
+    "deliveryChannels": [
+        "EMAIL"
+    ]
+}
+``` || 基于数据元素和选项组合 UID 的数学公式。 |
 | 2 | 选项 UID | Program notification template || 右侧缺失值策略 |
 | 3 | 稳定的标识符。最多 11 个字符。如果未指定,将由系统生成。 | Program notification template || 是的 |
 | 4 | 稳定代码。最多 50 个字符。 | ```json
@@ -4312,8 +4569,24 @@ OptionGroupSetUid
 }
 ``` || 索引 |
 | 2 | 串 | Program notification template | 串 | OptionSetUid |
-| 3 | zscore | 不 || 是的 |
-| 4 | 稳定的标识符。最多 11 个字符。如果未指定,将由系统生成。 | 是的 | 指标{ #webapi_csv_indicators }  | 稳定的标识符。正好 11 个字母数字字符,以字母开头。如果未指定,将由系统生成。 |
+| 3 | zscore | Program notification template || 是的 |
+| 4 | 稳定的标识符。最多 11 个字符。如果未指定,将由系统生成。 | ```json
+{
+    "name": "Case notification",
+    "notificationTrigger": "ENROLLMENT",
+    "subjectTemplate": "Case notification V{org_unit_name}",
+    "displaySubjectTemplate": "Case notification V{org_unit_name}",
+    "notifyUsersInHierarchyOnly": false,
+    "sendRepeatable": false,
+    "notificationRecipient": "ORGANISATION_UNIT_CONTACT",
+    "notifyParentOrganisationUnitOnly": false,
+    "displayMessageTemplate": "Case notification A{h5FuguPFF2j}",
+    "messageTemplate": "Case notification A{h5FuguPFF2j}",
+    "deliveryChannels": [
+        "EMAIL"
+    ]
+}
+``` | 指标{ #webapi_csv_indicators }  | 稳定的标识符。正好 11 个字母数字字符,以字母开头。如果未指定,将由系统生成。 |
 | 5 | 最小最大数据元素 | ```json
 {
     "name": "Case notification",
@@ -4332,8 +4605,24 @@ OptionGroupSetUid
 }
 ``` || 用户标识 |
 | 6 | 值(默认为第一位) | Program notification template || 名称 |
-| 5 | 指示符 | 是的 || 用户标识 |
-| 6 | 不 | 不 || 名称 |
+| 5 | 指示符 | ```json
+{
+    "name": "Case notification",
+    "notificationTrigger": "ENROLLMENT",
+    "subjectTemplate": "Case notification V{org_unit_name}",
+    "displaySubjectTemplate": "Case notification V{org_unit_name}",
+    "notifyUsersInHierarchyOnly": false,
+    "sendRepeatable": false,
+    "notificationRecipient": "ORGANISATION_UNIT_CONTACT",
+    "notifyParentOrganisationUnitOnly": false,
+    "displayMessageTemplate": "Case notification A{h5FuguPFF2j}",
+    "messageTemplate": "Case notification A{h5FuguPFF2j}",
+    "deliveryChannels": [
+        "EMAIL"
+    ]
+}
+``` || 用户标识 |
+| 6 | 不 | Program notification template || 名称 |
 | 6 | 码 | ```json
 {
     "name": "Case notification",

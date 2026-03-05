@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/tracker.md"
-revision_date: '2026-02-23'
+revision_date: '2026-02-24'
 tags:
-- Develop
 - DHIS核心 主版
+- Develop
 ---
 
 # 跟踪器{ #webapi_tracker }
@@ -752,7 +752,7 @@ Doe
 
 See each section for request parameters.
 
-| existing tracked entity UIDs | Parameter name | Potential duplicate status | `order` | The import expects metadata identifiers to only use the chosen `idScheme`. Similarly, metadata is 
+| 允许值 | Parameter name | Potential duplicate status | `order` | The import expects metadata identifiers to only use the chosen `idScheme`. Similarly, metadata is 
 exported only using the chosen `idScheme`. If metadata lacks identifiers for the chosen `idScheme`, 
 you'll receive an error like the below. |
 |---|---|---|---|---|
@@ -898,9 +898,14 @@ skipRuleEngine
 
 Boolean
 
-`true`, `false`
+有效负载必须包括要更新对象的所有字段，即使这些字段没有被修改。
+修改。唯一的例外是集合。集合中不应更改的项目可以省略。
+省略，如 [update attribute values](#update-attribute-values) 和 [update data
+值]（#update-data-values）中所示。
 
-`false`
+> **注**
+>
+> 已删除的跟踪器对象和关系无法更新。
 
 #### 更新属性值{ #update-attribute-values } 
 
@@ -1271,7 +1276,7 @@ delete.
 
 The following deletes the events created with [this payload](#payload):
 
-| 默认值 | Parameter name | 描述 |
+| 允许值 | Parameter name | 描述 |
 | --- | --- | --- |
 | storedByDataValue | ```json
 {
@@ -1303,7 +1308,7 @@ CSV payload example
 
 Your CSV file can look like:
 
-| 默认值| Parameter name| 描述 |
+| 允许值 | Parameter name | 描述 |
 | --- | --- | --- |
 | `fields` | > **注**
 >
@@ -1485,10 +1490,9 @@ any error or warnings in the import will result in a status of type `ERROR` or `
 highest significance, followed by `WARNING` and finally `OK`. This implies that `ERROR` is reported
 as long as a single error was found during the import, regardless of how many warnings occurred.
 
-> **Note**
->
-> If the import is performed using the AtomicMode "OBJECT", where the import will import any data
-> without validation errors, the overall status will still be `ERROR` if any errors were found.
+每种类型的跟踪器对象都将被报告，每种对象都有自己的统计信息和 `objectReports`.这些
+对象报告 "将提供有关每个导入对象的详细信息，如其类型、uid 以及任何
+错误或警告报告（如适用）。
 
 #### 信息{ #message } 
 
@@ -1515,7 +1519,26 @@ encountered.
 }
 ```
 
-| 默认值 | Parameter name |
+| ```json
+{
+  "object": {
+    "publicAccess": "rw------",
+    "externalAccess": false,
+    "user": {},
+    "userAccesses": [],
+    "userGroupAccesses": [
+      {
+        "id": "hj0nnsVsPLU",
+        "access": "rw------"
+      },
+      {
+        "id": "qMjBflJMOfB",
+        "access": "r-------"
+      }
+    ]
+  }
+}
+``` | Parameter name |
 | --- | --- |
 | Statistics | The stats object provides an overview of the import operation. After an import is completed, these will be the
 actual counts displaying how many objects were created, updated, deleted and ignored. |
@@ -1542,7 +1565,10 @@ set.
 example trying to create something that already exists. Ignores should always be safe, so if
 something was ignored, it was not necessary, or it was due to the configuration of the import.
 
-Bundle report
+不同的错误场景有不同的错误代码。下表列出了
+下表列出了 Tracker API 抛出的错误代码、错误信息和一些附加说明。
+说明。错误信息中的占位符（`{0}`、`{1}`、`{2}`...）通常是 uids，除非另有说明。
+另有说明。
 
 | When the import is completed, the `bundleReport` contains all the [tracker objects](#tracker-objects) imported. | An example for `TRACKED_ENTITY`: | Parameter name |
 |:--|:----|:----|
@@ -1579,7 +1605,7 @@ otherwise specified. | Error Code |
 | 根据项目 `{1}` 配置,一个 TrackedEntity 只能注册该项目一次。看起来 TrackedEntity `{0}` 已经在该项目中注册过一次。因此不能再添加另一个注册。 | E1018 | Attribute: `{0}`, is mandatory in program `{1}` but not declared in enrollment `{2}`. |
 | 有效负载中缺少被定义为项目强制属性的属性值。确保在有效负载中提供强制属性的属性值。 | E1019 | Only Program attributes is allowed for enrollment; Non valid attribute: `{0}`. |
 | 注册有效负载中指定的属性 uid `{0}` 与项目无关。 | E1020 | Enrollment date: `{0}`, cannot be a future date. |
-| Cannot enroll into a future date unless the Program allows for it in its configuration. | E1021 | Incident date: `{0}`, cannot be a future date. |
+| Cannot enroll into a future date unless the Program allows for it in its configuration. | E1021 | OccurredAt 属性为空或有效负载中的日期格式无效。 |
 | 事件发生日期不能是未来日期,除非项目在配置中允许这样做。 | E1022 | |
 | TrackedEntity: `{0}`, must have same TrackedEntityType as Program `{1}`. | 项目被配置为接受与注册有效负载中提供的不同的 TrackedEntityType uid。 | |
 | E1023 | DisplayIncidentDate is true but property occurredAt is null. | 项目已配置 DisplayIncidentDate,但在有效负载中为空。  |
@@ -1605,7 +1631,7 @@ otherwise specified. | Error Code |
 | E1063 | TrackedEntity: `{0}`, does not exist. | |
 | Error thrown when trying to fetch a non existing TrackedEntity with uid `{0}` . This might also mean that the user does not have read access to the TrackedEntity. | E1064 | |
 | Non-unique attribute value `{0}` for attribute `{1}` | The attribute value has to be unique within the defined scope. The error indicates that the attribute value already exists for another TrackedEntity. | |
-| E1068 | Could not find TrackedEntity: `{0}`, linked to Enrollment. | The system could not find the TrackedEntity specified in the Enrollment payload. This might also mean that the user does not have read access to the TrackedEntity. |
+| E1068 | Could not find TrackedEntity: `{0}`, linked to Enrollment. | 当尝试使用已存在的 uid 创建新注册表时，会出现此错误。请确保在添加新注册表时使用新的 uid。 |
 | E1069 | Could not find Program: `{0}`, linked to Enrollment. | 系统无法找到注册有效负载中指定的项目。这也可能意味着用户没有项目的读取权限。 |
 | E1070 | Could not find OrganisationUnit: `{0}`, linked to Enrollment. | The system could not find the OrganisationUnit specified in the Enrollment payload. |
 | E1074 | FeatureType is missing. | E1075 |
@@ -1745,11 +1771,9 @@ Sharing is validated at the same time as references are looked up in the databas
 of the user access scope will be treated as if it does not exist. The import will validate any metadata
 referenced in the data.
 
-而组织单位则具有双重目的。它主要确保数据
-只有在导入用户捕获范围内的组织单位时,才能导入数据。
-范围内的组织单位导入数据。其次,组织单位还用于限制可用的项目。这
-也就是说,如果你试图为一个组织单位导入数据,而该组织单位无法访问你要导入的项目,那么导入就会失败。
-项目,则导入将无效。
+```
+GET /api/trackedEntityAttributes/Gs1ICEQTPlG/requiredValues
+```
 
 Users with the `ALL` authority will ignore the limits of sharing and organisation unit scopes when
 they import data. However, they can not import enrollments in organisation units that do not have
@@ -1767,11 +1791,9 @@ data element with a numeric type. In that case, the value is expected to be nume
 related to a mismatch between a type and a value will result in the same error code but with a
 specific message related to the type of violation.
 
-Mandatory attributes and data values are also checked on creation, on update mandatory attributes
-and data values are not required in the payload. Currently, removing mandatory attributes and data values is
-never allowed. Some use-cases require values to be sent separately, while others require all values to
-be sent as one. Programs can be configured to either validate mandatory attributes `ON_COMPLETE` or
-`ON_UPDATE_AND_INSERT` to accommodate these use-cases.
+```
+GET /api/trackedEntityAttributes/Gs1ICEQTPlG/generate?ORG_UNIT_CODE=OSLO
+```
 
 The import will validate unique attributes at the time of import. That means as long as the provided
 value is unique for the attribute in the whole system, it will pass. However, if the unique value is
@@ -1785,7 +1807,9 @@ Some examples of configurable validations:
 
 Feature type (geometry)
 
-User-assignable events
+```
+GET /api/trackedEntityAttributes/Gs1ICEQTPlG/generateAndReserve?numberToReserve=3&ORG_UNIT_CODE=OSLO
+```
 
 Allow future dates
 
@@ -1885,7 +1909,7 @@ HIDEFIELD
 
 X
 
-* SHOWWARNING
+* 程序规则操作可能会导致两种不同的结果：警告或错误。
 * X
     * SHOWERROR
     * X
@@ -2085,8 +2109,8 @@ or `events.csv` file.|跟进|
 or `events.csv` file.|跟进|
 |DateTime|Events CSV|Filter for events which were updated up until this date. Cannot be used together with `updatedWithin`.|updatedAfter|
 |DateTime|Events CSV|Filter for events which were updated up until this date. Cannot be used together with `updatedWithin`.|updatedBefore|
-|DateTime|Events CSV|Filter for events which were updated up until this date. Cannot be used together with `updatedWithin`.|updatedWithin|
-|Duration|Events CSV|Filter for events which were updated up until this date. Cannot be used together with `updatedWithin`.|enrollmentStatus|
+|DateTime|Events CSV|Filter for events which were updated up until this date. Cannot be used together with `updatedWithin`.|指定项目的注册开始日期|
+|Duration|Events CSV|Filter for events which were updated up until this date. Cannot be used together with `updatedWithin`.|指定项目的注册结束日期|
 |`{"organisationUnit": "a3kGcGDCuk7"}`|具有以下要求:|The status of the tracked entities enrollment in the given program.|enrollmentEnrolledAfter|
 |Absolute end date. Applicable only when `type` is ABSOLUTE|具有以下要求:|Start date and time for enrollment in the given program|enrollmentEnrolledBefore|
 |Enum|具有以下要求:|End date and time for enrollment in the given program|enrollmentOccurredAfter|
@@ -2506,7 +2530,7 @@ Tracked entity attribute value change logs { #webapi_tracker_attribute_change_lo
 
 串
 
-| 默认值 | Potential duplicate status | `order` |
+| 允许值 | Potential duplicate status | `order` |
 | --- | --- | --- |
 | `fields` | 具有以下要求: |Include specified sub-objects in the response |
 |`{ "periodFrom": -15, "periodTo": 15}`|JSON格式|```
@@ -2519,8 +2543,48 @@ GET /api/tracker/trackedEntities/PQfMcpmXeFE
 
 Tracked entity attribute value change logs { #webapi_tracker_attribute_change_logs }
 
-```
-GET /api/tracker/trackedEntities/{uid}/changeLogs
+``json
+{
+  "pager"：{
+    "page"：1,
+    "pageSize"：10
+  },
+  "changeLogs"：[
+    {
+      "createdBy"：{
+        "uid"："AIK2aQOJIbj"、
+        "username"："tracker"、
+        "firstName"："Tracker demo"、
+        "姓"："用户"
+      },
+      "创建时间"："2024-06-20T14:51:16.433",
+      "类型"： "UPDATE"UPDATE"、
+      "更改"：{
+        "attributeValue"：{
+          "attribute"："w75KJ2mc4zz"、
+          "previousValue"："John"、
+          "currentValue"："约翰尼"
+        }
+      }
+    },
+    {
+      "createdBy"：{
+        "uid"："AIK2aQOJIbj"、
+        "username"："tracker"、
+        "firstName"："Tracker demo"、
+        "姓"："用户"
+      },
+      "创建时间"："2024-06-20T14:50:32.966",
+      "类型"："CREATE"、
+      "更改"：{
+        "attributeValue"：{
+          "attribute"："w75KJ2mc4zz"、
+          "currentValue"："约翰"
+        }
+      }
+    }
+  ]
+}
 ```
 
 This endpoint retrieves change logs for the attributes of a specific tracked entity. It returns a list of all tracked entity attributes that have changed over time for that entity.
@@ -2587,9 +2651,7 @@ path `/{uid}`
   ]
 }
 ```|
-|The change log type can be `CREATE`, `UPDATE`, or `DELETE`. `CREATE` and `DELETE` will always hold a single value: the former shows the current value, and the latter shows the value that was deleted. `UPDATE` will hold two values: the previous and the current.|具有以下要求:|Narrows response to events matching given filters. A filter is a colon separated property or data element UID with optional operator and value pairs. Example: `filter=fazCI2ygYkq:eq:PASSIVE` with operator starts with `eq` followed by a value. A filter like `filter=fazCI2ygYkq:!null` returns all events where the given data element has a value. Characters such as `:` or `,`, as part of the filter value, need to be escaped by `/`. Likewise, `/` needs to be escaped. Multiple operators for the same data element like `filter=qrur9Dvnyt5:gt:70:lt:80` are allowed. User needs access to the data element to filter on it.|```
-GET /api/tracker/enrollments
-```|
+|orgUnitMode（见 [orgUnitModes](#webapi_tracker_orgunit_scope)|具有以下要求:|Narrows response to events matching given filters. A filter is a colon separated property or data element UID with optional operator and value pairs. Example: `filter=fazCI2ygYkq:eq:PASSIVE` with operator starts with `eq` followed by a value. A filter like `filter=fazCI2ygYkq:!null` returns all events where the given data element has a value. Characters such as `:` or `,`, as part of the filter value, need to be escaped by `/`. Likewise, `/` needs to be escaped. Multiple operators for the same data element like `filter=qrur9Dvnyt5:gt:70:lt:80` are allowed. User needs access to the data element to filter on it.|选择组织单位的模式。默认为 "选择"。|
 |`{ "periodFrom": -15, "periodTo": 15}`|具有以下要求:|```
 GET /api/tracker/events?orgUnit=DiszpKrYNg8&program=lxAQ7Zs9VYR&filter=DanTR5x0WDK:EQ:/:/,//
 ```|`GET /api/tracker/enrollments/{id}`|
@@ -2820,18 +2882,20 @@ contain the following fields: | Property |
 | 日期时间 | updatedAtClient |
 | 日期时间 | 项目阶段 |
 | 用户名 | 具有以下要求: |
-| DateTime | Events CSV |
+| 创建的数据值 | Events CSV |
 | 用户名 | Events CSV |
 
 ID
 
 #### 活动 GZIP{ #events-gzip } 
 
-身份证
+响应是文件 `events.json.gz` 或 `events.csv.gz` ，其中包含 `events.json` 或 `events.csv` 文件。
+或 `events.csv` 文件。
 
 #### 活动 ZIP{ #events-zip } 
 
-用户名
+响应文件是 `events.json.zip` 或 `events.csv.zip` 文件，其中包含 `events.json` 或 `events.csv` 文件。
+或 `events.csv` 文件。
 
 #### 事件收集端点 `GET /api/tracker/events`{ #events-collection-endpoint-get-apitrackerevents } 
 
@@ -2862,25 +2926,28 @@ or `events.csv` file.|scheduledBefore|
 or `events.csv` file.|scheduledBefore|
 |DateTime|Events CSV|Filter for events which were updated up until this date. Cannot be used together with `updatedWithin`.|updatedAfter|
 |DateTime|Events CSV|Filter for events which were updated up until this date. Cannot be used together with `updatedWithin`.|updatedBefore|
-|DateTime|Events CSV|Filter for events which were updated up until this date. Cannot be used together with `updatedWithin`.|updatedWithin|
-|Duration|Events CSV|Filter for events which were updated up until this date. Cannot be used together with `updatedWithin`.|enrollmentStatus|
+|DateTime|Events CSV|Filter for events which were updated up until this date. Cannot be used together with `updatedWithin`.|指定项目的注册开始日期|
+|Duration|Events CSV|Filter for events which were updated up until this date. Cannot be used together with `updatedWithin`.|指定项目的注册结束日期|
 |描述|DateTime|Enum|enrollmentEnrolledAfter|
-|DateTime|DateTime|Enum|enrollmentEnrolledBefore|DateTime|Enum|
-|programStageIdScheme|DateTime|Enum|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|DateTime|Enum|
-|Can either be `VALIDATE` which will report errors in the payload without making changes to the database or `COMMIT` (default) which will validate the payload and make changes to the database.|DateTime|Enum|方案|DateTime|Enum|
-|IdScheme used for all metadata references unless overridden by a metadata specific parameter. Default is `UID`.|DateTime|Enum|`UID`, `CODE`, `NAME`, `ATTRIBUTE:{uid}`|DateTime|Enum|
-|programIdScheme|DateTime|Enum|`UID`, `CODE`, `NAME`, `ATTRIBUTE:{uid}`|DateTime|Enum|
-|`UID`, `CODE`, `NAME`, `ATTRIBUTE:{uid}`|DateTime|Enum|`UID`, `CODE`, `NAME`, `ATTRIBUTE:{uid}`|DateTime|Enum|
+|DateTime|DateTime|Enum|enrollmentEnrolledBefore|
+|programStageIdScheme|DateTime|Enum|[ISO-8601](https://en.wikipedia.org/wiki/ISO_8601)|
+|Can either be `VALIDATE` which will report errors in the payload without making changes to the database or `COMMIT` (default) which will validate the payload and make changes to the database.|DateTime|Enum|方案|
+|IdScheme used for all metadata references unless overridden by a metadata specific parameter. Default is `UID`.|DateTime|Enum|`UID`, `CODE`, `NAME`, `ATTRIBUTE:{uid}`|
+|programIdScheme|DateTime|Enum|`UID`, `CODE`, `NAME`, `ATTRIBUTE:{uid}`|
+|`UID`, `CODE`, `NAME`, `ATTRIBUTE:{uid}`|DateTime|Enum|`UID`, `CODE`, `NAME`, `ATTRIBUTE:{uid}`|
 |iasc 和 idesc 是不区分大小写的排序。如果需要对多个属性进行排序,请使用逗号将它们分开。|具有以下要求:|Enum|`UID`, `CODE`, `NAME`, `ATTRIBUTE:{uid}`|
 |用于项目阶段引用的 IdScheme。默认为 `idScheme` 参数。|具有以下要求:|`UID`, `CODE`, `NAME`, `ATTRIBUTE:{uid}`|categoryOptionComboIdScheme|
 |Enum|具有以下要求:|IdScheme used for category option combo references. Defaults to the `idScheme` parameter.|
-|Enum|串|categoryOptionIdScheme|
+|Enum|具有以下要求:|categoryOptionIdScheme|
 |串|*userDataStore* 由用户、命名空间、键和关联的
 值。用户、命名空间和密钥的组合是唯一的。| |  IdScheme used for category option references. Defaults to the `idScheme` parameter.|
 |Enum|具有以下要求:| order| 串|
 |Property|具有以下要求:|events|串|
 
-Comma-separated list of event `UID`s.
+> **注**
+>
+> 如果查询既不包含 `attributeCategoryCombo` 也不包含 `attributeCategoryOptions`、
+> 服务器将返回用户具有读取权限的所有属性选项组合的事件。
 
 ##### 请求示例{ #example-requests } 
 
@@ -3036,7 +3103,7 @@ A7rzcnZTe2T,ACTIVE,eBAyeGv0exc,Zj7UnCAulEk,RiLEKhWHlxZ,DwpbWkiqjMy,2023-02-12T23
 
 ##### 事件响应示例{ #event-response-example } 
 
-The purpose of this endpoint is to retrieve one Event given its uid.
+API 支持对 `GET /api/tracker/events/{uid}` 的 CSV 和 JSON 响应。
 
 ###### JSON{ #json } 
 
@@ -3051,7 +3118,7 @@ The purpose of this endpoint is to retrieve one Event given its uid.
 
 `uid`
 
-|默认值|Potential duplicate status|`order`|
+|允许值|Potential duplicate status|`order`|
 |---|---|---|
 |`fields`|具有以下要求:|Any valid field filter (default `*,!relationships`)|
 |iasc 和 idesc 是不区分大小写的排序。如果需要对多个属性进行排序,请使用逗号将它们分开。|具有以下要求:|A query for an Event: |
@@ -3336,7 +3403,21 @@ Mode
 
 ### 描述
 
-SELECTED
+DHIS2 2.30 中引入的 "跟踪所有权 "定义了一个组织单位关联，用于
+程序组合的组织单位关联。我们称其为计划背景下被跟踪实体的所有者（或拥有者）组织单位。
+我们称其为程序上下文中 TrackedEntity 的所有者（或拥有者）组织单元。所有者组织单元
+用来决定读写与程序相关的跟踪数据时的访问权限。这一点
+访问级别](#webapi_tracker_access_level) 配置一起，决定与程序相关数据（注册）的访问行为。
+行为。如果相应的所有者组织--用户--可以访问一个 TrackedEntity 的
+如果该 TrackedEntity-Program 组合对应的所有者组织单位（OrganisationUnit
+在用户的组织单位范围内（搜索/捕获）。对于配置为
+的程序，其所有者组织单位必须在用户的搜索范围内。
+范围。对于访问级别为*PROTECTED*或*CLOSED*的程序，所有者组织单位必须在用户搜索范围内。
+组织单位必须在用户的捕获范围内，才能访问特定被跟踪实体的相应程序数据。
+的程序数据。无论程序访问级别如何，要访问
+无论程序访问级别如何，要访问跟踪器对象，所请求的组织单位必须始终在用户的搜索范围或捕获范围内。
+范围或捕获范围内。用户不能请求这两个范围之外的对象，除非他们
+使用组织单位模式 ALL 并拥有使用该模式的足够权限。
 
 Specified organisation units.
 
@@ -3710,13 +3791,13 @@ Specify whether the date period type is `ABSOLUTE`, `RELATIVE`
 
 `"type" : "RELATIVE"`
 
-period
+潜在重复的响应有效载荷如下所示。
 
 Specify if a relative system defined period is to be used. Applicable only when `type` is RELATIVE. (see [Relative Periods](#webapi_date_relative_period_values) for supported relative periods)
 
 `"period" : "THIS_WEEK"`
 
-| existing tracked entity UIDs | Parameter name | Potential duplicate status | `order` |
+| 允许值 | Parameter name | Potential duplicate status | `order` |
 |---|---|---|---|
 | Absolute end date. Applicable only when `type` is ABSOLUTE | `"startDate":"2014-05-01"` | startBuffer| Relative custom start date. Applicable only when `type` is RELATIVE |
 | 用户友好型消息,说明操作是否成功。 | To inspect individual potential duplicate records, use the following endpoint: | 不区分大小写的字符串结尾匹配 | `"startDate":+10` |
@@ -3759,7 +3840,7 @@ List of tracked entities
 
 List of string (separated by comma)
 
-| existing tracked entity UIDs | Parameter name | Potential duplicate status | `order` |
+| 允许值 | Parameter name | Potential duplicate status | `order` |
 | --- | --- | --- | --- |
 | 用户友好型消息,说明操作是否成功。 | To inspect individual potential duplicate records, use the following endpoint: | 不区分大小写的字符串结尾匹配 | To create a new potential duplicate, use this endpoint: |
 
@@ -3783,7 +3864,7 @@ User do not have access to read original or duplicate TEs
 
 TE not found
 
-| existing tracked entity UIDs | Parameter name | Potential duplicate status | `order` |
+| 允许值 | Parameter name | Potential duplicate status | `order` |
 | --- | --- | --- | --- |
 | 描述 | 类型 | 不区分大小写的字符串结尾匹配 | status |
 
@@ -4088,6 +4169,6 @@ GET /api/programNotificationInstances
 | `true`&#124;`false`      | Field Presets { #field-presets }          | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions`       | 启用或禁用分页。默认为 `true`。使用 `paging=false` 可返回不带分页的所有匹配实例。   |
 | comma separated list of fields or presets to include        | 整数         | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions`       | 启用分页时返回的页码。                                                                            |
 | 默认    | 整数         | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions`       | 启用分页时每页的条目数。                                                                         |
-| 事件       | Narrows response to tracked entities matching given filters. More on filters [here](#tracked_entity_attribute_filtering)             | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions`       | 该注册附有计划通知实例。                                                                   |
-| 注册  | Narrows response to tracked entities matching given filters. More on filters [here](#tracked_entity_attribute_filtering)             | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions`       | 该活动附有计划通知实例。                                                                   |
+| 事件       | Narrows response to tracked entities matching given filters. More on filters [here](#tracked_entity_attribute_filtering)             | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions`       | 该活动附有计划通知实例。                                                                   |
+| 注册  | Narrows response to tracked entities matching given filters. More on filters [here](#tracked_entity_attribute_filtering)             | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions`       | 该注册附有计划通知实例。                                                                   |
 
