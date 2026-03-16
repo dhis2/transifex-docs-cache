@@ -1,0 +1,262 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-android-docs/blob/main/content/capture-app/android-troubleshooting-guide.md"
+revision_date: '2025-11-17'
+tags:
+- Utilisation
+---
+
+# Guide de résolution des problèmes pour Android { #capture_app_troubleshooting_guide }
+
+## Objectif { #capture_app_troubleshooting_guide_purpose }
+
+Ce guide suit le parcours d'un utilisateur et d'un implémenteur de DHIS2 Android, depuis la configuration jusqu'à la collecte de données sur le terrain, la synchronisation et la maintenance continue. Chaque étape explique comment certains problèmes peuvent apparaître, leurs causes possibles et les solutions à l'aide des outils de l'écosystème Android de DHIS2.
+
+---
+
+## Installation et configuration { #capture_app_troubleshooting_guide_setup }
+
+Avant toute saisie de données, la configuration détermine le mode de synchronisation. Cette phase se concentre sur l'installation, la configuration et la première synchronisation.
+
+### Remarque importante concernant les appareils rootés { #capture_app_troubleshooting_guide_rooted_device }
+>
+>La version de production de l'application de saisie Android de DHIS2 ne peut pas fonctionner sur les appareils rootés. 
+Il s'agit d'une mesure de sécurité destinée à empêcher l'extraction d'informations sensibles de la base de données locale.
+>
+> Si l'utilisateur tente d'exécuter l'application de production sur un téléphone rooté, l'appareil affiche un message tel que : *« Pour des raisons de sécurité, cette version de l'application ne peut pas être utilisée sur des appareils rootés. Veuillez utiliser la version de formation ».*
+>
+>La **version de formation** de l'application *peut* fonctionner sur des appareils rootés et est recommandée uniquement à des fins de test, de débogage ou de formation, et non pour une utilisation en production.
+
+### Méchanisme de Synchronisation { #capture_app_troubleshooting_guide_sync }
+L'application de saisie Android synchronise deux flux de données distincts :
+
+**Métadonnées/Configuration**
+Les métadonnées comprennent toutes les informations structurelles et configurationnelles téléchargées depuis le serveur DHIS2 (programmes, ensembles de données, catégories, options de catégories, unités d'organisation, ensembles d'options, règles de programme, etc.). L'application Android stocke ces informations dans sa base de données locale afin que les utilisateurs puissent continuer à l'utiliser même lorsqu'ils sont hors ligne.
+
+La synchronisation des métadonnées permet de s'assurer que les appareils disposent de la dernière configuration du serveur. L'administrateur définit la fréquence à laquelle l'appareil doit vérifier les mises à jour à l'aide de l'application Web « Paramètres Android ». La synchronisation des métadonnées peut avoir lieu chaque jour, chaque semaine ou manuellement (la fréquence quotidienne est définie par défaut).
+
+Dans les prochaines versions de DHIS2, des périodes plus courtes (telles que 6 heures et 12 heures) seront disponibles, offrant ainsi aux administrateurs un contrôle plus précis. 
+
+Une synchronisation fréquente des métadonnées peut être utile lors du déploiement ou des changements de configuration, tandis qu'une synchronisation hebdomadaire réduit l'utilisation de la bande passante dans les déploiements stables.
+
+Les **données**
+Les données désignent tout ce que l'utilisateur saisit via l'application "Saisie Android" (instances d'entités suivies, inscriptions, événements et valeurs de données). L'application conserve ces données localement jusqu'à ce que leur téléchargement soit effectué avec succès. La synchronisation des données peut être programmée à des intervalles de 30 minutes, 1 heure, 6 heures, 12 heures, 1 jour, ou peut être effectuée manuellement. Le réglage optimal dépend de la qualité du réseau : synchronisations fréquentes pour les zones bénéficiant d'une connexion stable, synchronisations quotidiennes pour les régions éloignées.
+
+La première conception hors ligne de DHIS2 Android offre aux utilisateurs la possibilité de toujours travailler sans connexion. Lorsque l'accès au réseau est rétabli, les données en attente sont envoyées automatiquement ou manuellement, selon la configuration. 
+
+Pour cette raison, il est essentiel de maintenir les métadonnées à jour et de définir une portée de synchronisation appropriée afin d'éviter les conflits entre l'appareil et le serveur.
+
+### Portée de la Synchronisation et Gestion de la Taille des Fichiers { #capture_app_troubleshooting_guide_syncscope }
+
+Les administrateurs peuvent définir des paramètres de téléchargement distincts pour les programmes d'entités suivies (Tracker) et les programmes d'événements. L'application donne toujours la priorité aux configurations spécifiques au programme avant d'appliquer les paramètres globaux par défaut. Par exemple, si un appareil est configuré pour télécharger 1000 entités suivies au niveau global, mais qu'une limite spécifique de 200 est définie pour un programme, l'application compte d'abord ces 200 entités, puis les soustrait de la limite globale totale. 
+
+Les paramètres d'événement s'appliquent uniquement aux programmes de type événement. Les programmes tracker sont régis par les limites de téléchargement des entités suivies. Cela permet de s'assurer que les appareils ne dépassent pas leur capacité et que les programmes clés reçoivent toujours les données prioritaires.
+
+L'application peut également respecter une taille maximale de téléchargement de fichiers (définie dans les paramètres Android). Les fichiers dépassant cette limite ne seront pas téléchargés par l'application. Cela empêche les appareils disposant d'une mémoire insuffisante ou d'une mauvaise connexion de télécharger des fichiers très volumineux.
+
+#### Valeurs Réservées  { #capture_app_troubleshooting_guide_reserved_values }
+
+Les valeurs réservées sont des identifiants uniques pré-générés utilisés pour les attributs d'entités suivies marqués comme générés automatiquement (par exemple, les identifiants de patients ou de cas). Lorsqu'un utilisateur enregistre une nouvelle entité suivie, l'application attribue localement l'un de ces identifiants réservés, garantissant ainsi que même les enregistrements hors ligne disposent d'identifiants uniques au niveau mondial.
+
+Voici comment fonctionne le processus :
+
+- Le serveur pré-génère un ensemble d'identifiants uniques pour chaque attribut généré automatiquement (configurable dans ASWA, 500 par défaut).
+
+- Lors de la synchronisation des métadonnées/configurations, l'appareil télécharge ce pool.
+
+- Chaque fois qu'une nouvelle entité suivie est enregistrée, une valeur réservée est consommée.
+
+- Lorsque le pool est utilisé dans une certaine mesure, un nouveau lot est demandé lors de la prochaine synchronisation réussie. Ce rechargement peut également être effectué manuellement par l'utilisateur dans le menu des paramètres de l'application.
+
+### Importateur et Exportateur de tracker – Impact sur la Synchronisation { #capture_app_troubleshooting_guide_tracker_importer }
+
+Le Tracker Importer et le Tracker Exporter sont des services backend clés dans l'écosystème DHIS2 qui influencent directement la manière dont l'application "Saisie Android" télécharge les données et la quantité de données qu'elle télécharge.
+
+Le **Tracker Importer** de DHIS2 valide les téléchargements d'instances d'entités suivies, d'inscriptions, d'événements et de relations par rapport aux métadonnées du serveur (attributs obligatoires, règles du programme, propriété et partage, et capture de l'unité d'organisation) Lorsqu'un appareil se reconnecte et se synchronise, sa charge utile est soumise à l'importateur ; si la validation réussit, les données sont validées, sinon, l'importateur renvoie un résumé détaillé affiché sur l'appareil et dans l'application [Synchronisation de la résolution de programme](https://docs.dhis2.org/en/use/android-app/android-web-apps/synchronization-troubleshooting.html).
+
+Le **Tracker Exporter** détermine quelles entités suivies, inscriptions et événements suivis l'appareil peut télécharger pendant la synchronisation, en fonction des unités d'organisation de l'utilisateur, des programmes assignés et de la portée de la synchronisation Android. Si l'exporteur renvoie un résultat trop volumineux, les premières synchronisations deviennent lentes et peuvent dépasser les limites de l'appareil.
+
+L'application Android Capture a progressivement activé ces services. Utilisez cette matrice pour synchroniser les appareils avec votre serveur :
+
+|Service|État de prise en charge d'Android|
+|-|-|
+|Importateur de Tracker|Disponible à partir de DHIS2 2.38+ <br>Par défaut à partir de 2.40+ <br>Obligatoire à partir de la version 43+|
+|Exportateur de Tracker|Disponible à partir de 2.40+ <br>Par défaut à partir de 2.40+ <br>Obligatoire à partir de la version 43+|
+|||
+
+Dans les versions antérieures du serveur (2.36-2.37), le endpoint existait, mais l'application Android ne l'utilisait pas par défaut. Il s'agissait d'un choix délibéré en matière de sécurité pendant la maturation du endpoint. À partir de la version 2.40, l'importateur et l'exportateur sont tous deux le chemin standard pour la synchronisation Android, et à partir de la version 43+, ils sont obligatoires. Si votre instance est inférieure à ces seuils, testez le comportement en phase de préparation avant un déploiement à grande échelle.
+
+#### Quand utiliser le « nouveau » endpoint de Tracker Importer { #when-to-use-the-new-tracker-importer-endpoint } 
+
+*Utilisez le nouvel importateur lorsque :*
+
+*La version de votre serveur DHIS2 est 2.36 ou une version supérieure.
+* Vous gérez des téléchargements volumineux à partir d'appareils mobiles ou des scénarios principalement hors ligne.
+* Vous souhaitez améliorer les performances, obtenir de meilleurs résumés d'erreurs et bénéficier d'une architecture pérenne.
+
+*Vous pourriez rencontrer des problèmes si :*
+
+* Les métadonnées sur l'appareil sont obsolètes (la charge du client échoue donc à la validation).
+* Les requêtes d'exportation/téléchargement renvoient des charges volumineuses, ce qui entraîne des retards ou des délais d'attente lors de la synchronisation mobile.
+
+### Utilisation de la fonction de dépannage de configuration (application de formation uniquement) { #capture_app_troubleshooting_guide_config_feature }
+
+La fonction de dépannage de la configuration est un outil de diagnostic disponible uniquement dans l'application de formation DHIS2 pour Android, et non dans l'application "Production Capture". Elle est conçue pour permettre aux administrateurs et aux implémenteurs de tester et de valider les éléments de configuration tels que les règles de programme et les traductions pendant la configuration ou la formation, avant le déploiement sur le terrain. Cet outil ne nécessite pas de rôles ou d'autorités utilisateur particuliers. 
+
+#### Objectif et cas d'utilisation { #purpose-and-use-cases } 
+
+La fonction de dépannage de la configuration permet d'identifier rapidement les incohérences dans les métadonnées, évitant ainsi les erreurs de validation ou de synchronisation en production. Elle permet aux administrateurs de:
+
+* **Valider les règles de programme :** l'application exécute un validateur de règles qui vérifie toutes les règles de programme stockées localement sur l'appareil, en mettant en évidence les incohérences de configuration (références non valides, champs manquants ou dépendances circulaires).
+
+* **Tester les traductions :** l'application comprend un sélecteur de langue qui permet aux utilisateurs de basculer instantanément entre les langues d'interface disponibles. Cela permet d'identifier les champs, boutons et ensembles d'options non traduits ou mal étiquetés avant le lancement.
+
+L'intégration de cette étape de validation dans votre processus de configuration garantit la stabilité et la cohérence des déploiements en production de l'Application de Saisie, minimisant ainsi les erreurs de saisie des données sur le terrain causées par des incompatibilités de configuration.
+
+### Gestion de la Distribution et de l'Harmonisation des versions des APK { #capture_app_troubleshooting_guide_APK_distribution }
+
+La fiabilité de la synchronisation dépend également du maintien de versions cohérentes de la "Saisie Android" sur tous les appareils. La fonctionnalité [Distribution APK] (https://docs.dhis2.org/en/use/android-app/android-web-apps/apk-distribution.html)de l'application Web permet aux administrateurs d'attribuer des versions spécifiques de l'application à des groupes d'utilisateurs. 
+
+Lorsque les administrateurs téléchargent une nouvelle version de "Saisie Android", ils définissent le numéro de version, définissent éventuellement les versions minimales ou recommandées du système d'exploitation Android et attribuent l'accès à des groupes d'utilisateurs spécifiques. Chaque groupe d'utilisateurs peut avoir accès à plusieurs versions, mais chaque utilisateur ne verra que la dernière version attribuée à son groupe. Si aucun groupe n'est attribué à une version, le système utilise par défaut la dernière version pour tous les utilisateurs de l'instance.
+
+Lorsqu'une nouvelle version est téléchargée, les utilisateurs Android recevront une notification de mise à jour lors de leur prochaine connexion ou lorsqu'ils vérifieront les mises à jour dans l'application. Le message les invite à télécharger la dernière version APK directement depuis l'instance, mais la mise à jour n'est pas obligatoire. Les utilisateurs peuvent choisir d'ignorer le message et de continuer à utiliser leur version actuelle. Cette conception permet d'introduire les mises à jour progressivement, sans interrompre le travail sur le terrain ni imposer des installations pendant les activités critiques.
+
+Il est important de comprendre que la distribution APK n'impose pas les mises à jour et ne contrôle pas les appareils. Son rôle se limite à afficher les informations relatives aux mises à jour et à faciliter le téléchargement des versions directement depuis le serveur DHIS2. Les administrateurs restent responsables de la coordination des mises à jour et doivent s'assurer que les utilisateurs migrent vers la version recommandée.
+
+### Problèmes Courants Lors de la Configuration Initiale{ #capture_app_troubleshooting_guide_common_issues_setup }
+
+Au cours de la configuration initiale, la plupart des problèmes de synchronisation et de configuration proviennent d'autorisations utilisateur incompatibles ou d'un partage incomplet des métadonnées. Il est essentiel de s'assurer que la configuration est correcte avant que les utilisateurs ne commencent à saisir des données afin de garantir une synchronisation stable et une validation précise des droits de propriété.
+
+Le tableau suivant résume les problèmes de configuration les plus courants, leurs causes et la manière de les résoudre à l'aide des outils de DHIS2. Avant que les utilisateurs ne commencent à saisir des données, assurez-vous que ces vérifications de configuration ont été effectuées. La plupart des problèmes de synchronisation ou de visibilité proviennent d'un ou plusieurs de ces problèmes de configuration.
+
+|Symptôme|Cause profonde|Comment résoudre le problème|Outils / Vérifications|
+|-|-|-|-|
+|**Programmes/Ensemble de données non visibles après connexion**|L'utilisateur a saisi les unités d'organisation, mais n'a pas accès aux programmes/ensembles de données ou aux TES.|Vérifiez que le groupe d'utilisateurs dispose d'un accès « Peut saisir et afficher » à la fois au programme et au Type d'Entité Suivi. Resynchronisez la configuration après avoir modifié le partage.|Application Maintenance → Partages de programmes / Accès aux UO → Partages de TES|
+|**Étapes manquantes**|Les étapes du programme ne sont pas partagées de manière cohérente.|Vérifiez à nouveau que les étapes du programme héritent des mêmes paramètres de partage que le programme parent.|Application Maintenance |
+|**Impossible d'enregistrer de nouvelles entités suivies (aucun identifiant généré)**|Les valeurs réservées sont épuisées ou n'ont pas été téléchargées.|Augmenter le nombre de valeurs réservées. Déclencher une synchronisation de configuration.|Application Web « Paramètres Android » → Valeurs réservées|
+|**Impossible de créer une nouvelle étape ou de définir des options de période/données manquantes dans la combinaison de catégories**|La Combinaison de Catégories ou ses Options de Catégories ne sont pas partagées avec l'utilisateur, sont expirées ou sont filtrées par période ou par Unité d'Organisation.|Vérifiez le partage de toutes les Options de Catégorie liées au programme ou à l'ensemble de données. Assurez-vous que les options sont actives et valides pour L'unité d'Organisation et la période sélectionnées.|Application Maintenance → Catégorie|
+
+## Synchronisation et Résolution de problèmes : Lorsque les Données ne se Téléchargent pas { #capture_app_troubleshooting_guide_sync_errors }
+
+La synchronisation est le domaine qui suscite le plus de questions d'assistance. Une fois l'appareil reconnecté, les données collectées hors ligne sont téléchargées via Tracker Importer, qui valide chaque enregistrement en fonction de la configuration et des autorisations du serveur. Lorsque ce processus rencontre des problèmes, l'application Android Capture offre désormais un moyen amélioré et convivial de les identifier et de les résoudre.
+
+### Erreur de synchronisation lors de la navigation dans l'application Android { #capture_app_troubleshooting_guide_error_navigation }
+
+L'application Android Capture affiche les erreurs de synchronisation directement dans la boîte de dialogue de synchronisation après chaque tentative. Les erreurs sont regroupées par programme ou par ensemble de données et s'accompagnent d'un message clair qui décrit le problème rencontré. La navigation a été remaniée afin que l'utilisateur puisse appuyer sur n'importe quelle erreur répertoriée ; l'application ouvre alors automatiquement l'événement, l'enregistrement ou l'ensemble de données correspondant. À partir de là, le champ problématique est mis en évidence pour permettre une correction rapide.
+
+Une fois les données corrigées, l'utilisateur appuie sur le bouton « Actualiser » pour relancer immédiatement la synchronisation. Ce fonctionnement permet aux agents de terrain de corriger les données sans avoir à parcourir plusieurs formulaires ou étapes.
+
+Certains codes d'erreur complexes du backend sont traduits en phrases claires afin d'aider les utilisateurs à déterminer si le problème concerne les autorisations, la configuration ou la saisie des données.
+
+### Application de résolution des problèmes de synchronisation (sur le Serveur) { #capture_app_troubleshooting_guide_sync_app }
+
+Pour les administrateurs, l'[application de résolution des problèmes de synchronisation] (https://docs.dhis2.org/en/use/android-app/android-web-apps/synchronization-troubleshooting.html)de DHIS2 complète les informations visibles par les utilisateurs sur leurs appareils. Elle fournit les résultats de la validation côté serveur, en indiquant quelles données ont été rejetées, à quel moment et pour quelle raison. Grâce au filtrage par type de message, l'administrateur peut rapidement associer une erreur d'appareil au résumé d'importation correspondant. Ce niveau de traçabilité est essentiel pour déterminer si le problème provient des métadonnées, des droits de propriété ou des règles de programme.
+
+Pour l'instant, l'application de résolution des problèmes de synchronisation ne conserve que les erreurs des dernières 24 heures (elles sont supprimées pour économiser de l'espace disque). Elle est utile pour identifier et corriger les problèmes de synchronisation en cours, mais ne permet pas de consulter les erreurs antérieures.
+
+Cette période de nettoyage est définie dans les paramètres système et s'applique à toutes les tâches à exécution unique (telles que les importations de données). Il est possible de modifier cette valeur via l'API, mais cela n'est pas recommandé, car cela prolongerait la conservation des erreurs tout en augmentant l'espace de stockage nécessaire dans la base de données.
+
+### Exportation et Importation de la Base de Données Locale à des Fins d'Analyse { #capture_app_troubleshooting_guide_export_app }
+
+L'application Android Capture intègre une puissante fonction de diagnostic qui permet aux développeurs d'extraire ou de restaurer l'intégralité de la base de données locale d'un appareil. Cette fonctionnalité est utile lorsque des incohérences dans les données ou des échecs de synchronisation ne peuvent pas être résolus via les étapes habituelles de synchronisation ou de configuration.
+
+Lorsque les utilisateurs rencontrent des problèmes de synchronisation persistants, les administrateurs peuvent demander une copie de la base de données locale afin d'en examiner le contenu. Dans les paramètres de l'application, sélectionnez « Exporter la base de données ». L'application génère alors un fichier crypté qui contient toutes les métadonnées, la configuration et les données enregistrées localement. Ce fichier peut être transmis en toute sécurité à l'administrateur système ou à l'équipe d'assistance.
+
+Pour importer une base de données à des fins de vérification, ouvrez l'application Android Capture sur un autre appareil ou un téléphone de test. Sur l'écran de connexion, appuyez sur le menu à trois points situé dans le coin supérieur droit, puis sélectionnez « Importer une base de données ». Choisissez le fichier précédemment exporté. 
+
+Une fois l'importation effectuée, l'administrateur doit utiliser les mêmes identifiants que le propriétaire d'origine pour consulter les données, les programmes et la configuration stockés dans cette base de données. Ce processus permet aux équipes d'assistance de reproduire l'environnement exactement tel que l'utilisateur l'a connu et d'identifier les points où la synchronisation ou la validation a échoué.
+
+L'exportation et l'importation de bases de données locales constituent un moyen sûr et efficace de résoudre des problèmes difficiles à identifier à distance, en particulier dans le cadre de déploiements à grande échelle où les appareils fonctionnent hors ligne pendant de longues périodes.
+
+### Interprétation et Résolution des Erreurs Courantes { #capture_app_troubleshooting_guide_common_issues_sync }
+
+L'application Android mappe les modèles d'erreur de DHIS2 Tracker Importer en messages clairs. Vous trouverez ci-dessous un répertoire des erreurs les plus courantes, de la manière dont l'application les interprète actuellement, de leur signification et des mesures pratiques à prendre.
+
+| Code | Message Affiché dans l'Application | Pourquoi ce message d'erreur s'affiche-t-il ? | Comment le résoudre  |
+|:----:|:----------------------|:-----------------------------|:----------------|
+| **E1000** | Vous n'avez pas accès à %s | Vous êtes en train de créer ou de mettre à jour des données dans une unité d'organisation pour laquelle vous ne disposez pas des droits de saisie (ou ces droits vous ont été retirés après que vous ayez saisi des données hors ligne). | Si vous n'avez PAS besoin de synchroniser ces données : sur l'appareil, supprimez le ou les enregistrements locaux ou supprimez les données locales → synchronisez la configuration afin que l'application actualise les autorisations et supprime cette UO de votre champ d'application. <br><br> Si vous avez besoin de les synchroniser : restaurez temporairement l'UO de saisie de l'utilisateur et configurez le partage en écriture → laissez l'utilisateur effectuer la synchronisation avec succès → synchronisez la configuration et appliquez les nouvelles autorisations restreintes. |
+| **E1001** | Vous n'avez pas accès au type %s | Vous ne disposez pas des droits d'écriture sur le type d'entité suivi utilisé par le programme. (ou ces droits ont été supprimés après que vous ayez saisi les données hors ligne) | Vous n'avez pas besoin des données : supprimez les enregistrements en attente à l'aide de la configuration TES → Configuration de la synchronisation. <br><br> Vous avez besoin des données : accordez un accès en écriture au TES (et au programme) ou demandez à un utilisateur disposant des droits d'accès d'effectuer le téléchargement → synchronisez les données → puis rétablissez les autorisations et la configuration de synchronisation sur l'appareil. |
+| **E1002** | Le %s existe déja. (%s:%s ) | Entité suivie en double (même UID) ou conflit d'attribut unique (numéro d'identification national déjà utilisé). | Pas besoin des données : supprimer le doublon sur l'appareil → Actualiser. <br><br>Besoin des données : rechercher la TEI sur le serveur → mettre à jour la TEI existant (s'il s'agit d'un conflit d'attributs uniques, remplacer la valeur par la valeur correcte et unique) → resynchroniser les données. |
+| **E1003** | %s ne correspond pas à vos critères de recherche | Tentative d'accès à une TEI ou à un événement dans une UO hors du champ de recherche de l'utilisateur. | Cela peut se produire lorsque la TEI est transféré depuis une UO située hors du champ de recherche |
+| **E1005** | Le type %s est introuvable | Le type d'entité suivie référencé par l'appareil n'existe plus | L'enregistrement peut être supprimé : supprimez-le → synchronisez la configuration. <br><br>Si vous devez le conserver : synchronisez la configuration sur l'appareil → assurez-vous que le TES existe et qu'il est bien attribué au programme → réessayez la synchronisation des données. |
+| **E1006** | L'attribut %s n'existe pas. | La charge contient un attribut UID qui n'existe pas sur le serveur (les métadonnées ont été modifiées depuis la saisie). | Supprimer les données : supprimer/modifier les données d'attribut → Actualiser → Synchroniser la configuration. <br><br> Conserver les données : vérifier que l'attribut fait toujours partie du programme/TES → saisir à nouveau un attribut valide s'il a été remplacé → Synchroniser la configuration → resynchroniser les données. |
+| **E1007** | L'attribut ne correspond pas au type de valeur %s. (Erreur :%s ) | La valeur saisie ne correspond pas au type de valeur de l'attribut (nombre ou texte, format de date, etc.). | Ne pas conserver les données : supprimer/effacer la valeur incorrecte → Actualiser. <br><br>Conserver les données : supprimer la valeur → Synchroniser la configuration → Corriger la valeur pour qu'elle corresponde au type attendu → Resynchroniser les données. |
+| **E1008** | L'étape du programme %s ne fait référence à aucun programme. | Métadonnées corrompues : l'étape du Programme a perdu son lien vers le Programme parent. | Corrigez le lien de l'étape du programme sur le serveur (API, application d'importation/exportation) → Configuration de la synchronisation. |
+| **E1009** | Le dossier a déjà été attribué. | La même ressource de fichier a été reliée deux fois ou réutilisée de manière incorrecte. |  |
+| **E1031** | La date à laquelle l'événement 'est survenu' (OccurredAt) est manquante. | Cette erreur se produit lorsque vous essayez d'importer ou de créer un événement sans renseigner le champ « occurredAt » (date de l'événement), qui est obligatoire. | • Si cette erreur survient lors de l'importation (par exemple, via CSV ou JSON), vous devez vous assurer que chaque ligne d'événement ou objet contient une valeur « occurredAt » valide. Si ce champ est manquant ou vide, l'importation échouera. <br> • Si vous devez corriger des données existantes dans la base de données, vous pouvez utiliser des [scripts SQL](https://github.com/dhis2/dhis2-releases/blob/master/releases/2.43/migration-notes.md) pour attribuer une date par défaut ou supprimer les enregistrements incohérents. |
+| **E1032** | L'événement %s n'a pas été trouvé sur le serveur. | L'enregistrement local fait référence à un événement qui a été supprimé ou qui n'a jamais existé sur le serveur. | Supprimer manuellement l'événement |
+| **E1063** | Le %s n'a pas été trouvé sur le serveur. | L'enregistrement local fait référence à un fichier TEI qui ne se trouve pas sur le serveur (il a été supprimé ou n'a jamais été téléchargé). | Supprimer manuellement la TEI |
+| **E1064** | La valeur de l'attribut %s n'est pas unique. | La valeur de cet attribut unique est déjà utilisée par une autre TEI. |  |
+| **E1069** | Le programme lié à l'inscription n'a pas été trouvé. | L'inscription fait référence à un programme que le serveur ne possède pas (UID modifié/supprimé). |  |
+| **E1081** | L'inscription n'a pas été trouvée sur le serveur. | L'inscription locale a été supprimée sur le serveur ou n'a jamais été importée. |  |
+| **E1084** | Référence de fichier introuvable. | L'UID de la ressource du fichier n'existe pas sur le serveur (il a expiré, a été supprimé ou n'a jamais été téléchargé car la saisie s'est effectuée hors ligne). |  |
+| **E1100** | Vous n'êtes pas autorisé à supprimer le %s | Vous avez essayé de supprimer une TEI sans disposer des autorisations nécessaires (suppression en cascade). | Pour supprimer un enregistrement : attribuez temporairement l'autorisation (par exemple, F_TEI_CASCADE_DELETE) permettant d'effectuer la suppression → Synchronisez les données → Synchronisez les métadonnées. <br><br> Pour conserver l'enregistrement : utilisez la synchronisation granulaire pour synchroniser le reste des enregistrements → Supprimez les données locales → Configurez la synchronisation → Synchronisez les données pour restaurer la base de données locale. |
+| **E1103** | Vous n'êtes pas autorisé à supprimer l'inscription. | Vous avez essayé de supprimer une inscription sans disposer des autorisations nécessaires. | Pour supprimer un enregistrement : attribuez temporairement l'autorisation d'effectuer la suppression → synchronisez les métadonnées → synchronisez les données → annulez la modification → synchronisez les métadonnées. <br><br> Pour conserver l'enregistrement : utilisez la synchronisation granulaire pour synchroniser le reste des enregistrements → supprimez les données locales → configurez la synchronisation → synchronisez les données pour restaurer la base de données locale. |
+
+
+| Code | Message du Serveur | Cause probable | Action Corrective  |
+|:----:|:----------------|:--------------|:------------------|
+| **E1010–E1013** | Impossible de trouver le programme/UO/étape lié à l'événement. | Métadonnées du programme supprimées ou mal configurées. | Vérifier le programme et l'unité d'organisation liés ; réattribuer. |
+| **E1014–E1016** | Inscription à un programme sans enregistrement ou inscription active en double. | Tentative d'inscription multiple à un programme à inscription unique. | Vérifier le type de programme ; fermer l'inscription précédente. |
+| **E1050–E1057** | Dates d'événements ou options de catégorie non valides ou manquantes. | La date est hors de la plage autorisée ou la combinaison de catégories est invalide. | Ajustez les dates d'événement ou les options de catégorie. |
+| **E1068–E1070** | Entités liées manquantes pour l'inscription. | L'inscription renvoie à une TEI non existante, un programme ou une UO. | Synchroniser les métadonnées ; restaurer les entités manquantes. |
+| **E1076–E1077** | Champ obligatoire manquant ou longueur du texte trop importante. | Enfreint les contraintes d'attribut. | Veuillez remplir les champs vides ou raccourcir les valeurs textuelles. |
+| **E1082–E1083** | Événement supprimé ou utilisateur non autorisé à le modifier. | Tentative de modification d'un événement supprimé ou terminé. | Décocher comme terminé ou recréer l'événement. |
+| **E1085** | Incompatibilité du type de valeur d'attribut. | Type de données saisi incorrect. | Faire correspondre le type de valeur attendue. |
+| **E1086–E1089** | Incohérence de l'étape du programme ou absence de cette étape lors de l'inscription. | Relation incohérente entre le programme et l'étape. | Reconstruire les règles du programme et synchroniser les métadonnées. |
+| **E1090** | Attribut obligatoire non déclaré dans le type de TEI. | Incohérence des métadonnées | Ajouter un attribut au type de TEI |
+| **E1096–E1099** | Données manquantes concernant l'accès en lecture/écriture au programme ou à l'option de catégorie. | Autorisations ou partage de problèmes | Ajuster le partage; vérifier le role de la configuration |
+| **E1301–E1312** | Généré par les règles du programme — champs obligatoires ou relations manquants. | La règle masque un champ obligatoire ou une relation manquante. | Mettre à jour les règles ou les données ; relancer la synchronisation. |
+| **E4000–E4018** | Erreurs liées aux contraintes de relations ou aux doublons. | Définitions de relations non valides ou circulaires. | Vérifier les relations ; s'assurer que les TEI sont correctement reliés. |
+| **E5000–E5001** | Erreurs liées à la persistance ou à la suppression des dépendances. | L'objet ne peut pas être supprimé en raison de l'intégrité des références. | Supprimer les dépendances ; réessayer. |
+| **E9999** | N/A — placeholder. | Erreur d'importation non définie. | Consultez les journaux ou l'API de DHIS2 pour plus de détails. |
+
+
+## Outils externes utiles pour la résolution des problèmes et les tests  { #capture_app_troubleshooting_guide_common_external_tools }
+
+Cette section offre un aperçu concis des outils externes qui restent utiles pour tester, déboguer, assister les utilisateurs ou faire une démonstration de l'application Android Capture de DHIS2. 
+
+### Scrcpy { #scrcpy } 
+
+scrcpy est un outil léger et rapide qui vous permet de :
+
+- Afficher l'écran de votre appareil Android sur votre ordinateur 
+- Contrôlez l'appareil à l'aide de votre clavier et de votre souris 
+- Enregistrer l'écran (utile pour signaler des bogues) 
+- Installer des fichiers APK en les glissant et en les déposant 
+- Utiliser à la fois les connexions USB et sans fil 
+
+Il fonctionne sous **Windows, macOS et Linux** et ne nécessite **pas** de droits d'administrateur.
+
+Plus d'info: https://github.com/Genymobile/scrcpy
+
+### Autres alternatives de clonage d'écran { #other-screen-cloning-alternatives } 
+
+Si scrcpy n'est pas disponible, les outils suivants sont également couramment utilisés :
+
+- **Vysor** – interface simple, extension Chrome disponible. 
+  https://vysor.io  
+- **AirDroid** – mise en miroir sans fil, utilisable sans aucune installation sur le PC. 
+  https://www.airdroid.com  
+
+Ces outils sont utiles lors des sessions d'assistance à distance, des formations ou des démonstrations.
+
+### Utilisation d'émulateurs Android { #using-android-emulators } 
+
+Les émulateurs Android peuvent reproduire diverses configurations d'appareils, ce qui permet aux développeurs de :
+
+- Tester différentes versions du système d'exploitation Android 
+- Simuler des téléphones et des tablettes 
+- Comparer plusieurs versions de l'application Android DHIS2 
+- Reproduire les problèmes de configuration 
+
+L'option la plus courante est l'**émulateur Android Studio** :
+
+1. Ouvrez Android Studio 
+2. Allez dans **Outils → Gestionnaire d'appareils** 
+3. Téléchargez les images du système Android requises 
+4. Créez des appareils virtuels avec les caractéristiques souhaitées
+
+Plus d'info: https://developer.android.com/studio/run/managing-avds
+
+Les émulateurs sont parfaits pour les premiers tests, mais il est toujours recommandé d'utiliser des appareils physiques pour la validation finale et le signalement des bogues.
+
