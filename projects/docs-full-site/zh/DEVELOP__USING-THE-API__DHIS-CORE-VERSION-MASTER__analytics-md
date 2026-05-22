@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/analytics.md"
-revision_date: '2026-01-12'
+revision_date: '2026-03-31'
 tags:
-- Develop
 - DHIS核心 主版
+- Develop
 ---
 
 # 分析工具 { #analytics } 
@@ -758,7 +758,7 @@ inputIdScheme
 定期分析资源;不同之处在于响应包含
 原始的、非聚合的数据,适合进一步聚合
 第三方系统。 | E7228 | Fallback coordinate field is invalid |
-| E7229 | Filter on whether the current user can manage the returned users through the managed user group relationships. | 入学分析 { #webapi_enrollment_analytics }  |
+| E7229 | Filter on whether the current user can manage the returned users through the managed user group relationships. | 组织单位标识符和关键字 USER_ORGUNIT、USER_ORGUNIT_CHILDREN、USER_ORGUNIT_GRANDCHILDREN、LEVEL-<level\> 和 OU_GROUP-<group-id\> 。它可以分阶段运行，即：`A03MvHHogjR.ou`。 |
 |     /api/analytics/events | 尺寸和项目 { #webapi_event_analytics_dimensions_items }  | 事件维度包括数据元素、属性、组织单位
 和时期。聚合的事件分析资源将返回
 聚合信息,例如计数或平均值。查询分析
@@ -857,6 +857,62 @@ inputIdScheme
 | 不 | Program notification template | false &#124; true | hierarchyMeta |
 | 不 | Program notification template | ACTIVE &#124; COMPLETED &#124; SCHEDULE &#124; OVERDUE &#124; SKIPPED. Can be comma separated (*for query only*). | 项目状态 |
 
+** 在某些情况下，可以通过 `dimension` 参数请求特定字段。它们不是真正的维度，但提供了更好的灵活性。它们是
+
+#### 事件日期 (`EVENT_DATE`){ #event-date-event_date } 
+
+根据事件发生的日期进行筛选。可用作根级维度或特定阶段的范围。
+
+| 价值形式 | 描述 | 意义 |
+|---|---|---|
+| `{stageUid}.event_date:{period}` | `dimension=A03MvHHogjR.EVENT_DATE:202205`. | 阶段 "A03MvHHogjR "中的事件，事件发生日期为 2022 年 5 月。 |
+| `{stageUid}.event_date:{start}_{end}` | `dimension=A03MvHHogjR.EVENT_DATE:2022-05-01_2022-05-10` | 该阶段中事件日期在给定包含日期范围内的事件。 |
+| `event_date:{period}` | `dimension=EVENT_DATE:2022Sep`(事件日期：2022 年 9 月) | 使用财政年度过滤根级事件日期。 |
+
+#### 预定日期 (`SCHEDULED_DATE`){ #scheduled-date-scheduled_date } 
+
+根据事件的计划日期（而不是实际发生日期）进行筛选。此外，它还可以扩展到特定阶段（如 `EVENT_DATE`）。
+
+| 价值形式 | 描述 | 意义 |
+|---|---|---|
+| `scheduled_date:{period}` | dimension=SCHEDULED_DATE:202107 | 活动处于既定阶段，预定日期为 2021 年 7 月。 |
+
+#### 创建日期 (`CREATED`){ #created-date-created } 
+
+根据报名记录在系统中创建的时间进行筛选。此外，它还可以针对特定阶段（如 `EVENT_DATE`）。
+
+| 价值形式 | 描述 | 意义 |
+|---|---|---|
+| `CREATED:{period}` | dimension=CREATED:2016Sep | 自 2016 年 9 月起的财政年度内创建的注册人数。 |
+
+#### 完成日期 (`COMPLETED`){ #completed-date-completed } 
+
+根据注册被标记为完成的时间进行筛选。  此外，它还可以扩展到特定阶段（如 `EVENT_DATE`）。
+
+| 价值形式 | 描述 | 意义 |
+|---|---|---|
+| 完成：{period}` | 尺寸=COMPLETED:2022年9月 | 自 2022 年 9 月起的财政年度内完成的注册。 |
+
+#### 事件状态 (`EVENT_STATUS`){ #event-status-event_status } 
+
+根据阶段内事件的状态进行筛选。
+
+| 价值形式 | 描述 | 意义 |
+|---|---|---|
+| `{stageUid}.event_status:{status}` | `dimension=A03MvHHogjR.EVENT_STATUS:ACTIVE`. | 阶段中状态为 "ACTIVE "的事件。 |
+| `{stageUid}.event_status:{s1};{s2}` | `dimension=edqlbukwRfQ.EVENT_STATUS:COMPLETED;ACTIVE`. | 状态为 `COMPLETED` **或** `ACTIVE` 的事件（OR 逻辑）。 |
+
+有效状态值：活动"、"已完成"、"已排定"、"逾期"、"已跳过"。
+
+#### 程序状态 (`PROGRAM_STATUS`){ #program-status-program_status } 
+
+根据注册本身的状态（而不是单个事件）进行筛选。
+
+| 价值形式 | 描述 | 意义 |
+|---|---|---|
+| `program_status:{status}` | dimension=PROGRAM_STATUS:ACTIVE | 仅指具有指定计划状态的注册人数。 |
+
+有效状态值：激活"、"已完成"、"已取消"。
 
 
 不
@@ -884,7 +940,7 @@ no
 
 | eventCreatedPeriod | 检索和删除项目通知模板 | Parameter name | 用户设置 { #webapi_user_settings }  |
 |---|---|---|---|
-| 日期时间 | Program notification template | scheduledDate | no |
+| 日期时间 | Program notification template | scheduledDate | 数据元素或属性标识符。它可以是阶段范围，即：`value=stageId.dimensionid`。 |
 | Events resource only. Custom period on `scheduledDate`. See "custom date periods" section. | Program notification template | incidentDate | no |
 | Custom period on `incidentDate`. See "custom date periods" section. | Program notification template | lastUpdated | 假 |
 | Custom period on `lastUpdated`. See "custom date periods" section. | Program notification template | `DESCENDANTS`, `CHILDREN`, `SELECTED` | 查询参数 |
@@ -1544,6 +1600,21 @@ resource. A request looks like this: |
 | 不允许用户查看事件分析数据      | E7218 |
 | 未启用空间数据库支持      | E7219 |
 | 数据元素必须是值类型坐标才能用作坐标字段      | E7220 |
+| E7230      | 页眉参数不存在 |
+| E7231      | 遗产只能通过事件可视化进行更新 |
+| E7232      | E7219 |
+| E7234      | 查询过滤器对查询项目值类型无效 |
+| E7235      | 必须指定 programId 或 programStageId |
+| E7236      | 程序阶段与程序无关 |
+| E7237      | 排序必须有有效的维度和方向 |
+| E7238      | 排序维度不是列 |
+| E7239      | 空 "值的运算符无效 |
+| E7240      | 具有组织单位所有权的事件查询不支持时间字段 |
+| E7241      | 阶段参数不能与特定阶段的维度标识符一起使用 |
+| E7242      | 周期维度不能与特定阶段的日期维度（即：EVENT_DATE、SCHEDULED_DATE）一起使用 |
+| E7243      | 重复的阶段标注标识符 |
+| E7244      | 不允许在特定阶段的尺寸中设置多个阶段 |
+| E7245      | 程序阶段不属于程序 |
 
 ## 属性必须是坐标值类型,才能用作坐标域
 
@@ -1592,7 +1663,7 @@ E7222
       &ouMode=DESCENDANTS                                  | 尺寸             | Dimension id                                                                |
 |--------------------------------------------|------------------------------|--------------------------------------------------------------------------------------------|
 | 描述                    | Relationship Type `{0}` constraint requires a {1} but a {2} was found.                          | 属性                                                                        |
-| Data element identifiers must include the program stage when querying data for enrollments.      dimension=edqlbukwRfQ.vANAXwtLwcT                 | 0                            | 最后执行日期                                                                        |
+| Data element identifiers must include the program stage when querying data for enrollments.      dimension=edqlbukwRfQ.vANAXwtLwcT                 | 0                            | 属性                                                                        |
 | <id\>                 | -2                           | Attribute identifiers                                                            |
 | 句号                  | 1                            | 聚乙烯                                                                       |
 | ISO periods and relative periods, see "date and period format"                  | 3                            | 组织单位                                                                       |
@@ -1764,6 +1835,63 @@ Operator
 | 定义要返回的页码。 | Program notification template | `ouname` &#124; `programstatus` &#124; `eventstatus` &#124; `createdbydisplayname` &#124; `lastupdatedbydisplayname` &#124; `eventdate` &#124; `enrollmentdate` &#124; `incidentdate` &#124; `lastupdated` &#124; item identifier | asc |
 | 定义每页返回的元素数量。 | Program notification template | false &#124; true | coordinateOuFallback |
 | 不 | Program notification template | `ouname` &#124; `programstatus` &#124; `createdbydisplayname` &#124; `lastupdatedbydisplayname` &#124; `enrollmentdate` &#124; `incidentdate` &#124; `lastupdated` &#124; item identifier | coordinatesOnly |
+
+** 在某些情况下，可以通过 `dimension` 参数请求特定字段。它们不是真正的维度，但提供了更好的灵活性。它们是
+
+#### 事件日期 (`EVENT_DATE`){ #event-date-event_date } 
+
+根据事件发生的日期进行筛选。可用作根级维度或特定阶段的范围。
+
+| 价值形式 | 描述 | 意义 |
+|---|---|---|
+| `{stageUid}.event_date:{period}` | `dimension=A03MvHHogjR.EVENT_DATE:202205`. | 阶段 "A03MvHHogjR "中的事件，事件发生日期为 2022 年 5 月。 |
+| `{stageUid}.event_date:{start}_{end}` | `dimension=A03MvHHogjR.EVENT_DATE:2022-05-01_2022-05-10` | 该阶段中事件日期在给定包含日期范围内的事件。 |
+| `event_date:{period}` | `dimension=EVENT_DATE:2022Sep`(事件日期：2022 年 9 月) | 使用财政年度过滤根级事件日期。 |
+
+#### 预定日期 (`SCHEDULED_DATE`){ #scheduled-date-scheduled_date } 
+
+根据事件的计划日期（而不是实际发生日期）进行筛选。此外，它还可以扩展到特定阶段（如 `EVENT_DATE`）。
+
+| 价值形式 | 描述 | 意义 |
+|---|---|---|
+| `scheduled_date:{period}` | dimension=SCHEDULED_DATE:202107 | 活动处于既定阶段，预定日期为 2021 年 7 月。 |
+
+#### 创建日期 (`CREATED`){ #created-date-created } 
+
+根据报名记录在系统中创建的时间进行筛选。此外，它还可以针对特定阶段（如 `EVENT_DATE`）。
+
+| 价值形式 | 描述 | 意义 |
+|---|---|---|
+| `CREATED:{period}` | dimension=CREATED:2016Sep | 自 2016 年 9 月起的财政年度内创建的注册人数。 |
+
+#### 完成日期 (`COMPLETED`){ #completed-date-completed } 
+
+根据注册被标记为完成的时间进行筛选。  此外，它还可以扩展到特定阶段（如 `EVENT_DATE`）。
+
+| 价值形式 | 描述 | 意义 |
+|---|---|---|
+| 完成：{period}` | 尺寸=COMPLETED:2022年9月 | 自 2022 年 9 月起的财政年度内完成的注册。 |
+
+#### 事件状态 (`EVENT_STATUS`){ #event-status-event_status } 
+
+根据阶段内事件的状态进行筛选。
+
+| 价值形式 | 描述 | 意义 |
+|---|---|---|
+| `{stageUid}.event_status:{status}` | `dimension=A03MvHHogjR.EVENT_STATUS:ACTIVE`. | 阶段中状态为 "ACTIVE "的事件。 |
+| `{stageUid}.event_status:{s1};{s2}` | `dimension=edqlbukwRfQ.EVENT_STATUS:COMPLETED;ACTIVE`. | 状态为 `COMPLETED` **或** `ACTIVE` 的事件（OR 逻辑）。 |
+
+有效状态值：活动"、"已完成"、"已排定"、"逾期"、"已跳过"。
+
+#### 程序状态 (`PROGRAM_STATUS`){ #program-status-program_status } 
+
+根据注册本身的状态（而不是单个事件）进行筛选。
+
+| 价值形式 | 描述 | 意义 |
+|---|---|---|
+| `program_status:{status}` | dimension=PROGRAM_STATUS:ACTIVE | 仅指具有指定计划状态的注册人数。 |
+
+有效状态值：激活"、"已完成"、"已取消"。
 
 #### 回应格式 { #response-formats } 
 
@@ -2076,7 +2204,7 @@ Filters are in the format `filter=field:op:value&filter=field:op:value&...&filte
 - Enrollment analytics dimensions
 - **Tracked entity attributes** of *supported types* associated with the program (derived from programStageId)
 
-### 入学分析维度{ #enrollment-analytics-dimensions } 
+### 招生分析维度{ #enrollment-analytics-dimensions } 
 
 #### **Category option group sets** of type `ATTRIBUTE`
 
