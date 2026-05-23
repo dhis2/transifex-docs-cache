@@ -1,0 +1,134 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.43/src/developer/web-api/apps.md"
+revision_date: '2021-06-14'
+tags:
+- DHIS 核心 2.43 版
+- DHIS核心 主版
+---
+
+# ```
+/api/fileResources
+```
+
+## `文件资源`端点接受原始文件作为请求体。组织单位图像支持 `JPG`、`JPEG` 和 `PNG` 格式。组织单位图像的域为 `ORG_UNIT`。
+
+Please consult *File resources* in the *Metadata* section for details about the `fileResources` endpoint. 
+
+要上传图片,可以发送一个以 `ORG_UNIT` 作为域查询参数的 `POST` 请求,并将图片作为请求有效载荷。 `Content-Type` 头应与上传的文件类型相匹配。
+
+```
+POST /api/fileResources?domain=ORG_UNIT
+```
+
+### JSON 响应中的 `response` > `fileResource` 对象的 `id ` 属性将包含对文件资源标识符的引用。
+
+组织单位实体有一个 `image` 属性,指向文件资源图像。要在组织单位上设置文件资源引用,可以向组织单位发送带有 JSON 有效负载的`PATCH`请求:
+
+```
+PATCH /api/organisationUnits/{id}
+```
+
+```json
+{ 
+  "image": "{file-resource-id}" 
+}
+```
+
+Alternatively, you can use a `PUT` request with the full organisation unit payload (fields omitted for brevity):
+
+```
+PUT /api/organisationUnits/{id}
+```
+
+```json
+{
+  "id": "Rp268JB6Ne4",
+  "name": "Adonkia CHP",
+  "image": {
+    "id":  "{file-resource-iid}"
+  }
+}
+```
+
+Get image for organisation unit { #get-image-for-organisation-unit } 
+
+The organisation unit entity has an `image` object which refers to a file resource by identifier. You can get the organisation unit information from the `organisationUnits` endpoint. If set, the JSON format looks like this:
+
+### ```
+GET /api/organisationUnits/{id}
+```
+
+```json
+{
+  "id": "Rp268JB6Ne4",
+  "name": "Adonkia CHP",
+  "image": {
+    "id":  "{file-resource-id}"
+  }
+}
+```
+
+The image file resource identifier can be used to make a request to the `fileResources` endpoint to retrieve the file content:
+
+### ```
+GET /api/fileResources/{id}/data
+```
+
+`Content-Type`(内容类型)标头将反映正在检索的文件类型。
+
+应用 { #apps } 
+
+### 应用 { #webapi_apps } 
+
+`/api/apps` 端点可用于安装、删除和
+列出应用项目。应用项目密钥基于应用项目名称,但与所有
+删除了非字母数字字符,并用破折号替换了空格。
+*My app!* 将返回密钥 *My-app*。
+
+> **注意**
+>
+> 在 2.28 之前,应用密钥是从 ZIP 的名称派生的
+> 存档,不包括文件扩展名。使用旧格式的 URL
+> 仍应在 api 中返回正确的应用项目。
+
+###     / api / 33 / apps
+
+获取应用 { #webapi_get_apps } 
+
+> **注意**
+>
+> 2.28之前的app属性folderName指的是实际
+> 已安装应用项目的路径。能够在云上存储应用项目
+> 服务,folderName 的用途已更改,现在将引用应用项目
+> 键。
+
+## 您可以通过列出应用项目中的所有应用项目来读取应用项目的密钥
+资源并查找 *key* 属性。列出所有已安装的应用项目
+JSON:
+
+```bash
+curl -u user:pass -H "Accept: application/json" "http://server.com/api/33/apps"
+```
+
+您也可以简单地将Web浏览器指向资源URL:
+
+###     http://server.com/api/33/apps
+
+应用列表也可以按应用类型和名称过滤,通过附加
+URL 的一个或多个 *filter* 参数:
+
+    http://server.com/api/33/apps?filter=appType:eq:DASHBOARD_APP&filter=name:ilike:youtube
+
+应用项目名称支持 *eq* 和 *ilike* 过滤器运算符,而 *appType*
+仅支持 *eq*。
+
+安装应用 { #webapi_install_app } 
+
+### 要安装应用项目,可以发出以下命令:
+
+```bash
+curl -X POST -u user:pass -F file=@app.zip "http://server.com/api/33/apps"
+```
+
+删除应用 { #webapi_delete_app } 
+

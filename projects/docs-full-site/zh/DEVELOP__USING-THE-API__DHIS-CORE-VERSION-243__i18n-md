@@ -1,0 +1,282 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.43/src/developer/web-api/i18n.md"
+revision_date: '2026-03-12'
+tags:
+- DHIS 核心 2.43 版
+- DHIS核心 主版
+---
+
+# I18n{ #i18n } 
+
+## _BCG doses_ with code `BCG_DOSE`
+
+_Measles doses_ with code `MEASLES_DOSE` 
+
+### UI语言环境 { #ui-locales } 
+
+请注意,根组织单位是`塞拉利昂`,代码为`OU_525`。
+
+登录**目标**实例并导航至*维护*应用项目。创建三个数据元素,其中代码与前面提到的计划指标相匹配:
+
+JSON 格式的响应示例：
+
+``json
+[
+{
+"locale"："ar"、
+"languageTag"："ar"、
+"name"："العربية"、
+"displayName"：阿拉伯语", "displayName": "Arabic".
+},
+{
+"locale"："ar_EG"、
+"languageTag"："ar-EG"、
+"name"："العربية (مصر)"、
+"displayName"：阿拉伯语（埃及）", "displayName": "阿拉伯语（埃及）".
+},
+{
+"locale"："uz_UZ_Cyrl"、
+"languageTag"："uz-Cyrl-UZ"、
+"name"："ўзбекча (Кирил, Ўзбекистон)"、
+"displayName"（显示名称）：乌兹别克语（西里尔字母，乌兹别克斯坦）", "displayName": "乌兹别克语（西里尔字母，乌兹别克斯坦）".
+}
+]
+
+```
+
+locale "属性是 DHIS2 内部的地域表示法，由语言代码、国家代码和脚本代码（如适用）组成，用下划线分隔。它不应与 `languageTag` 属性相混淆，后者是本地语言的标准[IETF BCP 47 language tag](https://tools.ietf.org/html/bcp47)表示法，各组成部分用连字符分隔。name "属性是本地语言在其自身语言中的名称，而 "displayName "属性是本地语言在用户首选语言中的名称。
+
+### 数据库内容语言环境 { #database-content-locales } 
+
+您可以通过 `dbLocales` 资源，使用 GET 和 POST 请求检索和创建数据库内容的本地化。支持 XML 和 JSON 资源表示法。POST 数据需要一个参数：`country`（国家/地区）。该参数应对应有效的[ISO 3166-1 alpha-2 国家代码](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)。一个可选参数是 "语言"，应对应有效的[ISO 639-1 语言代码](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes)。第三个可选参数 "script "应对应有效的[ISO 15924 脚本代码](https://en.wikipedia.org/wiki/ISO_15924)。请注意，如果提供了 `script` 参数，则必须同时提供 `language` 参数。
+
+获取美国英语数据库本地化的请求示例：
+
+用代码`YELLOW_FEVER_DOSE`命名_黄热病剂量_
+
+创建新的加拿大法语数据库本地化请求示例：
+    POST /api/locales/dbLocales?country=CA&language=fr
+
+## In the **target** instance, create a new data set with any name, e.g. _Data exchange_, select the tree newly created data elements, and assign the data set to the root org unit _Sierra Leone_.
+
+Observe that the root org unit `Sierra Leone` has the code `OU_525`, which is equal to the source instance.
+
+Open an HTTP tool such as _Postman_ and put together the following aggregate data exchange payload in JSON.
+
+### 获取翻译 { #get-translations } 
+
+请注意,期间为`202201`或_2022 年1 月_。请注意,时间段可能需要随着时间的推移而更新。
+
+Run the POST request to create the aggregate data exchange definition. Confirm that the API response status code is 201. Note that the name of the data exchange is unique. Take a note of the ID of the newly created object by looking at `response` > `uid` in the response body.
+
+Run the newly created data exchange with a POST request (replace `{id}` with the ID of the data exchange):
+Confirm that the API response indicates that three data values were successfully imported. 
+
+在**目标**实例中,导航到*数据录入*应用项目,选择组织单位_塞拉利昂_、数据集_数据交换_和期间_2022 年 1 月_。观察交换的数据值在表单中是否可见。
+
+### 创建/更新翻译{ #createupdate-translations } 
+
+I18n
+
+语言环境 { #webapi_locales } 
+
+DHIS2 支持用户界面和数据库的翻译
+内容。
+
+UI locales
+
+``json
+{
+  "id"："fbfJHSPpUQD"、
+  "创建"："2010-02-05T10:58:43.646",
+  "名称"："ANC 1st visit"、
+  "shortName"："ANC 1st visit"、
+  "翻译"：
+  [
+    {
+      "属性"："SHORT_NAME"、
+      "locale"："en_GB"、
+      "值"："ANC 1 次就诊
+    },
+    {
+      "属性"："NAME"、
+      "locale"："fr"、
+      "值"："Soin prénatal 1"
+    },
+    {
+      "属性"："NAME"、
+      "locale"："en_GB"、
+      "值"："ANC（产前检查）第一次就诊"
+    }
+  ]
+}
+```
+
+    / api / 33 / locales / ui
+
+Database content locales
+
+You can retrieve and create locales for the database content with GET and POST requests through the `dbLocales` resource. XML and JSON resource representations are supported. To POST data, there are two required parameters: `country` and `language`. 
+
+|     /api/locales/dbLocales?country=US&language=en | Parameter name |
+|---|---|
+| displayColumnOrder | That means you can retrieve and update translations using metadata class resources such as `api/dataElements`, `api/organisationUnits`, `api/dataSets`, etc. |
+| Get translations | You can get translations for a metadata object such as DataElement by sending a GET request to `api/dataElements/{dataElementUID}` |
+| dataFilters | ```json
+{
+  "id": "fbfJHSPpUQD",
+  "href": "https://play.dhis2.org/dev/api/29/dataElements/fbfJHSPpUQD",
+  "created": "2010-02-05T10:58:43.646",
+  "name": "ANC 1st visit",
+  "shortName": "ANC 1st visit",
+  "translations": 
+  [
+    {
+      "property": "SHORT_NAME",
+      "locale": "en_GB",
+      "value": "ANC 1st visit"
+    },
+    {
+      "property": "NAME",
+      "locale": "fr",
+      "value": "Soin prénatal 1"
+    },
+    {
+      "property": "NAME",
+      "locale": "en_GB",
+      "value": "ANC 1st visit"
+    }
+  ]
+}
+``` |
+
+You can also get only the `translations` property of an object by sending a GET request to 
+`api/dataElements/{dataElementUID}/translations`
+
+```json
+{
+  "translations": 
+  [
+    {
+      "property": "SHORT_NAME",
+      "locale": "en_GB",
+      "value": "ANC 1st visit"
+    },
+    {
+      "property": "NAME",
+      "locale": "fr",
+      "value": "Soin prénatal 1"
+    },
+    {
+      "property": "NAME",
+      "locale": "en_GB",
+      "value": "ANC 1st visit"
+    }
+  ]
+}
+```
+
+| Create/Update translations | Parameter name | ```json
+{
+  "translations": 
+  [
+    {
+      "property": "SHORT_NAME",
+      "locale": "en_GB",
+      "value": "ANC 1st visit"
+    },
+    {
+      "property": "NAME",
+      "locale": "fr",
+      "value": "Soin prénatal 1"
+    },
+    {
+      "property": "DESCRIPTION",
+      "locale": "fr",
+      "value": "description in french"
+    },
+    {
+      "property": "FORM_NAME",
+      "locale": "fr",
+      "value": "name in french"
+    }
+  ]
+}
+``` |
+|---|---|---|
+| Alternatively, you can also just update the object with payload including the `translations` property. | Send PUT request to `api/dataElements/{dataElementUID}` with full object payload as below: | |
+| ```json
+{
+  "id": "fbfJHSPpUQD",
+  "created": "2010-02-05T10:58:43.646",
+  "name": "ANC 1st visit",
+  "shortName": "ANC 1st visit",
+  "translations": 
+  [
+    {
+      "property": "SHORT_NAME",
+      "locale": "en_GB",
+      "value": "ANC 1st visit"
+    },
+    {
+      "property": "NAME",
+      "locale": "fr",
+      "value": "Soin prénatal 1"
+    },
+    {
+      "property": "NAME",
+      "locale": "en_GB",
+      "value": "ANC 1st visit"
+    }
+  ]
+}
+``` | The status code will be `204 No Content` if the data value was successfully saved or updated, or `409 Conflict` if there was a validation error (e.g. more than one `SHORT_NAME` for the same `locale`). | |
+| The common properties which support translations are listed in the table below. | 不 | |
+| Property name | 描述 | |
+| 删除来源,添加目标 | dx尺寸 { #webapi_analytics_dx_dimension }  | |
+| shortName | Object short name | |
+| 对于组织单位维度,您可以指定组织 | 对于组织单位维度,您可以指定组织 | 下表列出了支持翻译的类。 |
+| Table: Class names | Class name | |
+| 删除源指标,增加目标指标 | Other translatable Properties | |
+| DataElementCategoryOption | 类别选项 | |
+| DataElementCategory | 类别 | |
+| DataElementCategoryCombo | Category combination | |
+| 数据元素 | 数据元素 | |
+| DataElementGroup | <indicator-id\> | |
+| 删除源指标,增加目标指标 | Data element group set | |
+| Attribute for metadata | 指示符 | numeratorDescription, denominatorDescription |
+| IndicatorType | Indicator type | |
+| IndicatorGroup | IndicatorGroup | IndicatorGroupSet |
+| Indicator group set | 组织单位 | 组织单位 |
+| OrganisationUnitGroup | 组织单位组 | |
+| OrganisationUnitGroupSet | Organisation unit group set | |
+| 数据集 | 资料集 | Section |
+| Data set section | 网址 | |
+| Validation rule | Validation rule | |
+| ValidationRuleGroup | Validation rule group | |
+| 项目 | 项目 | TrackedEntity |
+| 项目阶段 | 项目阶段 | TrackedEntity |
+| 跟踪实体属性 | 跟踪实体属性 | TrackedEntity |
+| 将任何源引用替换为目标引用作为排序维度 | 将任何源引用替换为目标引用作为排序维度 | Relationship type for tracked entity instances |
+| fromToName, toFromName | 选项集 | 项目规则--动作类型 |
+| 选项 | 选项 | 属性  |
+| Attribute for metadata | Attribute for metadata | Program Notification template |
+
+## subjectTemplate, messageTemplate
+
+ValidationNotificationTemplate
+
+Validation Notification template
+
+subjectTemplate, messageTemplate
+
+DataSetNotificationTemplate
+
+DataSet Notification template
+
+subjectTemplate, messageTemplate
+
+Visualization
+
+Visualization
+

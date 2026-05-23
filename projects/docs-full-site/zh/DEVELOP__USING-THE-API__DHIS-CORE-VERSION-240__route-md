@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.40/src/developer/web-api/route.md"
-revision_date: '2025-11-11'
+revision_date: '2026-04-14'
 tags:
 - DHIS 核心 2.40 版
 - DHIS核心 主版
@@ -16,9 +16,21 @@ tags:
 
 ### 所需权限{ #required-permissions } 
 
-要配置和查看路由，当前用户必须拥有 "ALL "权限，或者在用户角色中添加 "Route "权限。添加权限的方法是进入用户管理应用程序 -> 用户角色选项卡，然后在元数据权限下搜索 "路由 "一词。然后就可以将权限分配给用户的角色，并保存对角色的更新。
+要配置路由，登录的用户必须拥有 "ALL "权限，或者在用户角色中添加 "Route "权限。添加权限的方法是进入用户管理应用程序 -> 用户角色选项卡，然后在元数据权限下搜索 "路由 "一词。然后就可以将权限分配给用户的角色，并保存对角色的更新。
 
 ![](resources/images/routes/route-authorities.png)
+
+>重要提示： 创建路由后，所有 DHIS2 用户都能查看和运行路由，因此建议编辑路由的共享设置以更改默认访问权限。 
+> 
+> 从 DHIS2 40.12、41.9 和 42.5 版开始，默认行为将被更改，只有创建路由的用户和拥有 "ALL "权限的用户才能查看和运行路由。请访问 [使用身份验证和自定义权限运行路由](#running-a-route-with-authentication-and-custom-authority) 部分，了解如何允许其他用户运行路由。
+
+除权限外，只有当 URL 在 `dhis.conf` 中具有相应的 `route.remote_servers_allowed` 设置项时，才能添加或运行路由 URL，如下所示：
+
+属性
+route.remote_servers_allowed = https://server1.com/,https://server2.com/
+```
+
+route.remote_servers_allowed "是一个以逗号分隔的 URL 模式列表，默认设置为 "https://*"。DHIS2 管理员应将默认值改为限制性更强的 URL，以防止服务器端请求伪造（SSRF）攻击。虽然出于安全原因不建议这样做，但可以在 `route.remote_servers_allowed` 中添加通配符条目，这样就可以避免枚举每个允许的远程服务器：
 
 属性
 route.remote_servers_allowed = https://*.server1.com/
@@ -54,7 +66,7 @@ POST /api/routes/postman/run
 
 ### 使用验证运行路由{ #running-a-route-with-authentication } 
 
-运行路由时支持多种身份验证模式。这些验证模式会在 DHIS2 发送的路由请求中添加标头或查询参数。在使用验证模式创建路由时，DHIS2 会对敏感的标头或查询参数进行加密。这意味着无法从数据库或 Web API 中读取明文机密。以下是支持的验证模式：
+运行路由时支持多种身份验证模式。这些验证模式会在 DHIS2 发送的路由请求中添加标头或查询参数。在使用验证模式创建路由时，DHIS2 会对敏感的标头或查询参数进行加密。这意味着无法从数据库或 Web API 读取明文机密。以下是支持的验证模式：
 
 * http-basic`：在路由请求中添加一个 _Authorization_ 标头，用于 HTTP 基本访问身份验证。下面是创建配置了 `http-basic` 身份验证的路由的示例：
 
@@ -183,7 +195,7 @@ POST /api/routes/postman/run
 }
 ```
 
-发送到 `/api/routes`后，您就可以使用路由了，您可以使用返回的 ID 运行路由，也可以使用代码。请注意，子路径 `/get` 和 `/post` 已在下面请求的 URL 中传递，这将分别触发对 `https://postman-echo.com/get` 和 `https://postman-echo.com/post` 的请求。
+将其发送至 `/api/routes`后，您就可以使用路由了，可以使用返回的 ID 运行路由，也可以使用代码。请注意，下面请求的 URL 中传递了子路径 `/get` 和 `/post`，这将分别触发对 `https://postman-echo.com/get` 和 `https://postman-echo.com/post` 的请求。
 
 ```
 GET /api/routes/{id}/run/get

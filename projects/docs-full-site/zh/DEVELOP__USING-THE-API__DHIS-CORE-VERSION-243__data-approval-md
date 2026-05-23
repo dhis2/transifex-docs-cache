@@ -1,0 +1,343 @@
+---
+edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.43/src/developer/web-api/data-approval.md"
+revision_date: '2022-02-21'
+tags:
+- DHIS 核心 2.43 版
+- DHIS核心 主版
+---
+
+# 数据审批 { #data-approval } 
+
+## ds
+
+是的
+
+Data set identifier
+
+聚乙烯
+
+* 是的
+* 期间标识符
+* 欧
+* 是的
+
+### Organisation unit identifier
+
+cc
+
+No (must combine with cp)
+
+
+
+false &#124; true
+
+| eventCreatedPeriod | 检索和删除项目通知模板 | Parameter name |
+|---|---|---|
+| 数 | ```json
+{
+    "name": "Case notification",
+    "notificationTrigger": "ENROLLMENT",
+    "subjectTemplate": "Case notification V{org_unit_name}",
+    "displaySubjectTemplate": "Case notification V{org_unit_name}",
+    "notifyUsersInHierarchyOnly": false,
+    "sendRepeatable": false,
+    "notificationRecipient": "ORGANISATION_UNIT_CONTACT",
+    "notifyParentOrganisationUnitOnly": false,
+    "displayMessageTemplate": "Case notification A{h5FuguPFF2j}",
+    "messageTemplate": "Case notification A{h5FuguPFF2j}",
+    "deliveryChannels": [
+        "EMAIL"
+    ]
+}
+``` | Whether registration applies to sub units |
+| E7228 | ```json
+{
+    "name": "Case notification",
+    "notificationTrigger": "ENROLLMENT",
+    "subjectTemplate": "Case notification V{org_unit_name}",
+    "displaySubjectTemplate": "Case notification V{org_unit_name}",
+    "notifyUsersInHierarchyOnly": false,
+    "sendRepeatable": false,
+    "notificationRecipient": "ORGANISATION_UNIT_CONTACT",
+    "notifyParentOrganisationUnitOnly": false,
+    "displayMessageTemplate": "Case notification A{h5FuguPFF2j}",
+    "messageTemplate": "Case notification A{h5FuguPFF2j}",
+    "deliveryChannels": [
+        "EMAIL"
+    ]
+}
+``` | 必须是至少一个期间或开始日期和结束日期 |
+| Filter on whether the current user can manage the returned users through the managed user group relationships. | ```json
+{
+    "name": "Case notification",
+    "notificationTrigger": "ENROLLMENT",
+    "subjectTemplate": "Case notification V{org_unit_name}",
+    "displaySubjectTemplate": "Case notification V{org_unit_name}",
+    "notifyUsersInHierarchyOnly": false,
+    "sendRepeatable": false,
+    "notificationRecipient": "ORGANISATION_UNIT_CONTACT",
+    "notifyParentOrganisationUnitOnly": false,
+    "displayMessageTemplate": "Case notification A{h5FuguPFF2j}",
+    "messageTemplate": "Case notification A{h5FuguPFF2j}",
+    "deliveryChannels": [
+        "EMAIL"
+    ]
+}
+``` |     / api / 33 / system / taskSummaries / {task-category-id} |
+| 可选类别组合 | Program notification template | 状态取决于数据是否被批准用于属性 |
+
+获取批准状态 { #webapi_data_approval_get_status } 
+
+要获取数据集的批准信息,您可以发出GET请求:
+
+    / api / dataApprovals?wf = rIUL3hYOjJc&pe = 201801&ou = YuQRtpLP10I
+
+Table: Data approval query parameters
+
+查询参数
+
+| 需要 | Parameter name |
+|---|---|
+| wf        | 是的 |
+| 数据批准工作流标识符      | 聚乙烯 |
+| 是的         | 期间标识符 |
+| 欧       | 是的 |
+| 对于与您可能需要的类别组合关联的数据集
+获取单个属性选项组合的数据批准记录
+从具有 GET 请求的以下资源:             | 冠捷 |
+| 不        | 属性选项组合标识符 |
+| > **注意**
+>
+> 为了向后兼容,在此和其他数据批准请求中,可能会为数据集提供参数`ds`而不是`wf`,如下所述。如果给出了数据集,则将使用与该数据集关联的工作流。        | 这将产生类似于以下的响应: |
+| ```json
+{
+  "mayApprove": false,
+  "mayUnapprove": false,
+  "mayAccept": false,
+  "mayUnaccept": false,
+  "state": "APPROVED_HERE",
+  "approvedBy": "User A",
+  "approvedAt": "2022-01-13T12:56:07.005",
+  "acceptedBy": "User A",
+  "acceptedAt": "2022-01-13T12:56:07.005"
+}
+```        | 返回的参数是: |
+| Table: Data approval returned parameters        | 返回参数 |
+
+
+描述
+
+| mayApprove | Parameter name |
+|---|---|
+| mayUnapprove | Whether the current user may unapprove this data selection. |
+| mayAccept | Whether the current user may accept this data selection. |
+| mayUnaccept | Whether the current user may unaccept this data selection. |
+| 州 | One of the data approval states from the table below. |
+| approvedBy | If the selection is approved, and if present (not always needed), the user's name who made this approval. |
+| approvedAt | If the selection is approved, and if present (not always needed), the date and time at which the highest level of approval was created. |
+| acceptedBy | If the selection is approved, and if present (not always needed), the user's name who made the last update. |
+| acceptedAt | If the selection is approved, and if present (not always needed), the date and time at which the highest level of approval was last updated. |
+
+Table: Data approval states
+
+  - State
+    描述
+    UNAPPROVABLE
+
+  - Data approval does not apply to this selection. (Data is neither approved nor unapproved.)
+    UNAPPROVED_WAITING
+    Data could be approved for this selection, but is waiting for some lower-level approval before it is ready to be approved.
+    未经批准_其他地方
+
+  - Data is unapproved, and is waiting for approval somewhere else (not approvable here.)
+    UNAPPROVED_READY
+    Data is unapproved, and is ready to be approved for this selection.
+    APPROVED_HERE
+
+Data is approved, and was approved here (so could be unapproved here.)
+
+APPROVED_ELSEWHERE
+
+### 批量获取批准状态 { #bulk-get-approval-status } 
+
+ACCEPTED_HERE
+
+Data is approved and accepted here (so could be unapproved here.)
+
+ACCEPTED_ELSEWHERE
+
+Data is approved and accepted, but elsewhere.
+
+注意查询数据审批状态时,可以指定
+查询参数的任意组合。您指定的组合
+不需要描述数据被批准的地方
+审批级别。例如:
+
+组织单位可能不在审批级别。这
+
+| The manual merge is suitable when there are resolvable conflicts or when not all the data needs to
+be moved during the merge. For example, if an attribute has different values in both tracked
+entities , the user can specify whether to keep the original value or move over the duplicate's
+value. Since the manual merge involves the user explicitly requesting to move data, there are some
+additional checks:       | Parameter name |
+| ----------- | ----------- |
+| 可选类别组合         | 状态取决于数据是否被批准用于属性 |
+| E7228          | 必须是至少一个期间或开始日期和结束日期 |
+| Filter on whether the current user can manage the returned users through the managed user group relationships.          | 数据输入和批准的数据集。批准 |
+| 状态取决于数据是否被批准用于所有 | 指定期间内的数据集期间。 |
+| 对于与您可能需要的类别组合关联的数据集
+获取单个属性选项组合的数据批准记录
+从具有 GET 请求的以下资源:       |     /api/dataApprovals/categoryOptionCombos?wf=rIUL3hYOjJc&pe=201801&ou=YuQRtpLP10I |
+| 数          | Whether registration applies to sub units |
+
+###     /api/dataApprovals/approvals?wf=rIUL3hYOjJc&pe=201801,201802&ou=YuQRtpLP10I
+
+参数 `wf`、`pe`、`ou` 和 `aoc` 与获取单个批准状态的参数相同,但您可以为每个参数提供一个以逗号分隔的一个或多个值的列表。
+
+这将为您提供一个包含批准参数和状态列表的响应,如下所示:
+
+```json
+[
+  {
+    "aoc": "HllvX50cXC0",
+    "pe": "201801",
+    "level": "KaTJLhGmU95",
+    "ou": "YuQRtpLP10I",
+    "permissions": {
+      "mayApprove": false,
+      "mayUnapprove": true,
+      "mayAccept": true,
+      "mayUnaccept": false,
+      "mayReadData": true,
+      "approvedBy": "User A",
+      "approvedAt": "2022-01-13T12:56:07.005",
+      "acceptedBy": "User A",
+      "acceptedAt": "2022-01-13T12:56:07.005"      
+    },
+    "state": "APPROVED_HERE",
+    "wf": "rIUL3hYOjJc"
+  },
+  {
+    "aoc": "HllvX50cXC0",
+    "pe": "201802",
+    "ou": "YuQRtpLP10I",
+    "permissions": {
+      "mayApprove": true,
+      "mayUnapprove": false,
+      "mayAccept": false,
+      "mayUnaccept": false,
+      "mayReadData": true
+    },
+    "state": "UNAPPROVED_READY",
+    "wf": "rIUL3hYOjJc"
+  }
+]
+```
+
+下表描述了返回的字段。
+
+领域
+
+
+
+描述
+
+| 冠捷 | 检索和删除项目通知模板 | Parameter name |
+|---|---|---|
+| 数 | ```json
+{
+    "name": "Case notification",
+    "notificationTrigger": "ENROLLMENT",
+    "subjectTemplate": "Case notification V{org_unit_name}",
+    "displaySubjectTemplate": "Case notification V{org_unit_name}",
+    "notifyUsersInHierarchyOnly": false,
+    "sendRepeatable": false,
+    "notificationRecipient": "ORGANISATION_UNIT_CONTACT",
+    "notifyParentOrganisationUnitOnly": false,
+    "displayMessageTemplate": "Case notification A{h5FuguPFF2j}",
+    "messageTemplate": "Case notification A{h5FuguPFF2j}",
+    "deliveryChannels": [
+        "EMAIL"
+    ]
+}
+``` | Whether registration applies to sub units |
+| E7228 | ```json
+{
+    "name": "Case notification",
+    "notificationTrigger": "ENROLLMENT",
+    "subjectTemplate": "Case notification V{org_unit_name}",
+    "displaySubjectTemplate": "Case notification V{org_unit_name}",
+    "notifyUsersInHierarchyOnly": false,
+    "sendRepeatable": false,
+    "notificationRecipient": "ORGANISATION_UNIT_CONTACT",
+    "notifyParentOrganisationUnitOnly": false,
+    "displayMessageTemplate": "Case notification A{h5FuguPFF2j}",
+    "messageTemplate": "Case notification A{h5FuguPFF2j}",
+    "deliveryChannels": [
+        "EMAIL"
+    ]
+}
+``` | 必须是至少一个期间或开始日期和结束日期 |
+| Filter on whether the current user can manage the returned users through the managed user group relationships. | ```json
+{
+    "name": "Case notification",
+    "notificationTrigger": "ENROLLMENT",
+    "subjectTemplate": "Case notification V{org_unit_name}",
+    "displaySubjectTemplate": "Case notification V{org_unit_name}",
+    "notifyUsersInHierarchyOnly": false,
+    "sendRepeatable": false,
+    "notificationRecipient": "ORGANISATION_UNIT_CONTACT",
+    "notifyParentOrganisationUnitOnly": false,
+    "displayMessageTemplate": "Case notification A{h5FuguPFF2j}",
+    "messageTemplate": "Case notification A{h5FuguPFF2j}",
+    "deliveryChannels": [
+        "EMAIL"
+    ]
+}
+``` |     / api / 33 / system / taskSummaries / {task-category-id} |
+| 可选类别组合 | Program notification template | 状态取决于数据是否被批准用于属性 |
+
+要接受已经批准的数据,您可以发出 *POST* 请求
+到 *dataAcceptances* 资源。要取消接受数据,您可以发出
+*DELETE* 对 *dataAcceptances* 资源的请求。
+
+  -     POST DELETE /api/33/dataAcceptances
+    这些请求包含以下参数:
+
+  - Table: Data approval action parameters
+    Action parameter
+
+### 需要
+
+描述
+
+wf
+
+是的
+
+数据批准工作流标识符
+
+聚乙烯
+
+是的
+
+期间标识符
+
+欧
+
+是的
+
+Organisation unit identifier
+
+### 获取数据批准级别 { #get-data-approval-levels } 
+
+不
+
+属性选项组合标识符
+
+
+### 数据审批机关{ #authorities-for-data-approval } 
+
+- 组织单位的级别必须由审批级别指定
+- 在工作流程中。
+

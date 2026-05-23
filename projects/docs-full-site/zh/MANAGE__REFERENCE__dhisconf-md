@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/sysadmin/reference/dhis.conf.md"
-revision_date: '2026-02-24'
+revision_date: '2026-05-05'
 tags:
 - 系统管理
 ---
@@ -23,6 +23,7 @@ dhis.conf "配置文件进行配置，然后介绍存储在数据库中的配置
 > 您不应尝试直接使用此配置文件，而应将其
 > 作为可用配置选项的参考。许多
 > 属性是可选的。
+
 
 属性
 # ----------------------------------------------------------------------
@@ -72,13 +73,13 @@ connection.pool.idle.con.test.period = 0
 # 自 v43 起已弃用。如果开启，将在每次连接检出时执行操作以验证连接是否有效。(默认值：false）
 connection.pool.test.on.checkout = false
 
-# 自 v43 起已被弃用。如果开启，将在每次连接检入时异步执行操作，以验证连接是否有效。(默认值：on）
+# 自 v43 起已被弃用。如果开启，将在每次连接检入时异步执行操作，以验证连接是否有效。(默认值：开）
 connection.pool.test.on.checkin = on
 
 # 定义所有连接测试将执行的查询。理想情况下不需要此配置，因为 postgresql 驱动程序已经提供了高效的测试查询。该配置仅用于评估，除非有必要，否则请勿使用。
 connection.pool.preferred.test.query = select 1
 
-# 自 v43 版起已被弃用。配置 dhis2 用于 jdbc 操作的辅助线程数。(默认值：3）
+# 自 v43 版起已被弃用。配置 dhis2 用于 jdbc 操作的辅助线程数量。(默认值：3）
 connection.pool.num.helper.threads = 3
 
 # 光 DB 池功能。连接池超时：设置客户端从池中等待连接的最大毫秒数（默认值：30 毫秒）。
@@ -94,11 +95,14 @@ db.pool.type = hikari
 # 服务器 [必填］
 # ----------------------------------------------------------------------
 
-# DHIS 2 实例的基本 URL
-# server.base.url 设置指的是终端用户通过网络访问系统的 URL。
-server.base.url = https://play.dhis2.org/dev 
+# DHIS2 实例的基本 URL
+# 服务器.base.url 设置指的是终端用户通过网络访问系统的外部可达 URL。
+# 必须是绝对的 http:// 或 https:// URL，带有有效的主机名，且无尾斜线。
+# 密码恢复所必需。也用于 OIDC 和 OAuth2 重定向 URL、通知邮件和解释链接。
+# 如果缺失、无效或带有斜线，DHIS2 会在启动时发出警告。请参阅下面的 "服务器基本 URL"。
+server.base.url = https://play.dhis2.org/dev
 
-# 如果系统部署在 HTTPS 上，则启用安全设置，可以是 "关闭 "或 "打开"（默认："关闭）
+# 如果系统部署在 HTTPS 上，则启用安全设置，可以是 "关闭"、"打开"（默认："关闭）
 server.https = off
 # 强烈建议启用 `server.https` 设置，并使用加密的 HTTPS 协议部署 DHIS 2。此设置将启用安全 cookies 等功能。启用此设置后，需要部署 HTTPS
 
@@ -204,7 +208,7 @@ monitoring.uptime.enabled = on
 # CPU 监控
 monitoring.cpu.enabled = on
 
-# 将请求上下文添加为 SQL 注释，用于查询归因。启用后、
+# 将请求上下文添加为 SQL 注释，以便查询归因。启用后、
 # 每条 SQL 语句前都会加上注释，其中包含的上下文有
 # 触发查询的控制器和方法。可以是 "开"、"关
 # 默认为 "关闭"）。
@@ -267,6 +271,9 @@ analytics.connection.pool.min_size = 5
 # 启动时池将尝试获取的连接数。应介于 minPoolSize 和 maxPoolSize 之间（默认值：5）。
 analytics.connection.pool.initial_size = 5
 
+# 如果存在，覆盖 analytics.connection.url 值--在容器中运行 Apache Doris 时很有用（这样它就不能通过 `localhost` 访问 Postgres）。
+doris.catalog.connection.url = https://doris.example.org
+
 
 # ----------------------------------------------------------------------
 # 系统遥测 [可选］
@@ -285,11 +292,12 @@ system.monitoring.password = xxxx
 # 系统更新通知 [可选］
 # ----------------------------------------------------------------------
 
-# 系统更新通知，例如 DHIS 2 的新版本可用
+# 系统更新通知，如新的 DHIS2 版本可用。当有新的 DHIS2 补丁版本可供下载时，系统将默认在 "系统 "类别下的邮件收件箱中发送通知。
+# 除非在 "常规设置 "下定义了 "系统更新通知收件人 "用户组，否则该通知将发送给拥有 "所有 "权限的用户。可以是 "关闭"、"打开"（默认为 "打开）
 system.update_notifications_enabled = on
 
 # ----------------------------------------------------------------------
-# 日志记录 [可选]
+# 日志记录 [可选］
 # ----------------------------------------------------------------------
 
 # 日志文件的最大大小，默认为 100MB
@@ -344,6 +352,7 @@ max.sessions.per_user = 10
 # 允许从路由端点调用的远程服务器。默认为任何 HTTPS URL。允许使用通配符。 
 # 例如 route.remote_servers_allowed = https://server1.com/,https://server2.com/,https://192.168.*.*
 route.remote_servers_allowed = https://*
+
 ```
 
 请注意，配置文件支持环境变量。这意味着你可以将某些属性设置为环境变量，然后解析它。
@@ -360,6 +369,54 @@ connection.password = $ {DB_PASSWD}
 ```sh
 chmod 600 dhis.conf
 ```
+
+## 服务器基本 URL{ #install_server_base_url }
+
+dhis.conf "中的 "server.base.url "属性定义了 DHIS2 实例可从外部到达的基本 URL，即用户在浏览器中输入以访问系统的 URL。正确设置该值是**重要的**：DHIS2 的一些功能会从该值生成链接，如果该值缺失或畸形，就会破坏这些链接。
+
+```属性
+server.base.url = https://dhis2.example.org/dhis
+```
+
+### 为什么重要{ #why-it-matters } 
+
+DHIS2 使用 `server.base.url` 在后端生成的内容中建立绝对 URL。依赖它的功能包括
+
+- **密码恢复** - 帐户恢复电子邮件包含一个从 `server.base.url`建立的重置链接。如果该属性缺失或无效，则密码恢复不可用。
+- **OIDC 和 OAuth2** - 重定向 URI 和客户端注册 URL 均由此值派生。
+- ** 通知邮件** - 解释、信息和订阅邮件中的链接均指向此基地。
+- **解释共享** - 仪表板、可视化和地图的共享链接。
+- **API 元数据 URL** - 某些系统信息和元数据端点会根据此值发出绝对 URL。
+
+### 有效值{ #valid-values } 
+
+该值必须是最终用户可以访问的绝对 URL：
+
+- 方案："https://"（强烈建议）或 "http://"（用于非 TLS 环境）。
+- 主机名：用户浏览器可访问的有效主机名或 IP 地址，在生产部署中不能使用 "localhost"。
+- 无尾斜线。
+- 如果 DHIS2 未部署在服务器根目录，请包含上下文路径（如 `/dhis`）。
+
+For example, you can filter the "MCH Infant Weight (g)" data element, of the program "Child Program" and program stage "Baby Postnatal" looking for values greater than 2000 and lower than 4000. The filter is defined like this:
+
+属性
+# 良好
+server.base.url = https://dhis2.example.org
+server.base.url = https://dhis2.example.org/dhis
+
+# 坏 - 尾部斜线
+server.base.url = https://dhis2.example.org/
+
+# 错误 - 无方案
+server.base.url = dhis2.example.org
+
+# 错误 - 终端用户无法访问
+server.base.url = http://localhost:8080
+```
+
+### 启动验证{ #startup-validation } 
+
+启动时，DHIS2 会验证 `server.base.url`，如果值缺失、为空、不是有效的绝对 URL 或有尾部斜线，则会记录一条 `WARN` 消息。DHIS2 将继续在这种状态下启动（在上述功能的降级模式下），但管理员应将警告视为需要修复的问题。
 
 ## 加密配置 { #install_encryption_configuration } 
 
