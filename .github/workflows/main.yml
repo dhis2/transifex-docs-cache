@@ -30,10 +30,18 @@ jobs:
         env:
           TX_TOKEN: ${{ secrets.TRANSIFEX_DOCS_CACHE_TOKEN }}
   
-      - name: Commit & Push changes
-        uses: actions-js/push@master
+      - uses: dhis2/action-commit-signing@v1
         with:
-          directory: projects/
-          branch: main
-          github_token: ${{ secrets.DHIS2_BOT_GITHUB_TOKEN }}
-
+          ssh-signing-key: ${{ secrets.DHIS2_BOT_SSH_SIGNING_KEY }}
+          ssh-signing-key-passphrase: ${{ secrets.DHIS2_BOT_SSH_SIGNING_PASSPHRASE }}
+        
+      - name: Commit & Push changes
+        run: |
+          git add projects/
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: autopublish $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push origin main
+        shell: bash
