@@ -1,25 +1,31 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-server-tools/blob/main/docs/how-to/Apache-Doris-setup.md"
-revision_date: '2025-08-25'
+revision_date: '2026-07-08'
 tags:
 - 系统管理
 ---
 
 # 多丽丝设置指南{ #doris-setup-guide } 
 
+> **注意：** 自 `doris` Ansible 角色起，本手动操作指南已不再是
+> 主要实现路径——当您配置 `[apache_doris]` 主机时，`deploy/dhis2.yml` 会
+> 自动部署 Doris （参见
+> `docs/apache-doris-playbook.md`）。本文档保留作为参考，
+> 以便理解或手动重现这些步骤。
+
 ## 先决条件{ #prerequisites } 
 
-- Ubuntu 24.04 服务器
-- 使用具有 `sudo` 权限的非 root 用户访问 SSH
+- Ubuntu 24.04 服务器版
+- 使用具有 `sudo` 权限的非 root 用户进行 SSH 访问
 
 ---
 
 ## 步骤 1：准备环境{ #step-1-prepare-the-environment } 
 
-> 注意：**  
-> 如果 Doris 在 LXD 容器内运行，请在 **LXD 主机上应用以下配置**。
+> **注意：**  
+> 如果 Doris 在 LXD 容器中运行，请在 **LXD 主机** 上应用以下配置。
 
-### 增加打开的文件描述符数量{ #increase-the-number-of-open-file-descriptors } 
+### 增加打开文件描述符的数量{ #increase-the-number-of-open-file-descriptors } 
 
 编辑 `/etc/security/limits.conf`：
 
@@ -27,11 +33,11 @@ tags:
 vim /etc/security/limits.conf
 ```
 
-添加以下几行
+添加以下几行：
 
 ```
-* 软文件 1000000
-* 硬文件 1000000
+* 软限制 nofile 1000000
+* 硬限制 nofile 1000000
 ```
 
 ### 增加虚拟内存区域限制{ #increase-the-virtual-memory-area-limit } 
@@ -42,15 +48,15 @@ sysctl -w vm.max_map_count=2000000
 
 ---
 
-## 步骤 2：禁用主机上的交换{ #step-2-disable-swap-on-the-host } 
+## 步骤 2：在主机上禁用交换空间{ #step-2-disable-swap-on-the-host } 
 
-暂时禁用交换功能（重启后恢复）：
+要临时禁用交换分区（重启后恢复）：
 
 ```bash
 sudo swapoff -a
 ```
 
-要永久禁用交换，请编辑 `/etc/fstab`，注释掉交换条目：
+要永久禁用交换分区，请编辑 `/etc/fstab` 并注释掉交换分区的条目：
 
 ```bash
 sudo vim /etc/fstab
@@ -59,20 +65,20 @@ sudo vim /etc/fstab
 `<attribute id>`
 
 ```bash
-#<file system> <dir> <type> <options> <dump> <pass>
-tmpfs /tmp tmpfs nodev,nosuid 0 0
-/dev/sda1 / ext4 defaults,noatime 0 1
-/dev/sda2 none swap defaults 0 0
-/dev/sda3 /home ext4 defaults,noatime 0 2
+#<file system>      <dir>        <type>   <options>            <dump> <pass> 
+tmpfs                  /tmp          tmpfs     nodev,nosuid          0      0
+/dev/sda1              /             ext4      defaults,noatime      0      1
+# /dev/sda2            none          swap      defaults              0      0
+/dev/sda3              /home         ext4      defaults,noatime      0      2
 ```
 
-然后重新启动机器。
+然后重新启动计算机。
 
 ---
 
-## 第 3 步：安装 Java 17（Doris 3.0.x 需要）{ #step-3-install-java-17-required-for-doris-30x } 
+## 步骤 3：安装 Java 17（Doris 3.0.x 所需）{ #step-3-install-java-17-required-for-doris-30x } 
 
-``bash
+```bash
 ssh<server_ip> -p<ssh_port>
 sudo apt update && sudo apt upgrade -y
 sudo apt install openjdk-17-jre-headless -y
@@ -80,7 +86,7 @@ sudo apt install openjdk-17-jre-headless -y
 
 ---
 
-## 步骤 4：创建专用的 Doris 用户{ #step-4-create-a-dedicated-doris-user } 
+## 第 4 步：创建一个专用的 Doris 用户{ #step-4-create-a-dedicated-doris-user } 
 
 ```bash
 sudo adduser --comment "Doris 应用程序用户" --home /usr/local/doris --disabled-login --system doris
@@ -88,7 +94,7 @@ sudo adduser --comment "Doris 应用程序用户" --home /usr/local/doris --disa
 
 ---
 
-## 第 5 步：切换到多里斯用户{ #step-5-switch-to-the-doris-user } 
+## 第 5 步：切换到 Doris 用户{ #step-5-switch-to-the-doris-user } 
 
 ```bash
 sudo su -l doris -s /bin/bash
@@ -96,7 +102,7 @@ sudo su -l doris -s /bin/bash
 
 ---
 
-## 步骤 6：下载 Doris 二进制文件{ #step-6-download-doris-binaries } 
+## 第 6 步：下载 Doris 二进制文件{ #step-6-download-doris-binaries } 
 
 ```bash
 # 示例：版本 3.0.5
@@ -105,7 +111,7 @@ wget https://apache-doris-releases.oss-accelerate.aliyuncs.com/apache-doris-3.0.
 
 ---
 
-## 第 7 步：提取存档{ #step-7-extract-the-archive } 
+## 第 7 步：解压存档{ #step-7-extract-the-archive } 
 
 ```bash
 tar -xvzf apache-doris-3.0.5-bin-x64.tar.gz
@@ -113,12 +119,12 @@ tar -xvzf apache-doris-3.0.5-bin-x64.tar.gz
 
 ---
 
-## 步骤 8：配置 `fe.conf` 和 `be.conf`{ #step-8-configure-feconf-and-beconf } 
+## 第 8 步：配置 `fe.conf` 和 `be.conf`{ #step-8-configure-feconf-and-beconf } 
 
 在两个配置文件中都设置 `JAVA_HOME` 环境变量：
 
 ```bash
-# 用于前台
+# 前端配置
 vim fe/conf/fe.conf
 ```
 
@@ -128,7 +134,7 @@ vim fe/conf/fe.conf
 JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
 ```
 
-对 `be/conf/be.conf` 重复类似操作。
+对 `be/conf/be.conf` 也按同样的方式操作。
 
 ---
 
@@ -142,47 +148,47 @@ JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
 
 ## 步骤 10：为 Doris 创建 systemd 服务{ #step-10-create-systemd-services-for-doris } 
 
-### Doris 前端 (`/etc/systemd/system/doris-fe.service`){ #doris-frontend-etcsystemdsystemdoris-feservice } 
+### Doris 前端（`/etc/systemd/system/doris-fe.service`）{ #doris-frontend-etcsystemdsystemdoris-feservice } 
 
 ```ini
-[单元]
-描述=阿帕奇多里斯前端 (FE)
-之后=network.target
+[Unit]
+Description=Apache Doris 前端 (FE)
+After=network.target
 
-服务
-类型=分叉
-用户=多里斯
-工作目录=/usr/local/doris/fe
+[Service]
+Type=forking
+User=doris
+WorkingDirectory=/usr/local/doris/fe
 ExecStart=/usr/local/doris/fe/bin/start_fe.sh --daemon
 ExecStop=/usr/local/doris/fe/bin/stop_fe.sh
-重启=失败时
+Restart=on-failure
 
-安装
+[Install]
 WantedBy=multi-user.target
 ```
 
 ### Doris 后端 (`/etc/systemd/system/doris-be.service`){ #doris-backend-etcsystemdsystemdoris-beservice } 
 
 ```ini
-[单元]
-描述=阿帕奇多里斯后台 (BE)
-之后=network-online.target
+[Unit]
+Description=Apache Doris 后端 (BE)
+After=network-online.target
 
-服务
-类型=分叉
-用户=多里斯
+[Service]
+Type=forking
+User=doris
 LimitCORE=infinity
 LimitNOFILE=200000
-工作目录=/usr/local/doris/be
+WorkingDirectory=/usr/local/doris/be
 ExecStart=/usr/local/doris/be/bin/start_be.sh --daemon
 ExecStop=/usr/local/doris/be/bin/stop_be.sh
-重启=失败时
+Restart=on-failure
 
-安装
+[Install]
 WantedBy=multi-user.target
 ```
 
-启用并启动这两项服务：
+启用并启动这两个服务：
 
 ```bash
 sudo systemctl enable doris-fe
@@ -193,9 +199,9 @@ sudo systemctl start doris-be
 
 ---
 
-## 第 11 步：通过 MySQL 客户端连接到 Doris *（可选）*{ #step-11-connect-to-doris-via-mysql-client-optional } 
+## 步骤 11：通过 MySQL 客户端连接到 Doris *（可选）*{ #step-11-connect-to-doris-via-mysql-client-optional } 
 
-您需要用 MySQL 客户端注册一个后端 (BE) 节点：
+您需要使用 MySQL 客户端来注册一个后端（BE）节点：
 
 ```bash
 sudo apt install mysql-client-core-8.0
@@ -207,17 +213,17 @@ sudo apt install mysql-client-core-8.0
 mysql -uroot -P9030 -h127.0.0.1
 ```
 
-MySQL 外壳内部
+MySQL 命令行界面：
 
-``sql
-alter system add backend "127.0.0.1:9050"；
+```sql
+ALTER SYSTEM ADD BACKEND "127.0.0.1:9050";
 ```
 
 ---
 
-## 步骤 12：配置 DHIS2 以使用 Doris 进行分析{ #step-12-configure-dhis2-to-use-doris-for-analytics } 
+## 第 12 步：配置 DHIS2 以使用 Doris 进行分析{ #step-12-configure-dhis2-to-use-doris-for-analytics } 
 
-属性
+```属性
 # 分析数据库管理系统
 analytics.database = doris
 
@@ -236,5 +242,5 @@ analytics.connection.password =<doris_database_password>
 
 ## PostgreSQL JDBC 驱动程序{ #postgresql-jdbc-driver } 
 
-*如果需要，在此处添加配置或使用细节）*
+*(如有需要，请在此处添加配置或使用说明。)*
 

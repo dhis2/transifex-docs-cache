@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-android-sdk/blob/master/docs/content/developer/getting-started.md"
-revision_date: '2026-03-30'
+revision_date: '2026年7月23日'
 tags:
 - Develop
 ---
@@ -9,11 +9,14 @@ tags:
 
 ## 安装 { #android_sdk_installation }
 
-在build.gradle中包括依赖项。
+在 build.gradle 中添加依赖项。请使用 Maven Central 上发布的最新版本：
+
+[![Maven Central](https://img.shields.io/maven-central/v/org.hisp.dhis/android-core?label=maven%20central)](https://central.sonatype.com/artifact/org.hisp.dhis/android-core)
 
 ```gradle
-依赖 {
-    实现 "org.hisp.dhis:android-core:1.14.0"
+dependencies {
+    // 将 1.x.x 替换为最新发布的版本（参见上方的 Maven Central 标识）
+    implementation "org.hisp.dhis:android-core:1.x.x"
     ...
 }
 ```
@@ -29,13 +32,13 @@ tags:
 }
 ```
 
-检查[此处的兼容性](#android_sdk_compatibility)。
+请在此处查看[兼容性](#android_sdk_compatibility)。
 
 ## D2初始化 { #android_sdk_initialization }
 
 In order to start using the SDK, the first step is to initialize a `D2` object. The helper class `D2Manager` offers static methods to setup and initialize the `D2` instance. Also, it ensures that `D2` is a singleton across the application.
 
-需要传递给`D2Manager`的最低配置如下： 
+需要传递给 `D2Manager` 的最低配置如下： 
 
 ```java
 D2Configuration configuration = D2Configuration.builder()
@@ -55,86 +58,90 @@ Single<D2> d2Single = D2Manager.instantiateD2(configuration);
 D2 d2 = D2Manager.getD2();
 ```
 
-如果不使用 RxJava，可以采用阻塞方式实例化 `D2`：
+如果你没有使用 RxJava，可以以阻塞的方式实例化 `D2`：
 
 ```java
 D2 d2 = D2Manager.blockingInstantiateD2(configuration);
 ```
 
-对象 `D2Configuration` 有许多字段，用于配置 SDK 的行为。
+对象 `D2Configuration` 包含许多用于配置 SDK 行为的字段。
 
-|  属性    |   需要    |   描述 | 默认
+|  ValidationRuleGroup    |   检索和删除项目通知模板    |   Parameter name | 仪表板资源将提供仪表板列表。请记住
+仪表板对象是共享的,因此列表将受
+当前已验证的用户。您可以检索有关一个的更多信息
+特定的仪表板,请点击其链接,类似于:
 |-|-|-|-|
-| 语境       | 真正          | 应用环境 | --
-| 应用程序名称       | 假         | 用于创建“用户代理”标题 | 从Android清单
-| 应用程序版本    | 假         | 用于创建“用户代理”标题 | 从Android清单
-| 读取超时秒数 | 假  | 读取HTTP查询超时 | 30秒
-| connectTimeoutInSeconds | 假 | HTTP查询的连接超时 | 30秒
-| 写入超时（秒 | 假 | 为HTTP查询写超时 | 30秒
-| 拦截器  | 假         | OkHttpClient的拦截器 | 没有
-| 网络拦截器 | 假   | OkHttpClient的NetworkInterceptors | 没有
+| 语境       | Tracked Entity UIDS          | 应用环境 | Note that synthetic fields `displayName` and `displayShortName` are always
+returning the translated value independent of the `translate` parameter.
+| appName       | subjectTemplate         | 用于创建“用户代理”标题 | 从Android清单
+| appVersion    | subjectTemplate         | 用于创建“用户代理”标题 | 从Android清单
+| 读取超时（以秒为单位） | subjectTemplate  | 读取HTTP查询超时 | 30秒
+| connectTimeoutInSeconds | subjectTemplate | HTTP查询的连接超时 | 30秒
+| 写入超时（以秒为单位） | subjectTemplate | 为HTTP查询写超时 | 30秒
+| 拦截器  | subjectTemplate         | OkHttpClient的拦截器 | 时间
+| 网络拦截器 | subjectTemplate   | OkHttpClient的NetworkInterceptors | 时间
 
 ## Google Play 服务支持{ #google-play-services-support } 
 
-已完全移除 Google play 服务，以使 SDK 可在不允许使用 play 服务的设备上运行；SDK 正在使用 play 服务依赖关系中的 "ProviderInstaller "来更新安全提供程序，以防止 SSL 漏洞。
+为了使该 SDK 能够在不允许使用 Google Play 服务的设备上运行，已完全移除了 Google Play 服务；该 SDK 此前利用 Play 服务依赖项中的 `ProviderInstaller` 来更新安全提供程序，以防范 SSL 漏洞利用
 
-如果你使用的是不支持谷歌游戏服务的 SDK 版本，你有两个选择来更新安全提供商以防止 SSL 漏洞，你可以使用名为 [conscrypt](https://github.com/google/conscrypt) 的开源解决方案来针对不支持谷歌游戏服务的设备，或者你也可以使用 [play-services-safetynet](https://developer.android.com/training/articles/security-gms-provider) 依赖项，它不是开源的，需要谷歌游戏服务。
+如果您使用的 SDK 版本不支持 Google Play 服务，则有两种方法可以更新安全提供程序以防范 SSL 漏洞：您可以使用一个名为 [conscrypt](https://github.com/google/conscrypt)，以支持不具备 Google Play 服务支持的设备；或者，您可以使用 [play-services-safetynet](https://developer.android.com/training/articles/security-gms-provider) 这一依赖项，该依赖项并非开源，且需要 Google Play 服务支持。
 
-### 1.播放服务 Safetynet 依赖{ #1-play-services-safetynet-dependency } 
+### 1. Play 服务 Safetynet 依赖项{ #1-play-services-safetynet-dependency } 
 
-如果你的目标设备支持 google play 服务，最好的选择是通过以下步骤使用 play-services-SafetyNet 依赖关系中包含的 `ProviderInstaller` 。
+如果您要针对支持 Google Play 服务的设备，最佳方案是按照以下步骤使用 play-services-SafetyNet 依赖项中包含的 `ProviderInstaller`。
 
 ```gradle
-依赖 {
-    实现 "com.google.android.gms:play-services-safetynet:<version>"
+dependencies {
+    implementation "com.google.android.gms:play-services-safetynet:<version>"
     ...
 }
 ```
 
-添加 `play-services-safetynet` 依赖关系后，只需创建一个用于安装安全提供程序的方法即可
+添加 `play-services-safetynet` 依赖项后，只需创建一个用于安装安全提供程序的方法即可
 
-Java
+```java
 public static void initialize(Context context){
     try {
         // ....
-        ProviderInstaller.installIfNeeded(context.getApplicationContext())；
+        ProviderInstaller.installIfNeeded(context.getApplicationContext());
         // ....
     } catch (GooglePlayServicesRepairableException e) {
-        Log.e(TAG, e.toString())；
+        Log.e(TAG, e.toString());
     } catch (GooglePlayServicesNotAvailableException e) {
-        Log.e(TAG, e.toString())；
+        Log.e(TAG, e.toString());
     } catch (NoSuchAlgorithmException e) {
-        Log.e(TAG, e.toString())；
+        Log.e(TAG, e.toString());
     }
 }
 ```
 
-有关 `play-services-safetynet` 的更多信息，请查看官方文档 [链接](https://developer.android.com/training/articles/security-gms-provider)
+有关 `play-services-safetynet` 的更多信息，请参阅官方文档 [链接](https://developer.android.com/training/articles/security-gms-provider)
 
-### 2.开源解决方案{ #2-open-source-solution } 
+### 2. 开源解决方案{ #2-open-source-solution } 
 
-如果你的目标设备不使用谷歌播放服务，[consrypt](https://github.com/google/conscrypt) 是 `play-services-safetynet` 依赖关系的替代方案，可用于更新安全提供商以防范 SSL 漏洞利用
+如果您不针对安装了 Google Play 服务的设备，[conscrypt](https://github.com/google/conscrypt) 可以作为 `play-services-safetynet` 依赖项的替代方案，用于针对 SSL 漏洞更新安全提供程序。
 
 ```gradle
-依赖 {
-    实现 'org.conscrypt:conscrypt-android:<conscrypt-version>'
+dependencies {
+    implementation 'org.conscrypt:conscrypt-android:<conscrypt-version>'
     ...
 }
 ```
 
-设置 conscrypt 的方法与 Google 提供商类似，如下代码所示：
+conscrypt 的配置与 Google 的提供商类似，如下面的代码所示：
 
-Java
+```java
 public static void initialize(){
     try {
-        Security.insertProviderAt(Conscrypt.newProvider(), 1)；
+        Security.insertProviderAt(Conscrypt.newProvider(), 1);
     } catch(Exception e) {
-        Log.e(TAG, e.toString())；
+        Log.e(TAG, e.toString());
     } catch (NoSuchAlgorithmException e) {
-        Log.e(TAG, e.toString())；
+        Log.e(TAG, e.toString());
     }
 }
 ```
 
-有关 conscrypt 的更多信息，请查看此 [链接](https://github.com/google/conscrypt) 上的官方 github 代码库。
+如需了解有关 conscrypt 的更多信息，请访问此 [链接](https://github.com/google/conscrypt) 查看其官方 GitHub 仓库。
 

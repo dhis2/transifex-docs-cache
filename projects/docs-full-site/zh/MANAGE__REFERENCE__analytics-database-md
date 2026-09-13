@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/sysadmin/reference/analytics-database.md"
-revision_date: '2025-10-09'
+revision_date: '2026年8月12日'
 tags:
 - 系统管理
 ---
@@ -12,19 +12,53 @@ DHIS2 允许为分析表使用专用的分析数据库。支持的数据库系�
 * [Apache Doris](https://doris.apache.org/)
 * [ClickHouse](https://clickhouse.com/)
 
+
+## 工作原理{ #analytics_database_how_it_works }
+
+DHIS2 始终将 PostgreSQL 作为其主数据库。无论是否配置了分析数据库，元数据、数据录入、追踪器数据以及所有其他事务性操作仍由 PostgreSQL 处理。
+
+配置分析数据库时，分析表会从 PostgreSQL 中移出，并迁移到分析数据库中：
+
+1. **分析表生成**会从 PostgreSQL 读取事务数据，对其进行转换，并将生成的分析表写入分析数据库。 构建这些表的部分查询会将分析数据库中的数据与仍保存在PostgreSQL中的表进行连接。因此，除了DHIS2必须能够同时连接这两个数据库外，分析数据库还必须能够反向连接到PostgreSQL服务器。
+2. **分析查询**（例如由“数据可视化”和“地图”应用以及分析 Web API 端点发起的查询）是在分析数据库上执行的，而不是在 PostgreSQL 上执行的。
+
+这样做可以将读取密集型的分析工作负载从 PostgreSQL 服务器上移出，使其能够专用于事务操作。对于大型数据库而言，由于数据量庞大，针对 PostgreSQL 的分析查询往往会变得缓慢，而这种做法可以显著提升查询性能。
+
+> **注意**
+>
+> 分析数据库仅通过分析表生成过程填充数据。它不会与 PostgreSQL 进行实时同步。在分析表生成过程运行之前，分析表中不会包含任何数据；且自上次运行后捕获的数据，要等到下次运行时才会显示在分析中。
+
+由于分析数据库的内容完全来源于 PostgreSQL 数据库，因此无需对分析数据库进行备份。只需重新运行分析表生成操作，即可随时重建该数据库。
+
+并非所有分析表都会被移至分析数据库，且在使用分析数据库时，部分分析功能将不可用。请参阅下文的[限制](#analytics_database_limitations)。
+
+## 限制{ #analytics_database_limitations }
+
+启用专用分析数据库后，某些分析功能将不可用，因为这些功能依赖于仅存在于 PostgreSQL 中的功能。
+
+* **空间要素**：依赖 PostgreSQL 的 PostGIS 扩展的要素不被支持。对于“地图”应用而言，这意味着在使用分析型数据库时，目前不支持事件图层。
+* **异常值检测**：不支持异常值检测分析。 分析数据库中无法生成支持异常值检测的分析表，若尝试生成，分析表生成操作将失败。因此，无论是在“数据管理”应用中手动启动，还是通过“计划程序”应用进行计划，在生成分析表时都必须启用**“跳过异常值数据生成”**选项。
+* **子表达式**：不支持使用 [子表达式](#indicator_subexpressions) 的指标。分析数据库中正在添加对子表达式的支持，预计将在 2.43 补丁版本中推出。
+
+> **重要提示**
+>
+> 目前，当使用分析数据库时，DHIS2 用户界面不会隐藏或禁用上述功能。不受支持的功能仍然可见且可选，通常会出现通用错误信息，而非提示该功能不可用。因此，服务器管理员应让实施人员和用户知晓这些限制。
+
+受监控实体分析继续使用 PostgreSQL 作为底层分析数据库。这些分析表不会导出到分析数据库中，针对这些表的查询由 PostgreSQL 处理。无需进行任何配置，但 PostgreSQL 数据库仍将承担受监控实体分析的查询负载。
+
 ## 组态 { #configuration } 
 
-分析数据库在配置文件 `dhis.conf` 中配置。
+分析数据库在 `dhis.conf` 配置文件中进行配置。
 
 ### Apache Doris{ #apache-doris } 
 
-Apache Doris 是一个高度可扩展的数据仓库，用于实时分析。有关安装和配置指导，请参阅[文档门户](https://doris.apache.org)。
+Apache Doris 是一款专为实时分析设计的高度可扩展数据仓库。有关安装和配置的指南，请参阅 [文档门户](https://doris.apache.org)。
 
-Apache Doris 使用 MySQL 通信协议和 JDBC 驱动程序，采用后端/前端架构设计，将查询协调与数据存储分离开来。
+Apache Doris 采用 MySQL 通信协议和 JDBC 驱动程序，并采用后端/前端架构设计，将查询协调与数据存储分离。
 
-连接 URL 模式为 `jdbc::mysql://<hostname-or-ip>:<port>/<database-name>?<property>=<value>`。
+连接 URL 格式为 `jdbc::mysql://<hostname-or-ip>:<port>/<database-name>?<property>=<value>`。
 
-属性
+```属性
 # 分析数据库管理系统
 analytics.database = doris
 
@@ -40,11 +74,11 @@ analytics.connection.password = xxxx
 
 ### ClickHouse{ #clickhouse } 
 
-ClickHouse 是用于实时分析的高度可扩展数据仓库。有关安装和配置指导，请参阅[文档门户](https://clickhouse.com/docs)。
+ClickHouse 是一个用于实时分析的高可扩展性数据仓库。有关安装和配置的指南，请参阅 [文档门户](https://clickhouse.com/docs)。
 
-连接 URL 模式为 `jdbc::clickhouse://<hostname-or-ip>:<port>/<database-name>`。
+连接 URL 格式为 `jdbc::clickhouse://<hostname-or-ip>:<port>/<database-name>`。
 
-属性
+```属性
 # 分析数据库管理系统
 analytics.database = clickhouse
 

@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/analytics.md"
-revision_date: '2026年6月2日'
+revision_date: '2026年9月3日'
 tags:
 - DHIS核心 主版
 - Develop
@@ -141,134 +141,211 @@ true 作为值。而不是生成一个普通的、规范化的数据源，
     /api/analytics.html?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU&dimension=pe:2014Q1;2014Q2
       &dimension=ou:O6uvpzGd5pu&tableLayout=true&columns=dx;ou&rows=pe
 
-*order* 参数可用于分析资源生成
-有序数据。数据将按升序（或降序）排序
-值。以降序对值进行排序的示例请求
-顺序是：
+在
+表格布局中可请求的列和行组合数量受 *keyAnalyticsDownloadCombinationLimit*
+系统设置的限制，该设置的默认值为 20000。该限制分别
+适用于列组合和行组合，而不适用于它们的
+乘积。 超过该限制的请求将返回错误代码 `E7151`。
 
-    /api/analytics?dimension=dx:fbfJHSPpUQD&dimension=pe:LAST_12_MONTHS
-      &dimension=ou:O6uvpzGd5pu&order=DESC
+enhancedConditions
 
-### 尺寸和项目 { #webapi_analytics_dimensions_and_items } 
+不
 
-DHIS2 采用多维数据模型，有多个固定和动态数据维度。
-动态数据维度。固定维度是数据元素、
-期间（时间）和组织单位维度。您可以通过类别、类别选项组
-维度、 
-组织单位组组集、数据元素组组集和组织单位组组集来动态添加维度。
-单位组集。下表显示了 DHIS2 中可用的数据维度。
-下表显示了 DHIS2 中可用的数据维度。每个数据维度都有相应的*维度
-标识符*，每个维度可以有一组*维度项*：
+### Enable enhanced conditions for dimensions and filters.
+
+false &#124; true
 
 
 
-表：尺寸和尺寸项目
+*dimension* 查询参数定义了哪些维度应该是
+包含在分析查询中。可以是任意数量的维度
+指定的。每个维度都应该重复维度参数
+包含在查询响应中。查询响应可能
+包含指定的所有组合的聚合值
+维度项。
 
-| 尺寸 | 维度 ID | 维度项目 |
+|     /api/analytics/enrollments/query/WSGAb5XwJ3Y.xls
+      ?dimension=ou:ImspTQPwCqd
+      &dimension=WZbXY0S00lP.de0FEHSIoxh
+      &columns=w75KJ2mc4zz
+      &dimension=WZbXY0S00lP.sWoqcoByYmD
+      &dimension=pe:LAST_MONTH
+      &stage=WZbXY0S00lP
+      &pageSize=10&page=1
+      &asc=ENROLLMENTDATE
+      &ouMode=DESCENDANTS | 值不引用数字元素或项目一部分的数据元素或属性 | *aggregationType* 查询参数允许您定义哪个聚合
+运算符应该用于查询。默认情况下,聚合
+将使用为查询中包含的数据元素定义的运算符。
+如果您的查询不包含任何数据元素但包含数据
+元素组,第一个数据元素的聚合运算符
+将使用第一组。组和数据元素的顺序是
+不明确的。此查询参数允许您覆盖默认值和
+指定特定的聚合运算符。例如,您可以设置
+使用以下 URL 进行“计数”的聚合运算符: |
 |---|---|---|
-| 数据元素、指标、数据集报告率度量、数据元素操作数、程序指标、程序数据元素、程序属性、验证规则 | dx | 数据元素、指示器、数据集报告率度量、数据元素操作数、程序指示器、程序属性标识符、关键字 DE_GROUP-<group-id\>、IN_GROUP-<group-id\> ，使用 <dataelement-id\>。<optioncombo-id\> 作为数据元素操作数，<program-id\>.<dataelement-id\> 用于程序数据元素，<program-id\>.<attribute-id\> 用于程序属性, <validationrule-id\> 用于验证结果。 |
-| 期间（时间） | 聚乙烯 | ISO 周期和相对周期，请参阅“日期和周期格式” |
-| 组织单位层次结构 | 欧 | 组织部门标识符和关键字 USER_ORGUNIT、USER_ORGUNIT_CHILDREN、USER_ORGUNIT_GRANDCHILDREN、LEVEL-<level\> 和 OU_GROUP-<group-id\> |
-| 类别选项组合 | 共 | 类别选项组合标识符（省略以获取所有项目） |
-| 属性选项组合 | 敖 | 类别选项组合标识符（省略以获取所有项目） |
-| 分类目录 | <category id\> | 类别选项标识符（省略以获取所有项目） |
-| 数据元素组集 | <group set id\> | 数据元素组标识符（省略以获取所有项目） |
-| 组织单位组集 | <group set id\> | 组织单位组标识符（省略以获取所有项目） |
-| 类别选项组集 | <group set id\> | 类别选项组标识符（省略以获取所有项目） |
+|     /api/analytics?dimension=dx:fbfJHSPpUQD&dimension=pe:2014Q1&dimension=ou:O6uvpzGd5pu
+      &aggregationType=COUNT | *measureCriteria* 查询参数可让您过滤掉数据范围
+要返回的记录。您可以指示系统仅返回记录
+其中聚合数据值等于、大于、大于或
+等于、小于或小于或等于某些值。您可以指定任何
+以下格式的标准数量,其中 *criteria* 和
+*value* 应替换为实际值: |     /api/analytics?measureCriteria=criteria:value;criteria:value |
+| 例如,以下查询将仅返回以下记录
+数据值大于或等于 6500 且小于 33000: | E7228 | Fallback coordinate field is invalid |
+|     /api/analytics?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU&dimension=pe:2014
+      &dimension=ou:O6uvpzGd5pu;lc3eMKXaEfw&preAggregationMeasureCriteria=GE:10;LT:100 | Filter on whether the current user can manage the returned users through the managed user group relationships. |     /api/analytics.json?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU
+      &dimension=ou:ImspTQPwCqd&startDate=2018-01-01&endDate=2018-06-01 |
+| 为了让分析资源生成形状中的数据
+一个现成的表格,你可以提供 *tableLayout* 参数
+true 作为值。而不是生成一个普通的、规范化的数据源,
+分析资源现在将生成表格布局中的数据。你
+可以将 *columns* 和 *rows* 参数与维度标识符一起使用
+用分号分隔作为值以指示使用哪些值
+表格列和行。列和行维度必须存在
+作为查询中的数据维度(不是过滤器)。这样的请求可以看
+像这样: | 描述 | *order* 参数可用于分析资源生成
+有序数据。数据将按升序(或降序)排序
+值。以降序对值进行排序的示例请求
+顺序是: |
+|     /api/analytics?dimension=dx:fbfJHSPpUQD&dimension=pe:LAST_12_MONTHS
+      &dimension=ou:O6uvpzGd5pu&order=DESC | 尺寸和项目 { #webapi_analytics_dimensions_and_items }  | DHIS2 features a multi-dimensional data model with several fixed and
+dynamic data dimensions. The fixed dimensions are the data element,
+period (time) and organisation unit dimension. You can dynamically add
+dimensions through categories, category option group sets, 
+organisation unit group sets, data element group sets and organisation
+unit group sets. The table below displays the available data dimensions
+in DHIS2. Each data dimension has a corresponding *dimension
+identifier*, and each dimension can have a set of *dimension items*: |
+| Table: Dimensions and dimension items | 尺寸 | Dimension id |
+| Dimension items | Data elements, indicators, data set reporting rate metrics, data element operands, program indicators, program data elements, program attributes, validation rules | dx |
+|     /api/analytics/events | Data elements, indicators, data set reporting rate metrics, data element operands, program indicators, program data elements, program attributes, validation rules | 聚乙烯 |
+| ISO periods and relative periods, see "date and period format" | Data elements, indicators, data set reporting rate metrics, data element operands, program indicators, program data elements, program attributes, validation rules | 欧 |
 
-没有必要知道哪些对象用于
-设计分析查询时的各种动态维度。你可以得到
-通过访问 Web API 中的此 URL 获得动态维度的完整列表：
+Organisation unit identifiers, and keywords USER_ORGUNIT, USER_ORGUNIT_CHILDREN, USER_ORGUNIT_GRANDCHILDREN, LEVEL-<level\> and OU_GROUP-<group-id\>
 
-    /api/尺寸
+Category option combinations
 
-如果只想检索给定动态维度的维度项，可以使用下面的示例。
-使用下面的示例。分页默认为禁用。可通过在 URL 中添加
-分页参数 `paging=true` 来启用。
+co
 
-    /api/dimensions/J5jldMd8OHv/items?paging=true
+Category option combo identifiers  (omit to get all items)
 
 Attribute option combinations
 
-    /api/33/dimensions/recommendations?fields=id&dimension=dx:fbfJHSPpUQD
+ao
 
 Category option combo identifiers (omit to get all items)
 
-端点支持多个数据元素。如果希望发送多个数据元素，则应以`;`分隔。例如
+分类目录
 
-    /api/33/dimensions/recommendations?fields=id&dimension=dx:fbfJHSPpUQD;JuTpJ2Ywq5b
+<category id\>
 
-> 注意事项
->
-> 此端点仅返回当前登录用户可以读取的维度。它将检查当前用户是否可以读取相应推荐维度的数据或元数据。列表中省略了非授权尺寸。
+Category option identifiers (omit to get all items)
 
-分析资源的基本 URL 是`/api/analytics`。请求
-您可以在其上使用查询字符串的特定维度和维度项目
-以下格式，其中 `dim-id` 和 `dim-item` 应替换为实际值：
+数据元素组集
 
-    /api/analytics?dimension=dim-id:dim-item;dim-item&dimension=dim-id:dim-item;dim-item
+<group set id\>
 
-如上所示，维度标识符后跟一个冒号
-而维度项之间用分号分隔。例如，一个
-查询两个数据元素，两个期间和两个组织单位可以
-使用以下 URL 完成：
+Data element group identifiers (omit to get all items)
 
-    /api/analytics?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU
-      &维度=pe:2016Q1;2016Q2&维度=ou:O6uvpzGd5pu;lc3eMKXaEfw
+Organisation unit group sets
 
-查询按类别选项组合细分的数据，而不是
-您可以在查询中包含类别维度的数据元素总计
-字符串，例如像这样：
+<group set id\>
 
-    /api/analytics?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU
-      &尺寸=co&尺寸=pe:201601&尺寸=ou:O6uvpzGd5pu;lc3eMKXaEfw
+Organisation unit group identifiers (omit to get all items)
 
 Category option group sets
 
-    /api/analytics?dimension=dx:DE_GROUP-h9cuJOkOwY2
-      &维度=pe:201601&维度=ou:O6uvpzGd5pu
+<group set id\>
 
-选择数据集报告率时，语法包含数据
-设置标识符后跟报告率指标：
+Category option group identifiers (omit to get all items)
 
-    /api/analytics?dimension=dx:BfMAe6Itzgt.REPORTING_RATE;BfMAe6Itzgt.ACTUAL_REPORTS
-      &维度=pe:201601&维度=ou:O6uvpzGd5pu
+没有必要知道哪些对象用于
+设计分析查询时的各种动态维度。你可以得到
+通过访问 Web API 中的此 URL 获得动态维度的完整列表:
 
-要查询程序数据元素（跟踪器域类型），您可以获得
-通过使用以下命令为每个数据元素指定程序
-`<program-id>.<dataelement-id>` 语法：
+    /api/dimensions
 
-    /api/analytics.json?dimension=dx:eBAyeGv0exc.qrur9Dvnyt5;eBAyeGv0exc.GieVkTxp4HH
-      &dimension=pe:LAST_12_MONTHS&filter=ou:ImspTQPwCqd
+If you want to retrieve only the dimensional items for a given dynamic dimension you can
+use the example below. Pagination is disabled by default. It can be enabled by adding
+the pagination parameter `paging=true` to the URL.
 
-要查询程序属性（跟踪实体属性），您可以获得
-通过使用以下命令为每个属性指定程序
-`<program.id>.<attribute-id>` 语法：
+    /api/dimensions/J5jldMd8OHv/items?paging=true
 
-    /api/analytics.json?dimension=dx:IpHINAT79UW.a3kGcGDCuk6;IpHINAT79UW.UXz7xuGCEhU
-      &dimension=pe:LAST_4_QUARTERS&dimension=ou:ImspTQPwCqd
+The `/dimensions` API also provides an endpoint where the clients can get the *recomendations* for a given set of *dimensions*. For example:
 
-要查询可以使用的组织单位组集和数据元素
-以下网址。请注意如何将组集标识符用作
-维度标识符和作为维度项的组：
+    /api/33/dimensions/recommendations?fields=id&dimension=dx:fbfJHSPpUQD
 
-    /api/analytics?dimension=Bpx0589u8y0:oRVt7g429ZO;MAs88nJc9nL
-      &维度=pe:2016&维度=ou:ImspTQPwCqd
+In the example above, the response will contain the categories which are configured as data dimensions and associated, through data sets and category combos, with the data element `fbfJHSPpUQD`.
+In addition, all org unit group sets which are configured as data dimensions will be returned.
 
-要查询数据元素和类别，您可以使用此 URL。使用
-类别标识符作为维度标识符，类别选项作为
-维度项目：
+The endpoint supports multiple data elements. If one wishes to send multiple data elements, they should be separated by `;`. For example:
 
-    /api/analytics?dimension=dx:s46m5MS0hxu;fClA2Erf6IO&dimension=pe:2016
-      &dimension=YNZyaJHiHYq:btOyqprQ9e8;GEqzEKCHoGA&filter=ou:ImspTQPwCqd
+    /api/33/dimensions/recommendations?fields=id&dimension=dx:fbfJHSPpUQD;JuTpJ2Ywq5b
 
-使用相关期间和组织单位进行查询
-当前用户可以使用这样的 URL：
+> Note
+>
+> This endpoint returns only dimensions that can be read by the current logged user. It will check if the current user can read the data or the metadata of the respective recommended dimension. Non-authorized dimensions are omitted from the list.
+
+分析资源的基本 URL 是`/api/analytics`。请求
+您可以在其上使用查询字符串的特定维度和维度项目
+以下格式,其中 `dim-id` 和 `dim-item` 应替换为实际值:
+
+    /api/analytics?dimension=dim-id:dim-item;dim-item&dimension=dim-id:dim-item;dim-item
+
+如上所示,维度标识符后跟一个冒号
+而维度项之间用分号分隔。例如,一个
+查询两个数据元素,两个期间和两个组织单位可以
+使用以下 URL 完成:
 
     /api/analytics?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU
-      &dimension=pe:LAST_12_MONTHS&dimension=ou:USER_ORGUNIT
+      &dimension=pe:2016Q1;2016Q2&dimension=ou:O6uvpzGd5pu;lc3eMKXaEfw
 
-When selecting organisation units for a dimension you can select an
+查询按类别选项组合细分的数据,而不是
+您可以在查询中包含类别维度的数据元素总计
+字符串,例如像这样:
+
+    /api/analytics?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU
+      &dimension=co&dimension=pe:201601&dimension=ou:O6uvpzGd5pu;lc3eMKXaEfw
+
+When selecting data elements you can also select all data elements in a
+group as items by using the `DE_GROUP-<id>` syntax:
+
+    /api/analytics?dimension=dx:DE_GROUP-h9cuJOkOwY2
+      &dimension=pe:201601&dimension=ou:O6uvpzGd5pu
+
+选择数据集报告率时,语法包含数据
+设置标识符后跟报告率指标:
+
+    /api/analytics?dimension=dx:BfMAe6Itzgt.REPORTING_RATE;BfMAe6Itzgt.ACTUAL_REPORTS
+      &dimension=pe:201601&dimension=ou:O6uvpzGd5pu
+
+  - To query for program data elements (of tracker domain type) you can get
+those by specifying the program for each data element using the
+`<program-id>.<dataelement-id>` syntax:
+        /api/analytics.json?dimension=dx:eBAyeGv0exc.qrur9Dvnyt5;eBAyeGv0exc.GieVkTxp4HH
+      &dimension=pe:LAST_12_MONTHS&filter=ou:ImspTQPwCqd
+    To query for program attributes (tracked entity attributes) you can get
+those by specifying the program for each attribute using the
+`<program.id>.<attribute-id>` syntax:
+        /api/analytics.json?dimension=dx:IpHINAT79UW.a3kGcGDCuk6;IpHINAT79UW.UXz7xuGCEhU
+      &dimension=pe:LAST_4_QUARTERS&dimension=ou:ImspTQPwCqd
+    要查询可以使用的组织单位组集和数据元素
+以下网址。请注意如何将组集标识符用作
+维度标识符和作为维度项的组:
+
+  -     /api/analytics?dimension=Bpx0589u8y0:oRVt7g429ZO;MAs88nJc9nL
+      &dimension=pe:2016&dimension=ou:ImspTQPwCqd
+    要查询数据元素和类别,您可以使用此 URL。使用
+类别标识符作为维度标识符,类别选项作为
+维度项目:
+        /api/analytics?dimension=dx:s46m5MS0hxu;fClA2Erf6IO&dimension=pe:2016
+      &dimension=YNZyaJHiHYq:btOyqprQ9e8;GEqzEKCHoGA&filter=ou:ImspTQPwCqd
+
+  - 使用相关期间和组织单位进行查询
+当前用户可以使用这样的 URL:
+        /api/analytics?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU
+      &dimension=pe:LAST_12_MONTHS&dimension=ou:USER_ORGUNIT
+    When selecting organisation units for a dimension you can select an
 entire level optionally constrained by any number of boundary
 organisation units with the `LEVEL-<level>` syntax. Boundary refers to a
 top node in a sub-hierarchy, meaning that all organisation units at the
@@ -276,48 +353,12 @@ given level below the given boundary organisation unit in the hierarchy
 will be included in the response, and is provided as regular organisation unit 
 dimension items. The level value can either be a numerical level or refer to the identifier
 of the organisation unit level entity. A simple query for all org units at level three:
+        /api/analytics?dimension=dx:fbfJHSPpUQD&dimension=pe:2016&dimension=ou:LEVEL-3
 
-    /api/analytics?dimension=dx:fbfJHSPpUQD&dimension=pe:2016&dimension=ou:LEVEL-3
-
-具有两个边界组织单位的三级和四级查询可以是
-指定如下：
-
-    /api/analytics?dimension=dx:fbfJHSPpUQD&dimension=pe:2016
+  - 具有两个边界组织单位的三级和四级查询可以是
+指定如下:
+        /api/analytics?dimension=dx:fbfJHSPpUQD&dimension=pe:2016
       &dimension=ou:LEVEL-3;LEVEL-4;O6uvpzGd5pu;lc3eMKXaEf
-
-    /api/analytics?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU
-      &dimension=co&dimension=pe:201601&dimension=ou:O6uvpzGd5pu;lc3eMKXaEfw
-
-    /api/analytics?dimension=dx:fbfJHSPpUQD&dimension=pe:2016
-      &dimension=ou:OU_GROUP-w0gFTTmsUcF;OU_GROUP-EYbopBOJWSW;O6uvpzGd5pu;lc3eMKXaEf
-
-您可以将标识符方案用于元数据部分
-具有 outputIdScheme 属性的分析响应，如下所示。你可以
-使用 ID、代码和属性作为标识符方案：
-
-    /api/analytics?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU
-      &dimension=pe:2017Q1;2017Q2&dimension=ou:O6uvpzGd5pu&outputIdScheme=CODE
-
-列出了使用分析资源时需要注意的一些事项
-以下。
-
-  - 数据元素、指标、数据集报告率、计划数据
-    要素和计划指标是共同数据维度的一部分，
-    标识为“dx”。这意味着您可以使用任何数据
-    元素、指标和数据集标识符以及“dx”
-    查询中的维度标识符。
-
-  - 对于类别、数据元素组集和组织单元组
-    设置维度，如果没有，将在查询中使用所有维度项
-    维度项目被指定。
-
-  - 对于期间维度，维度项为 ISO 期间
-    标识符和/或相对周期。请参阅部分
-    上面称为“日期和期间格式”的期间格式和
-    可用的相对时期。
-
-  - 对于组织单位维度，可以将项目指定为
-    的组织单位或其下属单位。
     When selecting organisation units you can also select all organisation
 units in an organisation unit group to be included as dimension items
 using the `OU_GROUP-<id>` syntax. The organisation units in the groups
@@ -326,9 +367,12 @@ units. Both the level and the group items can be repeated any number of
 times:
         /api/analytics?dimension=dx:fbfJHSPpUQD&dimension=pe:2016
       &dimension=ou:OU_GROUP-w0gFTTmsUcF;OU_GROUP-EYbopBOJWsW;O6uvpzGd5pu;lc3eMKXaEf
-    直接使用组织单位标识符，或将两者结合使用。
-    通过身份验证的用户必须拥有导出和分析数据的权限
-    指定的组织单位。
+    您可以将标识符方案用于元数据部分
+具有 outputIdScheme 属性的分析响应,如下所示。你可以
+使用 ID、代码和属性作为标识符方案:
+        /api/analytics?dimension=dx:fbfJHSPpUQD;cYeuwXTCPkU
+      &dimension=pe:2017Q1;2017Q2&dimension=ou:O6uvpzGd5pu&outputIdScheme=CODE
+    针对指定的组织单位。
 
   - 标识为“dx”。这意味着您可以使用任何数据
     元素、指标和数据集标识符以及“dx”
@@ -576,6 +620,7 @@ API 如下表所述。      | 错误代码 |
 | 当输出格式为DATA_VALUE_SET时,必须指定组织单位维度“ ou”      | E7120 |
 | 不允许用户查看组织单位      | E7121 |
 | 不允许用户读取对象的数据      | E7122 |
+| E7151      | 列或行的组合过多 |
 
 ### 数据批准级别不存在
 
@@ -667,12 +712,15 @@ json(应用项目/ json)
 as output identifier scheme looks like the below. When defining the
 output identifier scheme, all metadata objects part of the response are
 affected: |
-| lastUpdatedDate | 否 / 年-月-日 |
+| lastUpdatedDate | A request which aggregates data for data element operands and uses `CODE`
+as output identifier scheme looks like the below. When defining the
+output identifier scheme, all metadata objects part of the response are
+affected: |
 | 不 | Program notification template |
-| 不 | 不 |
-| stage | 不 |
-| Custom period on `incidentDate`. See "custom date periods" section. | 不 |
-| Custom period on `lastUpdated`. See "custom date periods" section. | 不 |
+| 不 | Program notification template |
+| stage | Program notification template |
+| Custom period on `incidentDate`. See "custom date periods" section. | Program notification template |
+| Custom period on `lastUpdated`. See "custom date periods" section. | Program notification template |
 | ```json
 {
   "httpStatus": "OK",
@@ -685,11 +733,11 @@ affected: |
     "errorReports": []
   }
 }
-``` | 不 |
-| Required / Notes | 不 |
-| 是的 | 不 |
-| The name of the headers to be returned as part of the response. One or more headers name separated by comma | 不 |
-| 不 | 不 |
+``` | Program notification template |
+| Required / Notes | Program notification template |
+| 是的 | Program notification template |
+| The name of the headers to be returned as part of the response. One or more headers name separated by comma | Program notification template |
+| 不 | Program notification template |
 
 不
 
@@ -758,7 +806,7 @@ inputIdScheme
 定期分析资源;不同之处在于响应包含
 原始的、非聚合的数据,适合进一步聚合
 第三方系统。 | E7228 | Fallback coordinate field is invalid |
-| E7229 | Filter on whether the current user can manage the returned users through the managed user group relationships. | 组织单位标识符和关键字 USER_ORGUNIT、USER_ORGUNIT_CHILDREN、USER_ORGUNIT_GRANDCHILDREN、LEVEL-<level\> 和 OU_GROUP-<group-id\> 。它可以分阶段运行，即：`A03MvHHogjR.ou`。 |
+| E7229 | Filter on whether the current user can manage the returned users through the managed user group relationships. | 组织单位标识符和关键字：USER_ORGUNIT、USER_ORGUNIT_CHILDREN、USER_ORGUNIT_GRANDCHILDREN、LEVEL-<level\> 以及OU_GROUP-<group-id\> 。 它可以分阶段处理，例如：`A03MvHHogjR.ou` |
 |     /api/analytics/events | 尺寸和项目 { #webapi_event_analytics_dimensions_items }  | 事件维度包括数据元素、属性、组织单位
 和时期。聚合的事件分析资源将返回
 聚合信息,例如计数或平均值。查询分析
@@ -857,62 +905,62 @@ inputIdScheme
 | 不 | Program notification template | false &#124; true | hierarchyMeta |
 | 不 | Program notification template | ACTIVE &#124; COMPLETED &#124; SCHEDULE &#124; OVERDUE &#124; SKIPPED. Can be comma separated (*for query only*). | 项目状态 |
 
-** 在某些情况下，可以通过 `dimension` 参数请求特定字段。它们不是真正的维度，但提供了更好的灵活性。它们是
+** 在某些情况下，可以通过 `dimension` 参数请求特定的字段。这些并非真正的维度，但能提供更大的灵活性。它们包括：
 
-#### 事件日期 (`EVENT_DATE`){ #event-date-event_date } 
+#### 活动日期（`EVENT_DATE`）{ #event-date-event_date } 
 
-根据事件发生的日期进行筛选。可用作根级维度或特定阶段的范围。
+按事件发生日期进行筛选。可作为根级维度使用，也可限定在特定阶段范围内。
 
-| 价值形式 | 描述 | 意义 |
+| 价值形式 | 描述 | 含义 |
 |---|---|---|
-| `{stageUid}.event_date:{period}` | `dimension=A03MvHHogjR.EVENT_DATE:202205`. | 阶段 "A03MvHHogjR "中的事件，事件发生日期为 2022 年 5 月。 |
-| `{stageUid}.event_date:{start}_{end}` | `dimension=A03MvHHogjR.EVENT_DATE:2022-05-01_2022-05-10` | 该阶段中事件日期在给定包含日期范围内的事件。 |
-| `event_date:{period}` | `dimension=EVENT_DATE:2022Sep`(事件日期：2022 年 9 月) | 使用财政年度过滤根级事件日期。 |
+| `{stageUid}.EVENT_DATE:{period}` | `dimension=A03MvHHogjR.EVENT_DATE:202205` | 阶段 `A03MvHHogjR` 中发生于2022年5月的事件。 |
+| `{stageUid}.EVENT_DATE:{start}_{end}` | `dimension=A03MvHHogjR.EVENT_DATE:2022-05-01_2022-05-10` | 该阶段中，活动日期在给定日期范围（含首尾两日）内的活动。 |
+| `EVENT_DATE:{period}` | `维度=EVENT_DATE:2022Sep` | 基于财政年度时段的根级事件日期筛选器。 |
 
-#### 预定日期 (`SCHEDULED_DATE`){ #scheduled-date-scheduled_date } 
+#### 计划日期（`SCHEDULED_DATE`）{ #scheduled-date-scheduled_date } 
 
-根据事件的计划日期（而不是实际发生日期）进行筛选。此外，它还可以扩展到特定阶段（如 `EVENT_DATE`）。
+按事件的计划日期（而非实际发生日期）进行筛选。此外，还可以将其范围限定为特定阶段（如 `EVENT_DATE`）。
 
-| 价值形式 | 描述 | 意义 |
+| 价值形式 | 描述 | 含义 |
 |---|---|---|
-| `scheduled_date:{period}` | dimension=SCHEDULED_DATE:202107 | 活动处于既定阶段，预定日期为 2021 年 7 月。 |
+| `SCHEDULED_DATE:{period}` | `维度=SCHEDULED_DATE:202107` | 该阶段中，计划于2021年7月举行的活动。 |
 
-#### 创建日期 (`CREATED`){ #created-date-created } 
+#### 创建日期（`CREATED`）{ #created-date-created } 
 
-根据报名记录在系统中创建的时间进行筛选。此外，它还可以针对特定阶段（如 `EVENT_DATE`）。
+按系统中注册记录的创建时间进行筛选。此外，还可以将其范围限定在特定阶段（如 `EVENT_DATE`）。
 
-| 价值形式 | 描述 | 意义 |
+| 价值形式 | 描述 | 含义 |
 |---|---|---|
-| `CREATED:{period}` | dimension=CREATED:2016Sep | 自 2016 年 9 月起的财政年度内创建的注册人数。 |
+| `创建时间：{period}` | `维度=创建时间:2016年9月` | 2016年9月开始的财政年度内创建的注册信息。 |
 
-#### 完成日期 (`COMPLETED`){ #completed-date-completed } 
+#### 完成日期（`COMPLETED`）{ #completed-date-completed } 
 
-根据注册被标记为完成的时间进行筛选。  此外，它还可以扩展到特定阶段（如 `EVENT_DATE`）。
+按注册被标记为完成的时间进行筛选。此外，还可以将其范围限定为特定阶段（如 `EVENT_DATE`）。
 
-| 价值形式 | 描述 | 意义 |
+| 价值形式 | 描述 | 含义 |
 |---|---|---|
-| 完成：{period}` | 尺寸=COMPLETED:2022年9月 | 自 2022 年 9 月起的财政年度内完成的注册。 |
+| `已完成：{period}` | `维度=已完成：2022年9月` | 在2022年9月开始的财政年度内完成的注册。 |
 
-#### 事件状态 (`EVENT_STATUS`){ #event-status-event_status } 
+#### 事件状态（`EVENT_STATUS`）{ #event-status-event_status } 
 
-根据阶段内事件的状态进行筛选。
+根据事件在某个阶段中的状态进行筛选。
 
-| 价值形式 | 描述 | 意义 |
+| 价值形式 | 描述 | 含义 |
 |---|---|---|
-| `{stageUid}.event_status:{status}` | `dimension=A03MvHHogjR.EVENT_STATUS:ACTIVE`. | 阶段中状态为 "ACTIVE "的事件。 |
-| `{stageUid}.event_status:{s1};{s2}` | `dimension=edqlbukwRfQ.EVENT_STATUS:COMPLETED;ACTIVE`. | 状态为 `COMPLETED` **或** `ACTIVE` 的事件（OR 逻辑）。 |
+| `{stageUid}.EVENT_STATUS:{status}` | `dimension=A03MvHHogjR.EVENT_STATUS:ACTIVE` | 状态为 `ACTIVE` 的阶段中的事件。 |
+| `{stageUid}.EVENT_STATUS:{s1};{s2}` | `dimension=edqlbukwRfQ.EVENT_STATUS:COMPLETED;ACTIVE` | 状态为 `COMPLETED` **或** `ACTIVE` 的事件（按“或”逻辑）。 |
 
-有效状态值：活动"、"已完成"、"已排定"、"逾期"、"已跳过"。
+有效的状态值：`ACTIVE`、`COMPLETED`、`SCHEDULED`、`OVERDUE`、`SKIPPED`。
 
-#### 程序状态 (`PROGRAM_STATUS`){ #program-status-program_status } 
+#### 程序状态（`PROGRAM_STATUS`）{ #program-status-program_status } 
 
-根据注册本身的状态（而不是单个事件）进行筛选。
+根据注册状态（而非单个活动）进行筛选。
 
-| 价值形式 | 描述 | 意义 |
+| 价值形式 | 描述 | 含义 |
 |---|---|---|
-| `program_status:{status}` | dimension=PROGRAM_STATUS:ACTIVE | 仅指具有指定计划状态的注册人数。 |
+| `PROGRAM_STATUS：{status}` | `dimension=PROGRAM_STATUS:ACTIVE` | 仅限具有指定项目状态的注册信息。 |
 
-有效状态值：激活"、"已完成"、"已取消"。
+有效的状态值：`ACTIVE`、`COMPLETED`、`CANCELLED`。
 
 
 不
@@ -924,6 +972,7 @@ inputIdScheme
 | filter | Program notification template | timeField | 不 |
 | 不 | Program notification template | Table: Query parameters for event query analytics only | 假 |
 | 需要 | Program notification template | 选项 | 假 |
+| Skip rounding of aggregate data values. | Program notification template | 用于作为地理空间事件分析基础的字段。可设置为 `EVENT`（默认）、`ENROLLMENT` 或 `TRACKER`，或设置为值类型为坐标或组织单位的数据元素或属性的标识符。对于值类型为组织单位的条目，将使用该组织单位的几何图形（由其质心表示）。 也接受原始几何列名 `eventgeometry`、`enrollmentgeometry`、`tegeometry` 和 `ougeometry`。 | `EVENT` | `ENROLLMENT` | `TRACKER` | `ougeometry` |<attribute-id\> |<dataelement-id\> |
 | 不 | Program notification template | DESCENDANTS, CHILDREN, SELECTED | pageSize |
 | Start date for interval tocheck for outliers | Program notification template | 选项(默认为默认) | ouMode |
 | 定义要返回的页码。 | Program notification template | `ouname` &#124; `programstatus` &#124; `eventstatus` &#124; `createdbydisplayname` &#124; `lastupdatedbydisplayname` &#124; `eventdate` &#124; `enrollmentdate` &#124; `incidentdate` &#124; `lastupdated` &#124; item identifier | asc |
@@ -940,7 +989,7 @@ no
 
 | eventCreatedPeriod | 检索和删除项目通知模板 | Parameter name | 用户设置 { #webapi_user_settings }  |
 |---|---|---|---|
-| 日期时间 | Program notification template | scheduledDate | 数据元素或属性标识符。它可以是阶段范围，即：`value=stageId.dimensionid`。 |
+| 日期时间 | Program notification template | scheduledDate | 数据元素或属性标识符。它可以是阶段范围内的，例如：`value=stageId.dimensionid` |
 | Events resource only. Custom period on `scheduledDate`. See "custom date periods" section. | Program notification template | incidentDate | no |
 | Custom period on `incidentDate`. See "custom date periods" section. | Program notification template | lastUpdated | 假 |
 | Custom period on `lastUpdated`. See "custom date periods" section. | Program notification template | `DESCENDANTS`, `CHILDREN`, `SELECTED` | 查询参数 |
@@ -989,7 +1038,7 @@ no
     ]
 }
 ``` | skipRounding | asc |
-| Skip rounding of aggregate data values. | Program notification template | aggregateData | 不 |
+| Skip rounding of aggregate data values. | Program notification template | 用于作为地理空间事件分析基础的字段。可设置为 `EVENT`（默认）、`ENROLLMENT` 或 `TRACKER`，也可设置为值类型为坐标或组织单位的数据元素或属性的标识符。对于值类型为组织单位的项目，将使用该组织单位的几何图形（由其质心表示）。 也接受原始几何列名 `eventgeometry`、`enrollmentgeometry`、`tegeometry` 和 `ougeometry`。 | `EVENT` | `ENROLLMENT` | `TRACKER` | `ougeometry` |<attribute-id\> |<dataelement-id\> |
 | Produce aggregate values for the data dimensions (as opposed to dimension items). | ```json
 {
     "name": "Case notification",
@@ -1008,6 +1057,16 @@ no
 }
 ``` | orgUnitField | 具有以下要求: |
 | The organisation unit field to base event aggregation on. Applies to event data items only. Can be the ID of an attribute or data element with the Organisation unit value type. The default option is specified as omitting the query parameter. | Program notification template | Table: Query parameters for cluster event analytics only | 假 |
+
+> **注意**
+>
+> 当 `coordinateField` 引用一个数据元素或被追踪实体的属性，且该属性的值类型为
+> *组织单位* 时，将使用该组织单位自身的几何信息，并以其质心表示。
+> 除 `EVENT`、`ENROLLMENT` 和 `TRACKER` 关键字外，还直接支持原始分析几何列
+> 名称 `eventgeometry`、`enrollmentgeometry`、`tegeometry` 和 `ougeometry`
+> （其中 `tegeometry` 仅适用于设有注册功能的项目）。 别名 `pigeometry`（注册）、
+> `psigeometry`（事件）和 `teigeometry`（被追踪实体）已弃用，仅为
+> 向后兼容而保留，将在未来的版本中移除。
 
 ### 需要
 
@@ -1095,13 +1154,13 @@ number 不是,将使用页码 1。获取第三页
 | Equal to, ignoring case | !IEQ |
 | Operators | GT |
 
-#### 时间字段过滤{ #time-field-filtering } 
+#### 时间域滤波{ #time-field-filtering } 
 
 GE
 
 Greater than or equal to
 
-#### 强化条件{ #enhanced-conditions } 
+#### 升级版条款{ #enhanced-conditions } 
 
 Less than
 
@@ -1600,21 +1659,21 @@ resource. A request looks like this: |
 | 不允许用户查看事件分析数据      | E7218 |
 | 未启用空间数据库支持      | E7219 |
 | 数据元素必须是值类型坐标才能用作坐标字段      | E7220 |
-| E7230      | 页眉参数不存在 |
-| E7231      | 遗产只能通过事件可视化进行更新 |
+| E7230      | 该标头参数不存在 |
+| E7231      | Legacy 只能通过事件可视化进行更新 |
 | E7232      | E7219 |
-| E7234      | 查询过滤器对查询项目值类型无效 |
-| E7235      | 必须指定 programId 或 programStageId |
-| E7236      | 程序阶段与程序无关 |
-| E7237      | 排序必须有有效的维度和方向 |
-| E7238      | 排序维度不是列 |
-| E7239      | 空 "值的运算符无效 |
-| E7240      | 具有组织单位所有权的事件查询不支持时间字段 |
-| E7241      | 阶段参数不能与特定阶段的维度标识符一起使用 |
-| E7242      | 周期维度不能与特定阶段的日期维度（即：EVENT_DATE、SCHEDULED_DATE）一起使用 |
-| E7243      | 重复的阶段标注标识符 |
-| E7244      | 不允许在特定阶段的尺寸中设置多个阶段 |
-| E7245      | 程序阶段不属于程序 |
+| E7234      | 该查询过滤器不适用于该查询项的值类型 |
+| E7235      | 必须指定 programId 或 programStageId 中的一个 |
+| E7236      | 程序阶段未与程序相关联 |
+| E7237      | 排序必须具有有效的维度方向和排序方向 |
+| E7238      | 排序维度不是一列 |
+| E7239      | “null” 值的操作符无效 |
+| E7240      | 基于组织单位所有权的事件查询不支持时间字段 |
+| E7241      | 阶段参数不能与特定于该阶段的维度标识符一起使用 |
+| E7242      | 时间维度不能与阶段特定的日期维度（例如：EVENT_DATE、SCHEDULED_DATE）一起使用 |
+| E7243      | 重复的阶段维度标识符 |
+| E7244      | 不允许在阶段特定维度中包含多个阶段 |
+| E7245      | 程序阶段不属于该程序 |
 
 ## 属性必须是坐标值类型,才能用作坐标域
 
@@ -1645,7 +1704,7 @@ E7222
 第三方系统。 | E7228 | Fallback coordinate field is invalid |
 | E7229 | Filter on whether the current user can manage the returned users through the managed user group relationships. | 入学分析 { #webapi_enrollment_analytics }  |
 
-#### 可重复阶段{ #repeatable-stages } 
+#### 可重复的阶段{ #repeatable-stages } 
 
 尺寸和项目 { #webapi_enrollment_analytics_dimensions } 
 
@@ -1714,14 +1773,14 @@ The `analytics/enrollments/query` resource lets you query for captured enrollmen
 
     /api/analytics/enrollments/query
 
-#### 时间字段过滤{ #time-field-filtering } 
+#### 时间域滤波{ #time-field-filtering } 
 
     /api/analytics/enrollments/query/<program-id>?startDate=yyyy-MM-dd&endDate=yyyy-MM-dd
       &dimension=ou:<ou-id>;<ou-id>&dimension=<item-id>&dimension=<item-id>:<operator>:<filter>
 
 例如,要从2019年1月起从“产前护理”计划中检索入学申请,该计划从属性中提取“名字”,则在第一个计划阶段包括“慢性病”和“吸烟”数据元素,并且来自以下项目阶段的“血红蛋白值”,并且仅包括具有“疯子病”的女性,您可以使用以下查询:
 
-##### NV 关键字{ #nv-keyword } 
+##### NV 关键词{ #nv-keyword } 
 要从上个月(相对于执行查询的时间点)的“产前护理”项目中检索入学登记,其中“慢性病”和“吸烟”数据元素包含在第一项目阶段,而“后续计划阶段的“血红蛋白价值”,仅包括吸烟的血红蛋白少于20岁的女性:
 
     /api/analytics/enrollments/query/WSGAb5XwJ3Y.json
@@ -1756,7 +1815,7 @@ Filtering
 
 过滤器可以应用于数据元素,人员属性和人员标识符。过滤是通过以下格式的查询参数值完成的:
 
-##### 操作员{ #operators } 
+##### 运算符{ #operators } 
 
 例如,您可以过滤“ Weight”数据元素以获取大于2000且小于4000的值,如下所示:
 
@@ -1831,67 +1890,68 @@ Operator
 | Dimensions to use as columns for table layout. | Program notification template | 维度标识符包括数据元素、属性、项目指标、期间、组织单元和组织单元组集。参数可以重复任意次数。项目过滤器可以应用于维度的格式<item-id\>:<operator\>:<filter\>。过滤器值不区分大小写。 | 项目状态 |
 | filter | Program notification template | 维度标识符包括数据元素、属性、期间、组织单位和组织单位组集。参数可以重复任意次数。项目过滤器可以应用于维度,格式为<item-id\>:<operator\>:<filter\>。过滤器值不区分大小写。 | 项目状态 |
 | 不 | Program notification template | ACTIVE &#124; COMPLETED &#124; CANCELLED | 假 |
+| Skip rounding of aggregate data values. | Program notification template | 用于作为地理空间注册分析基础的字段。可设置为 `EVENT`、`ENROLLMENT`（默认）或 `TRACKER`，也可设置为值类型为坐标或组织单位的数据元素或属性的标识符。对于值类型为组织单位的项目，将使用该组织单位的几何图形（由其质心表示）。 也接受原始几何列名 `eventgeometry`、`enrollmentgeometry`、`tegeometry` 和 `ougeometry`。 | `活动` | `报名` | `追踪器` | `ougeometry` |<attribute-id\> |<dataelement-id\> |
 | Start date for interval tocheck for outliers | Program notification template | 选项(默认为默认) | ouMode |
 | 定义要返回的页码。 | Program notification template | `ouname` &#124; `programstatus` &#124; `eventstatus` &#124; `createdbydisplayname` &#124; `lastupdatedbydisplayname` &#124; `eventdate` &#124; `enrollmentdate` &#124; `incidentdate` &#124; `lastupdated` &#124; item identifier | asc |
 | 定义每页返回的元素数量。 | Program notification template | false &#124; true | coordinateOuFallback |
 | 不 | Program notification template | `ouname` &#124; `programstatus` &#124; `createdbydisplayname` &#124; `lastupdatedbydisplayname` &#124; `enrollmentdate` &#124; `incidentdate` &#124; `lastupdated` &#124; item identifier | coordinatesOnly |
 
-** 在某些情况下，可以通过 `dimension` 参数请求特定字段。它们不是真正的维度，但提供了更好的灵活性。它们是
+** 在某些情况下，可以通过 `dimension` 参数请求特定的字段。这些并非真正的维度，但能提供更大的灵活性。它们包括：
 
-#### 事件日期 (`EVENT_DATE`){ #event-date-event_date } 
+#### 活动日期（`EVENT_DATE`）{ #event-date-event_date } 
 
-根据事件发生的日期进行筛选。可用作根级维度或特定阶段的范围。
+按事件发生日期进行筛选。可作为根级维度使用，也可限定在特定阶段范围内。
 
-| 价值形式 | 描述 | 意义 |
+| 价值形式 | 描述 | 含义 |
 |---|---|---|
-| `{stageUid}.event_date:{period}` | `dimension=A03MvHHogjR.EVENT_DATE:202205`. | 阶段 "A03MvHHogjR "中的事件，事件发生日期为 2022 年 5 月。 |
-| `{stageUid}.event_date:{start}_{end}` | `dimension=A03MvHHogjR.EVENT_DATE:2022-05-01_2022-05-10` | 该阶段中事件日期在给定包含日期范围内的事件。 |
-| `event_date:{period}` | `dimension=EVENT_DATE:2022Sep`(事件日期：2022 年 9 月) | 使用财政年度过滤根级事件日期。 |
+| `{stageUid}.EVENT_DATE:{period}` | `dimension=A03MvHHogjR.EVENT_DATE:202205` | 阶段 `A03MvHHogjR` 中发生于2022年5月的事件。 |
+| `{stageUid}.EVENT_DATE:{start}_{end}` | `dimension=A03MvHHogjR.EVENT_DATE:2022-05-01_2022-05-10` | 该阶段中，活动日期在给定日期范围（含首尾两日）内的活动。 |
+| `活动日期：{period}` | `维度=EVENT_DATE:2022Sep` | 基于财政年度时段的根级事件日期筛选器。 |
 
-#### 预定日期 (`SCHEDULED_DATE`){ #scheduled-date-scheduled_date } 
+#### 计划日期（`SCHEDULED_DATE`）{ #scheduled-date-scheduled_date } 
 
-根据事件的计划日期（而不是实际发生日期）进行筛选。此外，它还可以扩展到特定阶段（如 `EVENT_DATE`）。
+按事件的计划日期（而非实际发生日期）进行筛选。此外，还可以将其范围限定为特定阶段（如 `EVENT_DATE`）。
 
-| 价值形式 | 描述 | 意义 |
+| 价值形式 | 描述 | 含义 |
 |---|---|---|
-| `scheduled_date:{period}` | dimension=SCHEDULED_DATE:202107 | 活动处于既定阶段，预定日期为 2021 年 7 月。 |
+| `SCHEDULED_DATE:{period}` | `维度=SCHEDULED_DATE:202107` | 该阶段中定于2021年7月举行的活动。 |
 
-#### 创建日期 (`CREATED`){ #created-date-created } 
+#### 创建日期（`CREATED`）{ #created-date-created } 
 
-根据报名记录在系统中创建的时间进行筛选。此外，它还可以针对特定阶段（如 `EVENT_DATE`）。
+按注册记录在系统中创建的时间进行筛选。此外，还可以将其范围限定为特定阶段（如 `EVENT_DATE`）。
 
-| 价值形式 | 描述 | 意义 |
+| 价值形式 | 描述 | 含义 |
 |---|---|---|
-| `CREATED:{period}` | dimension=CREATED:2016Sep | 自 2016 年 9 月起的财政年度内创建的注册人数。 |
+| `创建时间：{period}` | `维度=创建时间:2016年9月` | 2016年9月开始的财政年度内创建的注册信息。 |
 
-#### 完成日期 (`COMPLETED`){ #completed-date-completed } 
+#### 完成日期（`COMPLETED`）{ #completed-date-completed } 
 
-根据注册被标记为完成的时间进行筛选。  此外，它还可以扩展到特定阶段（如 `EVENT_DATE`）。
+按注册被标记为完成的时间进行筛选。此外，还可以将其范围限定为特定阶段（如 `EVENT_DATE`）。
 
-| 价值形式 | 描述 | 意义 |
+| 价值形式 | 描述 | 含义 |
 |---|---|---|
-| 完成：{period}` | 尺寸=COMPLETED:2022年9月 | 自 2022 年 9 月起的财政年度内完成的注册。 |
+| `已完成：{period}` | `维度=已完成：2022年9月` | 在2022年9月开始的财政年度内完成的注册。 |
 
-#### 事件状态 (`EVENT_STATUS`){ #event-status-event_status } 
+#### 事件状态（`EVENT_STATUS`）{ #event-status-event_status } 
 
-根据阶段内事件的状态进行筛选。
+根据事件在某个阶段中的状态进行筛选。
 
-| 价值形式 | 描述 | 意义 |
+| 价值形式 | 描述 | 含义 |
 |---|---|---|
-| `{stageUid}.event_status:{status}` | `dimension=A03MvHHogjR.EVENT_STATUS:ACTIVE`. | 阶段中状态为 "ACTIVE "的事件。 |
-| `{stageUid}.event_status:{s1};{s2}` | `dimension=edqlbukwRfQ.EVENT_STATUS:COMPLETED;ACTIVE`. | 状态为 `COMPLETED` **或** `ACTIVE` 的事件（OR 逻辑）。 |
+| `{stageUid}.EVENT_STATUS:{status}` | `dimension=A03MvHHogjR.EVENT_STATUS:ACTIVE` | 状态为 `ACTIVE` 的阶段中的事件。 |
+| `{stageUid}.EVENT_STATUS:{s1};{s2}` | `dimension=edqlbukwRfQ.EVENT_STATUS:COMPLETED;ACTIVE` | 状态为 `COMPLETED` **或** `ACTIVE` 的事件（按“或”逻辑）。 |
 
-有效状态值：活动"、"已完成"、"已排定"、"逾期"、"已跳过"。
+有效的状态值：`ACTIVE`、`COMPLETED`、`SCHEDULED`、`OVERDUE`、`SKIPPED`。
 
-#### 程序状态 (`PROGRAM_STATUS`){ #program-status-program_status } 
+#### 程序状态（`PROGRAM_STATUS`）{ #program-status-program_status } 
 
-根据注册本身的状态（而不是单个事件）进行筛选。
+根据注册状态（而非单个活动）进行筛选。
 
-| 价值形式 | 描述 | 意义 |
+| 价值形式 | 描述 | 含义 |
 |---|---|---|
-| `program_status:{status}` | dimension=PROGRAM_STATUS:ACTIVE | 仅指具有指定计划状态的注册人数。 |
+| `PROGRAM_STATUS：{status}` | `dimension=PROGRAM_STATUS:ACTIVE` | 仅限具有指定项目状态的注册记录。 |
 
-有效状态值：激活"、"已完成"、"已取消"。
+有效的状态值：`ACTIVE`、`COMPLETED`、`CANCELLED`。
 
 #### 回应格式 { #response-formats } 
 
@@ -1968,7 +2028,7 @@ html + css(text / html)
 This resource retrieves data from TE, enrollments, events, and data elements across multiple programs, for a given tracked entity type.      | Dimensions and items { #webapi_te_analytics_dimensions }                                            | Dimension id |
 | Table: TE dimensions           | 尺寸                         | Dimension id |
 
-#### 偏移{ #offset } 
+#### 偏移量{ #offset } 
 
 项目属性(TE 属性)
 
@@ -2004,7 +2064,7 @@ Event Organisation units
 
 `<program id><program stage id>.ou`
 
-#### 时期{ #periods } 
+#### 月经 { #periods } 
 
 Offset
 
@@ -2212,7 +2272,7 @@ All value types for data elements and tracked entity attributes are considered *
 
 - Event aggregate dimensions { #webapi_event_aggregate_analytics_dimension }
 - Data elements and tracked entity attributes are considered *supported types* if their value type is one of the following:
-- 程序中*受支持类型*的**受追踪实体属性**，且未被标记为在Analytics中跳过。
+- 程序中*受支持类型*的**受追踪实体属性**，且未被标记为应从 Analytics 中跳过。
 
 **Tracked entity attributes** of *supported types* associated with the program that are not confidential
 
@@ -2221,7 +2281,7 @@ All value types for data elements and tracked entity attributes are considered *
 **Category option group sets** of type `ATTRIBUTE` associated with program (derived from programStageId)
 
 - Data elements and tracked entity attributes are considered *supported types* if their value type is one of the following:
-- 程序中*受支持类型*的**受追踪实体属性**，且未被标记为在Analytics中跳过。
+- 程序中*受支持类型*的**受追踪实体属性**，且未被标记为应从Analytics中跳过。
 
 `UNIT_INTERVAL`
 
@@ -2235,7 +2295,7 @@ All value types for data elements and tracked entity attributes are considered *
 - Enrollment analytics dimensions
 - **Tracked entity attributes** of *supported types* associated with the program (derived from programStageId)
 
-### 跟踪实体分析维度{ #tracked-entities-analytics-dimensions } 
+### “已跟踪实体”分析维度{ #tracked-entities-analytics-dimensions } 
 
 #### 与项目连接的**项目指示器**
 
@@ -2244,12 +2304,12 @@ All value types for data elements and tracked entity attributes are considered *
 **Tracked entity attributes** of *supported types* associated with the program that are not confidential
 - All value types for data elements and tracked entity attributes are considered *supported types*, except `IMAGE` and `FILE_RESOURCE`.
 - Enrollment aggregate dimensions { #webapi_enrollment_aggregate_analytics_dimension }
-- `P` 中*受支持类型*的**受追踪实体属性**，且未被标记为应从 Analytics 中跳过。
+- `P` 中 *受支持类型* 的 **受追踪实体属性**，且未被标记为应从 Analytics 中跳过。
 - **Data elements** of *supported types* in the program, with program stage for each data element
 
 **Tracked entity attributes** of *supported types* associated with the program that are not confidential
 
-### 请求和答复样本{ #sample-request-and-response } 
+### 请求和响应示例{ #sample-request-and-response } 
 
 `NUMBER`
 
@@ -3335,7 +3395,7 @@ Max results exceeds the allowed max limit: *500*.
 
 E2207
 Data start date must be before data end date.
-## 分析查询执行计划和成本，包括执行时间估算{ #analytics-query-execution-plan-and-costs-including-execution-time-estimation } 
+## Analytics 查询执行计划和成本（包括执行时间估计）{ #analytics-query-execution-plan-and-costs-including-execution-time-estimation } 
 
 Non-numeric data values encountered during outlier value detection.
 

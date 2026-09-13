@@ -1,298 +1,1052 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/sysadmin/reference/oauth.md"
-revision_date: '2026-04-22'
+revision_date: '2026年8月20日'
 tags:
 - 系统管理
 ---
 
-# OpenID Connect（OIDC）配置 { #install_oidc_configuration } 
+# OAuth2 和 OpenID Connect (OIDC){ #install_oauth2_oidc_configuration }
 
-DHIS2 支持用于单点登录（SSO）的 OpenID Connect（OIDC）身份层。OIDC 是一种标准身份验证协议，用户可通过身份提供商（IdP）（如谷歌）登录。用户成功登录其 IdP 后，将自动登录 DHIS2。
+DHIS2 的 OAuth2/OIDC 组件包含两个方面：
 
-本节提供了与 OIDC 提供商一起使用 DHIS2 的一般信息，以及完整的配置示例。
+1. **DHIS2 作为授权服务器**。DHIS2 可以颁发自己的 OAuth2
+   访问令牌和 OpenID Connect 身份令牌。Web 应用、服务器到服务器
+   集成，以及 DHIS2 Android Capture 应用通过
+   它。这是基于
+   [Spring 授权服务器](https://docs.spring.io/spring-authorization-server/reference/)。
+2. **DHIS2 作为依赖方（OIDC 登录）**。用户可以登录 DHIS2
+   与外部身份提供商（例如 Google、Microsoft Entra ID）
+   (Azure AD)、WSO2、Okta 或任何符合标准的 OIDC 提供商。
+   DHIS2 会验证 ID 令牌，并将其与本地用户账户进行匹配。
 
-DHIS2 OIDC "授权码 "验证流程：
+这两种方式可以同时启用。本章将介绍这两种方式，
+以及客户端应用程序如何使用生成的令牌来调用 DHIS2
+API（JWT 承载者身份验证）。
 
-1. 用户尝试登录 DHIS2 并点击登录页面上的 OIDC 提供商按钮。
 
-2. DHIS2 会将浏览器重定向到 IdP 的登录页面。
+## 术语 { #terminology } 
 
-3. 如果尚未登录，系统会提示用户输入凭据。身份验证成功后，IdP 会响应重定向，返回 DHIS2 服务器。重定向包括为用户生成的唯一授权码。
+| 术语 | 本章的含义 |
+|------|-------------------------|
+| 授权服务器 (AS) | 负责签发令牌的组件。在 DHIS2 中，该组件是 Spring 授权服务器，可通过 `oauth2.server.enabled=on` 启用。 |
+| 资源服务器 | 负责验证令牌并保护 API 的组件。在 DHIS2 中，该组件即 DHIS2 Web API。 |
+| 身份提供商（IdP） | 用于对最终用户进行身份验证的 OIDC 提供商。可以是 DHIS2 本身（内部），也可以是外部提供商（如 Google、Azure AD 等）。 |
+| 依赖方（RP） | OIDC 客户端。当 DHIS2 通过外部身份提供商（IdP）为用户登录时，DHIS2 即为资源提供方（RP）。 |
+| 已注册的客户端（OAuth2 客户端） | 描述可向授权服务器（AS）请求令牌的应用程序的数据库记录。参见 [OAuth2 客户端](#oauth2_clients)。 |
+| DCR | 动态客户端注册（RFC 7591）。允许客户端在运行时自行注册，而无需管理员预先创建。Android Capture 应用即采用了此功能。 |
+| IAT | 初始访问令牌。一个有效期较短的 JWT，仅授权一次 DCR 注册调用。 |
+| `private_key_jwt` | 一种客户端身份验证方法，客户端通过使用私钥对 JWT 进行签名来证明其身份，而非发送共享密钥（RFC 7523）。 |
+| JWKS | JSON Web Key Set。用于验证 JWT 签名的公钥文档。 |
 
-4. DHIS2 服务器会在内部将用户的授权代码连同自己的客户 ID 和客户秘密凭证一起发回给 IdP 服务器。
+---
 
-5. IdP 向 DHIS2 服务器返回 ID 令牌。DHIS2 服务器对令牌进行验证。
+## 启用授权服务器{ #enabling_the_authorization_server }
 
-6. DHIS2 服务器根据 ID 令牌中的映射要求（默认为电子邮件）查找 DHIS2 内部用户，授权用户并完成登录过程。
+授权服务器默认处于关闭状态。要将其开启，请在
+`dhis.conf` 中设置：
 
-## 将 OIDC 与 DHIS2 结合使用的要求：{ #requirements-for-using-oidc-with-dhis2 } 
+```属性
+# 此 DHIS2 实例的公共 HTTPS 基础 URL。
+# 用作 OAuth2 发行者 URI（即签发令牌中的 `iss` 声明）。
+# 必须设置；否则授权服务器将拒绝启动。
+server.base.url = https://dhis2.example.org
 
-### IdP 服务器账户{ #idp-server-account } 
-
-您必须在 DHIS2 支持的在线身份供应商 (IdP) 或独立服务器上拥有一个管理员账户。
-
-目前支持并测试了以下 IdP：
-
-* 谷歌
-* Azure AD
-* WSO2
-* Okta（请参阅单独的教程：[此处](#configure-openid-connect-with-okta))
-
-还有一个**通用提供商**配置，可支持 "任何 "兼容 OIDC 的提供商。
-
-### DHIS2 用户账户{ #dhis2-user-accounts } 
-
-要在 DHIS2 中进行开放身份连接（OIDC）认证，必须在 DHIS2 中创建用户账户，并将其映射到身份供应商（IdP）平台中的相应条目。这种映射通过为每个 DHIS2 用户账户配置*OIDC 映射值*属性来实现。
-
-请注意，映射值区分大小写。例如，如果在 IdP 中使用电子邮件地址作为申请，而电子邮件地址使用大写和小写字母，则在输入 DHIS2 用户 OIDC 映射值时一定要考虑大写字母。
-
-目前不支持从 Active Directory 等外部目录导入用户。OIDC 标准不支持使用外部身份存储对用户进行供应和管理。
-
-### 用户的IdP声明和映射 { #idp-claims-and-mapping-of-users } 
-
-要使用 OIDC 登录 DHIS2，必须在 IdP 中配置特定用户，然后将其映射到 DHIS2 中的用户账户。OIDC 使用一种方法，依靠声明与其他应用程序共享用户账户属性。声明包括电子邮件、电话号码、姓名等用户账户属性。DHIS2 依靠 IdP 索赔将 IdP 中的用户账户映射到 DHIS2 服务器中的用户账户。默认情况下，DHIS2 希望 IdP 传递 _email_ 声明。根据 IdP 的不同，您可能需要配置 DHIS2 以使用不同的 IdP 声明。
-
-如果使用 Google 或 Azure AD 作为 IdP，默认行为是使用 _email_ 索赔将 IdP 身份映射到 DHIS2 用户账户。
-
-> **注**
->
-> 为了使 DHIS2 用户能够使用 IdP 登录，用户配置文件的复选框必须选中：必须选中 *External authentication only OpenID or LDAP*（外部身份验证仅限 OpenID 或 LDAP），并且 *OpenID* 字段必须与 IdP 返回的请求（映射请求）相匹配。电子邮件是 Google 和 Azure AD 使用的默认声明。
-
-## 为OIDC配置身份提供者 { #configure-the-identity-provider-for-oidc } 
-
-本主题提供有关配置身份提供者 (IdP) 以在 DHIS2 中使用 OIDC 的一般信息。这是一个多步骤过程中的一个步骤。每个 IdP 的配置方法略有不同。关于如何创建和配置 OIDC 应用项目，请查阅 IdP 自己的文档。在此，我们将 DHIS2 服务器称为 OIDC "应用项目"。
-
-### 重定向网址 { #redirect-url } 
-
-所有 IdP 都需要一个指向 DHIS2 服务器的重定向 URL。 
-您可以使用以下模式构建它：
-
-```
-(协议）：/（您的 DHIS2 主机）/oauth2/code/PROVIDER_KEY
+# 启用 Spring 授权服务器。
+oauth2.server.enabled = on
 ```
 
-使用 Google IdP 时的示例：
+当 `oauth2.server.enabled = on` 时，DHIS2 会提供以下端点
+（路径为 Spring 授权服务器的默认值）：
 
+| 端点 | 路径 | 目的 |
+|----------|------|---------|
+| 授权 | `/oauth2/authorize` | 面向用户的授权端点（授权码流程）。 |
+| 代币 | `/oauth2/token` | 令牌交换（authorization_code、refresh_token、client_credentials、`private_key_jwt` 客户端断言）。 |
+| JWKS | `/oauth2/jwks` | 用于验证已签发的 JWT 的公钥。 |
+| 撤销 | `/oauth2/revoke` | 撤销访问令牌或刷新令牌（RFC 7009）。 |
+| 自我反省 | `/oauth2/introspect` | 令牌内省（RFC 7662）。 |
+| OIDC 用户信息 | `/oauth2/userinfo` | 标准的 OIDC userinfo 端点。 |
+| OIDC 发现 | `/.well-known/openid-configuration` | OIDC 披露文件。 |
+| 动态客户端注册 | `/connect/register` | RFC 7591 客户端注册（Android DCR 采用）。 |
+| 设备注册（DHIS2 专用） | `/api/auth/enrollDevice` | 为 DCR 生成一个一次性初始访问令牌。参见 [DCR](#dynamic_client_registration)。 |
+
+### 发行者 URI 和 `server.base.url`{ #oauth2_issuer_uri }
+
+OAuth2 签发者 URI（即每个签发 JWT 中的 `iss` 声明，以及所有
+OIDC 发现元数据的基础）源自 `server.base.url`。请将其
+设置为客户端用于访问 DHIS2 的 **公共** URL。 如果 DHIS2 位于
+TLS 终止反向代理之后，请使用外部 URL `https://`，
+而不是 Tomcat 所看到的内部 URL `http://`。
+
+授权服务器直接从
+`server.base.url` 读取发行者 URI，
+而不是从传入的 HTTP
+请求中推断出来。
+
+`server.base.url` 经过规范化处理，因此
+无论是否带有尾部斜杠，都会被视为相同。
+
+如果当 `oauth2.server.enabled=on` 时
+`server.base.url` 为空，授权服务器将在启动时抛出 `IllegalStateException`。
+此外，当任何配置中缺少 `server.base.url` 时，DHIS2 也会记录一条警告。
+
+### 持久化签名密钥库{ #oauth2_keystore }
+
+授权服务器使用 RSA 私钥对签发的每个 JWT 进行签名。
+DHIS2 会在启动时从以下两个来源之一加载签名密钥：
+
+1. **从密钥库文件中**（推荐用于生产环境）：一个 Java
+   磁盘上的密钥库（`.jks` / `.p12`）。
+2. **临时**（默认）：在
+   启动时的内存。**每次重启都会使之前的所有
+   已发行的代币**，因为用于对其签名的公钥已丢失。
+   此模式仅适用于开发或首次启动。
+
+配置键（均位于 `dhis.conf` 中）：
+
+```属性
+# 包含签名密钥的 Java 密钥库路径。
+# 若为空，DHIS2 将回退到下方的临时模式。
+oauth2.server.jwt.keystore.path = /etc/dhis2/oauth2-signing.p12
+
+# 密钥库文件本身的密码。
+oauth2.server.jwt.keystore.password =<keystore-password>
+
+# 密钥库中密钥条目的别名。当设置了 keystore.path 时，此项为必填。
+oauth2.server.jwt.keystore.alias = dhis2-oauth2-signing
+
+# 可选：若私钥条目的密码与
+# 密钥库密码不同，则对其进行密码保护。
+oauth2.server.jwt.keystore.key-password =<key-password>
+
+# 如果未配置 keystore.path，则在启动时生成一对临时 RSA-2048
+# 密钥对。默认值：true。 在生产环境中请将其设为 false，以便
+# 缺失密钥库时触发硬错误，而非静默回退到
+# 临时密钥。
+oauth2.server.jwt.keystore.generate-if-missing = false
 ```
-https://mydhis2-server.org/oauth2/code/google
+
+授权服务器签名密钥仅支持 **RSA** 密钥
+（不支持 EC，也不支持 HMAC）。
+
+### 创建签名密钥库{ #creating-a-signing-keystore } 
+
+创建一个包含 2048 位 RSA 密钥的 PKCS12 密钥库的简便方法：
+
+```bash
+keytool -genkeypair \
+  -alias dhis2-oauth2-signing \
+  -keyalg RSA -keysize 2048 \
+  -validity 3650 \
+  -storetype PKCS12 \
+  -keystore /etc/dhis2/oauth2-signing.p12 \
+  -storepass "<keystore-password>" \
+  -keypass "<key-password>" \
+  -dname "CN=dhis2-oauth2-signing"
+
+chmod 600 /etc/dhis2/oauth2-signing.p12
+chown tomcat:tomcat /etc/dhis2/oauth2-signing.p12
 ```
 
-配置 IdP 说明的外部链接：
+然后将 `dhis.conf` 指向包含别名和密码的文件。
 
-* [Google](https://developers.google.com/identity/protocols/oauth2/openid-connect)
-* [Azure AD 教程](https://medium.com/xebia-engineering/authentication-and-authorization-using-azure-active-directory-266980586ab8)
+启动 DHIS2 后，相应的公钥将发布在
+`https://dhis2.example.org/oauth2/jwks`。客户端和资源服务器
+可从此处获取该公钥以验证令牌。
+
+### 轮换阵容{ #key-rotation } 
+
+系统在启动时会读取一次密钥库。要轮换签名密钥，请向密钥库添加一个
+新的密钥条目（或更换密钥库），更新
+`oauth2.server.jwts.keystore.alias`，然后重启 DHIS2。一旦新的
+公钥在 `/oauth2/jwks` 替换了旧的公钥，所有由
+旧密钥签名的令牌将立即无法验证。请规划轮换时间，
+使其与短效令牌的过期时间相吻合。
+
+> 目前不支持实时密钥轮换；所有令牌有效期
+> 的控制均由访问令牌的 TTL 决定。
+
+---
+
+## OAuth2 客户端{ #oauth2_clients }
+
+每个向 DHIS2 请求令牌的应用程序都必须注册为
+**OAuth2 客户端**。客户端信息存储在 `oauth2_client` 表中。
+
+### 客户创意{ #client-concepts } 
+
+| 概念 | DHIS2 中的数值 |
+|---------|-----------------|
+| 客户端身份验证方法 | `client_secret_basic`、`client_secret_post`、`client_secret_jwt`、`private_key_jwt`、`none`。在客户端以逗号分隔的列表形式存储。 |
+| 授权授予类型 | `authorization_code`、`refresh_token`（**可通过管理员 API 获取**）。`client_credentials` 仅供内部 DCR 系统注册机构使用。 |
+| 范围 | `openid`、`profile`、`username`、`email`。这些是管理 API 唯一接受的范围；其他任何范围，包括保留的 `client.*` 范围（例如由内部 DCR 注册机构使用的 `client.create`），都会被拒绝并返回 `E4000` 错误代码。 |
+| 重定向 URI | `http://` 和 `https://` 始终被接受。自定义方案（例如 Android 深层链接 `dhis2oauth://oauth`）必须在 `deviceEnrollmentRedirectAllowlist` 系统设置中原样出现。 |
+
+> **通过管理 API 或元数据导入创建客户端时，
+> 仅接受 `authorization_code` 和 `refresh_token`。** 尝试
+> 使用 `client_credentials` 创建客户端将返回 HTTP 409 状态码，并伴随
+> `E4000` 错误。 内部的 `system-dcr-registrar-client` 是
+> 唯一允许使用 `client_credentials` 的客户端，且由
+> DHIS2 自身管理。
+
+### 通过 API 管理客户{ #oauth2_clients_rest }
+
+CRUD 端点：`/api/oAuth2Clients`（标准 DHIS2 元数据 CRUD）。
+需要 `F_OAUTH2_CLIENT_MANAGE` 权限。
+
+#### 创建一个保密的 Web 应用客户端{ #create-a-confidential-web-app-client } 
+
+```bash
+curl -u admin:district -X POST \
+  -H 'Content-Type: application/json' \
+  https://dhis2.example.org/api/oAuth2Clients \
+  -d '{
+    "clientId": "my-web-app",
+    "clientSecret": "请替换为强随机字符串",
+    "name": "My Web App",
+    "clientAuthenticationMethods": "client_secret_basic",
+    "authorizationGrantTypes": "authorization_code,refresh_token",
+    "redirectUris": "https://my-web-app.example.org/callback",
+    "scopes": "openid,profile,email"
+  }'
+```
+
+上文省略了 `clientSettings` 和 `tokenSettings`，因此将
+应用服务器的默认设置（参见下文）。
+
+#### 客户端设置：PKCE 和同意{ #oauth2_client_settings }
+
+新的授权码客户端默认要求支持 S256 PKCE（RFC 7636）：
+
+- **未**显式指定 `clientSettings` 的客户端将以以下方式保存：
+  `require-proof-key: true`（在
+  授权码流程) 和 `require-authorization-consent: true`
+  （显示同意界面）。
+- 当提供了 `clientSettings` **时**，它必须是有效的 JSON，并且
+  必须同时包含 `settings.client.require-proof-key` 和
+  `settings.client.require-authorization-consent` 作为布尔值；
+  否则，写入操作将因 `E4000` 错误而被拒绝：
+
+  ```json
+  {
+    "settings.client.require-proof-key": true,
+    "settings.client.require-authorization-consent": true
+  }
+  ```
+
+- 设置 `"settings.client.require-proof-key": false` 时，系统会返回以下错误：
+  `E4000`。授权码客户端必须使用 S256 PKCE。
+- 提供 `tokenSettings` 时，其内容必须是有效的 JSON。格式不正确的 JSON 是
+  在写入时因 `E4000` 错误被拒绝。
+- 已持久化的客户端会保留其存储的设置，并且不会
+  已追溯性地切换为 PKCE。
+
+#### 列出客户{ #list-clients } 
+
+```bash
+curl -u admin:district \
+  'https://dhis2.example.org/api/oAuth2Clients?fields=id,clientId,name,authorizationGrantTypes'
+```
+
+内部的 `system-dcr-registrar-client` 会被从列表
+响应中过滤掉。任何尝试创建、更新、删除或重命名客户端为
+`system-dcr-registrar-client` 的操作都将被拒绝，并返回 HTTP 409 状态码。
+
+#### 更新客户端{ #update-a-client } 
+
+```bash
+curl -u admin:district -X PUT \
+  -H 'Content-Type: application/json' \
+  https://dhis2.example.org/api/oAuth2Clients/<uid> \
+  -d '{ "clientId":"my-web-app", "redirectUris":"https://my-web-app.example.org/callback,https://my-web-app.example.org/callback-v2" }'
+```
+
+如果执行 PUT 操作时未传入 `name`，则会保留之前持久化的名称
+（“设置”界面在执行 POST 请求时不会传入 `name`）。
+
+#### 删除{ #delete } 
+
+```bash
+curl -u admin:district -X DELETE \
+  https://dhis2.example.org/api/oAuth2Clients/<uid>
+```
+
+### 授权与同意（只读）{ #authorizations-and-consents-read-only } 
+
+已颁发的授权和用户同意信息存储在
+`oauth2_authorization` 和 `oauth2_authorization_consent` 中。有两个
+仅限超级用户访问的只读控制器会将其暴露出来以便调试：
+
+- `GET /api/oAuth2Authorizations`：按用户/客户端查询已签发的令牌和代码。
+- `GET /api/oAuth2AuthorizationConsents`：按用户/客户端划分的已授予授权。
+
+这些无法通过 `/api/metadata` 导入，也无法通过
+REST API 进行修改；它们由授权服务器本身进行管理。
+
+### 客户端密钥的生命周期{ #client-secret-lifecycle } 
+
+当使用 `client_secret_basic` 或
+`client_secret_post` 身份验证方式创建客户端时，POST 请求正文中提供的
+`clientSecret` 会被存储，并在令牌端点处进行逐字比对。
+请将该值视为任何其他长期有效的凭据：
+
+- 使用强随机值。请勿在不同环境中重复使用。
+- 通过设置新的 `clientSecret` 值来轮换密钥。旧的密钥将停止生效
+  立即开始工作。
+- 仅向需要该权限的用户授予 `F_OAUTH2_CLIENT_MANAGE` 权限
+  它。
 
 
-## Google{ #example-setup-for-google } 设置示例 
 
-1. 注册一个账户并登录。例如，对于 Google，您可以访问 Google [developer console](https://console.developers.google.com)。
-2. 在 Google 开发人员控制面板中，点击 "创建新项目"。
-3. 请按照说明创建 OAuth 2.0 客户端 ID 和客户秘密。
-4. 将 "授权重定向 URL "设置为`https://mydhis2-server.org/oauth2/code/google`
-5. 复制并妥善保管 "客户 ID "和 "客户秘密"。
+---
+
+## 动态客户端注册（DCR）{ #dynamic_client_registration }
+
+DHIS2 支持 [RFC 7591 动态客户端注册](https://www.rfc-editor.org/rfc/rfc7591)。
+只要授权服务器处于启用状态
+（`oauth2.server.enabled=on`），DCR 便会默认启用。不存在单独的 `oauth2.dcr.enabled`
+键。
+
+DCR 的主要驱动因素是 DHIS2 Android Capture 应用：每台
+已注册的设备都会成为其自身的第一方 OAuth2 客户端，通过
+`private_key_jwt` 进行身份验证，而非使用共享密钥。请参阅
+[Android 设备注册分步指南](#android_dcr_walkthrough)。
+
+### Flow{ #flow } 
+
+1. 某位 Android 应用（或任何支持 DCR 的客户端）的用户点击
+   `GET /api/auth/enrollDevice?redirectUri=<deep-link>&state=<nonce>`。
+2. DHIS2 会验证 `redirectUri` 是否与
+   `deviceEnrollmentRedirectAllowlist` 系统设置，且用户
+   属于 `deviceEnrollmentAllowedUserGroups` 中的某个组（如果该
+   （该设置不为空）。
+3. DHIS2 生成一个一次性、短效的 JWT **初始访问令牌**
+   (IAT)** 以及 302 重定向至
+   `<redirectUri>?iat=<jwt>&state=<nonce>`。
+4. 客户端向
+   `/connect/register`，并提供 IAT 作为其授权凭证。该
+   有效载荷 **必须包含内联 `jwks`**（客户端的公钥）。
+   不接受 `jwks_uri`。
+5. DHIS2 对 IAT 进行验证，并将新的 `oauth2_client` 行持久化为
+   `ClientAuthenticationMethod.PRIVATE_KEY_JWT`，并返回
+   标准的 RFC 7591 注册响应。
+6. 随后，客户端通过签名在 `/oauth2/token` 进行身份验证
+   一个 JWT 断言，其中包含与已注册的私钥相匹配的私钥
+   public JWKS.
+
+IAT 是一次性使用的：在成功执行一次 `/connect/register` 之后，
+底层的授权行即被消耗，该 IAT 无法
+被重复使用。
+
+### 相关系统设置{ #relevant-system-settings } 
+
+DCR 的行为是通过标准的 **系统设置** API 进行配置的
+（基于数据库，而非 `dhis.conf`）。
+
+| 系统设置 | 仪表板资源将提供仪表板列表。请记住
+仪表板对象是共享的,因此列表将受
+当前已验证的用户。您可以检索有关一个的更多信息
+特定的仪表板,请点击其链接,类似于: | 控制 |
+|----------------|---------|----------|
+| `deviceEnrollmentRedirectAllowlist` | `dhis2oauth://oauth` | 由逗号分隔的通配符允许列表，其中包含 `redirect_uri` 的值，这些值可供 `GET /api/auth/enrollDevice` 和 DCR 客户端使用。自定义方案（如 Android 深度链接 `dhis2oauth://oauth`）**必须**出现在此处才能被接受。 |
+| `deviceEnrollmentAllowedUserGroups` | *(空)* | 用户组 UID 的 CSV 文件。若非空，则仅这些组的成员可调用 `/api/auth/enrollDevice`。为空时，表示任何经过身份验证的用户均可调用。 |
+| `deviceEnrollmentIATTtlSeconds` | 名称 | 初始访问令牌的有效期。 |
+
+### PKCE 与同意行为{ #dcr_pkce_and_consent }
+
+每位在 DCR 注册的客户，其信息均会保存如下：
+
+- `require-authorization-consent: false`：DHIS2 覆盖了 Spring
+  授权服务器的默认设置，因此第一方设备流程不会
+  通过显示“自行授予同意”的提示框来打断用户。
+- `require-proof-key: true`：authorization_code 流程必须
+  使用 S256 PKCE（RFC 7636）。如果授权请求中没有
+  `code_challenge`，或者令牌交换中存在缺失或错误的
+  `code_verifier` 因 `invalid_grant` 导致失败。
+
+通过 REST 创建的（非 DCR）客户端默认设置为**需要**同意，因此
+对于第三方 Web 应用，同意页面会按预期显示
+（此外，这些应用还要求支持 S256 PKCE；详见
+[客户端设置：PKCE 和同意](#oauth2_client_settings)）。
+
+### 范围{ #dcr_scopes }
+
+在注册有效负载中省略 `scope` 字段。 服务器
+会为每个在 DCR 中注册的客户端分配第一方默认范围 `openid profile username`
+（`email` 被有意排除在外），并
+根据允许的范围集 `openid`、
+`profile`、`username`、`email` 对客户端发送的任何内容进行过滤。
+
+### 刷新令牌的有效期和轮换{ #dcr_refresh_token_lifetime }
+
+在DCR注册时，注册用户将获得其代币设置
+：
+
+- **刷新令牌 TTL** 取自 `dhis.conf` 中的键
+  `oauth2.server.dcr.refresh-token-ttl`（秒，默认值为 `2592000` =
+  30天）。
+- 已启用**刷新令牌轮换**
+  (`reuse-refresh-tokens=false`)，这是公共客户端根据
+  OAuth 2.1。每次对 `/oauth2/token` 发出 `grant_type=refresh_token` 请求时
+  返回一个在整个 TTL 期间均有效的**新**刷新令牌，从而使
+  TTL 滑动窗口：一种至少每 TTL 刷新一次的机制
+  在一定时期内，该设备将保持无限期登录状态，而处于非活动状态的设备则
+  会话已过期。
+
+两个操作上的后果：
+
+- **令牌设置会在注册时按客户端进行持久化。**
+  修改 `oauth2.server.dcr.refresh-token-ttl` 仅会影响客户端
+  在变更后注册。已注册的设备将保留其
+  保存的设置将一直保留，直到他们重新注册，或者直到管理员更新该
+  通过 OAuth2 客户端 API 获取客户端的 `tokenSettings`。
+- **客户端必须将每次刷新后生成的已旋转刷新令牌持久化存储
+  以原子方式进行响应。** 被替换的令牌在使用时即失效；
+  重放时因 `invalid_grant` 报错。丢失了一个刷新响应
+  因此，在运行过程中中断会使会话失效，并强制
+  重新认证。
+
+---
+
+## OIDC 登录：DHIS2 作为依赖方{ #oidc_login }
+
+DHIS2 支持通过 OpenID Connect 实现单点登录。用户在
+身份提供商（IdP）处完成身份验证后，将自动登录到
+DHIS2。
+
+OIDC“授权码”身份验证流程：
+
+1. 用户打开 DHIS2 登录页面，并点击 OIDC 提供商
+   按钮。
+2. DHIS2 会将浏览器重定向至身份提供商（IdP）的登录页面。
+3. 如果尚未登录，用户需输入凭据。身份提供商（IdP）
+   返回一个重定向至 DHIS2 的响应，其中包含授权信息
+   代码。
+4. DHIS2 交换授权码（及其客户端 ID +
+   密钥，或 IdP 令牌中的 `private_key_jwt` 断言）
+   端点并收到一个 ID 令牌。
+5. DHIS2 会根据身份提供商（IdP）的 JWKS 对 ID 令牌的签名进行验证。
+6. DHIS2 根据配置的
+   `mapping_claim`，授权用户并完成登录。
+
+### 要求 { #requirements } 
+
+1. **身份提供商（IdP）。** 您必须在外部身份提供商（IdP）上拥有一个账户，或者运行
+   一个独立的版本。已测试的提供商：
+    - 谷歌
+    - Microsoft Entra ID（Azure AD）
+    - WSO2
+    - Okta（通过通用提供商；参见
+      [教程](../../../topics/tutorials/configure-oidc-with-okta.md))
+    - 通过**通用**提供商配置，任何符合 OIDC 标准的提供商。
+    - DHIS2 本身通过 [DHIS2 内部 OIDC 提供程序](#internal_dhis2_oidc_provider)。
+2. **DHIS2 用户账户。** 每个应通过 OIDC 登录的用户
+   必须有一个与之匹配的 DHIS2 用户记录，其中包含：
+    - 在
+      用户资料，以及
+    - 一个与身份提供商（IdP）的预期值相等的 `OpenID` 值
+      映射声明（区分大小写）。
+      该系统不支持从外部目录导入用户。
+      OIDC 标准，DHIS2 未提供该功能。
+3. **重定向 URL。** 每个身份提供商（IdP）都需要 DHIS2 的重定向 URL
+   已注册为授权重定向。模式：
+   ```
+   <server.base.url>/oauth2/code/<provider-key>
+   ```
+   Google 的示例：
+   ```
+   https://dhis2.example.org/oauth2/code/google
+   ```
+
+### 声明和用户映射{ #claims-and-user-mapping } 
+
+OIDC 使用 **声明** 来承载用户属性（电子邮件、姓名、首选
+用户名、电话等）。DHIS2 通过查找其 `OpenID` 字段值与身份提供商（IdP）的
+映射声明值相等的 DHIS2 用户，将身份提供商（IdP）账户映射到 DHIS2 账户。
+
+对于所有外部提供商
+（Google、Azure AD、WSO2、通用提供商），默认映射字段为 `email`。而 **DHIS2 内部提供商**
+默认使用 `username`。
+
+如果您的身份提供商（IdP）返回了其他声明（例如 `preferred_username`
+或自定义声明），请将 `oidc.provider.<id>.mapping_claim` 设置为该
+声明名称。
+
+### 启用 OIDC 登录{ #enabling-oidc-login } 
+
+```属性
+# OIDC 登录的全局开关（oauth2Login 过滤器链 + 提供商存储库）。
+oidc.oauth2.login.enabled = on
+
+# 可选：用户从身份提供商（IdP）注销后跳转的目标页面。
+oidc.logout.redirect_url = https://dhis2.example.org
+```
+
+然后配置至少一个提供商。以下是示例。
+
+### 谷歌{ #oidc_google }
+
+1. 在 [Google 开发者控制台](https://console.developers.google.com) 中，创建一个
+   项目以及一个 OAuth 2.0 客户端 ID/密钥。
+2. 添加 DHIS2 重定向网址：
+   `https://dhis2.example.org/oauth2/code/google`。
+3. 配置 DHIS2：
+
+```属性
+oidc.oauth2.login.enabled = on
+
+oidc.provider.google.client_id =<my-client-id>
+oidc.provider.google.client_secret =<my-client-secret>
+
+# 可选的覆盖设置
+oidc.provider.google.redirect_url = https://dhis2.example.org/oauth2/code/google
+oidc.logout.redirect_url = https://dhis2.example.org
+```
 
 > **提示**
 >
-> 在笔记本电脑等本地 DHIS2 实例上进行测试时，可以使用 localhost 作为重定向 URL，如下所示：`https://localhost:8080/oauth2/code/google`
-> *记得在谷歌开发者控制台中也添加重定向 URL*。
+> 在本地测试时，请使用 `https://localhost:8080/oauth2/code/google`
+> 并将相同的 URL 添加到 Google 控制台。
 
-### Google dhis.conf 示例：{ #google-dhisconf-example } 
-属性
-# 启用 OIDC 登录
+### Microsoft Entra ID（Azure AD）{ #oidc_azure }
+
+1. 在 Azure 门户中，转到 **应用注册 → 新建注册**
+   并将重定向 URI 设置为：
+   `https://dhis2.example.org/oauth2/code/azure.0`
+2. 复制租户（目录）ID 以及客户端 ID/密钥。
+3. 配置 DHIS2：
+
+```属性
 oidc.oauth2.login.enabled = on
 
-# 客户端 ID，由 Google 开发者控制台提供
-oidc.provider.google.client_id =<my-client-id>
-
-# 客户秘密，由 Google 开发者控制台提供
-oidc.provider.google.client_secret =<my-client-secret>
-
-# [可选] 授权重定向 URI，与在 Google 开发者控制台中设置的相同 
-# 如果您的公共主机名与服务器内部看到的不同、 
-# 您需要提供完整的公共 url，如下所示。
-oidc.provider.google.redirect_url = https://mydhis2-server.org/oauth2/code/google
-
-# [可选] 注销后重定向到哪里。
-# 如果您的公共主机名与服务器内部看到的不同、 
-# 您需要提供完整的公共 url，如下所示。 
-oidc.logout.redirect_url = https://mydhis2-server.org
-```
-
-## Azure AD 设置示例{ #example-setup-for-azure-ad } 
-
-确保 Azure 门户中的 Azure AD 账户配置了重定向 URL，如`(协议):/(主机)/oauth2/code/PROVIDER_KEY`。 
-要在 Azure 门户中将 DHIS2 服务器注册为 "应用程序"，请按照以下步骤操作：
-
-> **注**
->
-> PROVIDER_KEY 是配置密钥的 "名称 "部分，例如"oidc.provider.PROVIDER_KEY.tenant = My Azure SSO
-> 如果要配置多个 Azure 提供商，可以使用这种名称形式：(azure.0)、(azure.1) 等。
-> 重定向 URL 示例：https://mydhis2-server.org/oauth2/code/azure.0
-
-1. 搜索并选择*应用程序注册*。
-2. 点击*新注册*。
-3. 在 *Name* 字段中，输入 DHIS2 实例的描述性名称。
-4. 在 *重定向 URI* 字段中，输入上文指定的重定向 URL。
-5. 点击*注册*。
-
-### Azure AD dhis.conf 示例：{ #azure-ad-dhisconf-example } 
-属性
-# 启用 OIDC 登录
-oidc.oauth2.login.enabled = on
-
-# 第一个提供程序 (azure.0)：
-
-# 租户 ID，也称目录 ID，UUID 格式
+# 第一个 Azure 提供商 (azure.0)：
 oidc.provider.azure.0.tenant =<my-tenant-id>
-
-# 客户 ID，在 Azure 门户中提供给你，UUID 格式
 oidc.provider.azure.0.client_id =<my-client-id>
+oidc.provider.azure.0.client_secret =<my-client-secret>
+oidc.provider.azure.0.redirect_url = https://dhis2.example.org/oauth2/code/azure.0
 
-# 客户秘密，由 Azure 门户提供
-oidc.provider.azure.0.client_secret = # 客户秘密，在 Azure 门户中给出。<my-client-secret>
+# 可选：
+oidc.provider.azure.0.mapping_claim = email      # 默认值为 email
+oidc.provider.azure.0.enable_logout = on         # 默认值为 on
 
-# [可选] 授权重定向 URI，与在 Azure 门户中设置的一致 
-# 如果您的公共主机名与服务器内部看到的不同、 
-# 您需要提供完整的公共 URL
-oidc.provider.azure.0.redirect_url = https://mydhis2-server.org/oauth2/code/azure.0
-
-# [可选] 注销后的重定向位置。
-# 如果您的公共主机名与服务器内部看到的不同、 
-# 您需要提供完整的公共 URL
-oidc.logout.redirect_url = https://mydhis2-server.org
-
-# [可选]，默认为 "电子邮件
-oidc.provider.azure.0.mapping_claim = email
-
-# [可选]，默认为 "开启
-oidc.provider.azure.0.support_logout = on
-
-# 第二个提供程序（azure.1）：
-
-# 租户 ID，也称为目录 ID，UUID 格式
-oidc.provider.azure.1.tenant =<my-client-id>
-...
+oidc.logout.redirect_url = https://dhis2.example.org
 ```
 
-## 通用提供商{ #generic-providers } 
+支持多个 Azure 租户。使用 `azure.0`、`azure.1`、...
+等块；每个块都会成为登录页面上的一个独立按钮。
 
-通用提供项目可用于配置与 "Spring Security "兼容的 "任何 "标准 OIDC 提供项目。
 
-在下面的示例中，我们将使用提供商密钥`helseid`配置挪威政府 _HelseID_ OIDC 提供商。
+### 仿制药供应商{ #oidc_generic }
 
-已定义的提供项目将作为按钮出现在登录页面上，默认名称为提供项目的密钥、 
-或 `display_alias` 的值（如果已定义）。提供项目的关键字是任意的，可以是任何字母数字字符串、 
-除了特定提供项目使用的保留名称（`google`、`azure.0,azure.1...`、`wso2`）。
+通用提供商可用于“任何”符合标准的 OIDC
+身份提供商（IdP）。它会在登录页面上以按钮的形式显示，默认名称为
+提供商键（或 `display_alias` 的值，如果已定义）。该
+提供商键可以是任何字母数字字符串，但不能使用以下保留名称
+`google`、`azure`、`wso2` 和 `dhis2` 以外的任意字母数字字符串。
 
-> **Note**
-> The generic provider uses the following hardcoded configuration defaults:
-> **(These are not possible to change)**
-> * Client Authentication, `ClientAuthenticationMethod.BASIC`: [rfc](https://tools.ietf.org/html/rfc6749#section-2.3)
-> * Authenticated Requests, `AuthenticationMethod.HEADER`: [rfc](https://tools.ietf.org/html/rfc6750#section-2) 
+示例：配置一个虚构的 OIDC 提供商 `myprovider`。
 
-### 通用 (helseid) dhis.conf 示例：{ #generic-helseid-dhisconf-example } 
-
-属性
-# 启用 OIDC 登录
+```属性
 oidc.oauth2.login.enabled = on
 
-# 必要变量：
-oidc.provider.helseid.client_id =<my-client-id>
-oidc.provider.helseid.client_secret =<my-client-secret>
-oidc.provider.helseid.mapping_claim = helseid://claims/identity/email
-oidc.provider.helseid.authorization_uri = https://helseid.no/connect/authorize
-oidc.provider.helseid.token_uri = https://helseid.no/connect/token
-oidc.provider.helseid.user_info_uri = https://helseid.no/connect/userinfo
-oidc.provider.helseid.jwk_uri = https://helseid.no/.well-known/openid-configuration/jwks
-oidc.provider.helseid.end_session_endpoint = https://helseid.no/connect/endsession
-oidc.provider.helseid.scopes = helseid://scopes/identity/email
+# 必需属性：
+oidc.provider.myprovider.client_id =<my-client-id>
+oidc.provider.myprovider.client_secret =<my-client-secret>
+oidc.provider.myprovider.mapping_claim = email
+oidc.provider.myprovider.authorization_uri = https://myprovider.example.org/connect/authorize
+oidc.provider.myprovider.token_uri = https://myprovider.example.org/connect/token
+oidc.provider.myprovider.user_info_uri = https://myprovider.example.org/connect/userinfo
+oidc.provider.myprovider.jwk_uri = https://myprovider.example.org/.well-known/openid-configuration/jwks
 
-# 可选] 授权重定向 URI，与 Azure 门户中设置的一致 
-# 如果您的公共主机名与服务器内部看到的不同、 
-# 您需要提供完整的公共 url，如下所示。
-oidc.provider.helseid.redirect_url = https://mydhis2-server.org/oauth2/code/helseid
+# 可选：
+oidc.provider.myprovider.end_session_endpoint = https://myprovider.example.org/connect/endsession
+oidc.provider.myprovider.scopes = openid,email,profile
+oidc.provider.myprovider.redirect_url = https://dhis2.example.org/oauth2/code/myprovider
+oidc.provider.myprovider.enable_logout = on
+oidc.provider.myprovider.enable_pkce = on
+oidc.provider.myprovider.display_alias = My Provider
+oidc.provider.myprovider.login_image = ../security/btn_myprovider.svg
+oidc.provider.myprovider.login_image_padding = 0px 1px
 
-# [可选]，默认为 "on
-oidc.provider.helseid.enable_logout = on
+# 附加到授权请求中的可选额外请求参数
+# （键值对，以逗号分隔）：
+oidc.provider.myprovider.extra_request_parameters = acr_values lvl4,other_key value2
 
-# [可选] 注销后重定向到哪里。
-# 如果你的公共主机名与服务器内部看到的不同、 
-# 您需要提供完整的公共 URL，如下所示。
-oidc.logout.redirect_url = https://mydhis2-server.org
-
-# [可选] PKCE 支持，参见：https://oauth.net/2/pkce/)，默认为 "false
-oidc.provider.helseid.enable_pkce = on
-
-# 可选）附加到请求中的额外变量。 
-# 必须是键值对，如"key1 value1,key2 value2,..."
-oidc.provider.helseid.extra_request_parameters = acr_values lvl4,other_key value2
-
-# 可选] 这是 DHIS2 登录页面中登录按钮上显示的别名/名称
-oidc.provider.helseid.display_alias = HelseID
-
-# 徽标的 URL 链接。(只支持相对路径）
-oidc.provider.helseid.login_image = ../security/btn_helseid.svg
-
-# [可选] 徽标图像的 CSS 填充
-oidc.provider.helseid.login_image_padding = 0px 1px
+oidc.logout.redirect_url = https://dhis2.example.org
 ```
 
-## JWT 承载令牌验证{ #jwt-bearer-token-authentication } 
+每个通用提供程序支持的完整密钥集：
 
-在配置 OIDC 时，可为基于 API 的客户端启用*JWT 承载令牌*身份验证。 
-DHIS2 Android 客户端就是这种类型的客户端，如果启用了 OIDC 登录，就必须使用 JWT 身份验证。
+| To send an email with an HTML body, you can simply provide the HTML content
+in the `message` parameter. The email client should interpret the
+HTML and render it accordingly. Note that the `Content-Type` header in
+the `curl` command should be `application/x-www-form-urlencoded`, as the
+data is sent as URL-encoded form data. The following example shows how
+to send an email with a simple HTML table: | 检索和删除项目通知模板 | 目的 |
+|-----|----------|---------|
+| `client_id` | A data integrity check file must comply with this [JSON schema](https://github.com/dhis2/dhis2-core/blob/master/dhis-2/dhis-services/dhis-service-administration/src/main/resources/data-integrity-checks/integrity_check_schema.json).
+If a check does not comply with the schema then a warning like this will be present: | 由身份提供商（IdP）颁发的客户端 ID。 |
+| `client_secret` | 是（除非是 `private_key_jwt`） | 由身份提供商（IdP）签发的客户端密钥。 |
+| `authorization_uri` | A data integrity check file must comply with this [JSON schema](https://github.com/dhis2/dhis2-core/blob/master/dhis-2/dhis-services/dhis-service-administration/src/main/resources/data-integrity-checks/integrity_check_schema.json).
+If a check does not comply with the schema then a warning like this will be present: | IdP 授权端点。 |
+| `token_uri` | A data integrity check file must comply with this [JSON schema](https://github.com/dhis2/dhis2-core/blob/master/dhis-2/dhis-services/dhis-service-administration/src/main/resources/data-integrity-checks/integrity_check_schema.json).
+If a check does not comply with the schema then a warning like this will be present: | IdP 令牌端点。 |
+| `user_info_uri` | A data integrity check file must comply with this [JSON schema](https://github.com/dhis2/dhis2-core/blob/master/dhis-2/dhis-services/dhis-service-administration/src/main/resources/data-integrity-checks/integrity_check_schema.json).
+If a check does not comply with the schema then a warning like this will be present: | IdP 用户信息端点。 |
+| `jwk_uri` | A data integrity check file must comply with this [JSON schema](https://github.com/dhis2/dhis2-core/blob/master/dhis-2/dhis-services/dhis-service-administration/src/main/resources/data-integrity-checks/integrity_check_schema.json).
+If a check does not comply with the schema then a warning like this will be present: | IdP JWKS 端点（公钥）。 |
+| `mapping_claim` | 否（默认值为 `email`） | 该字段曾用于映射到 DHIS2 用户。 |
+| `redirect_url` | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions` | 覆盖默认重定向网址。 |
+| `issuer_uri` | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions` | 预期 `iss` 索赔。 |
+| `end_session_endpoint` | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions` | IdP 注销端点。 |
+| `作用域` | 否（默认值为 `openid,email`） | 授权请求中要求的范围。 |
+| `display_alias` | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions` | 登录页面按钮的标签。 |
+| `login_image` | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions` | 按钮图标的相对路径。 |
+| `login_image_padding` | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions` | Logo周围的CSS内边距。 |
+| `enable_logout` | 否（默认值为 `开`） | 注销时请使用 `end_session_endpoint`。 |
+| `enable_pkce` | 否（默认值为 `off`） | 启用 PKCE（RFC 7636）。 |
+| `authorization_grant_type` | 否（默认值为 `authorization_code`） | 资助类型。 |
+| `client_authentication_method` | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions` | `client_secret_basic`、`client_secret_post` 或 `private_key_jwt`。 |
+| `keystore_path` / `keystore_password` / `key_alias` / `key_password` | 用于 `private_key_jwt` | 请参阅 [私钥 JWT 客户端身份验证](#oidc_private_key_jwt)。 |
+| `jwk_set_url` | 用于 `private_key_jwt` | 身份提供商（IdP）可从中获取 DHIS2 公钥的 URL。 |
+| `extra_request_parameters` | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions` | 授权请求中的额外参数。 |
+| `user_info_response_type` | 否（默认值为 `json`） | `json`（Spring 的标准用户信息路径）或 `jwt`（签名 JWT 用户信息，例如 MOSIP eSignet）。参见 [签名 JWT 用户信息](#oidc_signed_jwt_userinfo)。 |
+| `user_info_jws_algorithm` | 对于 `user_info_response_type = jwt` | 用于验证带签名的用户信息 JWT 的 JWS 算法。默认值为 `RS256`；允许的值包括：`RS256/384/512`、`PS256/384/512`、`ES256/384/512`。 |
 
-> **注**
->
-> DHIS2 目前仅支持使用 JWT 进行身份验证的 OAuth2 授权代码授予流（也称为 "三脚 OAuth"）。
-> 在使用 JWT 标记时，DHIS2 目前仅支持将 Google 用作 OIDC 提供商
+启动时会记录未知密钥，并建议
+最接近的有效密钥。
 
+### `private_key_jwt` 客户端对身份提供商（IdP）的身份验证{ #oidc_private_key_jwt }
 
-## 要求 { #requirements } 
-* 如上所述配置 Google OIDC 提供商 
-* 将配置参数 ```oauth2.authorization.server.enabled```"设为 "off"，禁用该参数
-* 将配置参数```oidc.jwt.token.authentication.enabled```"设置为 "on"，启用该参数
-* 按照 [此处](https://developers.google.com/identity/protocols/oauth2/native-app#creatingcred) 的描述生成 Android OAuth2 client_id
-
-## JWT 身份验证示例{ #jwt-authentication-example } 
-
-以下`dhis.conf`部分显示了如何为基于 API 的客户端启用 JWT 身份验证的示例。
-
-属性
-# 启用 OIDC 登录
-oidc.oauth2.login.enabled = on
-
-# 所需配置变量的最小值：
-oidc.provider.google.client_id =<my-client-id>
-oidc.provider.google.client_secret =<my-client-secret>
-
-# 启用 JWT 支持
-oauth2.authorization.server.enabled = off
-oidc.jwt.token.authentication.enabled = on
-
-# 使用 JWT 标记定义客户端 1
-oidc.provider.google.ext_client.0.client_id =<my-jwt-client-id>
-
-# 使用 JWT 令牌定义客户端 2
-oidc.provider.google.ext_client.1.client_id =<my-jwt-client-id>
-```
-
-> **注**
->
-> 查看我们的教程，将 Okta 设置为通用 OIDC 提供商](././././topics/tutorials/configure-oidc-with-okta.md)
-
-## 将单个身份供应商账户连接到多个 DHIS2 账户{ #connect_single_identity_to_multiple_accounts }
-
-DHIS2 能够将一个身份供应商账户映射到多个 DHIS2 账户。API 调用可用于列出链接账户，并在这些账户之间进行切换。
-
-选择该选项时，`用户信息`表中的 `openid `数据库字段无需唯一。  当身份提供者提供一个 `openid` 值时，DHIS2 将登录最近登录的用户。
-
-下面的 `dhis.conf` 部分说明了如何启用链接账户。
+某些企业级身份提供商（IdP）要求客户端使用由其私钥（RFC 7523 /
+`private_key_jwt`）签名的 JWT
+断言进行身份验证，而非使用共享密钥。DHIS2 支持这种
+按提供商区分的方式，通过从专门的、针对每个提供商的
+密钥库中加载密钥来实现：
 
 ```properties
-# Enable a single OIDC account to log in as one of several DHIS2 accounts
-linked_accounts.enabled = on
+oidc.provider.myprovider.client_id =<client-id-from-idp>
+oidc.provider.myprovider.client_authentication_method = private_key_jwt
+
+# DHIS2 用于对 JWT 客户端断言进行签名的 RSA 密钥：
+oidc.provider.myprovider.keystore_path = /etc/dhis2/myprovider-client.p12
+oidc.provider.myprovider.keystore_password =<keystore-password>
+oidc.provider.myprovider.key_alias = myprovider-client
+oidc.provider.myprovider.key_password =<key-password>
+
+# 提供供身份提供商（IdP）获取的匹配公共JWK的URL。
+# DHIS2默认通过 /api/publicKeys/<client_id>/jwks.json 提供该资源；
+# 设置 jwk_set_url，以便 JWT 头部 `jku` 指向该 URL。
+oidc.provider.myprovider.jwk_set_url = https://dhis2.example.org/api/publicKeys/<client-id>/jwks.json
 ```
 
-有关如何列出链接账户并在它们之间切换的说明，请参阅开发人员文档 "用户 "一章中的[*在连接到同一身份供应商账户的用户账户之间切换*](./././develop/using-the-api/dhis-core-version-master/users.html#switching-between-user-accounts-connected-to-the-same-identity-provider-account)
+在客户端
+设置过程中，将公共 JWK（或 `jwk_set_url`）注册到身份提供商（IdP）处；IdP 会使用它来验证 `private_key_jwt`
+断言。 密钥轮换的运作方式与授权服务器
+密钥库相同：添加新的密钥条目，更新别名，然后重启 DHIS2。
+
+> **两个密钥库，两种用途**
+>
+> - `oauth2.server.jwt.keystore.*` 用于对 DHIS2 **作为**
+    >   授权服务器所签发的令牌进行签名。每个实例仅需一个密钥库。
+> - `oidc.provider.<id>.keystore_*` 用于签署在 OIDC 登录过程中 **由**
+    >   DHIS2 发送至外部身份提供商 (IdP) 的 JWT 断言。 每个
+    >   提供商仅有一个密钥库，仅在该提供商配置了
+    >   `private_key_jwt` 时使用。
+
+### 带签名的 JWT 用户信息 (eSignet){ #oidc_signed_jwt_userinfo }
+
+OIDC 规范允许 userinfo 端点返回纯文本
+`application/json`（本文中所有提供商
+采用的默认行为）或经过签名的 JWT（`application/jwt`）。 某些身份提供商（IdP）——
+尤其是 **MOSIP eSignet** —— 仅返回签名 JWT 格式。通过设置 `user_info_response_type = jwt`，
+为每个提供商启用 JWT 路径：
+
+```属性
+oidc.provider.esignet.client_id =<client-id>
+oidc.provider.esignet.client_secret =<client-secret>
+oidc.provider.esignet.mapping_claim = sub
+oidc.provider.esignet.authorization_uri = https://esignet.example.org/authorize
+oidc.provider.esignet.token_uri = https://esignet.example.org/oauth/token
+oidc.provider.esignet.user_info_uri = https://esignet.example.org/oidc/userinfo
+oidc.provider.esignet.jwk_uri = https://esignet.example.org/oidc/.well-known/jwks.json
+
+# 签名 JWT 用户信息
+oidc.provider.esignet.user_info_response_type = jwt
+oidc.provider.esignet.user_info_jws_algorithm = RS256
+```
+
+设置此标志后，会有哪些变化：
+
+- DHIS2 通过 `Accept: application/jwt` 调用 userinfo 端点。
+- 响应正文被视为一个带签名的 JWT。该签名为
+  已与身份提供商（IdP）的JWKS进行验证——该JWKS是从现有的
+  `jwk_uri` — 使用 `user_info_jws_algorithm` 中指定的算法。
+- 随后，`mapping_claim` 的查找过程与 JSON 中的操作完全一致
+  路径（`mapping_claim = sub` 是 eSignet 的典型用法）。
+- 同样适用 DHIS2 的用户要求：账户必须已存在，且必须
+  已标记为需要外部身份验证，且不得被禁用或
+  已过期。
+
+在启动时，会根据
+非对称算法的白名单对 `user_info_jws_algorithm` 进行验证：
+
+| 家庭 | 算法 |
+|--------|------------|
+| RSA-PKCS#1 v1.5 | `RS256`、`RS384`、`RS512` |
+| RSA-PSS | `PS256`、`PS384`、`PS512` |
+| ECDSA | `ES256`、`ES384`、`ES512` |
+
+HMAC 算法（`HS256`、`HS384`、`HS512`）和 `none` 均
+被有意**拒绝**——用户信息的签名密钥必须
+来自身份提供商（IdP）发布的 JWKS，绝不能来自共享密钥。
+未知或不受支持的值将导致提供商在
+启动时被拒绝，并生成一条明确的日志记录。
+
+`user_info_response_type` 的验证也不区分大小写；
+唯一被接受的值是 `json`（默认）和 `jwt`。任何其他
+值都会导致提供者在启动时验证失败。
+
+> **注意事项**
+>
+> - 支持将 `user_info_response_type = jwt` 与
+>   `client_authentication_method = private_key_jwt` 结合使用，且
+>   这种做法很常见（eSignet 通常要求同时使用这两项）。
+> - JWKS 文档会在首次登录时按需加载，并
+>   根据 Nimbus 的标准远程密钥缓存和刷新
+>   策略按身份提供商进行缓存，因此正常的身份提供商密钥轮换无需重启 DHIS2。
+
+### DHIS2 内部 OIDC 提供商{ #internal_dhis2_oidc_provider }
+
+当 `oauth2.server.enabled = on` 时，DHIS2 会自动将
+自身注册为 OIDC 提供商，注册 ID 为 `dhis2-internal`。
+该提供商**不会**显示在网页登录页面上（它仅用于
+Android 应用针对内部
+授权服务器的 authorization_code 流程，以及资源服务器的 JWT 验证）。
+
+内部提供程序会
+根据 `server.base.url` 进行完全自动配置。以下最低
+配置即可为 Android 应用启用 DHIS2 作为身份提供商（IdP）：
+
+```属性
+server.base.url = https://dhis2.example.org
+oauth2.server.enabled = on
+```
+
+所有 `oidc.provider.dhis2.*` 端点 URI 均在启动时由
+`server.base.url` 派生而来。 对于内部提供商，**无需**单独设置 `oidc.oauth2.login.enabled`
+键（该键仅控制
+面向 Web 的外部身份提供商（IdP）登录按钮）。
+
+如果您需要覆盖内部提供程序的客户端凭据
+（这种情况很少见，通常用于测试），则存在以下键：
+
+```属性
+oidc.provider.dhis2.client_id = dhis2-internal   # 默认值
+oidc.provider.dhis2.client_secret = secret       # 默认值
+oidc.provider.dhis2.mapping_claim = username     # 默认值
+oidc.provider.dhis2.server_url =<override server.base.url>
+```
+
+### 关联账户{ #connect_single_identity_to_multiple_accounts }
+
+DHIS2 可以将单个 IdP 身份映射到多个 DHIS2 账户。用户
+可以通过 API 列出其关联的账户，并在这些账户之间切换。
+
+启用此功能后，`userinfo` 表中的 `openid` 列将不再具有唯一性：
+当 IdP 登录成功时，DHIS2 会记录最近
+一次登录的账户。
+
+```属性
+linked_accounts.enabled = on
+# 可选：覆盖用户在切换账户时被重定向的目标地址。
+linked_accounts.logout_url = https://dhis2.example.org/dhis-web-login/logout
+linked_accounts.relogin_url = https://dhis2.example.org/
+```
+
+请参阅 [在连接到同一身份
+提供商账户的用户账户之间切换](../../../develop/using-the-api/dhis-core-version-master/users.html#switching-between-user-accounts-connected-to-the-same-identity-provider-account)，了解用户切换 API。
+
+---
+
+## JWT 承载令牌身份验证{ #jwt_bearer_authentication }
+
+在获取访问令牌（来自 DHIS2 自身的授权
+服务器、DHIS2 内部身份提供商（IdP）或任何已注册的外部身份提供商）后，
+客户端将使用以下方式对后续的 API 调用进行身份验证：
+
+```
+授权：Bearer<jwt>
+```
+
+### 当 JWT 持有人身份验证处于活动状态时{ #when-jwt-bearer-authentication-is-active } 
+
+`dhis.conf` 中的两个标志可启用入站 JWT 持有人身份验证：
+
+| To send an email with an HTML body, you can simply provide the HTML content
+in the `message` parameter. The email client should interpret the
+HTML and render it accordingly. Note that the `Content-Type` header in
+the `curl` command should be `application/x-www-form-urlencoded`, as the
+data is sent as URL-encoded form data. The following example shows how
+to send an email with a simple HTML table: | 功能介绍 |
+|-----|--------------|
+| `oauth2.server.enabled` | 启用 Spring 授权服务器 **以及** JWT 持有者过滤器。同时注册内部 `dhis2-internal` OIDC 提供者，以便 DHIS2 能够接受其自身签发的令牌。 |
+| `oidc.jwt.token.authentication.enabled` | **仅**启用 JWT 持有人过滤器（用于接受由外部身份提供商 (IdP) 签发的令牌）。不公开授权服务器。 |
+
+这两个标志都会在 HTTP 基本认证之后添加一个承载令牌过滤器。如果两者
+都启用，该过滤器仍只会注册一次；唯一的区别仅在于
+内部提供程序是否已连接。
+
+### 代币验证{ #token-validation } 
+
+每个请求的令牌均由
+`Dhis2JwtAuthenticationManagerResolver` 进行验证。行为：
+
+- 从 JWT 头中提取 `iss`。查找已注册的提供商
+  （内部或外部）通过匹配发行方 URI 来确定。
+- 根据提供商的JWKS验证签名。
+- 匹配目标受众：
+    - 如果 `iss` 是内部 `dhis2-internal` 提供者，那么 **每个** `aud`
+      必须与已注册的 `Dhis2OAuth2Client.clientId` 匹配。
+    - 否则，提供商的注册客户端 ID 必须至少包含
+      至少有一名观众。
+- 通过提供商的将令牌映射到 DHIS2 用户
+  `mapping_claim`（支持 `username` 或 `email`；任何其他
+  该值会导致请求因 `InvalidBearerTokenException` 异常而失败）。
+
+### Android 客户端的最低配置{ #minimal-configuration-for-android-clients } 
+
+要使 DHIS2 Android Capture 应用通过内部 DHIS2 IdP 签发的
+JWT 承载令牌对 DHIS2 实例进行身份验证，
+只需两个配置键：
+
+```属性
+server.base.url = https://dhis2.example.org
+oauth2.server.enabled = on
+```
+
+（此外还有一个持久化密钥库；参见
+[持久化签名密钥库](#oauth2_keystore)。）
+
+### 第三方 JWT 签发的令牌的最小配置{ #minimal-configuration-for-third-party-jwt-issued-tokens } 
+
+若要接受由外部身份提供商（IdP）（如 Google、Azure AD 或自定义 IdP）签发的令牌，
+**且无需**运行 DHIS2 自身的授权服务器，请将该
+IdP 配置为通用 OIDC 提供商，并启用承载者过滤器：
+
+```properties
+# 全局 OIDC 登录开关（同时控制 bearer 过滤器）
+oidc.jwt.token.authentication.enabled = on
+
+# 将外部 IdP 作为通用提供商
+oidc.provider.myprovider.client_id =<my-idp-client-id>
+oidc.provider.myprovider.client_secret =<my-idp-client-secret>
+oidc.provider.myprovider.authorization_uri = ...
+oidc.provider.myprovider.token_uri = ...
+oidc.provider.myprovider.user_info_uri = ...
+oidc.provider.myprovider.jwk_uri = ...
+oidc.provider.myprovider.mapping_claim = email
+```
+
+随后，客户端从身份提供商（IdP）获取令牌，并使用
+生成的承载令牌调用 DHIS2。DHIS2 会根据
+提供商的 JWKS 验证签名，并通过
+`mapping_claim` 将该令牌映射到 DHIS2 用户。
+
+
+---
+
+## 配置参考{ #oauth2_config_reference }
+
+所有密钥都位于 `dhis.conf` 中。
+
+### 授权服务器{ #authorization-server } 
+
+| To send an email with an HTML body, you can simply provide the HTML content
+in the `message` parameter. The email client should interpret the
+HTML and render it accordingly. Note that the `Content-Type` header in
+the `curl` command should be `application/x-www-form-urlencoded`, as the
+data is sent as URL-encoded form data. The following example shows how
+to send an email with a simple HTML table: | Potential duplicate status | 仪表板资源将提供仪表板列表。请记住
+仪表板对象是共享的,因此列表将受
+当前已验证的用户。您可以检索有关一个的更多信息
+特定的仪表板,请点击其链接,类似于: | 目的 |
+|-----|------|---------|---------|
+| `oauth2.server.enabled` | `开`/`关` | `关闭` | 启用 Spring 授权服务器、DCR 端点、DHIS2 内部 OIDC 提供程序以及 JWT 承载过滤器。 |
+| `oauth2.server.jwt.keystore.path` | 路径 | `` | 包含授权服务器签名密钥的密钥库文件。 |
+| `oauth2.server.jwt.keystore.password` | 不区分大小写的字符串结尾匹配 | `` | 密钥库密码。 |
+| `oauth2.server.jwt.keystore.alias` | 不区分大小写的字符串结尾匹配 | `` | 密钥库中密钥条目的别名。当设置了 `keystore.path` 时，此参数为必填项。 |
+| `oauth2.server.jwt.keystore.key-password` | 不区分大小写的字符串结尾匹配 | `` | 私钥条目的密码。可选；默认为密钥库密码。 |
+| `oauth2.server.jwt.keystore.generate-if-missing` | `true`/`false` | Tracker import { #webapi_tracker_import } | 如果 `keystore.path` 为空，则在启动时生成一组临时 RSA-2048 密钥对。在生产环境中请将其设置为 `false`。 |
+| `oauth2.server.dcr.refresh-token-ttl` | 秒 | `2592000` | 为已注册 DCR 的客户端（例如 Android 设备）刷新令牌的 TTL。这些客户端已启用轮换功能，因此 TTL 采用滑动窗口机制。仅在注册时应用；请参阅 [刷新令牌的有效期和轮换](#dcr_refresh_token_lifetime)。 |
+| `server.base.url` | Text. | `` | 公开的 HTTPS 基础 URL；当授权服务器启用时，用作 OAuth2 发行者 URI。 |
+
+### OIDC 登录（DHIS2 作为依赖方）{ #oidc-login-dhis2-as-relying-party } 
+
+| To send an email with an HTML body, you can simply provide the HTML content
+in the `message` parameter. The email client should interpret the
+HTML and render it accordingly. Note that the `Content-Type` header in
+the `curl` command should be `application/x-www-form-urlencoded`, as the
+data is sent as URL-encoded form data. The following example shows how
+to send an email with a simple HTML table: | Potential duplicate status | 仪表板资源将提供仪表板列表。请记住
+仪表板对象是共享的,因此列表将受
+当前已验证的用户。您可以检索有关一个的更多信息
+特定的仪表板,请点击其链接,类似于: | 目的 |
+|-----|------|---------|---------|
+| `oidc.oauth2.login.enabled` | `开`/`关` | `off` | 启用 `oauth2Login` 过滤器链，以支持通过外部身份提供商（IdP）进行 Web 登录。 |
+| `oidc.logout.redirect_url` | Text. | `` | 用户从身份提供商（IdP）注销后将跳转至何处。 |
+| `oidc.jwt.token.authentication.enabled` | `开`/`关` | `off` | 启用入站 JWT 持有人令牌身份验证（无需运行授权服务器）。 |
+| `oidc.provider.google.client_id` | 不区分大小写的字符串结尾匹配 | `` | Google 客户端 ID。 |
+| `oidc.provider.google.client_secret` | 不区分大小写的字符串结尾匹配 | `` | Google 客户端密钥。 |
+| `oidc.provider.google.mapping_claim` | 不区分大小写的字符串结尾匹配 | `电子邮件` | 用于将 Google 身份与 DHIS2 用户进行映射的声明。 |
+| `oidc.provider.google.redirect_url` | Text. | `` | 重定向 URL 的可选覆盖设置。 |
+| `oidc.provider.azure.<n>.tenant` | 不区分大小写的字符串结尾匹配 | `` | 提供商 `n` 的 Azure 租户（目录）ID。 |
+| `oidc.provider.azure.<n>.client_id` | 不区分大小写的字符串结尾匹配 | `` | Azure 客户端 ID。 |
+| `oidc.provider.azure.<n>.client_secret` | 不区分大小写的字符串结尾匹配 | `` | Azure 客户端密钥。 |
+| `oidc.provider.azure.<n>.mapping_claim` | 不区分大小写的字符串结尾匹配 | `电子邮件` | 映射声明。 |
+| `oidc.provider.azure.<n>.enable_logout` | `开`/`关` | `on` | 通过 Azure 的 `end_session_endpoint` 启用注销功能。 |
+| `oidc.provider.wso2.*` | Note that synthetic fields `displayName` and `displayShortName` are always
+returning the translated value independent of the `translate` parameter. | Note that synthetic fields `displayName` and `displayShortName` are always
+returning the translated value independent of the `translate` parameter. | WSO2 提供商（参见“WSO2”部分）。 |
+| `oidc.provider.<id>.*` | Note that synthetic fields `displayName` and `displayShortName` are always
+returning the translated value independent of the `translate` parameter. | Note that synthetic fields `displayName` and `displayShortName` are always
+returning the translated value independent of the `translate` parameter. | 通用 OIDC 提供程序。完整的密钥集在 [通用提供程序](#oidc_generic) 中有详细说明。 |
+| `oidc.provider.dhis2.client_id` | 不区分大小写的字符串结尾匹配 | `dhis2-internal` | 覆盖内部提供商的客户端 ID（很少用；通常未设置）。 |
+| `oidc.provider.dhis2.client_secret` | 不区分大小写的字符串结尾匹配 | `secret` | 覆盖内部提供商的客户端密钥。 |
+| `oidc.provider.dhis2.mapping_claim` | 不区分大小写的字符串结尾匹配 | `用户名` | 内部提供商的映射声明。 |
+| `oidc.provider.dhis2.server_url` | Text. | `` | 覆盖基础 URL；默认为 `server.base.url`。 |
+| `linked_accounts.enabled` | `开`/`关` | `off` | 允许一个 IdP 身份映射到多个 DHIS2 账户。 |
+| `linked_accounts.logout_url` | Text. | `` | 账户切换流程中使用的注销 URL。 |
+| `linked_accounts.relogin_url` | Text. | `` | 账户切换流程中使用的重新登录 URL。 |
+
+### 系统设置（基于数据库）{ #system-settings-database-backed } 
+
+| 设置 | 仪表板资源将提供仪表板列表。请记住
+仪表板对象是共享的,因此列表将受
+当前已验证的用户。您可以检索有关一个的更多信息
+特定的仪表板,请点击其链接,类似于: | 目的 |
+|---------|---------|---------|
+| `deviceEnrollmentRedirectAllowlist` | `dhis2oauth://oauth` | DCR 以及自定义协议客户端的 `redirect_uri` 值白名单。 |
+| `deviceEnrollmentAllowedUserGroups` | *(空)* | 允许注册设备的用户-组 UID 的 CSV 文件。为空表示任何经过身份验证的用户。 |
+| `deviceEnrollmentIATTtlSeconds` | 名称 | 初始访问令牌的有效期。 |
+
+---
+
+## 故障排除{ #oauth2_troubleshooting }
+
+**授权服务器无法启动（`IllegalStateException: 需要指定 server.base.url`）。**
+请在 `dhis.conf` 中将 `server.base.url` 设置为该实例的公共 HTTPS 网址。
+
+**已签发的令牌中，`iss: http://...` 取代了 `https://...`。**
+将 `server.base.url` 设置为完整的公共 HTTPS URL。发行者的 URI
+直接由 `server.base.url` 派生而来；您的应用服务器
+无需知道它位于代理服务器之后。
+
+**重启前签发的令牌在重启后将失效。**
+您当前正在使用默认的临时密钥库模式。请配置
+一个持久性密钥库（参见
+[持久性签名密钥库](#oauth2_keystore)）。
+
+**使用 `"authorizationGrantTypes":"client_credentials"` 发送 `POST /api/oAuth2Clients` 请求会返回 409（`E4000`）错误。**
+仅允许通过
+管理 API 使用 `authorization_code` 和 `refresh_token`。`client_credentials` 专用于内部 DCR
+系统注册机构。
+
+**创建一个使用自定义方案重定向 URI（`dhis2oauth://oauth`）的客户端将被拒绝。**
+请将确切的 URI 添加到 `deviceEnrollmentRedirectAllowlist` 系统
+设置中。`http://` 和 `https://` 格式的 URI 始终会被接受。
+
+**OIDC 登录按钮未显示。**
+请检查 `oidc.oauth2.login.enabled = on` 是否已启用，并且至少有一个
+`oidc.provider.*.client_id` 已配置，且其对应的
+`client_secret` 匹配。启动时会记录未知密钥，并
+建议最接近的有效密钥。
+
+**JWT 承载请求因 HTTP 401 错误和 `Invalid mapping claim` 而失败。**
+提供方的 `mapping_claim` 既不是 `username` 也不是 `email`；仅
+支持这两者。请将 `oidc.provider.<id>.mapping_claim` 设置为
+其中之一。
+
+
+**`/connect/register` 因缺少 `jwks` 而拒绝该请求负载。**
+DHIS2 DCR 要求在注册请求正文中包含内联 JWKS 对象；
+不接受 `jwks_uri`。请包含完整的 `jwks` 对象，其中应包含
+客户端的公钥。
+
+**发送到 `/connect/register` 的权限范围将被拒绝或不予采纳。**
+请在注册数据包中省略 `scope` 字段；服务器
+会自动分配 `openid profile username`。
+
+**即使代码是新的，令牌交换仍因 `invalid_grant` 失败。**
+客户端要求支持 S256 PKCE。在授权请求中发送 `code_challenge` +
+`code_challenge_method=S256`，并在令牌请求中发送
+对应的 `code_verifier`。服务器端无法
+禁用 PKCE。
+
+**`POST /api/oAuth2Clients` 返回 409 `E4000` 错误，提示 `settings.client.require-proof-key` 问题。**
+提供的 `clientSettings` JSON 必须同时包含
+`settings.client.require-proof-key`（必须为 `true`）和
+`settings.client.require-authorization-consent`（作为布尔值），或者
+完全省略以采用服务器默认值。`require-proof-key:
+false` 将被拒绝。
+
+---
+
+## 升级说明：2.41 至 2.42{ #oauth2_upgrade_2_42 }
+
+2.42 版本替换了授权服务器的实现。2.41 版本
+提供了一个基于已弃用的
+`spring-security-oauth2` 项目的授权服务器；而 2.42 版本则采用了正在积极维护的
+Spring 授权服务器。这是一次重写，而非直接
+升级：配置键、端点路径、令牌格式以及
+客户端架构均已更改。
+
+### 兼容性变更{ #breaking-changes } 
+
+| 区 | 2.41 | 2.42 |
+|------|------|------|
+| 实施 | `spring-security-oauth2`（已弃用） | Spring 授权服务器 |
+| 启用密钥 | `oauth2.authorization.server.enabled` | `oauth2.server.enabled` |
+| 令牌端点 | `/oauth/token` | `/oauth2/token` |
+| 授权端点 | `/oauth/authorize` | `/oauth2/authorize` |
+| 访问令牌格式 | 不透明，存储在服务器上 | JWT，RSA签名 |
+| JWKS 端点 | 无 | `/oauth2/jwks` |
+| 签名密钥 | 不适用 | 来自密钥库的RSA密钥对 |
+| `OAuth2Client` 实体 | `cid`、`secret`、`redirectUris`、`grantTypes` | 使用 Spring AS 作为具有完整 OAuth2/OIDC 属性的 `RegisteredClient` |
+| 客户端表 | `oauth2client`、`oauth2clientgranttypes`、`oauth2clientredirecturis` | `oauth2_client` |
+| 授权表 | `oauth_access_token`、`oauth_code` | `oauth2_authorization`、`oauth2_authorization_consent` |
+
+`/api/oAuth2Clients` 端点路径及其
+对应的访问权限 `F_OAUTH2_CLIENT_MANAGE` 保持不变，但
+请求和响应的 JSON 模式有所不同。
+
+### 与 2.41 版本相比，哪些内容保持不变{ #what-is-unchanged-from-241 } 
+
+- 以依赖方身份登录 OIDC（`oidc.oauth2.login.enabled`），使用
+  谷歌、微软 Entra ID、WSO2 以及通用身份提供商。
+- 针对外部身份提供商（IdP）的入站 JWT 凭证认证
+  (`oidc.jwt.token.authentication.enabled`)。
+- 关联账户（`linked_accounts.*`）。
+
+### 升级操作{ #upgrade-actions } 
+
+如果 2.41 版本启用了授权服务器：
+
+1. 将 `oauth2.authorization.server.enabled` 重命名为
+   `dhis.conf` 文件中的 `oauth2.server.enabled`。
+2. 配置持久性签名密钥库
+   (`oauth2.server.jwt.keystore.*`)。如果没有它，令牌将被签名
+   使用一个临时密钥对，该密钥对会在每次重启时重新生成。
+   请参阅 [持久化签名密钥库](#oauth2_keystore)。
+3. 根据新架构重新创建所有已注册的 OAuth2 客户端
+   通过 `POST /api/oAuth2Clients`。旧版 `oauth2client*` 表中的行
+   表未被迁移。
+4. 更新客户端应用程序以适配新的端点路径（`/oauth/*`
+   变为 `/oauth2/*`) 以及新的令牌格式（opaque 变为
+   JWT（已通过 `/oauth2/jwks` 验证）。
+5. 现有的访问令牌和授权码在
+   升级；客户必须重新认证。
+
+如果 2.41 版本未启用授权服务器，则此次升级
+将不产生任何影响：新授权服务器默认处于禁用状态。
 

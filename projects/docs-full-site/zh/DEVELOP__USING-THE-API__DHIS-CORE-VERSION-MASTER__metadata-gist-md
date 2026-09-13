@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/metadata-gist.md"
-revision_date: '2024-05-21'
+revision_date: '2026年7月14日'
 tags:
-- DHIS核心 主版
 - Develop
+- DHIS核心 主版
 ---
 
 # 元数据要点 API { #gist_api }
@@ -72,7 +72,7 @@ groups
   可以明确添加非持久字段（合成字段）；其他 
   非持久字段也许可以使用 `from` 转换来提取
 * 筛选器只能应用于持久化字段
-* 命令只能应用于持久化字段
+* 排序仅适用于持久化字段（44+ 版本还支持已翻译的属性）
 * 令牌过滤器不可用
 * 顺序总是区分大小写
 * items in a list, a collection property size or boolean transformer result 
@@ -83,7 +83,40 @@ groups
 获取元数据信息。
 
 
-## 终点{ #gist_endpoints } 
+## 元数据 API 与 Gist 后端之间的桥接{ #metadata_api_gist_bridge }
+<!--DHIS2-SECTION-ID:metadata_api_gist_bridge-->
+针对元数据 API 的查询可能会由 Gist 后端在内部处理，以获得更好的性能和可扩展性。
+
+系统会采用启发式方法来判断 Gist 后端是否能为该查询提供等效的响应。
+
+具体条件如下（略作概括）：
+
+* 所有存在的 URL 参数在 Gist API 的上下文中都必须有意义
+* `fields`、`filter` 和 `order` 参数的任何属性均不得包含嵌入对象
+* `fields`、`filter` 和 `order` 参数的所有属性必须是持久化属性，或持久化属性的转换形式
+* `fields` 必须在 URL 中显式指定，或内部具有显式的默认值
+* 仅当根级别为 `IdentifiableObject` 或其集合时，`fields` 的属性才允许嵌套两层（超过两层则不符合条件）
+* 所有 `filter` 属性必须是非嵌套的且已持久化
+* 所有 `order` 属性不得采用不区分大小写的排序方式
+* 必须使用分页
+
+由 gist 后端生成的响应会在根响应对象中
+通过 `"gist":true` 进行标识，如下例所示：
+
+```json
+{
+  "pager": {},
+  "gist": true,
+  "dataElements": []
+}
+```
+
+若要禁用此启发式算法，请在 URL 中添加 `?gist=false`（例如，当启发式算法失效时）。
+若要强制使用 gist 后端（无论启发式算法结果如何），请在 URL 中添加 `?gist=false`（例如用于测试）。
+此时生成的响应与在路径中添加 `/gist` 几乎完全相同。
+
+
+## 端点{ #gist_endpoints } 
 <!--DHIS2-SECTION-ID:gist_endpoints-->
 
 `/gist` API 有 3 种端点：

@@ -1,9 +1,9 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/tracker.md"
-revision_date: '2026年5月28日'
+revision_date: '2026年9月11日'
 tags:
-- Develop
 - DHIS核心 主版
+- Develop
 ---
 
 # 跟踪器{ #webapi_tracker }
@@ -1545,8 +1545,17 @@ Update attribute values
 Note that it is not necessary to specify the tracked entity's enrollments. However, you must specify
 the non-collection fields of the tracked entity, even if you are not changing them.
 
-```
-POST /api/tracker?async=false
+```json
+{
+  "events": [
+    {
+      "event": "ZwwuwNp6gVd"
+    },
+    {
+      "event": "XwwuwNp6gVE"
+    }
+  ]
+}
 ```
 
 ```json
@@ -1575,7 +1584,18 @@ POST /api/tracker?async=false
 Note that it is not necessary to specify the tracked entity's enrollments. However, you must specify
 the non-collection fields of the tracked entity, even if you are not changing them.
 
-Delete attribute values
+```json
+{
+  "trackedEntities": [
+    {
+      "trackedEntity": "Kj6vYde4LHh"
+    },
+    {
+      "trackedEntity": "Gjaiu3ea38E"
+    }
+  ]
+}
+```
 
 The following deletes one of the attribute values of a [tracked entity](#payload):
 
@@ -2373,6 +2393,25 @@ The following side effects are currently supported:
 
 X
 
+### 请求超时{ #webapi_tracker_export_timeout }
+
+导出请求受时间预算限制，该预算通过
+[`tracker.export.timeout`](#install_tracker_configuration) 进行配置，默认值为 10 分钟。 超过该时限的
+请求将被取消，并返回 `504 Gateway Timeout` 错误，同时注明超时的时限值。当
+`tracker.export.timeout = 60` 时：
+
+```json
+{
+  "httpStatus": "网关超时",
+  "httpStatusCode": 504,
+  "status": "ERROR",
+  "message": "追踪器导出超出了 60 秒的时间限制"
+}
+```
+
+该请求的处理成本过高，无法按时完成。请缩小范围，参见
+[性能](#webapi_tracker_performance)。
+
 ### 常见请求参数{ #common-request-parameters } 
 
 ProgramRule Notification
@@ -2477,11 +2516,11 @@ updatedAt (Datetime)
 
 orgUnit (identifier in requested idScheme)
 
-#### ZIP{ #zip } 
+#### 邮编{ #zip } 
 
 deleted (boolean)
 
-#### 受监控实体集合{ #tracked-entity-collections } 
+#### 受监控的实体集合{ #tracked-entity-collections } 
 
 > **Note**
 >
@@ -2511,7 +2550,7 @@ or `events.csv` file.|跟进|
 or `events.csv` file.|跟进|
 |DateTime|Events CSV|Filter for events which were updated up until this date. Cannot be used together with `updatedWithin`.|updatedAfter|
 |DateTime|Events CSV|Filter for events which were updated up until this date. Cannot be used together with `updatedWithin`.|updatedBefore|
-|DateTime|Events CSV|Filter for events which were updated up until this date. Cannot be used together with `updatedWithin`.|在指定项目中注册的起始日期|
+|DateTime|Events CSV|Filter for events which were updated up until this date. Cannot be used together with `updatedWithin`.|在指定项目中完成注册的起始日期|
 |Duration|Events CSV|Filter for events which were updated up until this date. Cannot be used together with `updatedWithin`.|在指定项目中完成注册的截止日期|
 |`{"organisationUnit": "a3kGcGDCuk7"}`|具有以下要求:|The status of the tracked entities enrollment in the given program.|enrollmentEnrolledAfter|
 |Absolute end date. Applicable only when `type` is ABSOLUTE|具有以下要求:|Start date and time for enrollment in the given program|enrollmentEnrolledBefore|
@@ -2631,11 +2670,11 @@ nieq
 
 nlike
 
-示例：`filter=H9IlTX2X6SL:sw:A`，其中运算符以 `sw` 开头，后跟一个值。
+示例：`filter=H9IlTX2X6SL:sw:A`，其中运算符以`sw`开头，后跟一个值。
 
 类似 `filter=H9IlTX2X6SL:!null` 的过滤条件会返回所有具有该属性且该属性有值的条目。
 
-像 `+` 这样的特殊字符需要进行百分比编码，因此应使用 `%2B` 代替 `+`。作为过滤器值一部分的字符（如 `:` 或 `,`）需要用 `/` 进行转义。同样，`/` 也需要进行转义。
+像 `+` 这样的特殊字符需要进行百分比编码，因此应使用 `%2B` 代替 `+`。作为过滤器值组成部分的字符（如 `:` 或 `,`）需要用 `/` 进行转义。同样，`/` 也需要进行转义。
 
 sw
 
@@ -2781,7 +2820,7 @@ Request syntax
 GET /api/tracker/trackedEntities/{uid}?program={programUid}&fields={fields}
 ```
 
-##### 受追踪实体的响应{ #tracked-entity-response } 
+##### 被追踪实体的响应{ #tracked-entity-response } 
 
 类型
 
@@ -2877,7 +2916,7 @@ Tracked entity attribute value change logs { #webapi_tracker_attribute_change_lo
         {
           "attribute": "AuPLng5hLbE",
           "code": "国家识别码",
-          "displayName": "国家识别码",
+          "displayName": "国家标识符",
           "createdAt": "2016-08-03T23:49:43.301",
           "updatedAt": "2016-08-03T23:49:43.301",
           "valueType": "TEXT",
@@ -2906,7 +2945,7 @@ Tracked entity attribute value change logs { #webapi_tracker_attribute_change_lo
           "createdAt": "2016-08-03T23:49:43.307",
           "updatedAt": "2016-08-03T23:49:43.307",
           "valueType": "TEXT",
-          "value": "主街 2 号"
+          "value": "Main street 2"
         }
       ],
       "notes": []
@@ -3498,10 +3537,10 @@ GET /api/tracker/events?orgUnit=DiszpKrYNg8&program=eBAyeGv0exc
 ```
 
 ```csv
-事件,状态,项目,项目阶段,报名情况,组织单位,发生时间,计划时间,几何信息,纬度,经度,后续处理,已删除,创建时间,客户端创建时间,更新时间,客户端更新时间,完成人,完成时间,更新人,属性选项组合,属性类别选项,指派用户,数据元素,值,在其他地方提供,由数据值存储,由数据值更新,由数据值创建
+事件,状态,项目,项目阶段,报名情况,组织单位,发生时间,计划时间,几何信息,纬度,经度,后续处理,已删除,创建时间,客户端创建时间,更新时间,客户端更新时间,完成人,完成时间,更新人,属性选项组合,属性类别选项,分配用户,数据元素,值,在其他地方提供,由数据值存储,由数据值更新,由数据值创建
 A7rzcnZTe2T,ACTIVE,eBAyeGv0exc,Zj7UnCAulEk,RiLEKhWHlxZ,DwpbWkiqjMy,2023-02-12T23:00:00Z,2023-02-12T23:00:00Z,"POINT (-11.468912037323042 7.515913998868316)",7.515913998868316,-11.468912037323042,false,false,2017-09-08T19:40:22Z,,2017-09-08T19:40:22Z,,,,,HllvX50cXC0,xYerKDKCefk,,F3ogKBuviRA,"[-11.4880220438585,7.50978830548003]",false,,2016-12-06T17:22:34.438Z,2016-12-06T17:22:34.438Z
 A7rzcnZTe2T,ACTIVE,eBAyeGv0exc,Zj7UnCAulEk,RiLEKhWHlxZ,DwpbWkiqjMy,2023-02-12T23:00:00Z,2023-02-12T23:00:00Z,"点 (-11.468912037323042 7.515913998868316)",7.515913998868316,-11.468912037323042,false,false,2017-09-08T19:40:22Z,,2017-09-08T19:40:22Z,,,,,HllvX50cXC0,xYerKDKCefk,,eMyVanycQSC,2018-02-07,false,,2013-12-30T13:23:57.423Z,2013-12-30T13:23:57.423Z
-A7rzcnZTe2T,ACTIVE,eBAyeGv0exc,Zj7UnCAulEk,RiLEKhWHlxZ,DwpbWkiqjMy,2023-02-12T23:00:00Z,2023-02-12T23:00:00Z,"点 (-11.468912037323042 7.515913998868316)",7.515913998868316,-11.468912037323042,false,false,2017-09-08T19:40:22Z,,2017-09-08T19:40:22Z,,,,,HllvX50cXC0,xYerKDKCefk,,msodh3rEMJa,2018-02-13,false,,2013-12-30T13:23:57.467Z,2013-12-30T13:23:57.467Z
+A7rzcnZTe2T,ACTIVE,eBAyeGv0exc,Zj7UnCAulEk,RiLEKhWHlxZ,DwpbWkiqjMy,2023-02-12T23:00:00Z,2023-02-12T23:00:00Z，“点 (-11.468912037323042 7.515913998868316)”，7.515913998868316,-11.468912037323042,false,false,2017-09-08T19:40:22Z,,2017-09-08T19:40:22Z,,,,,HllvX50cXC0,xYerKDKCefk,,msodh3rEMJa,2018-02-13,false,,2013-12-30T13:23:57.467Z,2013-12-30T13:23:57.467Z
 ```
 
 #### ```
@@ -3792,15 +3831,15 @@ Identifier of an event
 
 Any valid field filter (default `relationship,relationshipType,createdAtClient,from[trackedEntity[trackedEntity],enrollment[enrollment],event[event]],to[trackedEntity[trackedEntity],enrollment[enrollment],event[event]]`)
 
-关于 Tracker 数据的一个关键点在于必须采取整体性的方法。例如，用户
+关于Tracker数据的一个关键点在于必须采取整体性方法。例如，用户
 仅拥有对数据元素的读取权限时，将无法查看该数据元素的值。 用户
 需要具备数据读取权限，才能访问该数据元素
-所属的父级“项目阶段”和“项目”。这与类别选项组合的处理方式相同。在 Tracker 中，活动和
+所属的父级“项目阶段”和“项目”。这与类别选项组合的机制相同。在 Tracker 中，活动和
 注册信息都与一个 AttributeOptionCombo 相关联，该组合由多个类别
-选项构成。 要读取某个事件或注册记录，用户必须拥有对构成该对象“属性选项组合”的所有“类别选项”
-及其对应“类别”的数据读取权限。如果用户
-缺少对任何一个必需的“类别选项”或“类别”的访问权限，则无法访问
-该事件或注册记录的全部内容。
+选项构成。 要读取某个事件或注册记录，用户必须对构成该对象 AttributeOptionCombo 的所有类别选项
+及其对应的类别拥有数据读取权限。如果用户
+缺少对任何一个必需的类别选项或类别的访问权限，则将无法访问
+整个事件或注册记录。
 
 order
 
@@ -3926,16 +3965,16 @@ Mode
 DHIS2 2.30 版本中引入的“追踪对象所有权”功能，定义了
 “被追踪实体”与“项目”组合之间的组织单位关联。在项目背景下，我们将此称为
 “被追踪实体”的“所有者”（或“所属”）组织单位。 所有者组织单元
-用于决定读取和写入与项目相关的追踪器数据时的访问权限。这
-与项目的 [访问级别](#webapi_tracker_access_level) 配置共同决定
-与项目相关数据（注册和事件）的访问行为。 如果某个“被追踪实体”与“项目”组合对应的
+用于决定读取和写入与项目相关的追踪器数据时的访问权限。该设置
+结合项目的 [访问级别](#webapi_tracker_access_level) 配置，共同决定
+与项目相关数据（注册记录和事件）的访问行为。 如果某个“被追踪实体”与“项目”组合对应的
 所有者组织单元
 属于用户的组织单元范围（搜索/捕获）内，则用户可以访问该“被追踪实体”的
 项目数据。 对于配置了
-访问级别为 *OPEN* 或 *AUDITED* 的项目，其所有者组织单元必须位于用户的搜索
-范围内。对于配置了访问级别为 *PROTECTED* 或 *CLOSED* 的项目，所有者
+访问级别 *OPEN* 或 *AUDITED* 的项目，所有者组织单元必须位于用户的搜索
+范围内。对于配置了访问级别 *PROTECTED* 或 *CLOSED* 的项目，所有者
 组织单位必须位于用户的捕获范围内，才能访问特定
-受追踪实体的相应项目数据。无论项目访问级别如何，要访问
+被追踪实体的相应项目数据。无论项目访问级别如何，要访问
 Tracker 对象，所请求的组织单位必须始终位于用户的搜索
 范围或捕获范围之内。用户无法请求这两个范围之外的对象，除非其
 使用组织单位模式 ALL 且拥有使用该模式的足够权限。
@@ -4071,7 +4110,7 @@ used:
 | 指标组 | Parameter name | 描述 |
 | --- |---|---|
 |A description of the working list.|sortOrder|`"attributeValueFilters":[{"attribute": "abcAttributeUid","le": "20","ge": "10","lt": "20","gt": "10","in": ["印度", "挪威"],"like": "abc","sw": "abc","ew": "abc","dateFilter": {"startDate": "2014-05-01","endDate": "2019-03-20","startBuffer": -5,"endBuffer": 5,"period": "LAST_WEEK","type": "RELATIVE"}}]`|
-|DateTime|被追踪实体的注册状态。可以是“none”（任何注册状态）或 `ACTIVE`、`COMPLETED`、`CANCELLED`||
+|DateTime|被追踪实体的注册状态。可以是“无”（任何注册状态）或 `ACTIVE`、`COMPLETED`、`CANCELLED`||
 |Table: Program Stage Query Criteria|项目||
 |是否在 DHIS2 中存储一份项目信息副本。|`{ "id" : "uy2gU8kTjF"}`|entityQueryCriteria|
 |`{"type":"RELATIVE","period":"TODAY"}`|See *Entity Query Criteria* definition table below.|[DateFilterPeriod](#webapi_tracker_workinglists_common_objects) object filtering based on the event scheduled date.|
@@ -4403,7 +4442,7 @@ You can't update a potential duplicate that is already in a MERGED status
 
 Merging tracked entities
 
-#### 合并策略 手册{ #merge-strategy-manual } 
+#### 合并策略 手动{ #merge-strategy-manual } 
 
 To merge a Potential Duplicate, i.e. the two tracked entities the Potential Duplicate represents,
 use the following endpoint:
@@ -4582,7 +4621,7 @@ deliveryChannels
 
 Whether notification should be sent multiple times
 
-#### 表：程序消息有效载荷{ #table-program-message-payload } 
+#### 表：程序消息负载{ #table-program-message-payload } 
 
 | The manual merge is suitable when there are resolvable conflicts or when not all the data needs to
 be moved during the merge. For example, if an attribute has different values in both tracked
@@ -4702,13 +4741,13 @@ GET /api/programNotificationInstances
 | `scheduledAt` | `date` (ISO-8601) | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions`       | 返回计划在指定日期发送的通知实例。示例：`scheduledAt=2025-01-01`。                   |
 | `true`&#124;`false`      | Field Presets { #field-presets }          | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions`       | 启用或禁用分页。默认值为 `true`。使用 `paging=false` 可返回所有匹配的实例，而不进行分页。  |
 | comma separated list of fields or presets to include        | `整数`         | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions`       | 启用分页时应返回的页码。                                                                           |
-| 默认    | `整数`         | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions`       | 启用分页时，每页显示的项目数。                                                                        |
-| `event`       | Narrows response to tracked entities matching given filters. More on filters [here](#tracked_entity_attribute_filtering)             | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions`       | 与该事件关联的程序通知实例。                                                                      |
+| 默认    | `整数`         | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions`       | 启用分页时，每页显示的项目数量。                                                                        |
+| `event`       | Narrows response to tracked entities matching given filters. More on filters [here](#tracked_entity_attribute_filtering)             | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions`       | 附加到此事件的程序通知实例。                                                                      |
 | `注册`  | Narrows response to tracked entities matching given filters. More on filters [here](#tracked_entity_attribute_filtering)             | [Enrollment Aggregate data dimensions](#webapi_enrollment_aggregate_analytics_dimension) `/analytics/enrollments/aggregate/dimensions`       | 与本次注册关联的项目通知实例。                                                                 |
 
 ## 性能{ #webapi_tracker_performance }
 
-本节首先介绍通用性能原则，随后针对
+本节首先介绍一般性能原则，随后针对
 跟踪器导出端点提供具体指导。要进一步优化性能，需要了解实际的访问
 模式和数据分布情况。如果您的实现能够提供这些信息，将有助于
 确定改进的优先级。
@@ -4722,14 +4761,14 @@ GET /api/programNotificationInstances
 #### 通知{ #notifications } 
 
 通知会在导入完成后异步发送，但会与并发请求争夺
-数据库连接、CPU 和内存资源。当实体和通知模板数量较多时，这可能会
+数据库连接、CPU 和内存资源。当实体和通知模板较多时，这可能会
 增加延迟。对于无需通知的批量导入，请跳过通知：
 
     POST /api/tracker?skipSideEffects=true
 
 #### 项目规则{ #program-rules } 
 
-规则引擎会在导入过程中对打包文件中的每个注册和事件进行同步运行，
+规则引擎会在导入过程中针对打包文件中的每个注册和事件同步运行，
 这可能会显著增加批量导入的延迟。仅当项目中不存在
 必须在导入时强制执行的验证或分配规则时，才应跳过此步骤：
 
@@ -4739,8 +4778,10 @@ GET /api/programNotificationInstances
 
 #### 一般原则{ #general-principles } 
 
-导出端点的响应时间通常主要取决于数据库查询的执行情况。
-以下建议侧重于减少数据库需要处理的工作量。
+导出端点的响应时间通常主要取决于数据库查询的执行情况。以下
+建议侧重于减少数据库需要处理的工作量。如果请求
+超过其 [时间预算](#webapi_tracker_export_timeout)，该请求将被取消，并返回
+`504 网关超时` 错误。
 
 ##### 在适当级别进行查询{ #query-at-the-right-level } 
 
@@ -4752,12 +4793,12 @@ GET /api/programNotificationInstances
 ##### 使用显式的 `fields`{ #use-explicit-fields } 
 
 默认情况下，所有端点均不包含嵌套集合，例如 `enrollments`、`events` 和
-`relationships`。每个额外的集合都会增加资源占用并延长响应时间。请仅
+`relationships`。每个额外的集合都会增加资源占用和响应时间。请仅
 请求您需要的 `fields`，并避免使用 `fields=*`。
 
 ##### 选择性{ #selectivity } 
 
-查询性能取决于数据库在返回结果之前需要处理的记录数量。
+查询性能取决于数据库在返回结果之前必须处理的记录数量。
 需要扫描、排序和去重处理的记录越少，响应速度就越快。这就是所谓的**选择性**：
 即符合查询条件的记录占总记录数的比例。
 
@@ -4768,62 +4809,62 @@ GET /api/programNotificationInstances
 
 过滤器会在排序和分页之前缩小结果集范围。当有
 数据库索引支持时，其效果最佳。宽泛的过滤条件（例如 `filter=w75KJ2mc4zz:like:J`）可能会匹配数据集中的
-大部分内容，且选择性较低。 窄范围过滤器（例如 `filter=w75KJ2mc4zz:eq:Jerald` 或
+很大一部分，且选择性较低。 窄范围过滤器（例如 `filter=w75KJ2mc4zz:eq:Jerald` 或
 严格的日期范围）可显著缩小工作集。 针对受追踪实体属性的 `like` 过滤器
 可受益于 [三元组索引](#scheduling_tracker_index_maintenance)。
 
-程序和受监控实体类型上的“搜索所需的最小属性数量”设置
-要求在用户捕获范围之外进行搜索时，必须设置最少数量的属性过滤条件。
+程序和受监控实体类型上的“搜索所需的最小属性数”设置
+要求在用户捕获范围之外进行搜索时，必须指定最少数量的属性过滤条件。
 
 ###### 程序{ #program } 
 
 指定 `program` 可启用基于所有权的访问控制。如果不指定 `program`，系统必须
-动态评估被追踪实体所参与的所有程序中的访问规则。查询特定程序的数据时，请务必
+对被追踪实体所参与的所有程序的访问规则进行动态评估。查询特定程序的数据时，请务必
 包含 `program`。
 
 请注意，即使指定了 `program`，选择性仍取决于该
-项目所拥有的数据量。一个涵盖了大多数受追踪实体的项目，其选择性不会很高。
+项目现有数据的数量。一个涵盖了大部分被追踪实体的项目，其选择性不会很高。
 
 ##### 组织单位模式{ #webapi_tracker_perf_organisation_unit_mode }
 
 [`orgUnitMode`](#webapi_tracker_orgunit_scope) 以及用户的组织单位范围会直接影响
 数据库处理的记录数量。 性能取决于所包含的组织单位
-所拥有的数据量。范围限定在单个设施内的用户仅查询一小部分记录；而拥有根级
+所拥有的数据量。范围限定为单一设施的用户仅查询一小部分记录；而拥有根级
 访问权限的用户则可能扫描整个程序。**`SELECTED` 效率最高**，因为数据库可以
 直接定位到指定组织单位所拥有的记录。
 
-**当子节点不拥有数据时，`CHILDREN` 的执行速度较慢。** 数据通常在机构
-（最低层级）处捕获。 如果在更高级别（例如区级）使用 `CHILDREN`，会返回没有事件的行政组织
+**当子节点没有自有数据时，**`CHILDREN` 的执行速度会变慢。数据通常在设施
+（最低级别）处进行采集。 如果在更高级别（例如区级）使用 `CHILDREN`，会返回没有事件的行政组织
 单位，这会迫使数据库扫描该计划中的所有事件以确认这一点。
-当子节点是实际采集数据的组织单位时，`CHILDREN` 的执行速度很快。
+当子节点是实际采集数据的组织单位时，`CHILDREN` 的执行速度较快。
 
 **`ALL`** 没有地理限制。**`ACCESSIBLE`** 取决于用户的搜索范围，
-对于拥有广泛访问权限的用户，其搜索范围可覆盖该程序的大部分数据。结合使用选择性
+对于拥有广泛访问权限的用户而言，该范围可涵盖该程序的大部分数据。结合使用选择性
 过滤器，可确保工作集保持在可管理范围内。
 
 ##### 订购{ #ordering } 
 
-`order` 参数会对查询性能产生显著影响。排序字段可分为以下
+`order` 参数会显著影响查询性能。排序字段可分为以下
 性能等级：
 
 * **快速（带索引）**：数据库按顺序遍历索引，并在填满请求的
-  页面。成本随页面大小和偏移量而变化，而非随数据集大小而变化。这假设查询条件
+  页面。成本随页面大小和偏移量成比例增加，而非随数据集大小成比例增加。这假设查询条件
   允许数据库使用该索引，这取决于过滤条件和 `orgUnitMode`。
 * **慢（无索引）**：数据库必须先扫描并排序所有匹配的记录，然后才能返回
   页面。成本主要取决于匹配记录的总数。
-* **非常慢（跨资源）**：排序值来自相关资源（例如，对已跟踪的
+* **非常慢（跨资源）**：排序值来自相关资源（例如，对受跟踪项进行排序
   实体（按 `enrolledAt` 或某个属性值）。数据库必须为每个
   在排序前查找匹配的记录。
 
 **选择性比排序字段的选择更为重要。** 借助选择性过滤器或缩小用户范围，
-即使是较慢的排序字段也能快速处理，因为数据库只需对一小部分数据进行排序。请注意，
-即使没有后端索引，过滤器仍能降低排序开销，但无法降低扫描开销。
+即使是较慢的排序字段也能运行得很快，因为数据库只需对一小部分数据进行排序。请注意，
+没有后备索引的过滤器虽然也能降低排序开销，但无法降低扫描开销。
 
-有关各字段属于哪个层级的具体顺序，请参阅下文针对各端点的具体章节。
+有关各字段属于哪个层级的具体信息，请参阅下文各端点对应的章节。
 
 ##### 分页 { #pagination } 
 
-DHIS2 采用 [基于偏移量的分页](https://use-the-index-luke.com/no-offset)。较高的页码处理速度本就较慢，因为数据库必须计算并舍弃所有之前的
+DHIS2 采用 [基于偏移量的分页](https://use-the-index-luke.com/no-offset)。较高的页码处理速度本就较慢，因为数据库必须计算并过滤掉所有之前的
 行。这是基于偏移量的分页的一种基本特性，并非 DHIS2 所独有。
 
 建议：
@@ -4833,7 +4874,7 @@ DHIS2 采用 [基于偏移量的分页](https://use-the-index-luke.com/no-offset
   匹配记录，无论页面大小如何
 * 请避免使用 `paging=false`，因为它会将所有匹配的记录一次性返回
 
-配置 [收集限制](#tracked-entities-collection-limits)，以限制结果集的大小，并
+配置 [收集限制](#tracked-entities-collection-limits)，以限制结果集的大小并
 保护数据库和服务器资源。
 
 #### `/api/tracker/trackedEntities`{ #apitrackertrackedentities } 
@@ -4848,11 +4889,11 @@ DHIS2 采用 [基于偏移量的分页](https://use-the-index-luke.com/no-offset
 | 层级 | 订单字段 | 成本 |
 |------|-------------|------|
 | 快 | `trackedEntity`、`createdAt` | 与 `page`（偏移量）+ `pageSize` 成正比 |
-| 慢 | `updatedAt`、`createdAtClient`、`updatedAtClient`、`inactive` | 占已追踪匹配实体总数的百分比 |
-| 非常慢 | `enrolledAt`，被追踪实体的属性 UID | 与已追踪匹配实体的总数成正比 + 在相关表中按记录进行的查询 |
+| 慢 | `updatedAt`、`createdAtClient`、`updatedAtClient`、`inactive` | 与已追踪匹配实体的总数成正比 |
+| 非常慢 | `enrolledAt`，被追踪实体的属性 UID | 与总匹配追踪实体数成正比 + 在相关表中按记录进行的查询 |
 
-当被追踪实体在
-同一项目中有多项注册记录时，`enrolledAt` 还需进行去重处理。配置为“仅注册一次”的项目可避免这种去重开销。
+当被追踪的实体在
+同一项目中有多次注册时，`enrolledAt` 还需进行去重处理。配置为“仅注册一次”的项目可避免这种去重开销。
 
 #### `/api/tracker/enrollments`{ #apitrackerenrollments } 
 
@@ -4862,10 +4903,10 @@ DHIS2 采用 [基于偏移量的分页](https://use-the-index-luke.com/no-offset
 |------|-------------|------|
 | 慢 | `enrolledAt`、`createdAt`、`completedAt`、`updatedAt`、`createdAtClient`、`updatedAtClient` | 与总匹配注册人数成正比 |
 
-目前所有注册订单字段均未设置复合索引。数据库必须先扫描并排序所有
+目前所有注册订单字段均未设置复合索引。数据库必须扫描并排序所有
 匹配的注册记录，才能返回所请求的页面。
 
-#### `/api/tracker/events`（追踪计划）{ #apitrackerevents-tracker-programs } 
+#### `/api/tracker/events`（追踪器计划）{ #apitrackerevents-tracker-programs } 
 
 ##### 筛选器 { #filters } 
 
@@ -4873,41 +4914,41 @@ DHIS2 采用 [基于偏移量的分页](https://use-the-index-luke.com/no-offset
 
 ##### 所有权{ #ownership } 
 
-每个跟踪器事件查询都必须遍历注册和所有权记录，以实施访问控制。
+每个追踪器事件查询都必须遍历注册和所有权记录，以实施访问控制。
 对于拥有数十万条注册记录的程序，广泛查询（例如 `orgUnitMode=ALL`
 且未应用过滤条件）必须先处理所有所有权记录，才能开始任何事件级别的处理。仅在事件表上建立索引
 并不能解决问题，因为所有权检查是在另一张表上进行的。
 
 降低成本最有效的方法是限定组织单位的范围。将用户范围限定为
-单一设施，可生成较小的所有权集合，从而使查询的其余部分运行迅速，无论其他
+单一设施，会产生较小的所有权集合，从而使查询的其余部分运行迅速，无论其他
 参数如何。
 
 注册级别的筛选条件（`enrollmentStatus`、`followUp`、注册日期范围）并未由
-索引支持。虽然它们仍能缩小结果集，但并不能减少数据库
+索引支持。虽然它们仍能缩小结果集，但并不会减少数据库
 扫描的记录数。
 
 ##### 订购{ #ordering } 
 
 | 层级 | 订单字段 | 成本 |
 |------|-------------|------|
-| 慢 | `occurredAt`、`scheduledAt`、`createdAt`、`updatedAt`、`completedAt`、`createdAtClient`、`updatedAtClient`、`enrolledAt`、数据元素 UID | 占匹配事件总数的百分比（在进行所有权关联后） |
+| 慢 | `occurredAt`、`scheduledAt`、`createdAt`、`updatedAt`、`completedAt`、`createdAtClient`、`updatedAtClient`、`enrolledAt`、数据元素 UID | 占匹配事件总数的百分比（在进行所有权连接后） |
 | 非常慢 | 受追踪实体的属性 UID | 与匹配事件总数成正比 + 每次事件的跨资源查询 |
 
-所有追踪器事件顺序字段在程序层面上均未设置复合索引。数据库必须
+所有追踪器事件顺序字段在程序级别均未设置复合索引。数据库必须
 遍历注册和所有权记录，收集所有匹配的事件，对其进行排序，并返回
 所请求的页面。计算成本与匹配事件的总数成正比，而非页面大小。
 
-指定 `programStage` 并不会提高排序性能，因为瓶颈在于
+指定 `programStage` 并不能提升排序性能，因为瓶颈在于
 所有权连接，而非事件级扫描。
 
 `enrolledAt` 来自注册表，该表已是所有权连接的一部分，因此
-无需额外查询。对于每个匹配的事件，属性 UID 都需要进行跨资源查询，以定位
-相应的被追踪实体。
+无需额外查询。对于每个匹配的事件，属性 UID 都需要跨资源查询到
+被追踪的实体。
 
 #### `/api/tracker/events`（活动计划）{ #apitrackerevents-event-programs } 
 
 活动项目（无需注册的项目）没有报名或所有权相关的管理开销。数据库
-会直接从活动跳转到其所属的组织单元，因此这些查询在结构上比 Tracker
+会直接从活动跳转到其所属的组织单位，因此此类查询在结构上比追踪器
 项目查询更快。
 
 ##### 筛选器 { #filters } 
@@ -4916,14 +4957,14 @@ DHIS2 采用 [基于偏移量的分页](https://use-the-index-luke.com/no-offset
 
 ##### 组织单位模式{ #organisation-unit-mode } 
 
-在默认的 `occurredAt` 排序方式下，数据库会遍历已排序的索引，并按
-组织单位对每个事件进行过滤。当匹配的事件出现在索引的前部时，此过程速度很快。对于 `SELECTED`、`DESCENDANTS`
+在默认的 `occurredAt` 排序下，数据库会遍历已排序的索引，并按
+组织单位过滤每个事件。当匹配的事件出现在索引的前部时，此过程速度很快。对于 `SELECTED`、`DESCENDANTS`
 和 `ACCESSIBLE`，性能取决于匹配的组织单位的事件在
-排序顺序中的分布情况。 如果匹配事件很少，或者集中在索引末尾，数据库
-必须先扫描大量不匹配的事件。 在包含数百万个事件的程序阶段中，如果用户的
+排序序列中的分布情况。 如果匹配事件很少或集中在索引末尾，数据库
+必须先扫描大量不匹配的事件。 在包含数百万个事件的程序阶段中，若用户的
 组织单位仅覆盖其中一小部分，这可能会导致在
-填满单个页面之前就扫描了索引的大部分内容。添加 `occurredAfter` 和/或 `occurredBefore` 可将扫描范围限制在
-一个有限的窗口内，建议在数据量大的程序阶段采用此方法。
+填满单个页面之前就需扫描索引的大部分内容。添加 `occurredAfter` 和/或 `occurredBefore` 可将扫描范围限制在
+一个有限的窗口内，建议在处理高数据量的程序阶段时采用此方法。
 
 `ALL` 完全避免了组织单位过滤，且在默认排序下速度很快。`CHILDREN` 运行缓慢，
 原因与 [一般原则](#webapi_tracker_perf_organisation_unit_mode) 中所述相同。
@@ -4936,7 +4977,7 @@ DHIS2 采用 [基于偏移量的分页](https://use-the-index-luke.com/no-offset
 
 | 层级 | 订单字段 | 成本 |
 |------|-------------|------|
-| 快速（带索引） | `occurredAt` | 与 `page`（偏移量）+ `pageSize` 成正比。当组织单位过滤功能处于激活状态但匹配结果稀疏时，性能会下降——参见上文的 [组织单位模式](#organisation-unit-mode)。 |
-| 慢速（无索引） | `createdAt`、`updatedAt`、`completedAt`、`createdAtClient`、`updatedAtClient` | 与该节目阶段的总事件数成正比 |
-| 速度慢（JSON提取） | 数据元素的UID | 需要对每个匹配的事件提取并排序 JSON 值 |
+| 快速（带索引的） | `occurredAt` | 与 `page`（偏移量）+ `pageSize` 成正比。当组织单位过滤功能处于激活状态且匹配结果稀疏时，性能会下降——参见上文的 [组织单位模式](#organisation-unit-mode)。 |
+| 慢（无索引） | `createdAt`、`updatedAt`、`completedAt`、`createdAtClient`、`updatedAtClient` | 与该节目阶段的总事件数成正比 |
+| 速度较慢（JSON提取） | 数据元素 UID | 需要针对每个匹配的事件提取并排序 JSON 值 |
 

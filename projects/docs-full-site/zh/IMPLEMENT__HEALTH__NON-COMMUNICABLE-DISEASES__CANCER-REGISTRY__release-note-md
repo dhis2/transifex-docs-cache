@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2-metadata/NCD_CR/blob/master/docs/release_note.md"
-revision_date: '2026-03-18'
+revision_date: '2026年6月17日'
 tags:
 - 实施
 ---
@@ -10,4 +10,70 @@ tags:
 ## 1.0.0{ #100 } 
 
 首次发布癌症登记软件包
+
+## 1.0.1{ #101 } 
+
+补丁版本。修复了一个导致
+记录无法保存的服务器端崩溃（`StackOverflowError`）问题，并清理了程序规则集。 **编辑检查逻辑
+未作任何更改** — 每项检查的结果与 1.0.0 版本完全一致；本次更改仅涉及
+结构调整和错误修正。
+
+### 已修复——保存记录时可能因 HTTP 500 错误或 `java.lang.StackOverflowError` 导致失败{ #fixed-saving-a-record-could-fail-with-http-500-javalangstackoverflowerror } 
+
+一些程序规则条件被写成了冗长的布尔链（`a || b || c || ...`，最多达615项）。 DHIS2 表达式引擎会递归地评估此类条件——每个运算符对应一组栈帧——因此最深的
+  链在服务器端规则评估（保存时）过程中耗尽了 JVM 线程栈
+  （`org.hisp.dhis.lib.expression.eval.Calculator`）。
+
+  将这22个受影响的条件重新用括号重新组织成**平衡**的表达式树。
+  这将求值深度从线性级缩减至对数级（最坏情况：一个包含615个项的
+  链条，其深度从约615降至约12），同时未改变任何规则的操作数、运算符、
+  动作、优先级或UID。
+
+  | 公制 | 1.0.0 | 1.0.1 |
+  |---|---|---|
+  | 最长的平坦布尔链 | 615个术语 | 1 |
+  | 最大评估深度（重写规则） | ~615 | 17 |
+  | JVM 栈帧的大致数量（最坏情况规则） | 约3,700 | ~72 |
+
+### 已修改/删除{ #changed-removed } 
+
+**程序规则集清理。** 作为本次发布的一部分，已移除旧版程序规则集（239条程序规则）；
+  更正后的规则已包含在1.0.1版本的元数据中。
+  已包含一个可直接运行的删除有效载荷（`delete_program_rules.json`，
+  `importStrategy=DELETE`）。删除程序规则会自动对该规则关联的
+  程序规则操作产生级联影响。
+
+### 受影响的项目规则（22项已重新调整）{ #affected-program-rules-22-rebalanced } 
+
+| 串 | 程序规则 |
+|---|---|
+| `pPErjbooDVp` | CR - 将值“+”分配给“地形形态”键 |
+| `KnAi5ItRorR` | CR - 将值“－”分配给“地形形态”键 |
+| `UzlMHkXXZ1i` | CR - 将值“*”分配给“地形形态”键 |
+| `IzlGHEV4SZ7` | CR - 检查等级 |
+| `C52NUGggKhW` | CR - 罕见情况：检查未通过 |
+| `PUUhj3Vy6Z9` | CR - 稀有年龄的地形形态 |
+| `PYNY6GAbj5k` | CR - 将值“造血、淋巴组织：未指定类型”分配给形态学组 |
+| `kDGhdaT84AF` | CR - 形态学分类：肛门肿瘤 |
+| `ClGHCk8bAez` | CR - 形态学分类：造血系统肿瘤 |
+| `PVZAiKL9CXi` | CR - 形态学分类：无 |
+| `RmqCsfQP1z7` | CR - 形态学分类：皮肤肿瘤 |
+| `VwlbG6qekZ6` | CR - 形态学分类：胃肿瘤 |
+| `RVawS91GVI7` | CR - 地形形态：MUST - 形态族 01-11 |
+| `IyIFLIQHrAt` | CR - 地形形态：MUST - 形态类 12-20 |
+| `dqJ41cxWpsL` | CR - 地形形态：MUST - 形态族 21-28 |
+| `bvJuGgzsPvI` | CR - 地形形态：MUST - 形态族 29-44 |
+| `MRwy5x76QDS` | CR - 地形形态：MUST - 形态类45-49 |
+| `qKA56iP1W22` | CR - 地形形态：MUST - 形态类 50-53 |
+| `kLy40xQQlQ5` | CR - 地形形态：MUST - 形态族 54-56 |
+| `lxtvlQAVCC4` | CR - 地形形态：MUST - 形态类 57-59 |
+| `jGhcMVHK7T5` | CR - 地形形态：MUST - 形态类 60-63 |
+| `FHhE9prqA5v` | CR - 地形形态：严禁 |
+
+### 注释与建议{ #notes-recommendations } 
+
+- **向后兼容性：** 编辑检查行为保持不变；现有记录和
+  报告不受再平衡的影响。
+- **运维保障措施：**考虑增加 DHIS2 Tomcat 线程堆栈
+  （例如 `-Xss4m`），以便为将来可能出现的长链条件预留余地。
 
