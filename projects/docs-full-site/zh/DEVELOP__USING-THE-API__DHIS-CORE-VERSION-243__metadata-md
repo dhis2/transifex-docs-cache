@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.43/src/developer/web-api/metadata.md"
-revision_date: '2026-02-25'
+revision_date: '2026年8月12日'
 tags:
 - DHIS 核心版本 2.43
 - DHIS核心 主版
@@ -321,9 +321,15 @@ Web API版本 { #webapi_api_versions }
 
     /api/dataElements.json?filter=attributeValues.attribute.id:eq:n2xYlNbsfko&filter=attributeValues.value:eq:AFP
 
-获取已设置选项集的数据元素:
+要获取某个元数据属性的特定值对应的数据项，
+请在过滤器中将该属性的 ID 作为属性名称使用：
 
-    /api/dataElements?filter=optionSet:!null
+    /api/dataElements.json?filter=n2xYlNbsfko:eq:AFP
+
+要获取某个元数据属性的值不为空的数据元素，请使用
+`!null` 运算符，并将该属性的 ID 作为属性名：
+
+    /api/dataElements.json?filter=n2xYlNbsfko:!null
 
 由于默认情况下所有运算符都是 *AND*,因此您无法直接找到匹配
 多个 id 的数据元素,为此您可以使用 *in*
@@ -1590,21 +1596,21 @@ returning the translated value independent of the `translate` parameter.        
 
 合并类别选项{ #category_option_merge }
 
-## 类别{ #category } 
+## 分类：{ #category } 
 
-### 合并类别{ #category_merge }
+### 合并分类{ #category_merge }
 
-类别合并端点允许您将多个类别（源）合并为一个目标类别。
+类别合并端点允许您将多个类别（来源）合并到目标类别中。
 
-> **注**
+> **注意**
 >
-> 类别只能在以下情况下合并
+> 仅在以下情况下才能合并类别：
 > 
-> 1. 它们具有相同的类别选项<br> 
-> 源类别和目标类别不共享类别组合<br> 
-> 3. 源类别之间不共享类别组合<br> 
+> 1. 它们具有完全相同的分类选项<br> 
+> 2. 源分类和目标分类之间不存在共同的分类组合<br> 
+> 3. 源分类之间不存在共同的分类组合<br> 
 >
-> 这些限制确保只有重复的类别才能被合并，并有助于保持系统的完整性。
+> 这些限制确保只有重复的分类才能被合并，这有助于维护系统完整性。
 
 #### 请求{ #request } 
 
@@ -1612,7 +1618,7 @@ returning the translated value independent of the `translate` parameter.        
 
 ####     /api/33/programs/orgUnits?programs={programIdA} 、{programIdB}
 
-通过 POST 请求合并类别：
+使用 POST 请求合并分类：
 
 ```
 POST /api/categories/merge
@@ -1667,7 +1673,7 @@ additional checks:         | 检索和删除项目通知模板 | ```json
         "EMAIL"
     ]
 }
-```      | 要合并的类别（源类别）的标识符数组          |
+```      | 待合并类别（源类别）的标识符数组          |
 | 将来源合并为指标(目标指标)的标识符        | ```json
 {
     "name": "Case notification",
@@ -1684,21 +1690,21 @@ additional checks:         | 检索和删除项目通知模板 | ```json
         "EMAIL"
     ]
 }
-```      | 将来源合并为类别（目标类别）的标识符       |
-| 是否在操作后删除源类别选项。默认为假。 | Program notification template       | 是否在操作后删除源类别。默认为假。   |
+```      | 要将来源合并到的类别标识符（目标类别）       |
+| 是否在操作后删除源类别选项。默认为假。 | Program notification template       | 操作完成后是否删除源类别。默认值为 false。   |
 
-合并操作将把源类别合并到目标类别中。可以指定一个或多个源类别。只能指定一个目标。
+合并操作将把源类别合并到目标类别中。可以指定一个或多个源类别。目标类别只能指定一个。
 
-合并操作会将所有源类别元数据关联转移到目标类别。
+合并操作将把所有源类别的元数据关联转移到目标类别。
 以下元数据将被更新：
 
 | 采取的行动          | 指标组              | 类别选项组合                                                                                                                                                                              |
 |-------------------|-----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 删除来源    | 类别            | 类别选项组合                                                                                                                                                                            |
-| 删除来源     | 类别            | 成员                                                                                                                                                                |
+| 删除来源    | 分类            | 类别选项组合                                                                                                                                                                            |
+| 删除来源     | 分类            | 成员                                                                                                                                                                |
 | 删除来源,添加目标 | 周期(pe)             | 选项组合                                                                                                                                                                |
 | Sharing of data store keys follows the same principle as for other metadata sharing (see
-[Sharing](#webapi_sharing)).              | catDimensionConstraints | - 用户有一个或多个源和目标 -> 删除所有源约束<br/> - 用户有一个或多个源，无目标 -> 将一个源更新为目标，删除其他源约束 |
+[Sharing](#webapi_sharing)).              | catDimensionConstraints | - 用户有一个或多个源和目标 -> 删除所有源约束<br/> - 用户有一个或多个源，但没有目标 -> 将其中一个源更新为目标，并删除其他源约束 |
 
 
 #### 删除源
@@ -1709,13 +1715,13 @@ additional checks:         | 检索和删除项目通知模板 | ```json
 
 | json(应用项目/ json) | Parameter name                                                                          |
 |------------|--------------------------------------------------------------------------------------|
-| E1531      | 必须指定至少一个来源类别                                       |
+| E1531      | 必须指定至少一个源类别                                       |
 | E1532      | 必须指定目标类别                                                    |
-| E1533      | 目标类别不能是源类别                                          |
-| 回复{ #response }       | 源/目标类别不存在： `{uid}`                                       |
-| E1535      | 源类别选项与目标类别选项不匹配                           |
-| E1536      | 源类别和目标类别不能共享一个类别组合                            |
-| E1537      | 源类别不能共享类别组合                                       |
+| E1533      | 目标类别不能是来源类别                                          |
+| 回复{ #response }       | 源/目标类别不存在：`{uid}`                                       |
+| E1535      | 源 CategoryOptions 与目标 CategoryOptions 不匹配                           |
+| E1536      | 源类别和目标类别不能共享同一个 CategoryCombo                            |
+| E1537      | 源类别不能共享同一个 CategoryCombo                                       |
 
 
 #### 成功响应示例如下
@@ -1738,19 +1744,19 @@ additional checks:         | 检索和删除项目通知模板 | ```json
 ```
 错误响应示例如下
 
-``json
+```json
 {
-    "httpStatus"："OK"、
-    "httpStatusCode"：200,
-    "status"："确定"、
-    "响应"：{
-        "mergeReport"：{
-            "mergeErrors"：[],
-            "mergeType"："类别"、
-            "sourcesDeleted"：[
-                "FbLZS3ueWbQ"、"dPSWsKeAZNw"
+    "httpStatus": "OK",
+    "httpStatusCode": 200,
+    "status": "OK",
+    "response": {
+        "mergeReport": {
+            "mergeErrors": [],
+            "mergeType": "Category",
+            "sourcesDeleted": [
+                "FbLZS3ueWbQ", "dPSWsKeAZNw"
             ],
-            "消息"："类别合并完成"
+            "message": "类别合并完成"
         }
     }
 }
@@ -1788,32 +1794,32 @@ additional checks:         | 检索和删除项目通知模板 | ```json
 ```
 数据库约束样本错误响应:
 
-``json
+```json
 {
-    "httpStatus"："冲突"、
-    "httpStatusCode"：409,
-    "status"："WARNING"、
-    "消息"："发生了一个或多个错误，请查看合并报告中的全部详情。"、
-    "响应"：{
-        "mergeReport"：{
-            "mergeErrors"：[
+    "httpStatus": "冲突",
+    "httpStatusCode": 409,
+    "status": "警告",
+    "message": "发生了一个或多个错误，请参阅合并报告查看详细信息。",
+    "response": {
+        "mergeReport": {
+            "mergeErrors": [
                 {
-                    "message"："必须指定至少一个源类别"、
-                    "errorCode"："E1530",
-                    "args"：[]
+                    "message": "必须指定至少一个源类别",
+                    "errorCode": "E1530",
+                    "args": []
                 },
                 {
-                    "message"："目标类别不存在：`abcdefg1221`"、
-                    "errorCode"："E1533",
-                    "args"：[
-                        "目标"、
+                    "message": "目标类别不存在：`abcdefg1221`",
+                    "errorCode": "E1533",
+                    "args": [
+                        "Target",
                         "abcdefg1221"
                     ]
                 }
             ],
-            "合并类型"："类别"、
-            "sourcesDeleted"：[],
-            "消息"："类别合并有错误"
+            "mergeType": "Category",
+            "sourcesDeleted": [],
+            "message": "分类合并出现错误"
         }
     }
 }
@@ -2313,25 +2319,25 @@ additional checks:             | 检索和删除项目通知模板 | ```json
 
 
 
-## 类别组合{ #category-combo } 
+## 分类组合{ #category-combo } 
 
 ### 合并类别组合{ #category_combo_merge }
 
-类别组合合并端点允许您将多个类别组合（源）合并为一个目标类别组合。
+“类别组合合并”端点允许您将多个类别组合（源）合并到目标类别组合中。
 
-> **注**
+> **注意**
 >
-> 类别组合只有在以下情况下才能合并：
+> 仅当满足以下条件时，才能合并分类组合：
 >
-> 源类别组合和目标类别组合具有相同的类别<br>
-> 属于所涉类别组合的所有类别选项组合都是有效的（选项数量正确，选项成员有效）<br>
-> 所涉及的类别组合中不存在重复的类别选项组合<br>
+> 1. 源分类组合和目标分类组合包含相同的分类<br>
+> 2. 属于相关分类组合的所有分类选项组合均有效（选项数量正确、选项所属关系有效）<br>
+> 3. 相关分类组合中不存在预先存在的重复分类选项组合<br>
 >
-> 这些约束条件确保只有等同的类别组合才能被合并，并有助于维护系统的完整性。
+> 这些约束条件可确保仅等效的分类组合能够合并，并有助于维护系统完整性。
 
-> 警告
+> **警告**
 >
-> 类别组合合并会产生重复的类别选项组合。在类别组合合并后，应立即合并这些组合，以保持系统的完整性。可以使用数据完整性检查 "category_option_combos_have_duplicates "发现重复。
+> 合并类别组合将导致出现重复的类别选项组合。为维护系统完整性，应在类别组合合并完成后立即合并这些重复项。可通过数据完整性检查 `category_option_combos_have_duplicates` 查找重复项。
 
 #### 请求{ #request } 
 
@@ -2339,7 +2345,7 @@ additional checks:             | 检索和删除项目通知模板 | ```json
 
 ####     /api/33/programs/orgUnits?programs={programIdA} 、{programIdB}
 
-通过 POST 请求合并类别组合：
+使用 POST 请求合并类别组合：
 
 ```
 POST /api/categoryCombos/merge
@@ -2394,7 +2400,7 @@ additional checks:         | 检索和删除项目通知模板 | ```json
         "EMAIL"
     ]
 }
-```      | 要合并的类别组合（源类别组合）的标识符数组  |
+```      | 待合并的类别组合（源类别组合）的标识符数组  |
 | 将来源合并为指标(目标指标)的标识符        | ```json
 {
     "name": "Case notification",
@@ -2411,26 +2417,26 @@ additional checks:         | 检索和删除项目通知模板 | ```json
         "EMAIL"
     ]
 }
-```      | 将来源合并为类别组合（目标类别组合）的标识符 |
-| 是否在操作后删除源类别选项。默认为假。 | Program notification template       | 是否在操作后删除源类别组合。默认为假。 |
+```      | 用于将来源合并到的类别下拉列表的标识符（即目标类别下拉列表） |
+| 是否在操作后删除源类别选项。默认为假。 | Program notification template       | 操作完成后是否删除源类别组合。默认值为 false。 |
 
-合并操作将把源类别组合合并到目标类别组合中。可以指定一个或多个源类别组合。只能指定一个目标。
+合并操作将把源类别组合合并到目标类别组合中。可以指定一个或多个源类别组合。目标应仅指定一个。
 
-合并操作会将所有源类别组合元数据关联转移到目标类别组合。
+合并操作将把源类别下拉列表的所有元数据关联转移到目标类别下拉列表。
 以下元数据将被更新：
 
 | 采取的行动             | 指标组                    | 类别选项组合               |
 |----------------------|-----------------------------|----------------------------|
-| The status code will be `204 No Content` if the data value was successfully saved or updated, or `409 Conflict` if there was a validation error (e.g. more than one `SHORT_NAME` for the same `locale`).             | 类别组合              | 类别选项组合             |
-| 删除来源,添加目标  | 类别组合               | 表情              |
-| Property name          | 类别组合               | 表情              |
-| 设定为目标       | 类别组合               | 表情              |
-| DataElementGroup              | 类别组合               | 表情              |
-| IndicatorGroup              | 类别组合               | 表情              |
-| IndicatorGroup              | 注册类别组合     | 表情              |
-| 以目标取代源     | 类别组合               | 表情              |
-| 以目标取代源     | 属性类别组合      | 表情              |
-| 数据审批工作流程 | 类别组合               | 表情              |
+| The status code will be `204 No Content` if the data value was successfully saved or updated, or `409 Conflict` if there was a validation error (e.g. more than one `SHORT_NAME` for the same `locale`).             | categoryCombos              | 类别选项组合             |
+| 删除来源,添加目标  | categoryCombo               | 表情              |
+| Property name          | categoryCombo               | 表情              |
+| 设定为目标       | categoryCombo               | 表情              |
+| DataElementGroup              | categoryCombo               | 表情              |
+| IndicatorGroup              | categoryCombo               | 表情              |
+| IndicatorGroup              | enrollmentCategoryCombo     | 表情              |
+| 以目标取代源     | categoryCombo               | 表情              |
+| 以目标取代源     | 属性类别下拉列表      | 表情              |
+| 数据审批工作流 | categoryCombo               | 表情              |
 
 
 #### 删除源
@@ -2441,14 +2447,14 @@ additional checks:         | 检索和删除项目通知模板 | ```json
 
 | json(应用项目/ json) | Parameter name                                                                                                                       |
 |------------|-----------------------------------------------------------------------------------------------------------------------------------|
-| E1531      | 必须指定至少一个源 CategoryCombo                                                                               |
-| E1532      | 必须指定目标类别组合                                                                                            |
-| E1533      | 目标分类组合不能是源分类组合                                                                             |
-| 回复{ #response }       | 源/目标 CategoryCombo 不存在： `{uid}`                                                                               |
-| E1545      | 源和目标类别组合必须具有相同的类别：源 `{uid}` 具有 `{categories}`                                |
-| E1546      | CategoryOptionCombo 的 CategoryOptions 数量不正确。本应是 `{n}`，但发现 `{m}` 的 COC: `{uid}`。                     |
-| E1547      | CategoryOptionCombo 具有对 CategoryCombo 类别无效的 CategoryOptions：`{uid}`                              |
-| E1548      | 为 CategoryCombo `{uid}` 找到重复的 CategoryOptionCombo `{uid}`。请在尝试合并前修复此问题。                     |
+| E1531      | 必须至少指定一个源 CategoryCombo                                                                               |
+| E1532      | 目标类别：必须指定组合                                                                                            |
+| E1533      | 目标 CategoryCombo 不能作为源 CategoryCombo                                                                             |
+| 回复{ #response }       | 源/目标类别组合不存在：`{uid}`                                                                               |
+| E1545      | 源和目标的 CategoryCombos 必须具有相同的类别：源 `{uid}` 的类别为 `{categories}`                                |
+| E1546      | CategoryOptionCombo 的 CategoryOptions 数量不正确。预期为 `{n}`，但发现为 `{m}`，对应的 COC 为 `{uid}`                     |
+| E1547      | CategoryOptionCombo 包含一些对 CategoryCombo 类别无效的 CategoryOptions：`{uid}`                              |
+| E1548      | 在 CategoryCombo `{uid}` 中发现了重复的 CategoryOptionCombo `{uid}`。请在尝试合并前修复此问题。                     |
 
 
 #### 成功响应示例如下
@@ -2471,19 +2477,19 @@ additional checks:         | 检索和删除项目通知模板 | ```json
 ```
 错误响应示例如下
 
-``json
+```json
 {
-    "httpStatus"："OK"、
-    "httpStatusCode"：200,
-    "status"："确定"、
-    "响应"：{
-        "mergeReport"：{
-            "mergeErrors"：[],
-            "mergeType"："CategoryCombo"、
-            "sourcesDeleted"：[
-                "FbLZS3ueWbQ"、"dPSWsKeAZNw"
+    "httpStatus": "OK",
+    "httpStatusCode": 200,
+    "status": "OK",
+    "response": {
+        "mergeReport": {
+            "mergeErrors": [],
+            "mergeType": "CategoryCombo",
+            "sourcesDeleted": [
+                "FbLZS3ueWbQ", "dPSWsKeAZNw"
             ],
-            "消息"："类别组合合并完成。合并后会出现重复的 CategoryOptionCombos。应立即合并，以保持系统完整性。可以使用数据完整性检查 "category_option_combos_have_duplicates "发现重复。
+            "message": "CategoryCombo 合并完成。 合并后将产生重复的 CategoryOptionCombos。为保持系统完整性，应立即对这些重复项进行合并。可通过数据完整性检查 `category_option_combos_have_duplicates` 查找重复项"
         }
     }
 }
@@ -2521,32 +2527,32 @@ additional checks:         | 检索和删除项目通知模板 | ```json
 ```
 数据库约束样本错误响应:
 
-``json
+```json
 {
-    "httpStatus"："冲突"、
-    "httpStatusCode"：409,
-    "status"："WARNING"、
-    "消息"："发生了一个或多个错误，请查看合并报告中的全部详情。"、
-    "响应"：{
-        "mergeReport"：{
-            "mergeErrors"：[
+    "httpStatus": "冲突",
+    "httpStatusCode": 409,
+    "status": "警告",
+    "message": "发生了一个或多个错误，请参阅合并报告中的详细信息。",
+    "response": {
+        "mergeReport": {
+            "mergeErrors": [
                 {
-                    "message"："必须指定至少一个源 CategoryCombo"、
-                    "errorCode"："E1530",
-                    "args"：[]
+                    "message": "必须至少指定一个源 CategoryCombo",
+                    "errorCode": "E1530",
+                    "args": []
                 },
                 {
-                    "message"："目标 CategoryCombo 不存在：`abcdefg1221`"、
-                    "errorCode"："E1533",
-                    "args"：[
-                        "目标"、
+                    "message": "目标 CategoryCombo 不存在：`abcdefg1221`",
+                    "errorCode": "E1533",
+                    "args": [
+                        "Target",
                         "abcdefg1221"
                     ]
                 }
             ],
-            "合并类型"："CategoryCombo"、
-            "sourcesDeleted"：[],
-            "信息"："类别组合合并有错误
+            "mergeType": "CategoryCombo",
+            "sourcesDeleted": [],
+            "message": "CategoryCombo 合并出现错误"
         }
     }
 }
@@ -3382,7 +3388,7 @@ DHIS2 中的其他元数据资源。该资源支持一些
 | eventCreatedPeriod | 用户设置 { #webapi_user_settings }  | Parameter name |
 |---|---|---|
 | 真 | 假 | 仅 userDataView |
-| 假 | 假 | 数据视图组织单位只与当前用户相关。 |
+| 假 | 假 | 仅显示与当前用户相关的数据视图组织单位。 |
 | userDataViewFallback | 假 | 真 |
 | 仅与当前用户相关联的数据视图组织单位,可退回到数据采集组织单位。 | 不区分大小写的字符串结尾匹配 | 字符串 |
 | 查询名称、代码和 ID 属性。 | 查询参数 | 整数 |

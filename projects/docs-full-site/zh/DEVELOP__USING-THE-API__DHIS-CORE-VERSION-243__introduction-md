@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/2.43/src/developer/web-api/overview.md"
-revision_date: '2026-04-30'
+revision_date: '2026年9月3日'
 tags:
 - DHIS 核心版本 2.43
 - DHIS核心 主版
@@ -503,6 +503,133 @@ API 端点`/api/periodTypes`获取)
 创建动态报告。可用的相对周期值如下表所示
 如下表所示。 |
 
+### 周期类型{ #webapi_period_types }
+
+DHIS2 中可用的经期类型可从以下
+资源中查阅：
+
+    GET /api/periodTypes
+
+支持 `fields` 查询参数，默认包含所有字段。
+
+表：周期类型的属性
+
+| 指标组 | Parameter name | 可写入 |
+|---|---|---|
+| displayColumnOrder | 周期类型的内部硬编码名称，例如 `FinancialFeb`。用于标识该周期类型。 | Program notification template |
+| 属性是描述被跟踪实体的值。属性可以通过
+通过被跟踪实体类型或项目关联。这意味着属性既可以是被追踪实体的一部分,也可以是注册的一部分。
+跟踪实体和注册的一部分。重要的是,一个属性只能有一个值,即使一个
+一个属性只能有一个值,即使一个被跟踪实体有多个注册表来定义该属性。这是因为
+实体最终拥有属性值。 | 该时间类型的翻译后、易于理解的名称。 | Program notification template |
+| isoDuration | 以 ISO 8601 格式表示的时间段类型，例如 `P1Y`。 | Program notification template |
+| isoFormat | 如上表所示，此类时间段标识符采用的格式，例如 `yyyyFeb`。 | Program notification template |
+| frequencyOrder | 该周期类型所涵盖的天数（近似值），用于按频率对周期类型进行排序。 | Program notification template |
+| 标签 | 该期间类型的自定义标签。若未设置自定义标签，则为 `null`。 | ```json
+{
+    "name": "Case notification",
+    "notificationTrigger": "ENROLLMENT",
+    "subjectTemplate": "Case notification V{org_unit_name}",
+    "displaySubjectTemplate": "Case notification V{org_unit_name}",
+    "notifyUsersInHierarchyOnly": false,
+    "sendRepeatable": false,
+    "notificationRecipient": "ORGANISATION_UNIT_CONTACT",
+    "notifyParentOrganisationUnitOnly": false,
+    "displayMessageTemplate": "Case notification A{h5FuguPFF2j}",
+    "messageTemplate": "Case notification A{h5FuguPFF2j}",
+    "deliveryChannels": [
+        "EMAIL"
+    ]
+}
+``` |
+| displayLabel | 用于在客户端应用程序中显示的标签。目前与 `label` 相同。 | Program notification template |
+
+响应中的一个条目如下所示：
+
+```json
+{
+  "name": "FinancialFeb",
+  "displayName": "财政年度（2月）",
+  "isoDuration": "P1Y",
+  "isoFormat": "yyyyFeb",
+  "frequencyOrder": 365,
+  "label": null,
+  "displayLabel": null
+}
+```
+
+#### 自定义周期类型标签{ #webapi_period_type_label }
+
+周期类型可以设置自定义标签，这允许您在
+各个客户端应用程序中重命名该周期类型，例如将 *财政
+年度（2月）* 显示为 *学年（2月）*。客户端应用程序应
+渲染 `displayLabel`，若未设置自定义标签，则
+回退到 `displayName`。
+
+周期类型是预定义的，无法创建或删除，因此不支持 `POST` 和
+`DELETE` 请求。`label` 属性是唯一可写入的属性；
+所有其他属性均为不可变的，如果它们包含在
+请求正文中，将被忽略。
+
+要设置标签，请发送一个PUT请求，其中包含要更新的周期类型的`name`
+以及新的`label`。周期类型通过请求正文中的`name`来标识，
+而非通过路径参数：
+
+    PUT /api/periodTypes
+
+```json
+{
+  "name": "FinancialFeb",
+  "label": "学年（2月）"
+}
+```
+
+请求成功时返回：
+
+```json
+{
+  "status": "OK",
+  "message": "FinancialFeb 已成功更新。"
+}
+```
+
+此时将返回一个同时设置了 `label` 和 `displayLabel`
+的周期类型：
+
+```json
+{
+  "name": "FinancialFeb",
+  "displayName": "财政年度（2月）",
+  "isoDuration": "P1Y",
+  "isoFormat": "yyyyFeb",
+  "frequencyOrder": 365,
+  "label": "学年（2月）",
+  "displayLabel": "学年（2月）"
+}
+```
+
+要删除自定义标签，请将 `label` 设置为 `null`：
+
+```json
+{
+  "name": "FinancialFeb",
+  "label": null
+}
+```
+
+空字符串同样被接受，并且也会阻止自定义标签
+显示。 请注意，该值将按原样存储，因此 `label` 此时
+返回值为 `""` 而非 `null`，而 `displayLabel` 在两种
+情况下均为 `null`。因此，发送 `null` 是将周期类型恢复到
+原始无标签状态的方法。
+
+由于标签是直接从请求正文中提取的，因此如果请求
+中完全省略了 `label`，该标签也会被清除。
+
+如果请求中的 `name` 与现有周期类型不匹配，
+则该请求将被拒绝，返回 `400 Bad Request` 状态码及消息 *“FinancialFeb 不
+存在。”*。更新周期类型标签需要 `ALL` 权限。
+
 ### 名称
 
 关键词
@@ -554,21 +681,21 @@ API 端点`/api/periodTypes`获取)
 | 最近 52 周 | LAST_52_WEEKS |
 | 自定义日期时段 { #webapi_date_custom_date_periods } | 分析 `query` 资源支持额外的参数来表达时段。 |
 
-可以通过以下方式检索这些相对周期的 ISO 表示法
-向 `/api/relativePeriods/{RELATIVE_PERIOD_KEYWORD}` 提出 GET 请求。
+可以通过向 `/api/relativePeriods/{RELATIVE_PERIOD_KEYWORD}` 发送 GET 请求，
+获取这些相对周期的 ISO 表示形式。
 
-该终端支持以下参数：
-- startDate"（开始日期）：  代表计算相对周期的起始日期。格式为yyyyy-MM-dd`。如果没有提供，默认为今天。
-- 财务年度起始"：应为 FINANCIAL_YEAR_FEBRUARY、FINANCIAL_YEAR_APRIL、FINANCIAL_YEAR_JULY、FINANCIAL_YEAR_AUGUST、FINANCIAL_YEAR_SEPTEMBER、FINANCIAL_YEAR_OCTOBER 中的一个。如果未提供，默认为 FINANCIAL_YEAR_OCTOBER。
+该端点支持以下参数：
+- `startDate`：表示用于计算相对时段的起始日期。格式：`yyyy-MM-dd`。如果未提供，则默认为今天。
+- `financialYearStart`：应为 FINANCIAL_YEAR_FEBRUARY、FINANCIAL_YEAR_APRIL、FINANCIAL_YEAR_JULY、FINANCIAL_YEAR_AUGUST、 FINANCIAL_YEAR_SEPTEMBER、FINANCIAL_YEAR_OCTOBER 之一。若未指定，默认值为 FINANCIAL_YEAR_OCTOBER。
 
 
-例如，要获取从 2021-08-15 日开始的相对周期 "LAST_3_MONTHS "的 ISO 表示值，可以发出以下请求
-的 ISO 表示，可以发出以下请求：
+例如，要获取以 2021-08-15 为起始日期的相对时间段 `LAST_3_MONTHS`
+的 ISO 表示形式，可以发送以下请求：
     GET /api/relativePeriods/LAST_3_MONTHS?startDate=2021-08-15
 
-在这种情况下的回答是
+在此情况下，应答如下：
 
-``json
+```json
 {
 [
 "202105",
