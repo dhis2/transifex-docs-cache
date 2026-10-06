@@ -1,6 +1,6 @@
 ---
 edit_url: "https://github.com/dhis2/dhis2-docs/blob/master/src/developer/web-api/metadata.md"
-revision_date: '2026年9月10日'
+revision_date: '2026年9月28日'
 tags:
 - Develop
 - DHIS核心 主版
@@ -243,7 +243,7 @@ locale"（支持任何有效的 locale ID）和已翻译的属性 `value`。
 （否则，您可能会覆盖其他区域的现有语言环境
 语言环境）。
 
-如果数据值已成功保存或更新，则状态代码将为`204 No Content`，如果存在验证错误（例如，同一`语言环境`有多个`SHORT_NAME`），则状态代码将为`404 Not Found`。
+如果翻译已成功保存或更新，状态码将为 `204 No Content`；如果出现验证错误（例如，同一 `locale` 存在多个 `SHORT_NAME`），则状态码将为 `409 Conflict`。
 
 
 ### Web API版本 { #webapi_api_versions } 
@@ -641,8 +641,22 @@ curl -X DELETE -u user:password "http://server/api/constants/ID"
 
 在集合中添加和删除对象 { #webapi_adding_removing_objects_collections } 
 
-集合资源允许您修改集合
-对象。
+删除操作成功时，将返回 HTTP 状态码 `200 OK`，其响应正文为 `WebMessage`，
+其中包含被删除对象的 `ObjectReport`，例如：
+
+```json
+{
+  "httpStatus": "OK",
+  "httpStatusCode": 200,
+  "status": "OK",
+  "response": {
+    "responseType": "ObjectReport",
+    "uid": "abc123",
+    "klass": "org.hisp.dhis.constant.Constant",
+    "errorReports": []
+  }
+}
+```
 
 ### 添加或删除单个对象 { #webapi_collections_adding_removing_single_objects } 
 
@@ -995,7 +1009,7 @@ CSV字段过滤与CSV(请注意,在`/api/metadata`端点上使用CSV不受支持
 | 从用户本地语言更改为自定义本地语言。 | 默认 | 包括/排除 |
 | 是否应在有效载荷中包含自动生成的类别对象。如果您要在两个非同步实例之间移动元数据,可能需要将其设置为 EXCLUDE,以方便处理这些生成的对象。 | 跳过共享 | 假/真 |
 | 跳过共享属性,更新时不合并共享,创建新对象时不添加用户组访问权限。 | 下载 | NON_NULL, ALWAYS, NON_EMPTY |
-| 跳过“创建时间和最后更新时间” | 下载 | 启用此选项将从导出的对象中移除 *created*、*lastUpdated*、*createdBy* 和 *lastUpdatedBy* 属性。这些属性将在导出对象图的每个层级被移除，包括嵌入式对象（例如程序阶段的程序阶段数据元素）。 此设置优先于 `fields` 参数，因此即使 `fields` 要求包含该属性，此处命名的属性仍会被省略。 |
+| 跳过“创建时间和最后更新时间” | 下载 | 启用此选项将从导出的对象中移除 *created*、*lastUpdated*、*createdBy* 和 *lastUpdatedBy* 属性。这些属性将在导出对象图的每个层级被移除，包括嵌入式对象（例如程序阶段的程序阶段数据元素）。 此设置优先于 `fields` 参数，因此即使 `fields` 参数中包含该属性，此处命名的属性仍会被省略。 |
 | *NON_NULL* 包括非空属性,*ALLWAYS* 包括所有属性,*NON_EMPTY* 包括非空属性(不包括长度为 0 的字符串或空集合)。 | 下载 | 假/真 |
 | 启用此功能将添加 HTTP 标头 Content-Disposition,指定数据应作为附件处理,并由网络浏览器提供下载。 | 下载 | 导出所有元数据。小心,因为响应可能非常大,具体取决于
 关于您的元数据配置: |
@@ -1058,9 +1072,68 @@ CSV字段过滤与CSV(请注意,在`/api/metadata`端点上使用CSV不受支持
 | 类型 | 用户设置 { #webapi_user_settings }  | Parameter name |
 |---|---|---|
 | 跳过共享属性,更新时不合并共享,创建新对象时不添加用户组访问权限。 | 下载 | NON_NULL, ALWAYS, NON_EMPTY |
-| 跳过“创建时间和最后更新时间” | 下载 | 启用此选项将从导出的对象中移除 *created*、*lastUpdated*、*createdBy* 和 *lastUpdatedBy* 属性。这些属性将在导出对象图的每个层级被移除，包括嵌入对象（例如程序阶段的程序阶段数据元素）中的属性。 |
+| 跳过“创建时间和最后更新时间” | 下载 | 启用此选项将从导出的对象中移除 *created*、*lastUpdated*、*createdBy* 和 *lastUpdatedBy* 属性。这些属性将在导出对象图的每个层级被移除，包括嵌入式对象（例如程序阶段的程序阶段数据元素）中的属性。 |
 | 启用此功能将添加 HTTP 标头 Content-Disposition,指定数据应作为附件处理,并由网络浏览器提供下载。 | 下载 | 导出所有元数据。小心,因为响应可能非常大,具体取决于
 关于您的元数据配置: |
+
+### 包含依赖关系的多对象元数据导出{ #webapi_metadata_export_multiple_dependencies }
+
+若要在单次请求中导出多个对象及其依赖关系，请使用
+以下端点：
+
+    GET /api/metadata/dependencies?objects={type}:{id}
+
+每个请求对象的依赖项会被合并到一个有效载荷中。
+如果某个对象是多个请求对象的依赖项（例如，
+两个选项集共有的属性），则该对象在有效载荷中仅出现一次。
+结果可通过 `/api/metadata` 导入。
+
+`objects` 参数接受一个类型，后跟冒号以及一个或多个
+以逗号分隔的对象标识符。类型可以采用单数或
+复数形式，例如 `optionSet` 或 `optionSets`。该参数可以
+重复出现。多次请求同一对象将仅导出该对象一次。
+
+> **注意**
+>
+> 目前该端点仅支持选项集。
+> 若要导出其他带有依赖关系的对象类型，请使用
+> 上文所述的该类型的单对象端点。
+
+导出一个包含其依赖关系的选项集：
+
+    /api/metadata/dependencies?objects=optionSet:Tbv6XPHOGd0
+
+导出两个选项集及其依赖关系：
+
+    /api/metadata/dependencies?objects=optionSet:Tbv6XPHOGd0,cBRlOSzx8Id
+
+这相当于重复该参数：
+
+    /api/metadata/dependencies?objects=optionSet:Tbv6XPHOGd0&objects=optionSet:cBRlOSzx8Id
+
+该端点支持上表中所述的 `skipSharing`、`skipCreatedAndLastUpdated` 和
+`download` 参数。此外，还可以通过使用 `.json.zip` 或 `.json.gz` 扩展名对响应进行
+压缩：
+
+    /api/metadata/dependencies.json.zip?objects=optionSet:Tbv6XPHOGd0,cBRlOSzx8Id&download=true
+
+使用此端点需要具备 `F_METADATA_EXPORT` 权限。用户
+无权访问的对象将被视为未找到。
+
+在导出任何内容之前，都会对所有请求的对象进行验证。如果任何
+对象无法解析，则请求将因 `409 Conflict` 失败，不会
+导出任何内容，且响应中将包含每个无效
+对象的错误报告。每个错误报告的 `mainId` 即为导致该错误的
+`type:id` 值。 在以下情况下，对象无法解析：
+
+- 缺少 `objects` 参数（`E6028`）
+- 该值不符合 `type:id` 的格式（`E6024`）
+- 类型未知（`E6002`）
+- 该类型不支持带依赖项的导出（`E6026`）
+- 该类型支持带依赖关系的单对象导出，但不支持
+  然而，通过这个端点（`E6029`）
+- 该标识符不是有效的 UID，或者该对象不存在或不是
+  对用户而言可访问的 (`E1113`)
 
 ##     / api /元数据
 
@@ -1517,9 +1590,9 @@ returning the translated value independent of the `translate` parameter.        
     ]
 }
 ``` | 不 |
-| 验证基于此 regex `^[0-9+\(\)#\.\s\/ext-]{6,50}$`.最大长度为 50。  <br /> 例如+4733987937, (+47) 3398 7937, (47) 3398 7937.123                  | 不 | 不 |
+| 验证基于此 regex `^[0-9+\(\)#\.\s\/ext-]{6,50}$`.最大长度为 50。  <br /> 例如+4733987937, (+47) 3398 7937, (47) 3398 7937.123                  | Program notification template | 不 |
 | 创建提案的日期时间                     | Program notification template | 不 |
-| 一般电子邮件格式 abc@email.com         | 不 ||
+| 一般电子邮件格式 abc@email.com         | Program notification template ||
 | `true` or `false`         | Program notification template ||
 | 数字 | Program notification template ||
 | 没有                   | Program notification template ||
@@ -1626,9 +1699,9 @@ returning the translated value independent of the `translate` parameter.        
 >
 > 仅在以下情况下才能合并分类：
 > 
-> 1. 它们的分类选项完全相同<br> 
+> 1. 它们具有完全相同的分类选项<br> 
 > 2. 源分类和目标分类之间不存在共同的分类组合<br> 
-> 3. 源分类之间也不存在共同的分类组合<br> 
+> 3. 源分类之间不存在共同的分类组合<br> 
 >
 > 这些限制确保只有重复的分类才能被合并，这有助于维护系统完整性。
 
@@ -1693,7 +1766,7 @@ additional checks:         | 检索和删除项目通知模板 | ```json
         "EMAIL"
     ]
 }
-```      | 待合并类别（源类别）的标识符数组          |
+```      | 要合并的类别（源类别）的标识符数组          |
 | 将来源合并为指标(目标指标)的标识符        | ```json
 {
     "name": "Case notification",
@@ -1737,7 +1810,7 @@ additional checks:         | 检索和删除项目通知模板 | ```json
 |------------|--------------------------------------------------------------------------------------|
 | E1531      | 必须指定至少一个来源类别                                       |
 | E1532      | 必须指定目标类别                                                    |
-| E1533      | 目标类别不能是源类别                                          |
+| E1533      | 目标类别不能是来源类别                                          |
 | 回复{ #response }       | 源/目标类别不存在：`{uid}`                                       |
 | E1535      | 源 CategoryOptions 与目标 CategoryOptions 不匹配                           |
 | E1536      | 源类别和目标类别不能共享同一个 CategoryCombo                            |
@@ -1819,7 +1892,7 @@ additional checks:         | 检索和删除项目通知模板 | ```json
     "httpStatus": "Conflict",
     "httpStatusCode": 409,
     "status": "WARNING",
-    "message": "发生了一处或多处错误，请参阅合并报告查看详细信息。",
+    "message": "发生了一个或多个错误，请参阅合并报告中的详细信息。",
     "response": {
         "mergeReport": {
             "mergeErrors": [
@@ -2343,17 +2416,17 @@ additional checks:             | 检索和删除项目通知模板 | ```json
 
 ### 合并类别组合{ #category_combo_merge }
 
-“类别组合合并”端点允许您将多个类别组合（源）合并到一个目标类别组合中。
+“类别组合合并”端点可让您将多个类别组合（源）合并到目标类别组合中。
 
 > **注意**
 >
 > 仅当满足以下条件时，才能合并分类组合：
 >
-> 1. 源分类组合和目标分类组合包含完全相同的分类<br>
-> 2. 涉及的分类组合中，所有分类选项组合均有效（选项数量正确，选项所属关系有效）<br>
-> 3. 涉及的分类组合中不存在预先存在的重复分类选项组合<br>
+> 1. 源分类组合和目标分类组合包含相同的分类<br>
+> 2. 属于相关分类组合的所有分类选项组合均有效（选项数量正确、选项所属关系有效）<br>
+> 3. 涉及的类别组合中不存在预先存在的重复类别选项组合<br>
 >
-> 这些约束条件可确保仅能合并等效的分类组合，并有助于维护系统完整性。
+> 这些约束条件可确保仅能合并等效的类别组合，并有助于维护系统完整性。
 
 > **警告**
 >
@@ -2437,8 +2510,8 @@ additional checks:         | 检索和删除项目通知模板 | ```json
         "EMAIL"
     ]
 }
-```      | 用于将源项合并到的类别下拉列表的标识符（即目标类别下拉列表） |
-| 是否在操作后删除源类别选项。默认为假。 | Program notification template       | 操作完成后是否删除源类别组合。默认值为 false。 |
+```      | 用于将来源合并到的类别下拉列表的标识符（即目标类别下拉列表） |
+| 是否在操作后删除源类别选项。默认为假。 | Program notification template       | 是否在操作完成后删除源类别组合。默认值为 false。 |
 
 合并操作将把源类别组合合并到目标类别组合中。可以指定一个或多个源类别组合。目标应仅指定一个。
 
@@ -2472,9 +2545,9 @@ additional checks:         | 检索和删除项目通知模板 | ```json
 | E1533      | 目标 CategoryCombo 不能作为源 CategoryCombo                                                                             |
 | 回复{ #response }       | 源/目标类别组合不存在：`{uid}`                                                                               |
 | E1545      | 源和目标的 CategoryCombos 必须具有相同的类别：源 `{uid}` 的类别为 `{categories}`                                |
-| E1546      | CategoryOptionCombo 中的 CategoryOptions 数量不正确。预期为 `{n}`，但发现为 `{m}`，对应的 COC 为 `{uid}`                     |
-| E1547      | CategoryOptionCombo 中包含的 CategoryOptions 与 CategoryCombo 的类别不匹配：`{uid}`                              |
-| E1548      | 在 CategoryCombo `{uid}` 中发现了重复的 CategoryOptionCombo `{uid}`。请在尝试合并之前修复此问题。                     |
+| E1546      | CategoryOptionCombo 的 CategoryOptions 数量不正确。预期为 `{n}`，但发现为 `{m}`，对应的 COC 为 `{uid}`                     |
+| E1547      | CategoryOptionCombo 包含一些对 CategoryCombo 类别无效的 CategoryOptions：`{uid}`                              |
+| E1548      | 在 CategoryCombo `{uid}` 中发现了重复的 CategoryOptionCombo `{uid}`。请在尝试合并之前解决此问题。                     |
 
 
 #### 成功响应示例如下
@@ -2509,7 +2582,7 @@ additional checks:         | 检索和删除项目通知模板 | ```json
             "sourcesDeleted": [
                 "FbLZS3ueWbQ", "dPSWsKeAZNw"
             ],
-            "message": "CategoryCombo 合并完成。 合并后将产生重复的 CategoryOptionCombos。为维护系统完整性，应立即对这些重复项进行合并。可通过数据完整性检查 `category_option_combos_have_duplicates` 查找重复项"
+            "message": "CategoryCombo 合并完成。 合并后将产生重复的 CategoryOptionCombos。为保持系统完整性，应立即合并这些重复项。可通过数据完整性检查 `category_option_combos_have_duplicates` 查找重复项"
         }
     }
 }
@@ -2552,7 +2625,7 @@ additional checks:         | 检索和删除项目通知模板 | ```json
     "httpStatus": "Conflict",
     "httpStatusCode": 409,
     "status": "WARNING",
-    "message": "发生了一个或多个错误，请查看合并报告中的详细信息。",
+    "message": "发生了一个或多个错误，请参阅合并报告中的详细信息。",
     "response": {
         "mergeReport": {
             "mergeErrors": [
